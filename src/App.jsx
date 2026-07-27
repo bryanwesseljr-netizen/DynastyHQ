@@ -163,21 +163,33 @@ const App = () => {
   const [tempInterests, setTempInterests] = useState({});
   const [tempUrls, setTempUrls] = useState({});
 
-  // --- FIREBASE CLOUD SYNC LOGIC ---
+ // --- FIREBASE CLOUD SYNC LOGIC ---
   useEffect(() => {
-  if (!auth) {
-    console.warn("Firebase Auth not initialized. Please verify your Vercel Environment Variables.");
-    return;
-  }
+    // 1. If Firebase Auth isn't initialized (missing keys), load default state so the UI displays!
+    if (!auth) {
+      console.warn("Firebase Auth not initialized. Loading local/default state.");
+      setAppState(defaultState);
+      setIsLoaded(true); // <--- Stops the loading screen
+      return;
+    }
 
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    // ... your existing auth code ...
-  });
-  return () => unsubscribe();
-}, []);
+    // 2. Listen for Auth State Changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserState(user);
+      } else {
+        // If no user is logged in, fallback to default state and reveal UI
+        setUserState(null);
+        setAppState(defaultState);
+        setIsLoaded(true); // <--- Stops the loading screen
+      }
+    });
 
-  useEffect(() => {
-    if (!userState) return;
+    return () => unsubscribe();
+  }, []);
+
+ useEffect(() => {
+    if (!db || !userState) return;
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -205,10 +217,11 @@ const App = () => {
       setIsLoaded(true);
     }, (error) => {
       console.error("Firestore error:", error);
+      setIsLoaded(true); // Unblock the UI even if Firestore fails
     });
     return () => unsubscribe();
   }, [userState]);
-
+  
   const updateAppState = (newStateOrUpdater, successMessage = null) => {
     setAppState((prev) => {
       const newState = typeof newStateOrUpdater === 'function' ? newStateOrUpdater(prev) : newStateOrUpdater;

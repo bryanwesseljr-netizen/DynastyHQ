@@ -54,6 +54,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+console.log("Vercel Env Check:", {
+  hasApiKey: Boolean(firebaseConfig.apiKey),
+  projectId: firebaseConfig.projectId
+});
+
 try {
   // Safe check if __firebase_config was passed as a global string, otherwise use firebaseConfig object
   const config = typeof __firebase_config !== 'undefined' 
@@ -221,7 +226,7 @@ const App = () => {
     });
     return () => unsubscribe();
   }, [userState]);
-  
+
   const updateAppState = (newStateOrUpdater, successMessage = null) => {
     setAppState((prev) => {
       const newState = typeof newStateOrUpdater === 'function' ? newStateOrUpdater(prev) : newStateOrUpdater;

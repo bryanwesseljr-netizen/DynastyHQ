@@ -46,12 +46,12 @@ const appId = 'default-app-id';
 
 // Read from Vite environment variables (Vercel) or fall back to your config object
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
+  authDomain: "dynastyhq-a380c.firebaseapp.com",
+  projectId: "dynastyhq-a380c",
+  storageBucket: "dynastyhq-a380c.firebasestorage.app",
+  messagingSenderId: "567349041343",
+  appId: "1:567349041343:web:31b73897044b148ce64e0a"
 };
 
 console.log("Vercel Env Check:", {

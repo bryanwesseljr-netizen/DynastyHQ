@@ -1,4 +1,5 @@
 @import "tailwindcss";
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -53,17 +54,16 @@
 
 body {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -83,6 +83,7 @@ h1 {
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
@@ -92,6 +93,7 @@ h2 {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }

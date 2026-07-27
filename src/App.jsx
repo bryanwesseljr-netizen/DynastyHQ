@@ -165,17 +165,16 @@ const App = () => {
 
   // --- FIREBASE CLOUD SYNC LOGIC ---
   useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUserState);
-    return () => unsubscribe();
-  }, []);
+  if (!auth) {
+    console.warn("Firebase Auth not initialized. Please verify your Vercel Environment Variables.");
+    return;
+  }
+
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // ... your existing auth code ...
+  });
+  return () => unsubscribe();
+}, []);
 
   useEffect(() => {
     if (!userState) return;

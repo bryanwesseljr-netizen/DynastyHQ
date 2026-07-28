@@ -15,3 +15,5 @@ console.log("Vercel Env Check:", {
   hasApiKey: Boolean(firebaseConfig.apiKey),
   projectId: firebaseConfig.projectId
 });
+
+export const auth = getAuth(app);

@@ -16,4 +16,7 @@ console.log("Vercel Env Check:", {
   projectId: firebaseConfig.projectId
 });
 
+const app = initializeApp(firebaseConfig);
+
+// 2. ADD THIS LINE TO THE VERY BOTTOM!
 export const auth = getAuth(app);

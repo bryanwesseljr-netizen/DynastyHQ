@@ -24,6 +24,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
+import Login from './Login';
+
 // --- DYNAMIC SCRIPT LOADER FOR OCR ---
 const loadTesseract = () => {
   return new Promise((resolve, reject) => {
@@ -43,21 +45,6 @@ const loadTesseract = () => {
 // --- FIREBASE INITIALIZATION ---
 let app, auth, db;
 const appId = 'default-app-id';
-
-// Read from Vite environment variables (Vercel) or fall back to your config object
-const firebaseConfig = {
-  apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
-  authDomain: "dynastyhq-a380c.firebaseapp.com",
-  projectId: "dynastyhq-a380c",
-  storageBucket: "dynastyhq-a380c.firebasestorage.app",
-  messagingSenderId: "567349041343",
-  appId: "1:567349041343:web:31b73897044b148ce64e0a"
-};
-
-console.log("Vercel Env Check:", {
-  hasApiKey: Boolean(firebaseConfig.apiKey),
-  projectId: firebaseConfig.projectId
-});
 
 try {
   // Safe check if __firebase_config was passed as a global string, otherwise use firebaseConfig object
@@ -925,7 +912,7 @@ const App = () => {
                   }
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-bold ${
-                  activeTab === item.id && item.id !== 'rules' ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                  activeTab === item.id && item.id !== 'rules' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }`}>
                 <Icon size={18} /> {item.label}
               </button>
@@ -1182,7 +1169,7 @@ const App = () => {
         
         {appState.player.isCommitted ? (
           <div className="bg-gradient-to-r from-amber-600/90 to-amber-500/90 backdrop-blur-md rounded-2xl p-8 border-2 border-amber-300 shadow-2xl text-center shadow-amber-500/40">
-            <h2 className="text-4xl font-black text-slate-950 uppercase tracking-tight mb-2 drop-shadow-sm">COMMITTED TO {appState.player.college.toUpperCase()}</h2>
+            <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight mb-2 drop-shadow-sm">COMMITTED TO {appState.player.college.toUpperCase()}</h2>
             <p className="text-amber-950 font-bold uppercase tracking-widest text-sm">Recruitment is officially closed.</p>
           </div>
         ) : (
@@ -1713,7 +1700,7 @@ const App = () => {
 
       {editingGameIndex !== null ? (
         <div className="flex gap-4 relative z-10 mb-8">
-          <button onClick={handleSaveGame} className="flex-1 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black py-4 rounded-xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+          <button onClick={handleSaveGame} className="flex-1 bg-amber-600 hover:bg-amber-500 text-slate-900 font-black py-4 rounded-xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)]">
             <Save size={18} /> Update Game Log
           </button>
           <button onClick={cancelEdit} className="px-8 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md text-white font-black py-4 rounded-xl uppercase tracking-wider transition-all border border-slate-600">
@@ -1839,15 +1826,15 @@ const App = () => {
         
         {/* OUTLET SWITCHER */}
         <div className="flex items-center bg-slate-950/90 backdrop-blur-md p-2 rounded-xl border border-slate-700/50 text-xs font-bold overflow-x-auto shadow-2xl">
-            <button onClick={() => setNewsTheme('scouting')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'scouting' ? 'bg-zinc-100 text-slate-950 font-black shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'text-slate-400 hover:text-white'}`}>
+            <button onClick={() => setNewsTheme('scouting')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'scouting' ? 'bg-zinc-100 text-slate-900 font-black shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'text-slate-400 hover:text-white'}`}>
                 <ClipboardSignature size={14} className={newsTheme === 'scouting' ? "text-amber-600" : ""} />
                 <span>247 Scouting Dossier</span>
             </button>
-            <button onClick={() => setNewsTheme('broadsheet')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'broadsheet' ? 'bg-stone-100 text-slate-950 font-black shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'text-slate-400 hover:text-white'}`}>
+            <button onClick={() => setNewsTheme('broadsheet')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'broadsheet' ? 'bg-stone-100 text-slate-900 font-black shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'text-slate-400 hover:text-white'}`}>
                 <Zap size={14} className={newsTheme === 'broadsheet' ? "text-amber-600" : ""} />
                 <span>The Bolt EFHS</span>
             </button>
-            <button onClick={() => setNewsTheme('on3')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'on3' ? 'bg-amber-500 text-slate-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'text-slate-400 hover:text-white'}`}>
+            <button onClick={() => setNewsTheme('on3')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'on3' ? 'bg-amber-500 text-slate-900 font-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'text-slate-400 hover:text-white'}`}>
                 <Star size={14} className={newsTheme === 'on3' ? "fill-slate-950" : ""} />
                 <span>On3 / Gridiron</span>
             </button>
@@ -1855,7 +1842,7 @@ const App = () => {
                 <Newspaper size={14} />
                 <span>The News-Herald</span>
             </button>
-            <button onClick={() => setNewsTheme('filmroom')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'filmroom' ? 'bg-emerald-500 text-slate-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-white'}`}>
+            <button onClick={() => setNewsTheme('filmroom')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'filmroom' ? 'bg-emerald-500 text-slate-900 font-black shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-white'}`}>
                 <Activity size={14} />
                 <span>X's & O's Film Room</span>
             </button>
@@ -2120,18 +2107,18 @@ const App = () => {
 
         {/* 2. BROADSHEET THEME (THE BOLT EFHS) */}
         {newsTheme === 'broadsheet' && (
-          <div className="bg-[#ffffff] text-slate-950 rounded-2xl shadow-2xl border-2 border-slate-900 overflow-hidden print-full">
-            <div className="bg-stone-100 text-slate-950 border-b-2 border-slate-950 px-6 py-4">
+          <div className="bg-[#ffffff] text-slate-900 rounded-2xl shadow-2xl border-2 border-slate-900 overflow-hidden print-full">
+            <div className="bg-stone-100 text-slate-900 border-b-2 border-slate-950 px-6 py-4">
                 <div className="flex justify-between items-center text-xs font-bold tracking-widest text-slate-700 border-b border-slate-400 pb-2 mb-2">
                     <span className="flex items-center gap-1"><Zap className="w-4 h-4 text-slate-900" /> VOL. LV • NO. 4</span>
                     <span className="text-slate-900 font-black uppercase tracking-wider">EDSEL FORD HIGH SCHOOL STUDENT PRESS</span>
                     <div className="flex gap-3 text-slate-800"><Share2 className="w-4 h-4" /><Search className="w-4 h-4" /></div>
                 </div>
-                <h1 className="text-4xl md:text-6xl font-black tracking-tight text-slate-950 font-header text-center uppercase py-1">
+                <h1 className="text-4xl md:text-6xl font-black tracking-tight text-slate-900 font-header text-center uppercase py-1">
                     THE BOLT • EFHS
                 </h1>
                 <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-slate-800 pt-2 border-t border-slate-400 uppercase tracking-wider overflow-x-auto">
-                    <span className="text-slate-950 font-black border-b-2 border-slate-950 pb-0.5">VARSITY FOOTBALL</span>
+                    <span className="text-slate-900 font-black border-b-2 border-slate-950 pb-0.5">VARSITY FOOTBALL</span>
                     <span>STUDENT ATHLETES</span>
                     <span>RECRUITING & OFFERS</span>
                     <span>EFHS ALUMNI</span>
@@ -2141,7 +2128,7 @@ const App = () => {
             </div>
 
             <div className="px-6 md:px-10 pt-6">
-                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-slate-950 font-header leading-tight mb-2">
+                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-slate-900 font-header leading-tight mb-2">
                     {isPreseason 
                       ? `${home.toUpperCase()} PREPARES FOR HIGHLY ANTICIPATED SEASON OPENER`
                       : (outcome === 'W' ? `${home.toUpperCase()} DEFEATS ${away.toUpperCase()} ${score} IN HOMECOMING VICTORY` : `${away.toUpperCase()} TOPS ${home.toUpperCase()} ${score} IN HARD-FOUGHT BATTLE`)}
@@ -2152,7 +2139,7 @@ const App = () => {
                       : `Thunderbirds varsity offensive attack surges behind ${offName}'s ${archetypeLower} leadership at EFHS Field.`}
                 </h2>
                 <div className="flex flex-wrap items-center justify-between border-y border-slate-400 py-2.5 my-3 text-xs text-slate-800 font-medium">
-                    <div><span className="font-bold text-slate-950">By {writer}</span></div>
+                    <div><span className="font-bold text-slate-900">By {writer}</span></div>
                     <div className="flex items-center gap-4 text-slate-700">
                         <span>{dateLoc}</span>
                         <div className="flex gap-2 text-slate-900"><Facebook className="w-4 h-4" /><Twitter className="w-4 h-4" /><Mail className="w-4 h-4" /></div>
@@ -2200,7 +2187,7 @@ const App = () => {
                             <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                                 <MessageSquare className="w-4 h-4" /> Post-Game Presser
                             </div>
-                            <p className="text-base md:text-lg font-serif italic text-slate-950 font-medium leading-snug mb-2">"{quote}"</p>
+                            <p className="text-base md:text-lg font-serif italic text-slate-900 font-medium leading-snug mb-2">"{quote}"</p>
                             <div className="text-xs font-bold text-slate-700 uppercase">— {offName}, EFHS Varsity Signal-Caller</div>
                         </div>
                       </>
@@ -2208,20 +2195,20 @@ const App = () => {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-stone-50 rounded-xl p-4 border border-slate-400 shadow-sm space-y-3 text-slate-950">
+                    <div className="bg-stone-50 rounded-xl p-4 border border-slate-400 shadow-sm space-y-3 text-slate-900">
                         <div className="text-xs font-black uppercase tracking-wider border-b border-slate-300 pb-2 flex justify-between items-center">
                             <span>PLAYERS OF THE GAME</span>
-                            <span className="bg-stone-200 text-slate-950 text-[10px] px-2 py-0.5 rounded font-black">OFF & DEF MVP</span>
+                            <span className="bg-stone-200 text-slate-900 text-[10px] px-2 py-0.5 rounded font-black">OFF & DEF MVP</span>
                         </div>
 
                         <div className="p-2.5 bg-white rounded-lg border border-slate-300 flex items-center gap-2.5">
                             <img src={headshotImg} className="w-9 h-9 rounded-full object-cover border-2 border-slate-900 shadow-sm flex-shrink-0" alt={offName} />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between text-[10px] font-bold">
-                                    <span className="text-slate-950 uppercase">OFFENSE</span>
+                                    <span className="text-slate-900 uppercase">OFFENSE</span>
                                     <span className="text-slate-600 font-semibold">{offPos}</span>
                                 </div>
-                                <div className="font-bold text-slate-950 text-xs truncate leading-tight">{offName}</div>
+                                <div className="font-bold text-slate-900 text-xs truncate leading-tight">{offName}</div>
                                 <div className="text-[11px] text-slate-900 font-black truncate">{offStats}</div>
                             </div>
                         </div>
@@ -2233,7 +2220,7 @@ const App = () => {
                                     <span className="text-slate-800 uppercase">DEFENSE</span>
                                     <span className="text-slate-600 font-semibold">{defPos}</span>
                                 </div>
-                                <div className="font-bold text-slate-950 text-xs truncate leading-tight">{defName}</div>
+                                <div className="font-bold text-slate-900 text-xs truncate leading-tight">{defName}</div>
                                 <div className="text-[11px] text-slate-900 font-black truncate">{defStats}</div>
                             </div>
                         </div>
@@ -2259,13 +2246,13 @@ const App = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-5 border border-slate-400 shadow-sm space-y-3 text-slate-950">
+                    <div className="bg-white rounded-xl p-5 border border-slate-400 shadow-sm space-y-3 text-slate-900">
                         <div className="text-xs font-bold uppercase tracking-wider text-slate-600 border-b border-slate-300 pb-2 flex justify-between">
                             <span>Matchup Final</span> <span className="text-slate-900 font-mono font-bold">FINAL</span>
                         </div>
                         <div className="flex justify-between items-center p-2 bg-stone-100 rounded border border-slate-300">
-                            <span className="font-black text-slate-950 text-sm">{home}</span>
-                            <span className="font-black text-2xl text-slate-950">{homeScore}</span>
+                            <span className="font-black text-slate-900 text-sm">{home}</span>
+                            <span className="font-black text-2xl text-slate-900">{homeScore}</span>
                         </div>
                         <div className="flex justify-between items-center p-2 bg-stone-100 rounded border border-slate-300 opacity-75">
                             <span className="font-bold text-slate-700 text-sm">{away}</span>
@@ -2557,7 +2544,7 @@ const App = () => {
 
             <div className="p-6 md:p-10 space-y-6">
               <div className="border-b border-slate-400 pb-4">
-                <h1 className="text-3xl md:text-5xl font-serif font-black uppercase text-slate-950 leading-tight mb-2">
+                <h1 className="text-3xl md:text-5xl font-serif font-black uppercase text-slate-900 leading-tight mb-2">
                   {isPreseason 
                     ? `HOMETOWN HOPEFUL: ${offName.toUpperCase()} READY TO LEAD ${home.toUpperCase()} INTO NEW SEASON`
                     : `HOMETOWN HERO ${offName.toUpperCase()} SPEARHEADS ${home.toUpperCase()} TO ${score} VICTORY`}

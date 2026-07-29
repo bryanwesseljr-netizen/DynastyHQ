@@ -26,7 +26,7 @@ import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, deleteDoc }
 
 // --- FIREBASE CLOUD DATABASE SETUP ---
 let app, auth, db;
-const appId = 'dynasty-hq';
+let appId = 'dynasty-hq';
 
 const YOUR_FIREBASE_CONFIG = {
   apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",

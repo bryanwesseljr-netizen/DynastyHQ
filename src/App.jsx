@@ -568,33 +568,25 @@ const App = () => {
 // --- UPDATED SHARE LINK FUNCTION ---
 const handlePublishToPublic = async () => {
     if (!db) {
-        setMessageModal({ isOpen: true, text: "Error: Firebase Database not connected.", type: 'error' });
+        setMessageModal({ isOpen: true, text: "Error: Database not connected.", type: 'error' });
         return;
     }
     
     let currentUser = userState;
     if (!currentUser) {
         try {
-            setMessageModal({ isOpen: true, text: "Authenticating...", type: 'success' });
             const userCred = await signInAnonymously(auth);
             currentUser = userCred.user;
             setUserState(currentUser);
         } catch (err) {
-            // PRESS F12 -> CONSOLE in your browser to see the real error here!
-            console.error("Firebase Auth Error:", err); 
-            setMessageModal({ isOpen: true, text: `Login failed: ${err.message}`, type: 'error' });
+            setMessageModal({ isOpen: true, text: "Login failed.", type: 'error' });
             return;
         }
     }
 
     setMessageModal({ isOpen: true, text: "Generating share link...", type: 'success' });
     try {
-        if (window.location.href.includes('usercontent.goog')) {
-             setMessageModal({ isOpen: true, text: "Cannot generate link in sandbox. Please push to Vercel first!", type: 'error' });
-             return;
-        }
-
-        const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', currentUser.uid);
+        const publicDocRef = doc(db, 'artifacts', 'dynasty-hq', 'public', 'data', 'shared_dynasties', currentUser.uid);
         const safeState = { ...appState };
         
         if (safeState.podcastAudio && safeState.podcastAudio.startsWith('data:audio')) {
@@ -605,7 +597,7 @@ const handlePublishToPublic = async () => {
         await setDoc(publicDocRef, safeState);
 
         if (appState.podcastAudio && appState.podcastAudio.startsWith('data:audio')) {
-            const chunkRef = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${currentUser.uid}`);
+            const chunkRef = collection(db, 'artifacts', 'dynasty-hq', 'public', 'data', `shared_audio_${currentUser.uid}`);
             const oldChunks = await getDocs(chunkRef);
             await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
             const chunkSize = 750000;
@@ -622,8 +614,8 @@ const handlePublishToPublic = async () => {
         setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${currentUser.uid}` });
         setMessageModal({ isOpen: false, text: '', type: 'success' });
     } catch (err) { 
-        console.error("Share Link Error:", err);
-        setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); 
+        console.error("DEBUG ERROR:", err);
+        setMessageModal({ isOpen: true, text: `Error: ${err.message.substring(0, 30)}...`, type: 'error' }); 
     }
   };
 

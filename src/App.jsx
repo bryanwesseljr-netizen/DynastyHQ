@@ -491,6 +491,8 @@ const App = () => {
       case 'dataEntry': return 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1920&q=80'; 
       case 'settings': return 'https://images.unsplash.com/photo-1518063319808-88e89f8d16d0?auto=format&fit=crop&w=1920&q=80'; 
       default: return 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
+      return appState.bgDashboard || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
+  };
     }
   };
 
@@ -1162,7 +1164,7 @@ const App = () => {
     const starString = '★'.repeat(stars) + '☆'.repeat(5 - stars);
 
     return (
-      <div className="w-72 bg-slate-950/90 backdrop-blur-xl border-r border-slate-800 flex flex-col no-print shrink-0 z-50 shadow-2xl relative">
+      <div className="w-72 shrink-0 bg-slate-950/90 backdrop-blur-xl border-r border-slate-800 flex flex-col no-print shrink-0 z-50 shadow-2xl relative">
         <div className="p-6 border-b border-slate-800/50 relative">
           <h1 className="text-[22px] font-black tracking-wider flex items-center gap-2 drop-shadow-md text-white font-sans">
             <Trophy size={20} /> DYNASTY <span className="text-amber-500">HQ</span>
@@ -1495,8 +1497,8 @@ const App = () => {
     const sortedH2H = Object.entries(h2h).sort((a, b) => (b[1].W + b[1].L) - (a[1].W + a[1].L));
 
     return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in pb-20 relative z-10">
-      <div className="flex justify-between items-end mb-6 bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl">
+    <div className="max-w-6xl mx-auto space-y-8 relative z-10"> 
+        <div className="flex justify-between items-end bg-slate-900/85 backdrop-blur-md p-6 rounded-xl border border-slate-700/50 shadow-2xl">
         <div>
           <h2 className="text-3xl font-black text-white uppercase tracking-tight drop-shadow-md">Legacy Trophy Case</h2>
           <p className="text-slate-300 text-sm font-bold mt-1 drop-shadow">A permanent record of your milestones, awards, and championships.</p>
@@ -2809,7 +2811,7 @@ const App = () => {
   );
 
   const renderSettings = () => (
-    <div className="max-w-2xl mx-auto text-left animate-in fade-in pb-20 relative z-10">
+    <div className="max-w-4xl mx-auto space-y-8 relative z-10">
       <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl mb-6 flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-white uppercase drop-shadow-md">Hub Settings & Profile</h2>

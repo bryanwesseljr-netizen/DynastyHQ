@@ -566,13 +566,12 @@ const App = () => {
 
 // ... existing code ...
 // --- UPDATED SHARE LINK FUNCTION ---
-  const handlePublishToPublic = async () => {
+const handlePublishToPublic = async () => {
     if (!db) {
-        setMessageModal({ isOpen: true, text: "Error: Firebase Database not connected. Check your API keys.", type: 'error' });
+        setMessageModal({ isOpen: true, text: "Error: Firebase Database not connected.", type: 'error' });
         return;
     }
     
-    // Auto-login check: If not logged in, force anonymous login before sharing
     let currentUser = userState;
     if (!currentUser) {
         try {
@@ -581,8 +580,9 @@ const App = () => {
             currentUser = userCred.user;
             setUserState(currentUser);
         } catch (err) {
-            console.error("Auth error:", err);
-            setMessageModal({ isOpen: true, text: "Login failed. Please refresh and try again.", type: 'error' });
+            // PRESS F12 -> CONSOLE in your browser to see the real error here!
+            console.error("Firebase Auth Error:", err); 
+            setMessageModal({ isOpen: true, text: `Login failed: ${err.message}`, type: 'error' });
             return;
         }
     }
@@ -591,14 +591,12 @@ const App = () => {
     try {
         if (window.location.href.includes('usercontent.goog')) {
              setMessageModal({ isOpen: true, text: "Cannot generate link in sandbox. Please push to Vercel first!", type: 'error' });
-             setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
              return;
         }
 
         const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', currentUser.uid);
         const safeState = { ...appState };
         
-        // Remove sensitive local audio data from the public share
         if (safeState.podcastAudio && safeState.podcastAudio.startsWith('data:audio')) {
             safeState.podcastAudio = ''; 
             safeState.hasCloudAudio = true;
@@ -606,7 +604,6 @@ const App = () => {
         
         await setDoc(publicDocRef, safeState);
 
-        // Upload audio chunks if present
         if (appState.podcastAudio && appState.podcastAudio.startsWith('data:audio')) {
             const chunkRef = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${currentUser.uid}`);
             const oldChunks = await getDocs(chunkRef);
@@ -625,7 +622,7 @@ const App = () => {
         setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${currentUser.uid}` });
         setMessageModal({ isOpen: false, text: '', type: 'success' });
     } catch (err) { 
-        console.error(err);
+        console.error("Share Link Error:", err);
         setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); 
     }
   };

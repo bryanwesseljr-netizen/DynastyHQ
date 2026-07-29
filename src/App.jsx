@@ -565,20 +565,29 @@ const App = () => {
   };
 
 // ... existing code ...
+// --- UPDATED SHARE LINK FUNCTION ---
   const handlePublishToPublic = async () => {
-    // 1. Check for database config/connection
     if (!db) {
         setMessageModal({ isOpen: true, text: "Error: Firebase Database not connected. Check your API keys.", type: 'error' });
         return;
     }
-    // 2. Check for logged in user
-    if (!userState) {
-        setMessageModal({ isOpen: true, text: "You must be logged in to sync to the cloud.", type: 'error' });
-        return;
-    }
     
+    // Auto-login check: If not logged in, force anonymous login before sharing
+    let currentUser = userState;
+    if (!currentUser) {
+        try {
+            setMessageModal({ isOpen: true, text: "Authenticating...", type: 'success' });
+            const userCred = await signInAnonymously(auth);
+            currentUser = userCred.user;
+            setUserState(currentUser);
+        } catch (err) {
+            console.error("Auth error:", err);
+            setMessageModal({ isOpen: true, text: "Login failed. Please refresh and try again.", type: 'error' });
+            return;
+        }
+    }
+
     setMessageModal({ isOpen: true, text: "Generating share link...", type: 'success' });
-    // ... rest of the function ...
     try {
         if (window.location.href.includes('usercontent.goog')) {
              setMessageModal({ isOpen: true, text: "Cannot generate link in sandbox. Please push to Vercel first!", type: 'error' });
@@ -586,16 +595,20 @@ const App = () => {
              return;
         }
 
-        const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', userState.uid);
+        const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', currentUser.uid);
         const safeState = { ...appState };
+        
+        // Remove sensitive local audio data from the public share
         if (safeState.podcastAudio && safeState.podcastAudio.startsWith('data:audio')) {
             safeState.podcastAudio = ''; 
             safeState.hasCloudAudio = true;
         }
+        
         await setDoc(publicDocRef, safeState);
 
+        // Upload audio chunks if present
         if (appState.podcastAudio && appState.podcastAudio.startsWith('data:audio')) {
-            const chunkRef = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${userState.uid}`);
+            const chunkRef = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${currentUser.uid}`);
             const oldChunks = await getDocs(chunkRef);
             await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
             const chunkSize = 750000;
@@ -609,9 +622,12 @@ const App = () => {
         }
 
         const baseUrl = window.location.href.split('?')[0];
-        setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${userState.uid}` });
+        setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${currentUser.uid}` });
         setMessageModal({ isOpen: false, text: '', type: 'success' });
-    } catch (err) { setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
+    } catch (err) { 
+        console.error(err);
+        setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); 
+    }
   };
 
   // --- INTERACTIVE PRESS CONFERENCE AI ---

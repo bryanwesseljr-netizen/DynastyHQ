@@ -42,10 +42,17 @@ const loadTesseract = () => {
 
 // --- FIREBASE INITIALIZATION ---
 let app, auth, db;
-let appId = 'default-app-id';
+let appId = 'dynasty-hq';
+
+// 👇👇👇 PASTE YOUR FIREBASE CONFIG OBJECT BELOW 👇👇👇
+const YOUR_FIREBASE_CONFIG = null; 
+// Example: 
+// const YOUR_FIREBASE_CONFIG = { apiKey: "AIzaSy...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
+
 try {
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-  appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : YOUR_FIREBASE_CONFIG;
+  if (typeof __app_id !== 'undefined') appId = __app_id;
+  
   if (firebaseConfig && firebaseConfig.apiKey) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -551,7 +558,11 @@ const App = () => {
   };
 
   const handlePublishToPublic = async () => {
-    if (!userState || !db) return;
+    if (!userState || !db) {
+        setMessageModal({ isOpen: true, text: "Cloud Database Not Connected! Add your Firebase config to App.jsx to enable public sharing.", type: 'error' });
+        setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
+        return;
+    }
     setMessageModal({ isOpen: true, text: "Generating share link...", type: 'success' });
     try {
         if (window.location.href.includes('usercontent.goog')) {
@@ -789,10 +800,13 @@ const App = () => {
         const printWindow = window.open('', '_blank');
         if (printWindow) {
             printWindow.document.write(`
-                <html>
+                <html class="dark">
                     <head>
                         <title>Print Article - Dynasty HQ</title>
                         <script src="https://cdn.tailwindcss.com"></script>
+                        <script>
+                            tailwind.config = { darkMode: 'class' };
+                        </script>
                         <style>
                             @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@700;900&family=Fira+Code:wght@500;700&family=Inter:wght@300;400;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Teko:wght@600;700&display=swap');
                             body { padding: 20px; background: white; color: black; font-family: 'Inter', sans-serif; }
@@ -1052,8 +1066,8 @@ const App = () => {
     return (
       <div className="w-72 bg-slate-950/90 backdrop-blur-xl border-r border-slate-800 flex flex-col no-print shrink-0 z-50 shadow-2xl relative">
         <div className="p-6 border-b border-slate-800/50 relative">
-          <h1 className="text-xl font-black text-amber-500 tracking-wider flex items-center gap-2 drop-shadow-md">
-            <Trophy size={24} /> DYNASTY HQ
+          <h1 className="text-[22px] font-black tracking-wider flex items-center gap-2 drop-shadow-md text-white font-sans">
+            <Trophy size={20} /> DYNASTY <span className="text-amber-500">HQ</span>
           </h1>
           <div className="mt-4">
             <p className="text-sm text-white font-bold tracking-wide drop-shadow flex items-center gap-2">
@@ -3077,4 +3091,3 @@ const App = () => {
 };
 
 export default App;
-

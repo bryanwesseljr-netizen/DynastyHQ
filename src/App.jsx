@@ -45,14 +45,14 @@ let app, auth, db;
 let appId = 'dynasty-hq';
 
 // 👇👇👇 PASTE YOUR FIREBASE CONFIG OBJECT BELOW 👇👇👇
-const YOUR_FIREBASE_CONFIG = {
+const YOUR_FIREBASE_CONFIG = { 
   apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
   authDomain: "dynastyhq-a380c.firebaseapp.com",
   projectId: "dynastyhq-a380c",
   storageBucket: "dynastyhq-a380c.firebasestorage.app",
   messagingSenderId: "567349041343",
   appId: "1:567349041343:web:31b73897044b148ce64e0a"
-}; 
+};
 // Example: 
 // const YOUR_FIREBASE_CONFIG = { apiKey: "AIzaSy...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
 

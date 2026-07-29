@@ -21,8 +21,32 @@ const Facebook = (props) => (
 
 // --- FIREBASE CLOUD DATABASE IMPORTS ---
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
+
+// --- FIREBASE CLOUD DATABASE SETUP ---
+let app, auth, db;
+const appId = 'dynasty-hq';
+
+const YOUR_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
+  authDomain: "dynastyhq-a380c.firebaseapp.com",
+  projectId: "dynastyhq-a380c",
+  storageBucket: "dynastyhq-a380c.firebasestorage.app",
+  messagingSenderId: "567349041343",
+  appId: "1:567349041343:web:31b73897044b148ce64e0a"
+};
+
+try {
+  app = initializeApp(YOUR_FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  console.log("Firebase Connected Successfully!");
+} catch (e) {
+  console.error("Firebase init error:", e);
+}
+
+// ... (The rest of your code, like loadTesseract, continues below here) ...
 
 // --- DYNAMIC SCRIPT LOADER FOR OCR ---
 const loadTesseract = () => {
@@ -40,19 +64,6 @@ const loadTesseract = () => {
   });
 };
 
-// --- FIREBASE INITIALIZATION ---
-let app, auth, db;
-let appId = 'dynasty-hq';
-
-// 👇👇👇 PASTE YOUR FIREBASE CONFIG OBJECT BELOW 👇👇👇
-const YOUR_FIREBASE_CONFIG = { 
-  apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
-  authDomain: "dynastyhq-a380c.firebaseapp.com",
-  projectId: "dynastyhq-a380c",
-  storageBucket: "dynastyhq-a380c.firebasestorage.app",
-  messagingSenderId: "567349041343",
-  appId: "1:567349041343:web:31b73897044b148ce64e0a"
-};
 // Example: 
 // const YOUR_FIREBASE_CONFIG = { apiKey: "AIzaSy...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
 
@@ -187,7 +198,7 @@ const App = () => {
   const [advanceConfirmModal, setAdvanceConfirmModal] = useState(false);
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
-  const [pressConference, setPressConference] = useState(null); // Added for Interactive Presser
+  const [pressConference, setPressConference] = useState(null); 
   
   // OCR & Upload States
   const [isScanning, setIsScanning] = useState(false);
@@ -197,6 +208,13 @@ const App = () => {
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+
+  // Auth States
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
 
   const valOrEmpty = (v) => (v === null || v === undefined || Number.isNaN(v)) ? '' : v;
 
@@ -248,45 +266,75 @@ const App = () => {
   const [tempInterests, setTempInterests] = useState({});
   const [tempUrls, setTempUrls] = useState({});
 
-  // --- FIREBASE CLOUD SYNC LOGIC ---
+  // --- FIREBASE AUTHENTICATION LOGIC ---
   useEffect(() => {
     if (!auth) {
       console.warn("Firebase Auth not initialized. Loading local/default state.");
       setAppState(defaultState);
       setIsLoaded(true);
+      setIsAuthenticating(false);
       return;
     }
 
     const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Auth error", err);
-        setIsLoaded(true);
+      // Only auto-login in the AI Sandbox environment
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        try { await signInWithCustomToken(auth, __initial_auth_token); } catch (err) { console.error(err); }
       }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserState(user);
-      } else {
-        setUserState(null);
-        setAppState(defaultState);
-        setIsLoaded(true);
-      }
+      setUserState(user);
+      setIsAuthenticating(false);
     });
     return () => unsubscribe();
   }, []);
 
+  // --- AUTHENTICATION HANDLERS ---
+  const handleEmailSignUp = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try { await createUserWithEmailAndPassword(auth, authEmail, authPassword); } 
+    catch (err) { setAuthError(err.message); }
+  };
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try { await signInWithEmailAndPassword(auth, authEmail, authPassword); } 
+    catch (err) { setAuthError(err.message); }
+  };
+
+  const handleGuestLogin = async () => {
+    try { await signInAnonymously(auth); } 
+    catch (err) { setAuthError(err.message); }
+  };
+
+  const handleLinkAccount = async (e) => {
+    e.preventDefault();
+    setIsLinking(true);
+    try {
+        const credential = EmailAuthProvider.credential(authEmail, authPassword);
+        await linkWithCredential(auth.currentUser, credential);
+        setMessageModal({ isOpen: true, text: "Account secured successfully! You can now log in anywhere.", type: 'success' });
+        setAuthEmail(''); setAuthPassword('');
+    } catch (err) {
+        setMessageModal({ isOpen: true, text: err.message, type: 'error' });
+    }
+    setIsLinking(false);
+  };
+
+  const handleLogout = () => {
+    signOut(auth);
+    setAppState(defaultState);
+  };
+
+  // --- FIREBASE CLOUD DATA FETCHING ---
   useEffect(() => {
-    if (!db || !userState) return;
+    if (!db) return;
     
-    // --- VIEWER MODE READ-ONLY FETCH ---
+    // --- VIEWER MODE READ-ONLY FETCH (No Auth Required) ---
     if (isReadOnly && viewId) {
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', viewId);
         const unsubscribe = onSnapshot(docRef, async (docSnap) => {
@@ -329,7 +377,12 @@ const App = () => {
         return () => unsubscribe();
     }
 
-    // --- OWNER PRIVATE FETCH ---
+    // --- OWNER PRIVATE FETCH (Requires Auth) ---
+    if (!userState) {
+        setIsLoaded(true);
+        return;
+    }
+
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
@@ -370,7 +423,7 @@ const App = () => {
     }, (error) => { setIsLoaded(true); });
     
     return () => unsubscribe();
-  }, [userState]);
+  }, [userState, db, isReadOnly, viewId]);
 
   const updateAppState = (newStateOrUpdater, successMessage = null) => {
     setAppState((prev) => {
@@ -564,40 +617,30 @@ const App = () => {
     }), "Progress saved to cloud!");
   };
 
-// ... existing code ...
-// --- UPDATED SHARE LINK FUNCTION ---
-const handlePublishToPublic = async () => {
-    if (!db) {
-        setMessageModal({ isOpen: true, text: "Error: Database not connected.", type: 'error' });
+  const handlePublishToPublic = async () => {
+    if (!userState || !db) {
+        setMessageModal({ isOpen: true, text: "Cloud Database Not Connected! Add your Firebase config to App.jsx to enable public sharing.", type: 'error' });
+        setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
         return;
     }
-    
-    let currentUser = userState;
-    if (!currentUser) {
-        try {
-            const userCred = await signInAnonymously(auth);
-            currentUser = userCred.user;
-            setUserState(currentUser);
-        } catch (err) {
-            setMessageModal({ isOpen: true, text: "Login failed.", type: 'error' });
-            return;
-        }
-    }
-
     setMessageModal({ isOpen: true, text: "Generating share link...", type: 'success' });
     try {
-        const publicDocRef = doc(db, 'artifacts', 'dynasty-hq', 'public', 'data', 'shared_dynasties', currentUser.uid);
+        if (window.location.href.includes('usercontent.goog')) {
+             setMessageModal({ isOpen: true, text: "Cannot generate link in sandbox. Please push to Vercel first!", type: 'error' });
+             setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
+             return;
+        }
+
+        const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', userState.uid);
         const safeState = { ...appState };
-        
         if (safeState.podcastAudio && safeState.podcastAudio.startsWith('data:audio')) {
             safeState.podcastAudio = ''; 
             safeState.hasCloudAudio = true;
         }
-        
         await setDoc(publicDocRef, safeState);
 
         if (appState.podcastAudio && appState.podcastAudio.startsWith('data:audio')) {
-            const chunkRef = collection(db, 'artifacts', 'dynasty-hq', 'public', 'data', `shared_audio_${currentUser.uid}`);
+            const chunkRef = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${userState.uid}`);
             const oldChunks = await getDocs(chunkRef);
             await Promise.all(oldChunks.docs.map(d => deleteDoc(d.ref)));
             const chunkSize = 750000;
@@ -611,12 +654,9 @@ const handlePublishToPublic = async () => {
         }
 
         const baseUrl = window.location.href.split('?')[0];
-        setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${currentUser.uid}` });
+        setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${userState.uid}` });
         setMessageModal({ isOpen: false, text: '', type: 'success' });
-    } catch (err) { 
-        console.error("DEBUG ERROR:", err);
-        setMessageModal({ isOpen: true, text: `Error: ${err.message.substring(0, 30)}...`, type: 'error' }); 
-    }
+    } catch (err) { setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
   };
 
   // --- INTERACTIVE PRESS CONFERENCE AI ---
@@ -796,7 +836,7 @@ const handlePublishToPublic = async () => {
     const reader = new FileReader();
     reader.onload = async (event) => {
         const base64Audio = event.target.result;
-        if (db && userState) {
+        if (db && userState && !userState.isAnonymous) {
             setMessageModal({ isOpen: true, text: "Uploading chunks to cloud...", type: 'success' });
             try {
                 await saveAudioToCloud(db, appId, userState.uid, base64Audio);
@@ -807,7 +847,7 @@ const handlePublishToPublic = async () => {
             }
         } else {
            await saveAudioLocal(base64Audio);
-           updateAppState(prev => ({ ...prev, podcastAudio: base64Audio }), "Audio saved to local device (Login required for cloud).");
+           updateAppState(prev => ({ ...prev, podcastAudio: base64Audio }), "Audio saved to local device (Login required for cloud sync).");
         }
     };
     reader.readAsDataURL(file);
@@ -1058,8 +1098,46 @@ const handlePublishToPublic = async () => {
     return num;
   };
 
-  if (!isLoaded) {
+  // --- INITIAL LOADING STATE ---
+  if (!isLoaded || isAuthenticating) {
     return <div className="flex h-screen bg-slate-950 items-center justify-center text-white"><Loader2 className="animate-spin w-12 h-12 text-amber-500" /></div>
+  }
+
+  // --- SECURE LOGIN / AUTH SCREEN ---
+  if (!userState && !isReadOnly) {
+    return (
+        <div className="flex h-screen bg-slate-950 items-center justify-center p-4 relative overflow-hidden">
+            <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80)'}}></div>
+            <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-2xl max-w-md w-full p-8 shadow-2xl space-y-6 relative z-10">
+                <div className="text-center space-y-2">
+                   <h1 className="text-3xl font-black text-white uppercase flex items-center justify-center gap-2 tracking-tight">
+                       <Trophy className="text-amber-500"/> Dynasty HQ
+                   </h1>
+                   <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Cloud Access Portal</p>
+                </div>
+
+                {authError && <div className="bg-red-900/50 border border-red-500 text-red-200 text-xs p-3 rounded text-center">{authError}</div>}
+
+                <form className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Email Address</label>
+                        <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-950/80 border border-slate-700 rounded p-3 text-white text-sm outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Password</label>
+                        <input type="password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full bg-slate-950/80 border border-slate-700 rounded p-3 text-white text-sm outline-none focus:border-blue-500" />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button onClick={handleEmailLogin} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded font-black uppercase tracking-wider text-sm transition-colors shadow-md">Log In</button>
+                        <button onClick={handleEmailSignUp} className="flex-1 bg-slate-800 hover:bg-emerald-600 text-white border border-slate-600 hover:border-emerald-500 p-3 rounded font-black uppercase tracking-wider text-sm transition-colors shadow-md">Sign Up</button>
+                    </div>
+                </form>
+                <div className="border-t border-slate-800/80 pt-4 text-center">
+                    <button onClick={handleGuestLogin} className="text-xs text-slate-500 hover:text-white font-bold uppercase tracking-wider transition-colors">Continue as Guest (Local Device Only)</button>
+                </div>
+            </div>
+        </div>
+    );
   }
 
   // --- RENDERERS ---
@@ -2735,380 +2813,266 @@ const handlePublishToPublic = async () => {
       <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl mb-6 flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-white uppercase drop-shadow-md">Hub Settings & Profile</h2>
-          <p className="text-slate-300 text-sm font-bold mt-1 drop-shadow">Manage your RTG data and custom imagery.</p>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Era</div>
-          <div className="text-2xl font-black text-amber-500 drop-shadow-md">Season {appState.currentSeason || 1}</div>
+      <p className="text-slate-300 text-sm font-bold mt-1 drop-shadow">Manage your RTG data and custom imagery.</p>
+    </div>
+    <div className="text-right">
+      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Era</div>
+      <div className="text-2xl font-black text-amber-500 drop-shadow-md">Season {appState.currentSeason || 1}</div>
+    </div>
+  </div>
+
+  <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 mb-8 shadow-2xl space-y-6">
+    <h3 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow">
+      <UploadCloud className="text-blue-500" /> Cloud Sync Status
+    </h3>
+    <p className="text-sm font-bold text-emerald-400 mb-4 flex items-center gap-2">
+       <CheckCircle size={16}/> Silent Cloud Sync Active (Master Save)
+    </p>
+    <p className="text-xs text-slate-400">
+       Your data is automatically syncing to the cloud in the background. You can open this app on any device (phone, PC, incognito mode) and your Dynasty will be waiting for you instantly. No passwords required.
+    </p>
+  </div>
+
+  <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 mb-8 shadow-2xl space-y-6">
+    <h3 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow">
+          <UploadCloud className="text-blue-500" /> Cloud Sync & Account
+        </h3>
+        <p className="text-xs text-slate-400 mb-4">
+           {userState?.isAnonymous ?
+             "You are currently using a Guest account. Your data is tied to this specific browser. Secure your account with an email to access your Dynasty on any device (like a phone or incognito window)."
+             : `Logged in securely as: ${userState?.email}`
+           }
+        </p>
+
+        {userState?.isAnonymous && (
+           <form className="bg-slate-950/50 p-5 rounded-xl border border-slate-700 shadow-inner space-y-4 mb-4">
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Email</label>
+                     <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white text-sm outline-none focus:border-blue-500" />
+                 </div>
+                 <div>
+                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Password</label>
+                     <input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white text-sm outline-none focus:border-blue-500" />
+                 </div>
+              </div>
+              <button onClick={handleLinkAccount} disabled={isLinking} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded font-black uppercase tracking-wider text-xs transition-colors flex justify-center items-center gap-2 shadow-md">
+                 {isLinking ? <Loader2 className="animate-spin w-4 h-4"/> : <ShieldCheck className="w-4 h-4"/>}
+                 Secure Account & Save My Data
+              </button>
+           </form>
+        )}
+
+        <div className="border-t border-slate-700/50 pt-4 text-right">
+           <button onClick={handleLogout} className="bg-slate-800 hover:bg-red-600 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-colors border border-slate-600 hover:border-red-500">
+              Sign Out
+           </button>
         </div>
       </div>
 
       <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 mb-8 shadow-2xl space-y-6">
         <h3 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow">
-          <Settings className="text-amber-500" /> Career Phase Transition
+          <Briefcase className="text-amber-500" /> Career Era Toggle
         </h3>
-        <p className="text-xs text-slate-400 mb-4">Advance your career from a player to a coordinator, or a coordinator to a Head Coach. The app will automatically adapt the dashboard and recruiting tools to your new job title.</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onClick={() => updateAppState(prev => ({...prev, careerPhase: 'Player'}))} className={`p-4 rounded-xl border transition-all text-center flex flex-col items-center gap-2 ${appState.careerPhase === 'Player' ? 'bg-amber-500/20 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-950/50 border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}>
-                <User size={24} className={appState.careerPhase === 'Player' ? 'text-amber-400' : 'text-slate-400'} />
-                <span className={`font-black text-sm uppercase tracking-wider ${appState.careerPhase === 'Player' ? 'text-white' : 'text-slate-400'}`}>Player Era</span>
-            </button>
-            <button onClick={() => updateAppState(prev => ({...prev, careerPhase: 'OC'}))} className={`p-4 rounded-xl border transition-all text-center flex flex-col items-center gap-2 ${appState.careerPhase === 'OC' ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'bg-slate-950/50 border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}>
-                <ClipboardSignature size={24} className={appState.careerPhase === 'OC' ? 'text-blue-400' : 'text-slate-400'} />
-                <span className={`font-black text-sm uppercase tracking-wider ${appState.careerPhase === 'OC' ? 'text-white' : 'text-slate-400'}`}>Coordinator</span>
-            </button>
-            <button onClick={() => updateAppState(prev => ({...prev, careerPhase: 'HC'}))} className={`p-4 rounded-xl border transition-all text-center flex flex-col items-center gap-2 ${appState.careerPhase === 'HC' ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-950/50 border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}>
-                <ShieldCheck size={24} className={appState.careerPhase === 'HC' ? 'text-emerald-400' : 'text-slate-400'} />
-                <span className={`font-black text-sm uppercase tracking-wider ${appState.careerPhase === 'HC' ? 'text-white' : 'text-slate-400'}`}>Head Coach</span>
-            </button>
+        <p className="text-xs text-slate-400 mb-4">Switch your dashboard interface to match your current phase in the Dynasty journey.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-700/50 pt-4">
+          {['Player', 'OC', 'HC'].map((phase) => (
+             <button 
+                key={phase}
+                onClick={() => updateAppState(prev => ({...prev, careerPhase: phase}), `Career Phase updated to ${phase === 'Player' ? 'RTG Player' : phase === 'OC' ? 'Offensive Coordinator' : 'Head Coach'}!`)}
+                className={`p-4 rounded-xl border transition-all ${appState.careerPhase === phase ? 'bg-amber-600/20 border-amber-500 text-amber-400 font-black shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-950/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white font-bold'}`}
+             >
+                {phase === 'Player' ? 'Road to Glory (Player)' : phase === 'OC' ? 'Offensive Coordinator' : 'Head Coach'}
+             </button>
+          ))}
         </div>
       </div>
-      
+
       <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 mb-8 shadow-2xl space-y-6">
         <h3 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow">
-          <UserCircle className="text-amber-500" /> {isCoach ? 'Coach Profile Identity' : 'Player Profile Identity'}
+          <Settings className="text-amber-500" /> Advanced Options
         </h3>
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 pb-6 border-b border-slate-700/50">
-          <img src={appState.player.headshot} className="w-24 h-24 rounded-full object-cover border-4 border-slate-600 shadow-[0_0_15px_rgba(255,255,255,0.1)] shrink-0" alt="Profile" />
-          <div className="flex-1 w-full">
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-2 drop-shadow-sm">Custom Headshot URL</label>
-            <input 
-              type="text" 
-              value={tempUrls['player-headshot'] !== undefined ? tempUrls['player-headshot'] : (appState.player.headshot || '')}
-              onChange={e => setTempUrls(prev => ({...prev, 'player-headshot': e.target.value}))}
-              onBlur={() => handleUrlBlur('player', 'headshot')}
-              onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-              className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner text-sm outline-none focus:border-amber-500 transition-colors" 
-              placeholder="Paste direct Imgur link here..."
-            />
-            <p className="text-[10px] text-slate-400 mt-2">Paste a web link. (Standard Imgur links will auto-convert to images).</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className={isCoach ? 'col-span-2' : ''}>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">{isCoach ? "Coach Name" : "Player Name"}</label>
-            <input type="text" value={appState.player.name} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, name: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" />
-          </div>
-          
-          {!isCoach && (
-              <div className="flex gap-2">
-                <div className="w-1/2">
-                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Position</label>
-                  <input type="text" value={appState.player.pos} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, pos: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" placeholder="e.g. QB" />
-                </div>
-                <div className="w-1/2">
-                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Jersey #</label>
-                  <input type="text" value={appState.player.number} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, number: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" placeholder="e.g. #2" />
-                </div>
-              </div>
-          )}
-          
-          <div className={isCoach ? 'col-span-2' : ''}>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">{isCoach ? "Program / School" : "School / Team"}</label>
-            <input type="text" value={appState.player.school} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, school: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" />
-          </div>
-          
-          {!isCoach && (
-              <>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Star Rating</label>
-                <select value={appState.player.stars} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, stars: parseInt(e.target.value)}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner font-bold outline-none">
-                   {[1,2,3,4,5].map(n => <option key={n} value={n} className="bg-slate-900">{n} Star Prospect</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Overall Rating</label>
-                <input type="number" value={valOrEmpty(appState.player.overall)} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, overall: e.target.value === '' ? '' : parseInt(e.target.value)}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">National QB Rank</label>
-                <input type="number" value={valOrEmpty(appState.player.nationalQbRank)} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, nationalQbRank: e.target.value === '' ? '' : parseInt(e.target.value)}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" placeholder="e.g. 14" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Archetype</label>
-                <input type="text" value={appState.player.archetype} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, archetype: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" placeholder="e.g. Dual-Threat" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Height</label>
-                <input type="text" value={appState.player.height} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, height: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" placeholder="e.g. 6'2&quot;" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Weight</label>
-                <input type="text" value={appState.player.weight} onChange={e => updateAppState(prev => ({...prev, player: {...prev.player, weight: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-white shadow-inner" placeholder="e.g. 205 LBS" />
-              </div>
-
-              <div className="col-span-2 mt-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">NIL & Sponsorships</label>
-                <input type="text" value={appState.rtg.sponsorships} onChange={e => updateAppState(prev => ({...prev, rtg: {...prev.rtg, sponsorships: e.target.value}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-emerald-400 shadow-inner" />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 drop-shadow-sm">Followers Count</label>
-                <input type="number" value={valOrEmpty(appState.rtg.followers)} onChange={e => updateAppState(prev => ({...prev, rtg: {...prev.rtg, followers: e.target.value === '' ? '' : parseInt(e.target.value)}}))} className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-2.5 text-blue-400 shadow-inner" />
-              </div>
-              </>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 text-center shadow-xl">
-        <h3 className="text-lg font-bold text-white mb-6 drop-shadow">Data Management & Progression</h3>
-        <div className="flex flex-col md:flex-row gap-4 justify-center">
-          <button onClick={requestAdvanceSeason} className="px-6 py-3 bg-blue-900/60 text-blue-300 border border-blue-500 hover:bg-blue-600 hover:text-white rounded-lg font-bold transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-            Advance to Next Season
-          </button>
-          <button onClick={handleResetRequest} className="px-6 py-3 bg-red-900/60 text-red-300 border border-red-500 hover:bg-red-600 hover:text-white rounded-lg font-bold transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-            Factory Reset Database
-          </button>
+        <p className="text-xs text-slate-400 mb-4">
+           Use these options to manage your save state locally or in the cloud.
+        </p>
+        <div className="border-t border-slate-700/50 pt-4 flex gap-4">
+           <button onClick={requestAdvanceSeason} className="flex-1 bg-amber-600/90 hover:bg-amber-500 text-slate-900 px-4 py-3 rounded-lg font-black text-xs uppercase tracking-wider transition-colors shadow-md flex justify-center items-center gap-2">
+              <Calendar size={16} /> Advance to Next Season
+           </button>
+           <button onClick={handleResetRequest} className="flex-1 bg-red-900/50 hover:bg-red-600 text-red-200 hover:text-white px-4 py-3 rounded-lg font-black text-xs uppercase tracking-wider transition-colors border border-red-700 flex justify-center items-center gap-2 shadow-md">
+              <Trash2 size={16} /> Factory Reset Database
+           </button>
         </div>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 font-sans overflow-hidden relative">
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@700;900&family=Fira+Code:wght@500;700&family=Inter:wght@300;400;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Teko:wght@600;700&display=swap');
-        
-        .font-serif { font-family: 'Playfair Display', serif; }
-        .font-display { font-family: 'Bebas Neue', sans-serif; }
-        .font-header { font-family: 'Teko', sans-serif; }
-        .font-cinzel { font-family: 'Cinzel', serif; }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .drop-cap::first-letter {
-            font-size: 3.75rem;
-            line-height: 0.8;
-            float: left;
-            margin-right: 0.6rem;
-            font-weight: 900;
-        }
-
-        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-        .animate-ticker { display: inline-block; white-space: nowrap; animation: ticker 35s linear infinite; padding-right: 50px; }
-        
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        
-        .hide-arrows::-webkit-inner-spin-button, .hide-arrows::-webkit-outer-spin-button {
-            -webkit-appearance: none; margin: 0;
-        }
-        .hide-arrows[type=number] { -moz-appearance: textfield; }
-
-        @media print {
-            body { background: white !important; margin: 0; padding: 0; color: black; }
-            .no-print { display: none !important; }
-            .w-72 { display: none !important; }
-            .absolute.inset-0 { display: none !important; }
-            .flex-1.overflow-y-auto { overflow: visible !important; height: auto !important; padding: 0 !important; }
-            .max-w-5xl { max-width: 100% !important; margin: 0 auto !important; }
-            .print-full { box-shadow: none !important; border: 1px solid #ccc !important; }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ::-webkit-scrollbar { display: none; }
-        }
-      `}} />
-      
-      {messageModal.isOpen && (
-         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4">
-             <div className={`px-6 py-3 rounded-full shadow-2xl font-black text-sm uppercase tracking-widest flex items-center gap-2 ${messageModal.type === 'error' ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.5)]'}`}>
-                 <CheckCircle2 size={18} /> {messageModal.text}
-             </div>
+    <div className="flex h-screen bg-slate-950 font-sans text-slate-200 overflow-hidden selection:bg-amber-500/30">
+       {/* Nav */}
+       {renderNav()}
+       
+       {/* Main Content Area */}
+       <div className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+         {/* Background Image */}
+         <div className="absolute inset-0 z-0 fixed">
+            <img src={getBgImage()} className="w-full h-full object-cover opacity-20 mix-blend-luminosity" alt="Background" />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/60 to-slate-950"></div>
          </div>
-      )}
 
-      {isResetModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
-          <div className="bg-slate-900 border border-red-500/50 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <AlertTriangle size={32} className="text-red-500" />
-            </div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight drop-shadow-md">Factory Reset</h2>
-            <p className="text-slate-400 text-sm mb-6">Are you sure you want to COMPLETELY WIPE the database? This cannot be undone and will delete all game logs, recruiting data, and custom settings.</p>
-            <div className="flex gap-4">
-              <button onClick={confirmReset} className="flex-1 bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-black transition-all">Yes, Wipe Data</button>
-              <button onClick={() => setIsResetModalOpen(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl font-bold transition-all border border-slate-600">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+         {activeTab === 'dashboard' && renderDashboard()}
+         {activeTab === 'recruiting' && renderRecruiting()}
+         {activeTab === 'newsroom' && renderNewsroom()}
+         {activeTab === 'dataEntry' && renderDataEntry()}
+         {activeTab === 'trophies' && renderTrophies()}
+         {activeTab === 'settings' && renderSettings()}
+       </div>
 
-      {deleteConfirmModal.isOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
-          <div className="bg-slate-900 border border-red-500/50 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight drop-shadow-md">Delete Game Log?</h2>
-            <p className="text-slate-400 text-sm mb-6">Are you sure you want to delete this game log? Season totals will be recalculated.</p>
-            <div className="flex gap-4">
-              <button onClick={confirmDeleteGame} className="flex-1 bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-black transition-all">Yes, Delete</button>
-              <button onClick={() => setDeleteConfirmModal({ isOpen: false, index: null })} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl font-bold transition-all border border-slate-600">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+       {/* Modals */}
+       {messageModal.isOpen && (
+           <div className="fixed bottom-4 right-4 z-[200] animate-in slide-in-from-right">
+               <div className={`px-6 py-4 rounded-xl shadow-2xl border flex items-center gap-3 font-bold text-sm ${messageModal.type === 'error' ? 'bg-red-950/90 border-red-500 text-red-200' : 'bg-emerald-950/90 border-emerald-500 text-emerald-200'}`}>
+                   {messageModal.type === 'error' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                   {messageModal.text}
+               </div>
+           </div>
+       )}
 
-      {advanceConfirmModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
-          <div className="bg-slate-900 border border-blue-500/50 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight drop-shadow-md">Advance to Next Season?</h2>
-            <p className="text-slate-400 text-sm mb-6">This will reset your current week to 1 and update your season counter, but preserve all past game logs. Ready to move forward?</p>
-            <div className="flex gap-4">
-              <button onClick={confirmAdvanceSeason} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-black transition-all">Yes, Advance</button>
-              <button onClick={() => setAdvanceConfirmModal(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl font-bold transition-all border border-slate-600">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+       {isResetModalOpen && (
+           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
+               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">
+                   <AlertTriangle size={48} className="text-red-500 mx-auto" />
+                   <div>
+                       <h2 className="text-2xl font-black text-white uppercase tracking-tight">Factory Reset</h2>
+                       <p className="text-slate-400 text-sm mt-2">This will permanently delete your Master Save from the cloud and wipe your local device. This action cannot be undone.</p>
+                   </div>
+                   <div className="flex gap-4">
+                       <button onClick={confirmReset} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all shadow-md">Confirm Delete</button>
+                       <button onClick={() => setIsResetModalOpen(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all border border-slate-600">Cancel</button>
+                   </div>
+               </div>
+           </div>
+       )}
+       
+       {advanceConfirmModal && (
+           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
+               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">
+                   <Calendar size={48} className="text-amber-500 mx-auto" />
+                   <div>
+                       <h2 className="text-2xl font-black text-white uppercase tracking-tight">Advance Season</h2>
+                       <p className="text-slate-400 text-sm mt-2">Ready to move to Season {(appState.currentSeason || 1) + 1}? Make sure you've finished all your offseason recruiting!</p>
+                   </div>
+                   <div className="flex gap-4">
+                       <button onClick={confirmAdvanceSeason} className="flex-1 bg-amber-600 hover:bg-amber-500 text-slate-900 font-black py-3 rounded-xl uppercase tracking-wider transition-all shadow-md">Advance Now</button>
+                       <button onClick={() => setAdvanceConfirmModal(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all border border-slate-600">Wait</button>
+                   </div>
+               </div>
+           </div>
+       )}
+       
+       {deleteConfirmModal.isOpen && (
+           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
+               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">
+                   <Trash2 size={48} className="text-red-500 mx-auto" />
+                   <div>
+                       <h2 className="text-2xl font-black text-white uppercase tracking-tight">Delete Game Log</h2>
+                       <p className="text-slate-400 text-sm mt-2">Are you sure you want to permanently delete this game log?</p>
+                   </div>
+                   <div className="flex gap-4">
+                       <button onClick={confirmDeleteGame} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all shadow-md">Delete</button>
+                       <button onClick={() => setDeleteConfirmModal({ isOpen: false, index: null })} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all border border-slate-600">Cancel</button>
+                   </div>
+               </div>
+           </div>
+       )}
 
-      {renderNav()}
-      
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        
-        <div 
-          className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out"
-          style={{ backgroundImage: `url(${getBgImage()})` }}
-        />
-        
-        <div className="absolute inset-0 bg-slate-500/30 backdrop-blur-md z-0 transition-all duration-700"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-slate-900/50 z-0 pointer-events-none transition-all duration-700"></div>
+       {shareLinkModal.isOpen && (
+           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
+               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-8 shadow-2xl space-y-6">
+                   <div className="text-center">
+                       <Share2 size={48} className="text-blue-500 mx-auto mb-4" />
+                       <h2 className="text-2xl font-black text-white uppercase tracking-tight">Share Your Dynasty</h2>
+                       <p className="text-slate-400 text-sm mt-2">Your data is synced to the cloud! Send this link to friends so they can view your articles, stats, and podcast in Read-Only mode.</p>
+                   </div>
+                   
+                   <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex gap-3 items-center">
+                       <input type="text" readOnly value={shareLinkModal.url} className="w-full bg-transparent text-emerald-400 text-sm font-mono outline-none" />
+                       <button onClick={() => { navigator.clipboard.writeText(shareLinkModal.url); setMessageModal({ isOpen: true, text: "Link Copied!", type: 'success' }); setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000); }} className="bg-slate-800 hover:bg-slate-700 p-2 rounded text-white transition-colors border border-slate-600 shrink-0">
+                           <Copy size={16}/>
+                       </button>
+                   </div>
+                   
+                   <button onClick={() => setShareLinkModal({ isOpen: false, url: '' })} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all border border-slate-600">Close</button>
+               </div>
+           </div>
+       )}
+       
+       // ... existing code ...
+       {isHouseRulesModalOpen && (
+           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
+               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                   <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                       <div>
+                           <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2"><FileText className="text-blue-400"/> Immersive House Rules</h2>
+                           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Difficulty constraints for realism</p>
+                       </div>
+                       <button onClick={() => setIsHouseRulesModalOpen(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+                   </div>
+                   <div className="p-6 overflow-y-auto flex-1 space-y-8 bg-slate-900/50">
+                       <div className="text-slate-300 font-medium space-y-8 text-sm">
+                           
+                           <div className="space-y-3">
+                               <h3 className="text-amber-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Map size={18}/> 1. Recruiting & Pipeline Restrictions</h3>
+                               <ul className="list-disc pl-5 space-y-2">
+                                   <li><strong>Geographic Limits:</strong> At 1–2★ Prestige, you can only recruit players within your home state and primary pipeline states. At 3–4★, you can expand to secondary pipelines. 5–6★ opens national recruiting.</li>
+                                   <li><strong>Star Ceilings:</strong> You cannot target 5-star recruits until your program reaches at least 4-star prestige (unless the player has your school in their native Top 3).</li>
+                                   <li><strong>Scouting Fog-of-War:</strong> Limit scouting to 50% per recruit prior to extending an offer. Commit scholarships based on raw potential rather than knowing every attribute.</li>
+                               </ul>
+                           </div>
 
-        <div className="flex-1 overflow-y-auto p-8 relative z-10 pb-16">
-          {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'recruiting' && renderRecruiting()}
-          {activeTab === 'newsroom' && renderNewsroom()}
-          {activeTab === 'trophies' && renderTrophies()}
-          {activeTab === 'dataEntry' && renderDataEntry()}
-          {activeTab === 'settings' && renderSettings()}
-        </div>
-        
-        <div className="absolute bottom-0 left-0 right-0 h-10 bg-black text-amber-500 border-t border-slate-800 flex items-center overflow-hidden z-50">
-          <div className="bg-amber-500 text-black h-full flex items-center px-4 font-black uppercase tracking-widest text-xs z-20 flex-shrink-0 shadow-[2px_0_10px_rgba(0,0,0,0.5)]">
-            RUMOR MILL
-          </div>
-          <div className="flex-1 overflow-hidden relative flex items-center h-full bg-slate-950/90 backdrop-blur-md">
-             <div className="animate-ticker text-xs font-bold uppercase tracking-wider flex gap-16">
-               {appState.rumors.map((rumor, i) => (
-                 <span key={i}>••• {rumor} </span>
-               ))}
-               <span>•••</span>
-             </div>
-          </div>
-        </div>
+                           <div className="space-y-3">
+                               <h3 className="text-emerald-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Users size={18}/> 2. Transfer Portal Limitations</h3>
+                               <ul className="list-disc pl-5 space-y-2">
+                                   <li><strong>1-2★ Programs:</strong> Maximum 2 transfers per season.</li>
+                                   <li><strong>3-4★ Programs:</strong> Maximum 4 transfers per season.</li>
+                                   <li>Transfers must be fit/need-based (e.g., replacing a drafted junior or filling a catastrophic injury gap, not just hoarding depth).</li>
+                               </ul>
+                           </div>
 
-        {shareLinkModal.isOpen && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[300] animate-in fade-in p-4">
-              <div className="bg-slate-900 border border-blue-500/50 rounded-2xl max-w-lg w-full p-8 shadow-2xl text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Share2 size={32} className="text-blue-500" />
-                </div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight drop-shadow-md">Your Hub is Live!</h2>
-                
-                {shareLinkModal.url.includes('usercontent.goog') ? (
-                    <p className="text-amber-400 text-sm mb-4 font-bold bg-amber-950/40 p-3 rounded border border-amber-500/50">
-                        ⚠️ Notice: You are testing this inside the preview sandbox! The link below won't work for friends. Please deploy this to Vercel and click "Get Share Link" there to get your real Vercel URL.
-                    </p>
-                ) : (
-                    <p className="text-slate-400 text-sm mb-4">Share this link with friends. They can view your stats, newsroom, and podcast on any device, but cannot make edits.</p>
-                )}
-                
-                <div className="flex items-center gap-2 bg-slate-950 p-3 rounded-lg border border-slate-700">
-                    <input type="text" readOnly value={shareLinkModal.url} className="bg-transparent text-slate-300 w-full outline-none text-xs font-mono" />
-                    <button onClick={() => { navigator.clipboard.writeText(shareLinkModal.url); setMessageModal({ isOpen: true, text: "Copied to clipboard!", type: 'success' }); setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000); }} className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded transition-colors" title="Copy to clipboard"><Copy size={16} /></button>
-                </div>
+                           <div className="space-y-3">
+                               <h3 className="text-blue-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Briefcase size={18}/> 3. Coaching Progression</h3>
+                               <ul className="list-disc pl-5 space-y-2">
+                                   <li>You must create a custom Offensive Coordinator in Dynasty Mode matching your RTG player's name and hometown.</li>
+                                   <li>You must replace the current OC at your graduating alma mater (Start as an OC, not an HC).</li>
+                                   <li>Your starting Coach Level is determined by your RTG finish.</li>
+                                   <li>You cannot accept a Head Coaching job until winning a conference championship or National Title as an OC.</li>
+                               </ul>
+                           </div>
 
-                <button onClick={() => setShareLinkModal({ isOpen: false, url: '' })} className="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl font-bold transition-all border border-slate-600 shadow-md">Close</button>
-              </div>
-            </div>
-        )}
+                           <div className="space-y-3">
+                               <h3 className="text-red-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Activity size={18}/> 4. Scheme Inheritance</h3>
+                               <ul className="list-disc pl-5 space-y-2">
+                                   <li>When you transition to OC, you must adopt the offensive playbook of the coach you played under.</li>
+                                   <li>You cannot drastically overhaul the scheme (e.g., changing from Pro Style to a Spread Air Raid) until you become a Head Coach.</li>
+                                   <li>Learn to recruit players that specifically fit the playbook you inherited.</li>
+                               </ul>
+                           </div>
 
-        {isHouseRulesModalOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] animate-in fade-in p-4">
-            <div className="bg-slate-900/95 border border-slate-700 rounded-2xl max-w-2xl w-full p-8 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto relative">
-              
-              <div className="sticky top-0 bg-slate-900/95 pt-2 pb-4 border-b border-slate-700/50 flex justify-between items-center z-10">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight drop-shadow-md flex items-center gap-2">
-                  <ShieldCheck className="text-amber-500"/> Official House Rules
-                </h2>
-                <button onClick={() => setIsHouseRulesModalOpen(false)} className="text-slate-400 hover:text-white transition-colors bg-slate-800 p-2 rounded-full"><X size={20}/></button>
-              </div>
-              
-              <div className="space-y-6 text-sm text-slate-300">
-                
-                <div className="bg-slate-950/50 p-2 rounded border-l-4 border-emerald-500 mt-2">
-                  <span className="text-emerald-400 font-black uppercase tracking-widest text-xs">Phase I: High School & Recruiting</span>
-                </div>
+                           <div className="space-y-3">
+                               <h3 className="text-slate-200 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><ShieldCheck size={18}/> 5. Gameplay & Narrative Acceptance</h3>
+                               <ul className="list-disc pl-5 space-y-2">
+                                   <li><strong>Difficulty:</strong> Heisman Difficulty, default sliders.</li>
+                                   <li><strong>Narrative Acceptance:</strong> If you have a 4-interception game that costs your team a bowl bid, accept it. It becomes part of your backstory. Do not reboot games.</li>
+                               </ul>
+                           </div>
 
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">1. The Authentic Target Board</h3>
-                  <p className="text-slate-400">You must commit to a school from our pre-established 10-school target board (e.g., Toledo, Eastern Michigan, Ball State). If Alabama or Georgia offers your 3-star recruit, you must decline. Stick to the Midwest pipeline.</p>
-                </div>
-                
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">2. Authentic Skill Growth</h3>
-                  <p className="text-slate-400">In High School, you cannot pump skill points into Throw Power. You must prioritize awareness, short accuracy, and break sack to reflect a scrappy, high-IQ senior. Do not upgrade Throw Power past an 83 overall until your sophomore year of college.</p>
-                </div>
-
-                <div className="bg-slate-950/50 p-2 rounded border-l-4 border-amber-500 mt-6">
-                  <span className="text-amber-500 font-black uppercase tracking-widest text-xs">Phase II: Campus Life & The Grind</span>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">3. Practice Makes Permanent</h3>
-                  <p className="text-slate-400">Never restart position battles or weekly practice drills. You get one shot per week to impress the coaching staff. If you throw two picks in a position battle and lose the starting job, you ride the bench.</p>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">4. Student-Athlete Priority</h3>
-                  <p className="text-slate-400">As a future coach, academics and leadership come first. Balance NIL opportunities with your Academic GPA. If your GPA drops below a 2.0 due to chasing brand deals, you must bench yourself for the entire first quarter of your next game.</p>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">5. Wear & Tear Reality</h3>
-                  <p className="text-slate-400">If any body part hits the "Red" zone on your Wear & Tear monitor, you MUST sub yourself out for the remainder of the half, or sit the next game. Respect college injuries.</p>
-                </div>
-
-                <div className="bg-slate-950/50 p-2 rounded border-l-4 border-blue-500 mt-6">
-                  <span className="text-blue-400 font-black uppercase tracking-widest text-xs">Phase III: Dynasty Bridge</span>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">6. Recruiting & Pipeline Restrictions</h3>
-                  <p className="text-slate-400">As a 1–2★ program coordinator, you may only recruit players within your home state and primary pipeline states. You cannot target 5-star recruits until your program reaches at least 4-star prestige.</p>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">7. The Fog of War</h3>
-                  <p className="text-slate-400">Limit your scouting to exactly 50% per recruit prior to extending a scholarship offer. You must commit scholarships based on raw potential rather than knowing every attribute up front.</p>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">8. The Alma Mater OC</h3>
-                  <p className="text-slate-400">You must create a custom Offensive Coordinator in Dynasty Mode matching your RTG player's name and hometown. You must replace the current OC at your graduating alma mater. Do not start as a Head Coach.</p>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">9. Scheme Inheritance</h3>
-                  <p className="text-slate-400">When transitioning to OC, you must adopt the offensive playbook of the coach you played under in RTG. You cannot drastically overhaul the scheme until you become a Head Coach.</p>
-                </div>
-
-                <div className="space-y-1.5 pl-2">
-                  <h3 className="text-white font-black uppercase tracking-widest text-xs">10. Narrative Acceptance</h3>
-                  <p className="text-slate-400">If you have a 4-interception game that costs your team a bowl bid, accept it. It becomes part of your backstory—a gritty player who learned hard lessons that ultimately made him a smarter Offensive Coordinator.</p>
-                </div>
-              </div>
-              
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center mt-6">
-                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Enforce these rules manually in your gameplay to maintain absolute immersion.</p>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-      </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       )}
     </div>
   );
 };
 
 export default App;
-

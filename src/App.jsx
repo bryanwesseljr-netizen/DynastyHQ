@@ -564,13 +564,21 @@ const App = () => {
     }), "Progress saved to cloud!");
   };
 
+// ... existing code ...
   const handlePublishToPublic = async () => {
-    if (!userState || !db) {
-        setMessageModal({ isOpen: true, text: "Cloud Database Not Connected! Add your Firebase config to App.jsx to enable public sharing.", type: 'error' });
-        setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
+    // 1. Check for database config/connection
+    if (!db) {
+        setMessageModal({ isOpen: true, text: "Error: Firebase Database not connected. Check your API keys.", type: 'error' });
         return;
     }
+    // 2. Check for logged in user
+    if (!userState) {
+        setMessageModal({ isOpen: true, text: "You must be logged in to sync to the cloud.", type: 'error' });
+        return;
+    }
+    
     setMessageModal({ isOpen: true, text: "Generating share link...", type: 'success' });
+    // ... rest of the function ...
     try {
         if (window.location.href.includes('usercontent.goog')) {
              setMessageModal({ isOpen: true, text: "Cannot generate link in sandbox. Please push to Vercel first!", type: 'error' });

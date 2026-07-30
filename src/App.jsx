@@ -21,7 +21,16 @@ const Facebook = (props) => (
 
 // --- FIREBASE CLOUD DATABASE IMPORTS ---
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  onAuthStateChanged, 
+  signOut, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  EmailAuthProvider, 
+  linkWithCredential 
+} from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
 
 // --- FIREBASE CLOUD DATABASE SETUP ---
@@ -3008,7 +3017,7 @@ const App = () => {
                </div>
            </div>
        )}
-        
+
        {isHouseRulesModalOpen && (
            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
                <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">

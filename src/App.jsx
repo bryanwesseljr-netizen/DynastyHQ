@@ -185,7 +185,7 @@ const loadAudioFromCloud = async (db, appId, userId) => {
     }
 };
 
-const App = () => {
+{const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const viewId = urlParams.get('view');
   const isReadOnly = !!viewId;
@@ -3009,7 +3009,7 @@ const App = () => {
            </div>
        )}
        
-       // ... existing code ...
+       // ... existing code ...// 
        {isHouseRulesModalOpen && (
            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
                <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -3078,3 +3078,5 @@ const App = () => {
 };
 
 export default App;
+
+

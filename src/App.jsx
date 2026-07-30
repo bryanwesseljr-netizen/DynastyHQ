@@ -723,7 +723,7 @@ const App = () => {
     return { question, answers };
   };
 
-  const handleSaveGameClick = () => {
+const handleSaveGameClick = () => {
     let updatedRumors = [...appState.rumors];
     if (newRumor.trim() !== "") {
       updatedRumors = [newRumor, ...updatedRumors];
@@ -734,10 +734,10 @@ const App = () => {
     if (newGame.opponent && newGame.opponent.trim() !== "" && editingGameIndex === null) {
         const presserData = generatePresserQuestions(newGame);
         setPressConference({ game: { ...newGame }, rumors: updatedRumors, presserData });
-        return; // Pause save, wait for presser
+        return; 
     }
 
-    // Standard Save / Edit without Presser
+    // Standard Save / Edit without Presser (FIXED: Added rumors here)
     if (editingGameIndex !== null) {
       updateAppState(prev => {
         const updatedLogs = [...prev.gameLogs];
@@ -750,7 +750,7 @@ const App = () => {
     } else {
       updateAppState(prev => ({
         ...prev, rtg: rtgUpdate, coach: coachUpdate, rumors: updatedRumors
-      }), "Agenda updates synced to the cloud!");
+      }), "Agenda updates & rumors synced to the cloud!");
       setActiveTab('dashboard'); 
     }
   };
@@ -1492,6 +1492,20 @@ const App = () => {
     </div>
     );
   };
+
+  {/* Rumor Mill / Headline Ticker */}
+      {appState.rumors && appState.rumors.length > 0 && (
+        <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-4 shadow-xl overflow-hidden flex items-center gap-4">
+          <div className="bg-amber-500 text-slate-950 px-3 py-1 rounded font-black text-xs uppercase tracking-widest shrink-0 shadow">
+            Rumor Mill
+          </div>
+          <div className="overflow-hidden whitespace-nowrap w-full">
+            <div className="inline-block animate-marquee text-xs font-bold text-amber-400 tracking-wide">
+              {appState.rumors.join("  •  ")}
+            </div>
+          </div>
+        </div>
+      )}
 
   const renderTrophies = () => {
     // Generate H2H Record

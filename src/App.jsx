@@ -492,7 +492,7 @@ const App = () => {
       case 'settings': return 'https://images.unsplash.com/photo-1518063319808-88e89f8d16d0?auto=format&fit=crop&w=1920&q=80'; 
       default: return 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
       return appState.bgDashboard || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
-  };
+  
     }
   };
 
@@ -3075,7 +3075,7 @@ const App = () => {
        )}
     </div>
   );
-;
+};
 
 export default App;
 

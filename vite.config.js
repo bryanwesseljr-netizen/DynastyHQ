@@ -13,10 +13,19 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              name: 'firebase-storage',
+              test: /node_modules[\\/](@firebase[\\/]storage|firebase[\\/]storage)[\\/]/,
+              priority: 5,
+            },
+            {
+              name: 'firebase-firestore',
+              test: /node_modules[\\/](@firebase[\\/]firestore|firebase[\\/]firestore)[\\/]/,
+              priority: 4,
+            },
+            {
               name: 'firebase',
               test: /node_modules[\\/](@firebase|firebase)[\\/]/,
               priority: 3,
-              maxSize: 350 * 1024,
             },
             {
               name: 'react',

@@ -251,6 +251,7 @@ test('publishes a week atomically to logs, fact ledger, recruiting, and chronicl
   assert.ok(next.factLedger.every((entry) => entry.verified));
   assert.equal(next.newsroomIssues.length, 1);
   assert.equal(next.newsroomIssues[0].articles.length, 5);
+  assert.ok(next.newsroomIssues[0].articles.every((entry) => entry.paragraphs.length === 4));
 });
 
 test('blocks publishing the same season and week more than once', () => {

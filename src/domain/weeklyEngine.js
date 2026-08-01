@@ -678,8 +678,11 @@ export const createPublishedWeek = ({
     player: state.player,
     game: gameRecord,
     recruiting: updatedRecruiting,
+    previousRecruiting: state.recruiting,
+    previousGames: state.gameLogs || [],
     quote,
     availableFactKeys: [...(state.factLedger || []), ...ledgerFacts].map((entry) => entry.key),
+    currentFactKeys: ledgerFacts.map((entry) => entry.key),
     publishedAt,
   }) : null;
 

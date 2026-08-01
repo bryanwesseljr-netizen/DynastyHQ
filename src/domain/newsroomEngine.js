@@ -42,6 +42,43 @@ const statLine = (game) => {
 
 const combinedValue = (first, second) => hasValue(first) && hasValue(second) ? numeric(first) + numeric(second) : null;
 
+const sumRecorded = (games, key) => {
+  const values = games.filter((game) => hasValue(game?.[key])).map((game) => numeric(game[key]));
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+};
+
+const recordedAppearances = (games = [], season) => games.filter((game) => (
+  Number(game?.season || 1) === Number(season || 1) && game?.didPlay !== false
+));
+
+const seasonSummary = ({ games, playerName }) => {
+  if (!games.length) return `${playerName}'s current performance is the first recorded appearance in this season's verified game log.`;
+
+  const wins = games.filter((game) => game.result === 'W').length;
+  const losses = games.filter((game) => game.result === 'L').length;
+  const passYds = sumRecorded(games, 'passYds');
+  const rushYds = sumRecorded(games, 'rushYds');
+  const pieces = [];
+  if (passYds != null) pieces.push(`${passYds} passing yards`);
+  if (rushYds != null) pieces.push(`${rushYds} rushing yards`);
+  const production = pieces.length ? ` The published ledger contains ${pieces.join(' and ')} across those appearances.` : '';
+  return `Through ${games.length} recorded ${games.length === 1 ? 'appearance' : 'appearances'}, the team is ${wins}-${losses} in games attached to ${playerName}'s season log.${production}`;
+};
+
+const weekComparison = ({ previousGame, game, playerName }) => {
+  if (!previousGame) return `With no earlier verified appearance available for comparison, Week ${game?.week || 1} establishes ${playerName}'s first game-to-game benchmark.`;
+  const previousTotal = combinedValue(previousGame.passYds, previousGame.rushYds);
+  const currentTotal = combinedValue(game?.passYds, game?.rushYds);
+  if (previousTotal == null || currentTotal == null) {
+    return `The previous game against ${previousGame.opponent || 'the prior opponent'} remains in the archive, but the recorded numbers do not support a complete total-yard comparison.`;
+  }
+  if (currentTotal === previousTotal) {
+    return `${playerName} matched the previous game's ${previousTotal} total yards, following the appearance against ${previousGame.opponent || 'the prior opponent'}.`;
+  }
+  const direction = currentTotal > previousTotal ? 'increased' : 'decreased';
+  return `${playerName}'s recorded total-yard output ${direction} by ${Math.abs(currentTotal - previousTotal)}, moving from ${previousTotal} against ${previousGame.opponent || 'the prior opponent'} to ${currentTotal} this week.`;
+};
+
 const article = ({ outlet, headline, dek, paragraphs, citedFactKeys }) => ({
   id: outlet.id,
   outletId: outlet.id,
@@ -61,8 +98,11 @@ export const createNewsroomIssue = ({
   player,
   game,
   recruiting = [],
+  previousRecruiting = [],
+  previousGames = [],
   quote = '',
   availableFactKeys = [],
+  currentFactKeys = availableFactKeys,
   publishedAt,
 }) => {
   const playerName = player?.name || 'The quarterback';
@@ -73,6 +113,7 @@ export const createNewsroomIssue = ({
   const totalYards = combinedValue(game?.passYds, game?.rushYds);
   const totalTD = combinedValue(game?.passTD, game?.rushTD);
   const allowedKeys = new Set(availableFactKeys);
+  const currentKeys = new Set(currentFactKeys);
   const gameKeys = ['profile.player.name', 'profile.player.school', 'game.opponent', 'game.result'];
   ['passYds', 'passTD', 'rushYds', 'rushTD', 'int'].forEach((key) => {
     if (hasValue(game?.[key])) gameKeys.push(`game.${key}`);
@@ -85,6 +126,24 @@ export const createNewsroomIssue = ({
     .sort((a, b) => numeric(b.interest) - numeric(a.interest));
   const leader = activeSchools[0];
   const leaderKey = leader ? `recruiting.${leader.id}.interest` : null;
+  const recruitingKeys = activeSchools.map((entry) => `recruiting.${entry.id}.interest`);
+  const previousInterest = new Map(previousRecruiting.map((entry) => [String(entry.id), numeric(entry.interest)]));
+  const verifiedMovements = activeSchools
+    .filter((entry) => currentKeys.has(`recruiting.${entry.id}.interest`) && previousInterest.has(String(entry.id)))
+    .map((entry) => ({
+      ...entry,
+      previousInterest: previousInterest.get(String(entry.id)),
+      change: numeric(entry.interest) - previousInterest.get(String(entry.id)),
+    }))
+    .filter((entry) => entry.change !== 0)
+    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+  const largestMovement = verifiedMovements[0];
+
+  const priorSeasonGames = recordedAppearances(previousGames, season);
+  const currentSeasonGames = [...priorSeasonGames, { ...(game || {}), season }];
+  const previousGame = priorSeasonGames[priorSeasonGames.length - 1];
+  const seasonContext = seasonSummary({ games: currentSeasonGames, playerName });
+  const comparisonContext = weekComparison({ previousGame, game: { ...(game || {}), week }, playerName });
 
   const totalYardsPhrase = totalYards == null ? 'a newly recorded statistical line' : `${totalYards} total yards`;
   const totalTouchdownPhrase = totalTD == null ? 'no complete touchdown total recorded' : `${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`;
@@ -96,7 +155,10 @@ export const createNewsroomIssue = ({
       paragraphs: [
         `${school} recorded a ${outcome} against ${opponent}${score ? `; the saved final score is ${score}` : ''}.`,
         `${playerName} finished with ${statLine(game)}.`,
-        ...(quote ? [`Postgame: “${quote}”`] : []),
+        seasonContext,
+        quote
+          ? `In the verified postgame note, ${playerName} said, “${quote}”`
+          : `No postgame quote was verified for this edition, so the record closes with the result and individual numbers on file.`,
       ],
       citedFactKeys: gameKeys,
     }),
@@ -106,7 +168,9 @@ export const createNewsroomIssue = ({
       dek: `The Dearborn quarterback's verified Week ${week} numbers against ${opponent}.`,
       paragraphs: [
         `${playerName} and ${school} logged a ${outcome} against ${opponent}${score ? `, ${score}` : ''}.`,
-        statLine(game || {}),
+        `The verified individual line lists ${statLine(game || {})}.`,
+        comparisonContext,
+        `For the Dearborn record, this edition preserves the Week ${week} performance as published and leaves unverified personal or recruiting claims outside the story.`,
       ],
       citedFactKeys: gameKeys,
     }),
@@ -121,11 +185,20 @@ export const createNewsroomIssue = ({
       paragraphs: leader
         ? [
             `${leader.name} currently holds the highest recorded interest in ${playerName} at ${numeric(leader.interest)}%.`,
-            `This report describes the saved board only; it does not project a commitment or invent private recruiting information.`,
+            `${activeSchools.length} ${activeSchools.length === 1 ? 'program is' : 'programs are'} above zero on the verified board${activeSchools.length > 1 ? `, led by ${activeSchools.slice(0, 3).map((entry) => `${entry.name} at ${numeric(entry.interest)}%`).join(', ')}` : ''}.`,
+            largestMovement
+              ? `${largestMovement.name} recorded the week's largest verified move, ${largestMovement.change > 0 ? 'rising' : 'falling'} from ${largestMovement.previousInterest}% to ${numeric(largestMovement.interest)}%.`
+              : `No week-over-week percentage change is verified for Week ${week}; the desk is reporting the saved board as it currently stands.`,
+            `This report does not project a commitment, private conversation, visit, or scholarship decision that is absent from the published Fact Ledger.`,
           ]
-        : [`DynastyHQ has not received a verified school-interest update for ${playerName}. The recruiting desk will remain quiet until the board changes.`],
+        : [
+            `DynastyHQ has not received a verified school-interest percentage for ${playerName}.`,
+            `The Week ${week} Fact Ledger therefore contains no program that can be identified as a recruiting leader.`,
+            `Rather than convert a missing update into a rumor, the recruiting desk is leaving offers, visits, and commitment projections unreported.`,
+            `A future edition will update this board when a readable recruiting screen or confirmed manual entry supplies new verified information.`,
+          ],
       citedFactKeys: leaderKey
-        ? ['profile.player.name', leaderKey]
+        ? ['profile.player.name', ...recruitingKeys]
         : ['profile.player.name'],
     }),
     article({
@@ -134,7 +207,11 @@ export const createNewsroomIssue = ({
       dek: `A film-room briefing limited to the Week ${week} statistics on record.`,
       paragraphs: [
         `${playerName}'s verified line: ${statLine(game || {})}.`,
-        `No formation, coverage, pressure, or blocking claim is made without corresponding charting data.`,
+        totalYards == null
+          ? `The available line does not contain both passing and rushing yardage, so a complete total-yard figure is not reported.`
+          : `The recorded passing and rushing production combines for ${totalYards} total yards${totalTD == null ? '' : ` and ${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`}.`,
+        comparisonContext,
+        `No formation, coverage, pressure, or blocking claim is made without corresponding charting data; this analysis is limited to the verified result and box-score production.`,
       ],
       citedFactKeys: gameKeys,
     }),
@@ -144,7 +221,9 @@ export const createNewsroomIssue = ({
       dek: `${school}'s ${outcome} against ${opponent} is now part of the permanent Chronicle.`,
       paragraphs: [
         `In Season ${season}, Week ${week}, ${playerName} posted ${statLine(game)} against ${opponent}.`,
-        `The performance is recorded as a ${outcome}${score ? ` with a ${score} final` : ''}. Its long-term significance will be judged against future verified games, awards, and milestones.`,
+        `The performance is recorded as a ${outcome}${score ? ` with a ${score} final` : ''}, placing the team result beside the individual line in the permanent archive.`,
+        seasonContext,
+        `The national desk treats this as verified season context—not as a ranking, award, injury update, or career milestone unless one of those developments is separately published.`,
       ],
       citedFactKeys: gameKeys,
     }),

@@ -23,7 +23,7 @@ import {
   linkWithCredential 
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
-import { appId, auth, db, storage } from './firebase';
+import { appId, auth, db, firebaseApp } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
 import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
 import {
@@ -1012,7 +1012,7 @@ const handleSaveGameClick = () => {
       const assetId = createMediaAssetId();
       const imageDataUrl = await compressImage(file, 2000);
       const uploaded = await uploadNewsroomMedia({
-        storage,
+        firebaseApp,
         appId,
         userId: userState.uid,
         assetId,
@@ -1082,7 +1082,7 @@ const handleSaveGameClick = () => {
       const assetId = createMediaAssetId();
       const fileName = `ai-${issue.publicationId || issue.id}-${article.id}.jpg`;
       const uploaded = await uploadNewsroomMedia({
-        storage,
+        firebaseApp,
         appId,
         userId: userState.uid,
         assetId,
@@ -1138,7 +1138,7 @@ const handleSaveGameClick = () => {
     if (!window.confirm('Delete this image from the Media Library and remove it from every assigned article?')) return;
     setNewsroomMediaBusy(true);
     try {
-      await deleteNewsroomMedia({ storage, storagePath: asset.storagePath });
+      await deleteNewsroomMedia({ firebaseApp, storagePath: asset.storagePath });
       updateAppState((prev) => removeNewsroomMediaAsset(prev, asset.id), 'Image deleted from the Newsroom Media Library.');
     } catch (error) {
       setMessageModal({ isOpen: true, text: error?.message || 'The image could not be deleted.', type: 'error' });

@@ -1,5 +1,3 @@
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-
 const dataUrlToBlob = async (dataUrl) => {
   const response = await fetch(dataUrl);
   if (!response.ok) throw new Error('The prepared image could not be read.');
@@ -12,7 +10,7 @@ const safePart = (value, fallback) => String(value || fallback)
   .slice(0, 120);
 
 export const uploadNewsroomMedia = async ({
-  storage,
+  firebaseApp,
   appId,
   userId,
   assetId,
@@ -20,7 +18,9 @@ export const uploadNewsroomMedia = async ({
   fileName,
   origin = 'upload',
 }) => {
-  if (!storage || !userId || !assetId || !imageDataUrl) throw new Error('The newsroom upload is missing required information.');
+  if (!firebaseApp || !userId || !assetId || !imageDataUrl) throw new Error('The newsroom upload is missing required information.');
+  const { getDownloadURL, getStorage, ref, uploadBytes } = await import('firebase/storage');
+  const storage = getStorage(firebaseApp);
   const blob = await dataUrlToBlob(imageDataUrl);
   const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
   const storagePath = `artifacts/${safePart(appId, 'dynasty-hq')}/users/${safePart(userId, 'owner')}/newsroom_media/${safePart(assetId, 'image')}.${extension}`;
@@ -41,7 +41,9 @@ export const uploadNewsroomMedia = async ({
   };
 };
 
-export const deleteNewsroomMedia = async ({ storage, storagePath }) => {
-  if (!storage || !storagePath) return;
+export const deleteNewsroomMedia = async ({ firebaseApp, storagePath }) => {
+  if (!firebaseApp || !storagePath) return;
+  const { deleteObject, getStorage, ref } = await import('firebase/storage');
+  const storage = getStorage(firebaseApp);
   await deleteObject(ref(storage, storagePath));
 };

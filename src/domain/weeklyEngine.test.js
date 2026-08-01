@@ -11,6 +11,7 @@ import {
   mergeScanResult,
   migrateCareerState,
   parseScreenshotText,
+  removePublishedGame,
   removeScanDraftFact,
   updateScanDraftFact,
   updateScanDraftWeekType,
@@ -252,6 +253,45 @@ test('publishes a week atomically to logs, fact ledger, recruiting, and chronicl
   assert.equal(next.newsroomIssues.length, 1);
   assert.equal(next.newsroomIssues[0].articles.length, 5);
   assert.ok(next.newsroomIssues[0].articles.every((entry) => entry.paragraphs.length === 4));
+});
+
+test('deleting a game also removes every publication artifact derived from that week', () => {
+  const published = createPublishedWeek({
+    state: {
+      schemaVersion: 9,
+      currentSeason: 1,
+      currentWeek: 1,
+      careerPhase: 'Player',
+      player: { name: 'Test Player', school: 'Test High School' },
+      latestQuote: '',
+      gameLogs: [],
+      recruiting,
+      rtg: {},
+      weeklyUpdates: [],
+      factLedger: [],
+      careerChronicle: [{ id: 'milestone-1', type: 'milestone', season: 1, week: 1 }],
+      newsroomIssues: [],
+      newsroomMediaLibrary: [{ id: 'reusable-photo' }],
+      podcastEpisodes: [],
+    },
+    game: { opponent: 'Test Opponent A', result: 'W', homeScore: 28, awayScore: 14, passYds: 250, passTD: 2, rushYds: 55, rushTD: 1, int: 0 },
+    rtg: {},
+    quote: 'We earned it.',
+    facts: [{ id: 'pass', key: 'game.passYds', label: 'Passing yards', value: 250, confidence: 0.92, sourceId: 'box' }],
+  });
+  published.podcastEpisodes = [{ id: 'podcast-season-1-week-1', publicationId: 'season-1-week-1' }];
+
+  const reset = removePublishedGame(published, 0);
+
+  assert.equal(reset.currentWeek, 1);
+  assert.equal(reset.latestQuote, '');
+  assert.deepEqual(reset.gameLogs, []);
+  assert.deepEqual(reset.weeklyUpdates, []);
+  assert.deepEqual(reset.factLedger, []);
+  assert.deepEqual(reset.newsroomIssues, []);
+  assert.deepEqual(reset.podcastEpisodes, []);
+  assert.deepEqual(reset.newsroomMediaLibrary, [{ id: 'reusable-photo' }]);
+  assert.deepEqual(reset.careerChronicle, [{ id: 'milestone-1', type: 'milestone', season: 1, week: 1 }]);
 });
 
 test('blocks publishing the same season and week more than once', () => {

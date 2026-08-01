@@ -41,6 +41,7 @@ import {
   getWeeklyCompleteness,
   mergeScanResult,
   migrateCareerState,
+  removePublishedGame,
   removeScanDraftFact,
   updateScanDraftFact,
   updateScanDraftWeekType,
@@ -824,11 +825,10 @@ const handleSaveGameClick = () => {
   const requestDeleteGame = (index) => setDeleteConfirmModal({ isOpen: true, index });
   const confirmDeleteGame = () => {
     const index = deleteConfirmModal.index;
-    updateAppState(prev => {
-      const newLogs = prev.gameLogs.filter((_, i) => i !== index);
-      const currSeasonCount = newLogs.filter(g => (g.season || 1) === (prev.currentSeason || 1)).length;
-      return { ...prev, gameLogs: newLogs, currentWeek: currSeasonCount + 1 };
-    }, "Game log deleted successfully.");
+    updateAppState(
+      prev => removePublishedGame(prev, index),
+      "Game and its linked weekly coverage deleted successfully.",
+    );
     if (editingGameIndex === index) {
       setEditingGameIndex(null);
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
@@ -3445,7 +3445,7 @@ const handleSaveGameClick = () => {
                    <Trash2 size={48} className="text-red-500 mx-auto" />
                    <div>
                        <h2 className="text-2xl font-black text-white uppercase tracking-tight">Delete Game Log</h2>
-                       <p className="text-slate-400 text-sm mt-2">Are you sure you want to permanently delete this game log?</p>
+                       <p className="text-slate-400 text-sm mt-2">This also removes the linked weekly update, verified facts, Chronicle entry, newsroom edition, and podcast episode.</p>
                    </div>
                    <div className="flex gap-4">
                        <button onClick={confirmDeleteGame} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl uppercase tracking-wider transition-all shadow-md">Delete</button>

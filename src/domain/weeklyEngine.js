@@ -39,6 +39,57 @@ export const findPublishedWeekConflict = (state, { season, week, weekKey } = {})
   return game ? { type: 'game-log', entry: game, weekKey: targetKey } : null;
 };
 
+const matchesPublication = (entry, publicationId, season, week) => (
+  entry?.publicationId === publicationId
+  || entry?.id === publicationId
+  || entry?.weekKey === publicationId
+  || (Number(entry?.season || 1) === season && Number(entry?.week) === week)
+);
+
+export const removePublishedGame = (state, gameIndex) => {
+  const gameLogs = state?.gameLogs || [];
+  const game = gameLogs[gameIndex];
+  if (!game) return state;
+
+  const season = Number(game.season || 1);
+  const week = Number(game.week || 1);
+  const publicationId = createWeekKey(season, week);
+  const remainingGames = gameLogs.filter((_, index) => index !== gameIndex);
+  const remainingUpdates = (state.weeklyUpdates || []).filter(
+    (entry) => !matchesPublication(entry, publicationId, season, week),
+  );
+  const currentSeason = Number(state.currentSeason || 1);
+  const remainingCurrentSeasonWeeks = [
+    ...remainingGames
+      .filter((entry) => Number(entry.season || 1) === currentSeason)
+      .map((entry) => Number(entry.week) || 0),
+    ...remainingUpdates
+      .filter((entry) => Number(entry.season || 1) === currentSeason)
+      .map((entry) => Number(entry.week) || 0),
+  ];
+  const latestRemainingQuote = [...remainingUpdates]
+    .reverse()
+    .find((entry) => entry.quote)?.quote || '';
+
+  return {
+    ...state,
+    currentWeek: Math.max(0, ...remainingCurrentSeasonWeeks) + 1,
+    latestQuote: latestRemainingQuote,
+    gameLogs: remainingGames,
+    weeklyUpdates: remainingUpdates,
+    factLedger: (state.factLedger || []).filter((entry) => entry.publicationId !== publicationId),
+    careerChronicle: (state.careerChronicle || []).filter(
+      (entry) => entry.id !== publicationId && entry.publicationId !== publicationId,
+    ),
+    newsroomIssues: (state.newsroomIssues || []).filter(
+      (entry) => !matchesPublication(entry, publicationId, season, week),
+    ),
+    podcastEpisodes: (state.podcastEpisodes || []).filter(
+      (entry) => entry.publicationId !== publicationId && entry.id !== `podcast-${publicationId}`,
+    ),
+  };
+};
+
 export const WEEK_TYPES = Object.freeze({
   GAME: 'game',
   NO_APPEARANCE: 'no-appearance',

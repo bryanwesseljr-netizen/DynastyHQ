@@ -22,12 +22,18 @@ import {
   EmailAuthProvider, 
   linkWithCredential 
 } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { appId, auth, db } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
 import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
+import {
+  createMigrationBackupPayload,
+  describeCloudSchema,
+  MIGRATION_BACKUP_DOCUMENT_ID,
+} from './domain/migrationProtection';
 import { CAREER_STAGES, deriveCareerStage } from './domain/commandCenter';
 import {
+  CAREER_SCHEMA_VERSION,
   createEmptyScanDraft,
   createPublishedWeek,
   createWeekKey,
@@ -126,6 +132,9 @@ const App = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadedOwnerId, setLoadedOwnerId] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [loadedCloudSchemaVersion, setLoadedCloudSchemaVersion] = useState(null);
+  const [hasMigrationBackup, setHasMigrationBackup] = useState(false);
+  const [isMigratingCloudSave, setIsMigratingCloudSave] = useState(false);
 
   // Auth States
   const [authEmail, setAuthEmail] = useState('');
@@ -262,6 +271,12 @@ const App = () => {
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
+        const rawCloudData = docSnap.data();
+        setLoadedCloudSchemaVersion(Number(rawCloudData?.schemaVersion) || 0);
+        const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', MIGRATION_BACKUP_DOCUMENT_ID);
+        getDoc(backupRef)
+          .then((backupSnapshot) => setHasMigrationBackup(backupSnapshot.exists()))
+          .catch(() => setHasMigrationBackup(false));
         const cloudData = migrateCareerState(docSnap.data(), defaultState);
         if (!cloudData.careerPhase) cloudData.careerPhase = 'Player';
         if (!cloudData.coach) cloudData.coach = defaultState.coach;
@@ -546,6 +561,53 @@ const App = () => {
     updateAppState(prev => ({
       ...prev, rtg: rtgUpdate, coach: coachUpdate
     }), "Progress saved to cloud!");
+  };
+
+  const handleProtectedCloudMigration = async () => {
+    if (!userState || !db || isReadOnly || isMigratingCloudSave) return;
+    setIsMigratingCloudSave(true);
+    try {
+      const sourceRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', MIGRATION_BACKUP_DOCUMENT_ID);
+      const sourceSnapshot = await getDoc(sourceRef);
+      if (!sourceSnapshot.exists()) throw new Error('The master save could not be found.');
+
+      const backupSnapshot = await getDoc(backupRef);
+      if (!backupSnapshot.exists()) {
+        const backupPayload = createMigrationBackupPayload({
+          sourceState: sourceSnapshot.data(),
+          targetSchemaVersion: CAREER_SCHEMA_VERSION,
+          createdAt: new Date().toISOString(),
+        });
+        await setDoc(backupRef, backupPayload);
+      }
+
+      const migratedState = migrateCareerState(sourceSnapshot.data(), defaultState);
+      const cloudState = { ...migratedState };
+      if (cloudState.podcastAudio?.startsWith('data:audio')) {
+        cloudState.podcastAudio = '';
+        cloudState.hasCloudAudio = true;
+      }
+      await setDoc(sourceRef, cloudState);
+      setAppState(migratedState);
+      setRtgUpdate(migratedState.rtg);
+      setCoachUpdate(migratedState.coach);
+      setHasMigrationBackup(true);
+      setLoadedCloudSchemaVersion(CAREER_SCHEMA_VERSION);
+      setMessageModal({
+        isOpen: true,
+        text: `Pre-migration backup preserved. Master save upgraded safely to schema v${CAREER_SCHEMA_VERSION}.`,
+        type: 'success',
+      });
+    } catch (error) {
+      setMessageModal({
+        isOpen: true,
+        text: error?.message || 'The protected migration could not be completed.',
+        type: 'error',
+      });
+    } finally {
+      setIsMigratingCloudSave(false);
+    }
   };
 
   const handlePublishToPublic = async () => {
@@ -2977,6 +3039,23 @@ const handleSaveGameClick = () => {
     <p className="text-xs text-slate-400">
        Your data is automatically syncing to the cloud in the background. You can open this app on any device (phone, PC, incognito mode) and your Dynasty will be waiting for you instantly. No passwords required.
     </p>
+    <div className="border-t border-slate-700/50 pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Master save schema</div>
+        <div className="mt-1 text-sm font-bold text-slate-200">{describeCloudSchema(loadedCloudSchemaVersion)}</div>
+        <div className={`mt-1 text-xs font-bold ${hasMigrationBackup ? 'text-emerald-400' : 'text-amber-400'}`}>
+          {hasMigrationBackup ? 'Pre-migration backup preserved' : 'Backup required before v8 migration'}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleProtectedCloudMigration}
+        disabled={isMigratingCloudSave || hasMigrationBackup}
+        className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+      >
+        {isMigratingCloudSave ? 'Protecting Save…' : hasMigrationBackup ? 'Backup Complete' : loadedCloudSchemaVersion === CAREER_SCHEMA_VERSION ? 'Protect Current v8 Save' : 'Back Up & Migrate to v8'}
+      </button>
+    </div>
   </div>
 
   <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 mb-8 shadow-2xl space-y-6">

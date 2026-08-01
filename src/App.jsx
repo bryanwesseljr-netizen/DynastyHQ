@@ -25,6 +25,7 @@ import {
 import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { appId, auth, db, firebaseApp } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
+import CareerArchive from './components/CareerArchive';
 import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
 import {
   createMigrationBackupPayload,
@@ -106,7 +107,6 @@ import {
 
 const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));
 const GroundedNewsroom = lazy(() => import('./components/GroundedNewsroom'));
-const CareerArchive = lazy(() => import('./components/CareerArchive'));
 const MilestoneRecorder = lazy(() => import('./components/MilestoneRecorder'));
 const CareerCommandCenter = lazy(() => import('./components/CareerCommandCenter'));
 const PersonnelCfoWorkspace = lazy(() => import('./components/PersonnelCfoWorkspace'));

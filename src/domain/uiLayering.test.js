@@ -20,3 +20,10 @@ test('the fixed workspace background cannot intercept newsroom article clicks', 
     /className="relative z-10 mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in"/,
   );
 });
+
+test('Career Chronicle ships with the app shell so commitment navigation cannot lose its lazy chunk', async () => {
+  const appSource = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(appSource, /import CareerArchive from '\.\/components\/CareerArchive';/);
+  assert.doesNotMatch(appSource, /lazy\(\(\) => import\('\.\/components\/CareerArchive'\)\)/);
+});

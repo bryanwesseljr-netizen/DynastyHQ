@@ -23,7 +23,7 @@ import {
   linkWithCredential 
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
-import { appId, auth, db } from './firebase';
+import { appId, auth, db, storage } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
 import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
 import {
@@ -83,6 +83,18 @@ import {
   savePublicPodcastAudio,
 } from './services/podcastAudioStorage';
 import { compressImage } from './services/imageCompression';
+import { generateNewsroomImage } from './services/newsroomImageClient';
+import { deleteNewsroomMedia, uploadNewsroomMedia } from './services/newsroomMediaStorage';
+import {
+  assignNewsroomMedia,
+  buildPublicNewsroomMediaLibrary,
+  buildNewsroomImageRequest,
+  clearNewsroomMediaAssignment,
+  createNewsroomMediaAsset,
+  NEWSROOM_MEDIA_ORIGINS,
+  removeNewsroomMediaAsset,
+  setNewsroomReferenceStatus,
+} from './domain/newsroomMedia';
 import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
@@ -101,6 +113,8 @@ const OffseasonPlanner = lazy(() => import('./components/OffseasonPlanner'));
 const PodcastStudio = lazy(() => import('./components/PodcastStudio'));
 
 const publicationLocks = new Set();
+const createMediaAssetId = () => globalThis.crypto?.randomUUID?.()
+  || `news-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -127,6 +141,7 @@ const App = () => {
   const fileInputRef = useRef(null);
   const audioLoadedRef = useRef(false);
   const draftRecoveryOwnerRef = useRef(null);
+  const autoImageAttemptsRef = useRef(new Set());
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -135,6 +150,7 @@ const App = () => {
   const [loadedCloudSchemaVersion, setLoadedCloudSchemaVersion] = useState(null);
   const [hasMigrationBackup, setHasMigrationBackup] = useState(false);
   const [isMigratingCloudSave, setIsMigratingCloudSave] = useState(false);
+  const [newsroomMediaBusy, setNewsroomMediaBusy] = useState(false);
 
   // Auth States
   const [authEmail, setAuthEmail] = useState('');
@@ -362,7 +378,7 @@ const App = () => {
     else clearWeeklyDraftRecord(userState.uid);
   }, [appliedScanDraft, coachUpdate, isReadOnly, loadedOwnerId, newGame, rtgUpdate, scanDraft, userState]);
 
-  const updateAppState = (newStateOrUpdater, successMessage = null) => {
+  const updateAppState = useCallback((newStateOrUpdater, successMessage = null) => {
     setAppState((prev) => {
       let newState;
       try {
@@ -403,7 +419,7 @@ const App = () => {
       }
       return newState;
     });
-  };
+  }, [userState]);
 
   // --- DERIVED STATS ---
   const isCoach = ['OC', 'HC', 'Retired'].includes(appState.careerPhase);
@@ -626,6 +642,11 @@ const App = () => {
 
         const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', userState.uid);
         const safeState = { ...appState };
+        safeState.newsroomMediaLibrary = buildPublicNewsroomMediaLibrary({
+          issues: appState.newsroomIssues || [],
+          mediaLibrary: appState.newsroomMediaLibrary || [],
+        });
+        safeState.newsroomMediaSettings = { autoGenerateLead: false };
         if (safeState.podcastAudio && safeState.podcastAudio.startsWith('data:audio')) {
             safeState.podcastAudio = ''; 
             safeState.hasCloudAudio = true;
@@ -974,6 +995,184 @@ const handleSaveGameClick = () => {
     );
     return { episode: readyEpisode, audioSegments };
   };
+
+  const handleUploadNewsroomMedia = async (file, { issue, article, asReference = false }) => {
+    if (!userState || isReadOnly) throw new Error('Sign in as the owner before uploading newsroom photos.');
+    if (!file?.type?.match(/^image\/(png|jpe?g|webp)$/i)) {
+      setMessageModal({ isOpen: true, text: 'Choose a PNG, JPEG, or WebP image.', type: 'error' });
+      return;
+    }
+    if (file.size > 12_000_000) {
+      setMessageModal({ isOpen: true, text: 'That photo is larger than 12 MB. Choose a smaller image.', type: 'error' });
+      return;
+    }
+
+    setNewsroomMediaBusy(true);
+    try {
+      const assetId = createMediaAssetId();
+      const imageDataUrl = await compressImage(file, 2000);
+      const uploaded = await uploadNewsroomMedia({
+        storage,
+        appId,
+        userId: userState.uid,
+        assetId,
+        imageDataUrl,
+        fileName: file.name,
+        origin: NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+      });
+      const asset = createNewsroomMediaAsset({
+        id: assetId,
+        ...uploaded,
+        fileName: file.name,
+        origin: NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+        isReference: asReference,
+        referenceLabel: asReference ? file.name.replace(/\.[^.]+$/, '') : '',
+      });
+      updateAppState((prev) => ({
+        ...prev,
+        newsroomMediaLibrary: [...(prev.newsroomMediaLibrary || []), asset],
+        newsroomIssues: asReference ? prev.newsroomIssues : assignNewsroomMedia({
+          issues: prev.newsroomIssues,
+          publicationId: issue.publicationId || issue.id,
+          articleId: article.id,
+          asset,
+        }),
+      }), asReference ? 'Reference photo saved to the locker!' : 'Photo uploaded and assigned to this article!');
+    } catch (error) {
+      setMessageModal({ isOpen: true, text: error?.message || 'The newsroom photo could not be uploaded.', type: 'error' });
+    } finally {
+      setNewsroomMediaBusy(false);
+    }
+  };
+
+  const handleAssignNewsroomMedia = ({ issue, article, asset }) => {
+    updateAppState((prev) => ({
+      ...prev,
+      newsroomIssues: assignNewsroomMedia({
+        issues: prev.newsroomIssues,
+        publicationId: issue.publicationId || issue.id,
+        articleId: article.id,
+        asset,
+      }),
+    }), 'Media Library photo assigned to this article!');
+  };
+
+  const handleClearNewsroomMedia = ({ issue, article }) => {
+    updateAppState((prev) => ({
+      ...prev,
+      newsroomIssues: clearNewsroomMediaAssignment({
+        issues: prev.newsroomIssues,
+        publicationId: issue.publicationId || issue.id,
+        articleId: article.id,
+      }),
+    }), 'Article photo removed. The outlet fallback remains available.');
+  };
+
+  const handleGenerateNewsroomMedia = useCallback(async ({ issue, article, quiet = false }) => {
+    if (!userState || isReadOnly) throw new Error('Sign in as the owner before generating newsroom photos.');
+    setNewsroomMediaBusy(true);
+    try {
+      const idToken = await userState.getIdToken();
+      const payload = buildNewsroomImageRequest({
+        issue,
+        article,
+        mediaLibrary: appState.newsroomMediaLibrary || [],
+      });
+      const generated = await generateNewsroomImage({ idToken, payload });
+      const assetId = createMediaAssetId();
+      const fileName = `ai-${issue.publicationId || issue.id}-${article.id}.jpg`;
+      const uploaded = await uploadNewsroomMedia({
+        storage,
+        appId,
+        userId: userState.uid,
+        assetId,
+        imageDataUrl: `data:${generated.mimeType || 'image/jpeg'};base64,${generated.imageBase64}`,
+        fileName,
+        origin: NEWSROOM_MEDIA_ORIGINS.AI,
+      });
+      const asset = createNewsroomMediaAsset({
+        id: assetId,
+        ...uploaded,
+        fileName,
+        origin: NEWSROOM_MEDIA_ORIGINS.AI,
+        generatedFrom: {
+          publicationId: issue.publicationId || issue.id,
+          articleId: article.id,
+          model: generated.model,
+          referenceAssetIds: generated.referenceAssetIds || [],
+        },
+      });
+      updateAppState((prev) => ({
+        ...prev,
+        newsroomMediaLibrary: [...(prev.newsroomMediaLibrary || []), asset],
+        newsroomIssues: assignNewsroomMedia({
+          issues: prev.newsroomIssues,
+          publicationId: issue.publicationId || issue.id,
+          articleId: article.id,
+          asset,
+        }),
+      }), quiet ? null : 'AI editorial photo generated, labeled, and assigned!');
+      return asset;
+    } catch (error) {
+      if (!quiet) setMessageModal({ isOpen: true, text: error?.message || 'The editorial image could not be generated.', type: 'error' });
+      else console.error('Automatic newsroom lead image failed', error);
+      return null;
+    } finally {
+      setNewsroomMediaBusy(false);
+    }
+  }, [appState.newsroomMediaLibrary, isReadOnly, updateAppState, userState]);
+
+  const handleToggleNewsroomReference = (asset, isReference) => {
+    updateAppState((prev) => ({
+      ...prev,
+      newsroomMediaLibrary: setNewsroomReferenceStatus(
+        prev.newsroomMediaLibrary || [],
+        asset.id,
+        isReference,
+        asset.referenceLabel || asset.fileName,
+      ),
+    }));
+  };
+
+  const handleDeleteNewsroomMedia = async (asset) => {
+    if (!window.confirm('Delete this image from the Media Library and remove it from every assigned article?')) return;
+    setNewsroomMediaBusy(true);
+    try {
+      await deleteNewsroomMedia({ storage, storagePath: asset.storagePath });
+      updateAppState((prev) => removeNewsroomMediaAsset(prev, asset.id), 'Image deleted from the Newsroom Media Library.');
+    } catch (error) {
+      setMessageModal({ isOpen: true, text: error?.message || 'The image could not be deleted.', type: 'error' });
+    } finally {
+      setNewsroomMediaBusy(false);
+    }
+  };
+
+  const handleSetAutoGenerateLead = (enabled) => {
+    updateAppState((prev) => ({
+      ...prev,
+      newsroomMediaSettings: {
+        ...(prev.newsroomMediaSettings || {}),
+        autoGenerateLead: Boolean(enabled),
+      },
+    }), enabled ? 'Automatic weekly lead images enabled.' : 'Automatic weekly lead images disabled.');
+  };
+
+  useEffect(() => {
+    if (isReadOnly || !userState || newsroomMediaBusy || !appState.newsroomMediaSettings?.autoGenerateLead) return;
+    const latestIssue = appState.newsroomIssues?.[appState.newsroomIssues.length - 1];
+    const leadArticle = latestIssue?.articles?.find((entry) => entry.id === 'bolt');
+    const attemptKey = `${latestIssue?.publicationId || latestIssue?.id}:bolt`;
+    if (!latestIssue || !leadArticle || leadArticle.mediaAssetId || autoImageAttemptsRef.current.has(attemptKey)) return;
+    autoImageAttemptsRef.current.add(attemptKey);
+    handleGenerateNewsroomMedia({ issue: latestIssue, article: leadArticle, quiet: true }).catch(() => {});
+  }, [
+    appState.newsroomIssues,
+    appState.newsroomMediaSettings?.autoGenerateLead,
+    handleGenerateNewsroomMedia,
+    isReadOnly,
+    newsroomMediaBusy,
+    userState,
+  ]);
 
   const handlePrint = () => {
     try {
@@ -1993,6 +2192,17 @@ const handleSaveGameClick = () => {
           setNewsTheme={setNewsTheme}
           outletImages={appState.outletImages}
           podcastEpisodes={appState.podcastEpisodes}
+          readOnly={isReadOnly}
+          mediaLibrary={appState.newsroomMediaLibrary || []}
+          mediaBusy={newsroomMediaBusy}
+          autoGenerateLead={Boolean(appState.newsroomMediaSettings?.autoGenerateLead)}
+          onUploadMedia={handleUploadNewsroomMedia}
+          onAssignMedia={handleAssignNewsroomMedia}
+          onClearMedia={handleClearNewsroomMedia}
+          onGenerateMedia={handleGenerateNewsroomMedia}
+          onToggleReference={handleToggleNewsroomReference}
+          onDeleteMedia={handleDeleteNewsroomMedia}
+          onSetAutoGenerateLead={handleSetAutoGenerateLead}
           onOpenPodcast={(publicationId) => {
             setPodcastFocusId(publicationId);
             setActiveTab('podcast');
@@ -2858,7 +3068,10 @@ const handleSaveGameClick = () => {
           </div>
           
           <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 shadow-inner">
-             <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-3">Manage Outlet Imagery (Paste URLs)</h4>
+             <h4 className="text-[10px] font-bold text-slate-300 uppercase">Newsroom Photos</h4>
+             <p className="mt-2 text-xs leading-relaxed text-slate-500">Upload, reuse, and assign photos directly inside each published Newsroom article. No image link is required.</p>
+             <button type="button" onClick={() => setActiveTab('newsroom')} className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500">Open Newsroom Media Manager</button>
+             <h5 className="mb-3 mt-5 border-t border-slate-800 pt-4 text-[9px] font-bold uppercase tracking-widest text-slate-600">Legacy fallback URLs (optional)</h5>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1">The Bolt</span>

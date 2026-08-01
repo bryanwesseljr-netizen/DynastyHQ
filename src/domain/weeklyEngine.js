@@ -1,6 +1,6 @@
 import { createNewsroomIssue } from './newsroomEngine.js';
 
-export const CAREER_SCHEMA_VERSION = 8;
+export const CAREER_SCHEMA_VERSION = 9;
 
 export class DuplicateWeekPublicationError extends Error {
   constructor(weekKey) {
@@ -725,6 +725,11 @@ export const migrateCareerState = (state, defaults) => ({
   careerMilestones: state?.careerMilestones || [],
   careerChronicle: state?.careerChronicle || [],
   newsroomIssues: state?.newsroomIssues || [],
+  newsroomMediaLibrary: state?.newsroomMediaLibrary || [],
+  newsroomMediaSettings: {
+    ...defaults.newsroomMediaSettings,
+    ...(state?.newsroomMediaSettings || {}),
+  },
   retentionBoard: state?.retentionBoard || [],
   podcastEpisodes: state?.podcastEpisodes || [],
 });

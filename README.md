@@ -19,6 +19,12 @@ An unfinished review is saved locally for the signed-in owner and restored after
 
 Each verified game-week newsroom issue can become a grounded 5–6 minute episode. DynastyHQ first creates a permanent two-host transcript with chapter markers and exact Fact Ledger citations, then renders Marcus Grant and Tyler Brooks as separate speech segments. A failed audio request leaves the saved transcript intact. Completed audio is cached on the device, archived in the owner's Firebase space, and copied to the public viewer archive when a share link is published. The player clearly labels the voices as AI-generated.
 
+## Newsroom Media Manager
+
+Every published article has its own photo assignment. Owners can upload a PNG, JPEG, or WebP image, reuse an existing Media Library asset, replace or remove an assignment, and maintain an approved Reference Locker. Uploaded image files live in the owner's Firebase Storage path; only lightweight metadata is stored with the career save. Public sharing includes assigned article images but excludes unassigned Reference Locker assets and private storage metadata.
+
+Verified articles can also request one labeled AI-generated editorial image. The server builds the prompt from the article's grounded headline and summary, accepts up to four approved Firebase reference images, and never accepts unrestricted client prompt text. Automatic generation is opt-in and limited to The Bolt's lead story for each new edition.
+
 ## Personnel and NIL/CFO office
 
 The coaching workspace is role-aware. An offensive coordinator sees offensive and assigned targets plus advisory budget information; a head coach sees the full personnel board and holds final program authority. Coach recruiting screenshots can add visible prospects without manual board entry, and verified budget screens reconcile Recruiting NIL, Roster NIL/retention, staff, and facilities against the available Dynasty Points total. Missing categories remain unknown rather than being treated as zero.
@@ -50,9 +56,10 @@ Copy `.env.example` for the variable names, then add the real values to the Verc
 - `OPENAI_VISION_MODEL` is optional. It defaults to `gpt-5.6`.
 - `OPENAI_PODCAST_MODEL` is optional. It defaults to `gpt-5.6-terra` for grounded episode scripts.
 - `OPENAI_TTS_MODEL` is optional. It defaults to `gpt-4o-mini-tts` for the two host voices.
+- `OPENAI_NEWSROOM_IMAGE_MODEL` is optional. It defaults to `gpt-image-2` for verified editorial images.
 - `FIREBASE_WEB_API_KEY` is required by the authenticated server functions and normally matches `VITE_FIREBASE_API_KEY`. It must not use a `VITE_` prefix.
 
-The screenshot endpoint requires a current Firebase ID token, validates image type and size, disables response storage, and returns only schema-constrained fields supported by the weekly engine.
+The screenshot, podcast, and newsroom-image endpoints require a current Firebase ID token. Newsroom uploads also require Firebase Storage rules that let an authenticated owner write only beneath `artifacts/dynasty-hq/users/{uid}/newsroom_media/` while allowing assigned download URLs to render in the public viewer.
 
 ## Verification
 

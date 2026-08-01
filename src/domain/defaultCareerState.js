@@ -71,6 +71,10 @@ export const DEFAULT_CAREER_STATE = {
   careerMilestones: [],
   careerChronicle: [],
   newsroomIssues: [],
+  newsroomMediaLibrary: [],
+  newsroomMediaSettings: {
+    autoGenerateLead: false,
+  },
   retentionBoard: [],
   podcastEpisodes: [],
 };

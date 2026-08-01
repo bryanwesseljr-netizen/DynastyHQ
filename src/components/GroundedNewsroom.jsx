@@ -3,6 +3,8 @@ import {
   Activity, BookOpen, CheckCircle2, Headphones, Newspaper,
   Quote, Radio, ShieldCheck, Star, Zap,
 } from 'lucide-react';
+import NewsroomMediaManager from './NewsroomMediaManager';
+import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 
 const tabs = [
   { theme: 'broadsheet', outletId: 'bolt', label: 'The Bolt', icon: Zap },
@@ -22,7 +24,26 @@ const themeStyles = {
   podcast: { shell: 'bg-gradient-to-br from-slate-950 to-blue-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
 };
 
-const GroundedNewsroom = ({ issues, initialIssueId, newsTheme, setNewsTheme, outletImages, podcastEpisodes = [], onOpenPodcast }) => {
+const GroundedNewsroom = ({
+  issues,
+  initialIssueId,
+  newsTheme,
+  setNewsTheme,
+  outletImages,
+  podcastEpisodes = [],
+  onOpenPodcast,
+  readOnly = false,
+  mediaLibrary = [],
+  mediaBusy = false,
+  autoGenerateLead = false,
+  onUploadMedia,
+  onAssignMedia,
+  onClearMedia,
+  onGenerateMedia,
+  onToggleReference,
+  onDeleteMedia,
+  onSetAutoGenerateLead,
+}) => {
   const latestIssue = issues[issues.length - 1];
   const [selectedIssueId, setSelectedIssueId] = useState(
     issues.some((issue) => issue.id === initialIssueId) ? initialIssueId : latestIssue.id,
@@ -38,7 +59,12 @@ const GroundedNewsroom = ({ issues, initialIssueId, newsTheme, setNewsTheme, out
   const story = selectedIssue.articles.find((entry) => entry.outletId === selectedTab.outletId);
   const podcastEpisode = podcastEpisodes.find((entry) => entry.publicationId === selectedIssue.publicationId);
   const imageKey = selectedTab.theme === 'on3' ? 'on3' : selectedTab.theme;
-  const featureImage = outletImages?.[imageKey] || outletImages?.broadsheet;
+  const currentMedia = resolveNewsroomMedia({
+    article: story,
+    mediaLibrary,
+    fallbackUrl: outletImages?.[imageKey] || outletImages?.broadsheet,
+  });
+  const featureImage = currentMedia.url;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in">
@@ -119,7 +145,26 @@ const GroundedNewsroom = ({ issues, initialIssueId, newsTheme, setNewsTheme, out
           {featureImage && (
             <div className="relative h-72 overflow-hidden bg-black md:h-[440px]">
               <img src={featureImage} alt="Weekly newsroom feature" className="h-full w-full object-contain" />
+              {currentMedia.disclosure && <span className="absolute bottom-3 right-3 rounded-full border border-white/20 bg-black/75 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-white">{currentMedia.disclosure}</span>}
             </div>
+          )}
+
+          {!readOnly && (
+            <NewsroomMediaManager
+              issue={selectedIssue}
+              article={story}
+              mediaLibrary={mediaLibrary}
+              currentMedia={currentMedia}
+              busy={mediaBusy}
+              autoGenerateLead={autoGenerateLead}
+              onUpload={onUploadMedia}
+              onAssign={onAssignMedia}
+              onClear={onClearMedia}
+              onGenerate={onGenerateMedia}
+              onToggleReference={onToggleReference}
+              onDelete={onDeleteMedia}
+              onSetAutoGenerateLead={onSetAutoGenerateLead}
+            />
           )}
 
           <div className="grid gap-8 p-6 md:grid-cols-[minmax(0,1fr)_240px] md:p-9">

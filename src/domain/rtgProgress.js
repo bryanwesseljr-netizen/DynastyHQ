@@ -32,10 +32,11 @@ export const createRtgSnapshot = (rtg = {}) => {
   return snapshot;
 };
 
-export const hasRtgSnapshot = (snapshot = {}) => (
-  RTG_FIELDS.some((field) => hasValue(snapshot[field.key]))
-  || Object.keys(snapshot.wear || {}).length > 0
-);
+export const hasRtgSnapshot = (snapshot = {}) => {
+  const safeSnapshot = snapshot && typeof snapshot === 'object' ? snapshot : {};
+  return RTG_FIELDS.some((field) => hasValue(safeSnapshot[field.key]))
+    || Object.keys(safeSnapshot.wear || {}).length > 0;
+};
 
 export const diffRtgSnapshots = (current = {}, previous = {}) => {
   const changes = RTG_FIELDS.flatMap((field) => {

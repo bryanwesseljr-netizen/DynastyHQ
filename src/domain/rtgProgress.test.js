@@ -6,6 +6,7 @@ import {
   createRtgSnapshot,
   diffRtgSnapshots,
   formatRtgDelta,
+  hasRtgSnapshot,
 } from './rtgProgress.js';
 
 test('normalizes a durable RTG mechanics and NIL snapshot', () => {
@@ -30,6 +31,12 @@ test('calculates week-to-week numeric and status changes', () => {
   assert.equal(changes.find((entry) => entry.key === 'coachTrust').delta, 150);
   assert.equal(changes.find((entry) => entry.key === 'rank').delta, null);
   assert.equal(formatRtgDelta(changes.find((entry) => entry.key === 'valuation')), '+3,000');
+});
+
+test('treats Chronicle milestones without weekly RTG data as empty snapshots', () => {
+  assert.equal(hasRtgSnapshot(null), false);
+  assert.equal(hasRtgSnapshot(undefined), false);
+  assert.equal(hasRtgSnapshot({}), false);
 });
 
 test('builds a full career progression from weekly snapshots', () => {

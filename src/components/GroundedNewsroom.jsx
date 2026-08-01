@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Activity, BookOpen, CheckCircle2, Headphones, Newspaper,
+  Activity, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, Headphones, Newspaper,
   Quote, Radio, ShieldCheck, Star, Zap,
 } from 'lucide-react';
 import NewsroomMediaManager from './NewsroomMediaManager';
@@ -23,6 +23,8 @@ const themeStyles = {
   national: { shell: 'bg-slate-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
   podcast: { shell: 'bg-gradient-to-br from-slate-950 to-blue-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
 };
+
+const storyTabs = tabs.filter((tab) => tab.theme !== 'podcast');
 
 const GroundedNewsroom = ({
   issues,
@@ -48,6 +50,7 @@ const GroundedNewsroom = ({
   const [selectedIssueId, setSelectedIssueId] = useState(
     issues.some((issue) => issue.id === initialIssueId) ? initialIssueId : latestIssue.id,
   );
+  const [isReaderOpen, setIsReaderOpen] = useState(false);
 
   const selectedIssue = useMemo(
     () => issues.find((issue) => issue.id === selectedIssueId) || latestIssue,
@@ -66,6 +69,16 @@ const GroundedNewsroom = ({
   });
   const featureImage = currentMedia.url;
 
+  const openStory = (theme) => {
+    setNewsTheme(theme);
+    setIsReaderOpen(true);
+  };
+
+  const chooseIssue = (issueId) => {
+    setSelectedIssueId(issueId);
+    setIsReaderOpen(false);
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in">
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 shadow-xl">
@@ -79,7 +92,7 @@ const GroundedNewsroom = ({
           </div>
           <select
             value={selectedIssue.id}
-            onChange={(event) => setSelectedIssueId(event.target.value)}
+            onChange={(event) => chooseIssue(event.target.value)}
             className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-white"
             aria-label="Choose weekly newsroom edition"
           >
@@ -90,20 +103,76 @@ const GroundedNewsroom = ({
         </div>
       </div>
 
-      <div className="flex items-center overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-950/90 p-2 text-xs font-bold shadow-2xl">
-        {tabs.map(({ theme, label, icon: Icon }) => (
-          <button
-            key={theme}
-            type="button"
-            onClick={() => setNewsTheme(theme)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2 transition-colors ${activeTheme === theme ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <Icon size={14} /> {label}
-          </button>
-        ))}
-      </div>
+      {!isReaderOpen && (
+        <section className="rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-7" aria-labelledby="weekly-coverage-title">
+          <div className="mb-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Season {selectedIssue.season} · Week {selectedIssue.week}</p>
+            <h2 id="weekly-coverage-title" className="mt-1 text-2xl font-black uppercase text-white md:text-3xl">This Week&rsquo;s Coverage</h2>
+            <p className="mt-2 text-sm text-slate-400">Choose any newsroom below to open its complete article.</p>
+          </div>
 
-      {selectedTab.theme === 'podcast' ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {storyTabs.map(({ theme, outletId, label, icon: Icon }) => {
+              const cardStory = selectedIssue.articles.find((entry) => entry.outletId === outletId);
+              if (!cardStory) return null;
+              return (
+                <button
+                  key={theme}
+                  type="button"
+                  onClick={() => openStory(theme)}
+                  className="group flex min-h-52 cursor-pointer flex-col rounded-xl border border-slate-700 bg-slate-900 p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 hover:border-blue-400 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  aria-label={`Read full article from ${label}: ${cardStory.headline}`}
+                >
+                  <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-400"><Icon size={15} /> {label}</span>
+                  <span className="mt-4 text-xl font-black uppercase leading-tight text-white">{cardStory.headline}</span>
+                  <span className="mt-3 line-clamp-2 text-sm leading-relaxed text-slate-400">{cardStory.dek}</span>
+                  <span className="mt-auto flex items-center gap-2 pt-5 text-xs font-black uppercase tracking-wider text-amber-400 transition-colors group-hover:text-amber-300">Read full article <ArrowRight size={15} /></span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => openStory('podcast')}
+              className="group flex min-h-52 cursor-pointer flex-col rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-950 to-slate-950 p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 hover:border-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 md:col-span-2"
+              aria-label="Open this week's Gridiron Grind podcast brief"
+            >
+              <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-400"><Headphones size={15} /> The Gridiron Grind</span>
+              <span className="mt-4 text-xl font-black uppercase leading-tight text-white">{selectedIssue.podcastBrief.title}</span>
+              <span className="mt-3 text-sm leading-relaxed text-slate-400">{selectedIssue.podcastBrief.summary}</span>
+              <span className="mt-auto flex items-center gap-2 pt-5 text-xs font-black uppercase tracking-wider text-blue-300 transition-colors group-hover:text-white">Open podcast brief <ArrowRight size={15} /></span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {isReaderOpen && (
+        <>
+          <button
+            type="button"
+            onClick={() => setIsReaderOpen(false)}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-colors hover:border-blue-400 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+          >
+            <ChevronLeft size={15} /> Back to all articles
+          </button>
+
+          <nav className="flex items-center gap-2 overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-950/90 p-2 text-xs font-bold shadow-2xl" aria-label="Weekly newsroom articles">
+            {tabs.map(({ theme, label, icon: Icon }) => (
+              <button
+                key={theme}
+                type="button"
+                onClick={() => openStory(theme)}
+                aria-pressed={activeTheme === theme}
+                className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${activeTheme === theme ? 'border-blue-400 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-blue-400 hover:bg-slate-800 hover:text-white'}`}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </nav>
+        </>
+      )}
+
+      {isReaderOpen && selectedTab.theme === 'podcast' ? (
         <section className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
           <div className="flex items-center justify-between border-b border-blue-500/30 bg-black/20 p-5 text-xs font-black uppercase tracking-widest">
             <span className="flex items-center gap-2"><Radio className="text-blue-400" size={16} /> The Gridiron Grind</span>
@@ -131,7 +200,7 @@ const GroundedNewsroom = ({
             </div>
           </div>
         </section>
-      ) : story ? (
+      ) : isReaderOpen && story ? (
         <article className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
           <header className="border-b border-current/20 p-6 md:p-9">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">

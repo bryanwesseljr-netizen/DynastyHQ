@@ -19,12 +19,6 @@ const resultWord = (result) => {
   return 'result';
 };
 
-const resultVerb = (result) => {
-  if (result === 'W') return 'defeats';
-  if (result === 'L') return 'falls to';
-  return 'finishes against';
-};
-
 const scoreText = (game) => {
   if (game.homeScore === '' || game.awayScore === '' || game.homeScore == null || game.awayScore == null) return '';
   return `${game.homeScore}-${game.awayScore}`;
@@ -147,18 +141,28 @@ export const createNewsroomIssue = ({
 
   const totalYardsPhrase = totalYards == null ? 'a newly recorded statistical line' : `${totalYards} total yards`;
   const totalTouchdownPhrase = totalTD == null ? 'no complete touchdown total recorded' : `${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`;
+  const resultHeadline = game?.result === 'W'
+    ? `${playerName} helps ${school} turn back ${opponent}`
+    : game?.result === 'L'
+      ? `${school}'s Week ${week} rally ends against ${opponent}`
+      : `${school} closes its Week ${week} matchup with ${opponent}`;
+  const resultPerspective = game?.result === 'W'
+    ? `The win gives ${school} a verified result to build on while the season record begins to take shape.`
+    : game?.result === 'L'
+      ? `The loss becomes part of the season story, with the next verified appearance determining how the response is measured.`
+      : `The result now supplies a firm Week ${week} benchmark for the next edition.`;
   const articles = [
     article({
       outlet: OUTLETS[0],
-      headline: `${school} ${resultVerb(game?.result)} ${opponent}`,
+      headline: resultHeadline,
       dek: `${playerName} finishes with ${totalYardsPhrase} and ${totalTouchdownPhrase}.`,
       paragraphs: [
-        `${school} recorded a ${outcome} against ${opponent}${score ? `; the saved final score is ${score}` : ''}.`,
-        `${playerName} finished with ${statLine(game)}.`,
-        seasonContext,
+        `${school} has its latest chapter on the record after a ${outcome} against ${opponent}${score ? `, with the verified final set at ${score}` : ''}. The result anchors a Week ${week} edition built from the numbers saved after the game.`,
+        `${playerName} was at the center of the offensive record, finishing with ${statLine(game)}. ${totalYards == null ? 'The available fields do not support a complete total-yard calculation.' : `Together, the passing and rushing production added up to ${totalYards} total yards.`}`,
+        `${seasonContext} ${resultPerspective}`,
         quote
-          ? `In the verified postgame note, ${playerName} said, “${quote}”`
-          : `No postgame quote was verified for this edition, so the record closes with the result and individual numbers on file.`,
+          ? `The final word belongs to the player. In the verified postgame note, ${playerName} said, “${quote}” The statement is preserved alongside the box score as the voice of this week.`
+          : `No postgame quote was verified for this edition, so The Bolt will not manufacture locker-room reaction. The story closes with the result, the individual production, and a clean statistical baseline for Week ${week + 1}.`,
       ],
       citedFactKeys: gameKeys,
     }),
@@ -167,10 +171,10 @@ export const createNewsroomIssue = ({
       headline: `${playerName}'s latest line: ${totalYardsPhrase}`,
       dek: `The Dearborn quarterback's verified Week ${week} numbers against ${opponent}.`,
       paragraphs: [
-        `${playerName} and ${school} logged a ${outcome} against ${opponent}${score ? `, ${score}` : ''}.`,
-        `The verified individual line lists ${statLine(game || {})}.`,
-        comparisonContext,
-        `For the Dearborn record, this edition preserves the Week ${week} performance as published and leaves unverified personal or recruiting claims outside the story.`,
+        `For the hometown record, Week ${week} belongs to a ${outcome} against ${opponent}${score ? `, recorded at ${score}` : ''}. ${playerName}'s performance gives Dearborn readers another concrete entry in a career that will be tracked one verified week at a time.`,
+        `The individual line lists ${statLine(game || {})}. ${totalTD == null ? 'A complete touchdown total cannot be calculated from the fields on file.' : `That works out to ${totalTD} combined ${totalTD === 1 ? 'touchdown' : 'touchdowns'} through the air and on the ground.`}`,
+        `${comparisonContext} The comparison is drawn only from appearances already preserved in the game log.`,
+        `The meaning of the night will sharpen as the season grows, but the Week ${week} entry already has a permanent place in ${playerName}'s career archive. Personal claims, private conversations, and recruiting speculation remain outside the story unless they are separately verified.`,
       ],
       citedFactKeys: gameKeys,
     }),
@@ -185,17 +189,17 @@ export const createNewsroomIssue = ({
       paragraphs: leader
         ? [
             `${leader.name} currently holds the highest recorded interest in ${playerName} at ${numeric(leader.interest)}%.`,
-            `${activeSchools.length} ${activeSchools.length === 1 ? 'program is' : 'programs are'} above zero on the verified board${activeSchools.length > 1 ? `, led by ${activeSchools.slice(0, 3).map((entry) => `${entry.name} at ${numeric(entry.interest)}%`).join(', ')}` : ''}.`,
+            `The race is beginning to take shape: ${activeSchools.length} ${activeSchools.length === 1 ? 'program is' : 'programs are'} above zero on the verified board${activeSchools.length > 1 ? `, led by ${activeSchools.slice(0, 3).map((entry) => `${entry.name} at ${numeric(entry.interest)}%`).join(', ')}` : ''}. Those percentages describe the current board—not a projected destination.`,
             largestMovement
               ? `${largestMovement.name} recorded the week's largest verified move, ${largestMovement.change > 0 ? 'rising' : 'falling'} from ${largestMovement.previousInterest}% to ${numeric(largestMovement.interest)}%.`
-              : `No week-over-week percentage change is verified for Week ${week}; the desk is reporting the saved board as it currently stands.`,
-            `This report does not project a commitment, private conversation, visit, or scholarship decision that is absent from the published Fact Ledger.`,
+              : `No week-over-week percentage change is verified for Week ${week}, making this edition the clean baseline against which the next recruiting update will be judged.`,
+            `The intrigue is real, but the guardrails remain firm: this report will not project a commitment, private conversation, visit, or scholarship decision that is absent from the published Fact Ledger.`,
           ]
         : [
-            `DynastyHQ has not received a verified school-interest percentage for ${playerName}.`,
-            `The Week ${week} Fact Ledger therefore contains no program that can be identified as a recruiting leader.`,
-            `Rather than convert a missing update into a rumor, the recruiting desk is leaving offers, visits, and commitment projections unreported.`,
-            `A future edition will update this board when a readable recruiting screen or confirmed manual entry supplies new verified information.`,
+            `The recruiting spotlight is waiting for its first verified movement. DynastyHQ has not received a school-interest percentage for ${playerName}, so no program can yet be placed at the front of the race.`,
+            `The Week ${week} Fact Ledger contains no numerical leader, scholarship change, or confirmed visit to separate one school from another. That absence is treated as unknown information—not as zero interest.`,
+            `Rather than turn an empty board into a rumor cycle, the recruiting desk is leaving offers, visits, and commitment projections unreported. The story will change only when the game supplies a readable update.`,
+            `A future edition will transform that new screen or confirmed entry into a week-over-week recruiting story, preserving the first real rise, fall, offer, or decision as part of the career timeline.`,
           ],
       citedFactKeys: leaderKey
         ? ['profile.player.name', ...recruitingKeys]
@@ -206,12 +210,12 @@ export const createNewsroomIssue = ({
       headline: `By the numbers: ${totalYardsPhrase}, ${totalTouchdownPhrase}`,
       dek: `A film-room briefing limited to the Week ${week} statistics on record.`,
       paragraphs: [
-        `${playerName}'s verified line: ${statLine(game || {})}.`,
+        `Start with the only tape substitute this edition can verify: ${playerName}'s saved line of ${statLine(game || {})}. It is the statistical foundation for every conclusion that follows.`,
         totalYards == null
-          ? `The available line does not contain both passing and rushing yardage, so a complete total-yard figure is not reported.`
-          : `The recorded passing and rushing production combines for ${totalYards} total yards${totalTD == null ? '' : ` and ${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`}.`,
-        comparisonContext,
-        `No formation, coverage, pressure, or blocking claim is made without corresponding charting data; this analysis is limited to the verified result and box-score production.`,
+          ? `The available line does not contain both passing and rushing yardage, so a complete total-yard figure is not reported. The Film Room will leave that calculation open rather than quietly treating a missing field as zero.`
+          : `The recorded passing and rushing production combines for ${totalYards} total yards${totalTD == null ? '' : ` and ${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`}. That blend is the clearest verified snapshot of the dual-threat workload this week.`,
+        `${comparisonContext} As more weeks enter the archive, this same lens will reveal genuine changes in production instead of reacting to a single box score.`,
+        `No formation, coverage, pressure, or blocking claim is made without corresponding charting data. The analysis remains limited to the verified result and production, while future screenshots can add the context needed for a deeper tactical breakdown.`,
       ],
       citedFactKeys: gameKeys,
     }),
@@ -220,10 +224,10 @@ export const createNewsroomIssue = ({
       headline: `${playerName}'s Week ${week} performance enters the career record`,
       dek: `${school}'s ${outcome} against ${opponent} is now part of the permanent Chronicle.`,
       paragraphs: [
-        `In Season ${season}, Week ${week}, ${playerName} posted ${statLine(game)} against ${opponent}.`,
-        `The performance is recorded as a ${outcome}${score ? ` with a ${score} final` : ''}, placing the team result beside the individual line in the permanent archive.`,
-        seasonContext,
-        `The national desk treats this as verified season context—not as a ranking, award, injury update, or career milestone unless one of those developments is separately published.`,
+        `Another line has been added to the national résumé. In Season ${season}, Week ${week}, ${playerName} posted ${statLine(game)} against ${opponent}, giving the wider career story a new verified data point.`,
+        `The performance is recorded as a ${outcome}${score ? ` with a ${score} final` : ''}. Team result and individual production now sit together in the permanent archive, ready to be measured against the weeks that follow.`,
+        `${seasonContext} That running context—not a one-week hot take—will determine how the performance fits into the larger season.`,
+        `The national desk treats this as verified season evidence, not as a ranking, award, injury update, or career milestone unless one of those developments is separately published. The significance will grow only when the record supports it.`,
       ],
       citedFactKeys: gameKeys,
     }),

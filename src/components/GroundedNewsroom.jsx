@@ -80,7 +80,7 @@ const GroundedNewsroom = ({
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in">
+    <div className="relative z-10 mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in">
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 shadow-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">

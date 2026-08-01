@@ -3349,7 +3349,7 @@ const handleSaveGameClick = () => {
        {/* Main Content Area */}
        <div className="flex-1 overflow-y-auto p-4 md:p-8 relative">
          {/* Background Image */}
-         <div className="absolute inset-0 z-0 fixed">
+         <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true">
             <img src={getBgImage()} className="w-full h-full object-cover opacity-20 mix-blend-luminosity" alt="Background" />
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/60 to-slate-950"></div>
          </div>

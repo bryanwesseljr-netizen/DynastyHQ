@@ -1,6 +1,7 @@
 import { createNewsroomIssue } from './newsroomEngine.js';
+import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress.js';
 
-export const CAREER_SCHEMA_VERSION = 9;
+export const CAREER_SCHEMA_VERSION = 10;
 
 export class DuplicateWeekPublicationError extends Error {
   constructor(weekKey) {
@@ -137,6 +138,7 @@ const EDITABLE_NUMERIC_KEYS = new Set([
   'rtg.gpa',
   'rtg.energy',
   'rtg.coachTrust',
+  'rtg.trustToNext',
   'rtg.skillPoints',
   'rtg.followers',
   'rtg.valuation',
@@ -500,12 +502,13 @@ export const parseScreenshotText = ({ text, sourceId, fileName = 'Screenshot', r
     });
   }
 
-  if (!isCoach && (/gpa/i.test(normalizedText) || /energy/i.test(normalizedText) || /coach\s*trust/i.test(normalizedText) || /wear\s*(?:&|and)?\s*tear/i.test(normalizedText))) {
+  if (!isCoach && (/gpa/i.test(normalizedText) || /energy/i.test(normalizedText) || /coach\s*trust/i.test(normalizedText) || /skill\s*points?/i.test(normalizedText) || /followers?/i.test(normalizedText) || /valuation|nil/i.test(normalizedText) || /depth\s*chart/i.test(normalizedText) || /wear\s*(?:&|and)?\s*tear/i.test(normalizedText))) {
     detectedTypes.push('Player Mechanics');
     const fields = [
       ['gpa', 'GPA', /gpa\s*[:-]?\s*(\d(?:\.\d{1,2})?)/i],
       ['energy', 'Energy', /energy\s*[:-]?\s*(\d+)/i],
       ['coachTrust', 'Coach trust', /coach\s*trust\s*[:-]?\s*(\d[\d,]*)/i],
+      ['trustToNext', 'Next trust threshold', /(?:trust\s*to\s*next(?:\s*rank)?|next\s*trust\s*threshold)\s*[:-]?\s*(\d[\d,]*)/i],
       ['skillPoints', 'Skill points', /skill\s*points?\s*[:-]?\s*(\d+)/i],
       ['followers', 'Followers', /followers?\s*[:-]?\s*(\d[\d,]*)/i],
       ['valuation', 'NIL valuation', /(?:valuation|nil)\s*\$?\s*[:-]?\s*\$?([\d,]+)/i],
@@ -518,6 +521,13 @@ export const parseScreenshotText = ({ text, sourceId, fileName = 'Screenshot', r
         facts.push(fact(`rtg.${key}`, label, extracted.value, confidenceForMatch(extracted.match), sourceId));
       }
     });
+
+    const rankMatch = normalizedText.match(/(?:depth\s*chart(?:\s*rank)?|position\s*rank)\s*[:-]?\s*(QB[1-3]|Redshirt)/i);
+    if (rankMatch) {
+      const value = rankMatch[1].toUpperCase() === 'REDSHIRT' ? 'Redshirt' : rankMatch[1].toUpperCase();
+      rtgPatch.rank = value;
+      facts.push(fact('rtg.rank', 'Depth chart rank', value, 0.9, sourceId));
+    }
 
     const wearPatch = {};
     ['head', 'chest', 'arm', 'legs'].forEach((part) => {
@@ -679,7 +689,23 @@ export const createPublishedWeek = ({
     ].forEach(([key, label]) => publicationFact(`game.${key}`, label, gameRecord[key]));
   }
   if (quote) publicationFact('weekly.quote', 'Postgame quote', quote);
-  const ledgerFacts = [...verifiedFactsByKey.values()];
+
+  const isPlayerCareer = !['OC', 'HC', 'Retired'].includes(state.careerPhase);
+  const rtgSnapshot = isPlayerCareer ? createRtgSnapshot(rtg || state.rtg || {}) : {};
+  const previousRtgSnapshot = [...(state.weeklyUpdates || [])]
+    .reverse()
+    .find((entry) => hasRtgSnapshot(entry.rtgSnapshot))?.rtgSnapshot || {};
+  const rtgChanges = hasRtgSnapshot(previousRtgSnapshot)
+    ? diffRtgSnapshots(rtgSnapshot, previousRtgSnapshot)
+    : [];
+
+  if (isPlayerCareer) {
+    RTG_FIELDS.forEach(({ key, label }) => publicationFact(`rtg.${key}`, label, rtgSnapshot[key]));
+    Object.entries(rtgSnapshot.wear || {}).forEach(([part, value]) => {
+      publicationFact(`rtg.wear.${part}`, `${part.charAt(0).toUpperCase()}${part.slice(1)} wear`, value);
+    });
+  }
+  const finalLedgerFacts = [...verifiedFactsByKey.values()];
 
   const scoreLine = hasGame && gameRecord.homeScore !== '' && gameRecord.awayScore !== ''
     ? `, ${gameRecord.homeScore}-${gameRecord.awayScore}`
@@ -701,7 +727,7 @@ export const createPublishedWeek = ({
       : (weekType === WEEK_TYPES.BYE
         ? 'A verified bye-week player, recruiting, or program update was published.'
         : 'Verified player, recruiting, or program information was published.'),
-    factKeys: ledgerFacts.map((entry) => entry.key),
+    factKeys: finalLedgerFacts.map((entry) => entry.key),
   };
 
   const weeklyUpdate = {
@@ -714,8 +740,10 @@ export const createPublishedWeek = ({
     weekType,
     publishedAt,
     sourceCount: sources.length,
-    factCount: ledgerFacts.length,
+    factCount: finalLedgerFacts.length,
     game: gameRecord,
+    rtgSnapshot,
+    rtgChanges,
     quote,
   };
 
@@ -732,8 +760,10 @@ export const createPublishedWeek = ({
     previousRecruiting: state.recruiting,
     previousGames: state.gameLogs || [],
     quote,
-    availableFactKeys: [...(state.factLedger || []), ...ledgerFacts].map((entry) => entry.key),
-    currentFactKeys: ledgerFacts.map((entry) => entry.key),
+    rtg: rtgSnapshot,
+    previousRtg: previousRtgSnapshot,
+    availableFactKeys: [...(state.factLedger || []), ...finalLedgerFacts].map((entry) => entry.key),
+    currentFactKeys: finalLedgerFacts.map((entry) => entry.key),
     publishedAt,
   }) : null;
 
@@ -748,7 +778,7 @@ export const createPublishedWeek = ({
     recruiting: updatedRecruiting,
     retentionBoard: updatedRetentionBoard,
     weeklyUpdates: [...(state.weeklyUpdates || []), weeklyUpdate],
-    factLedger: [...(state.factLedger || []), ...ledgerFacts],
+    factLedger: [...(state.factLedger || []), ...finalLedgerFacts],
     careerChronicle: [...(state.careerChronicle || []), chronicleEvent],
     newsroomIssues: newsroomIssue
       ? [...(state.newsroomIssues || []), newsroomIssue]

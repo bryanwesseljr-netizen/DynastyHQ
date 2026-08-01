@@ -13,6 +13,8 @@ const state = {
       id: 'season-1-week-1', season: 1, week: 1, careerPhase: 'Player', weekType: 'game',
       publishedAt: '2026-08-01T12:00:00.000Z', sourceCount: 3, factCount: 4,
       game: { opponent: 'Test Opponent A', result: 'W', passYds: 210, passTD: 2, rushYds: 61, rushTD: 1, didPlay: true },
+      rtgSnapshot: { gpa: 3.4, coachTrust: 900, followers: 1200, valuation: 5000 },
+      rtgChanges: [{ key: 'coachTrust', label: 'Coach Trust', previous: 700, current: 900, delta: 200, kind: 'number' }],
     },
     {
       id: 'season-1-week-2', season: 1, week: 2, careerPhase: 'Player', weekType: 'bye',
@@ -36,6 +38,8 @@ test('joins publications, chronicle events, facts, and newsroom coverage', () =>
   assert.equal(archive[0].id, 'season-1-week-2');
   assert.equal(archive[1].title, 'W vs. Test Opponent A, 28-14');
   assert.equal(archive[1].facts.length, 2);
+  assert.equal(archive[1].rtgSnapshot.coachTrust, 900);
+  assert.equal(archive[1].rtgChanges[0].delta, 200);
   assert.equal(archive[1].hasNewsroom, true);
 });
 

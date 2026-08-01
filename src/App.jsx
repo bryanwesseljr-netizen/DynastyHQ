@@ -2914,6 +2914,11 @@ const handleSaveGameClick = () => {
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Settings size={16} className="text-emerald-500"/> {isCoach ? '2. Coach Dashboard Updates' : '2. RTG Mechanics & NIL'}</h3>
           </div>
+          {!isCoach && (
+            <p className="rounded-lg border border-blue-500/20 bg-blue-950/20 p-3 text-[10px] font-bold leading-relaxed text-blue-200">
+              Publishing the week locks these values beside the game stats, calculates changes from last week, updates the Chronicle and newsroom, and preserves the progression through your full player career.
+            </p>
+          )}
           
           {!isCoach ? (
               <>
@@ -2955,6 +2960,10 @@ const handleSaveGameClick = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><DollarSign size={12} className="text-emerald-400"/> Brand Valuation</label>
                   <input type="number" value={valOrEmpty(rtgUpdate.valuation)} onChange={e => setRtgUpdate({...rtgUpdate, valuation: e.target.value === '' ? '' : parseInt(e.target.value)})} className="w-full bg-slate-950/50 border border-slate-700 rounded p-2 text-emerald-400 text-sm" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Briefcase size={12} className="text-emerald-400"/> Active Sponsorships / Brand Deals</label>
+                  <input type="text" value={rtgUpdate.sponsorships || ''} onChange={e => setRtgUpdate({...rtgUpdate, sponsorships: e.target.value})} className="w-full bg-slate-950/50 border border-slate-700 rounded p-2 text-white text-sm" placeholder="e.g. Local apparel deal, sports drink campaign" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><TrendingUp size={12} className="text-blue-400"/> Playoff / Bowl Projection</label>
@@ -3257,7 +3266,7 @@ const handleSaveGameClick = () => {
         <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Master save schema</div>
         <div className="mt-1 text-sm font-bold text-slate-200">{describeCloudSchema(loadedCloudSchemaVersion)}</div>
         <div className={`mt-1 text-xs font-bold ${hasMigrationBackup ? 'text-emerald-400' : 'text-amber-400'}`}>
-          {hasMigrationBackup ? 'Pre-migration backup preserved' : 'Backup required before v8 migration'}
+          {hasMigrationBackup ? 'Pre-migration backup preserved' : `Backup required before v${CAREER_SCHEMA_VERSION} migration`}
         </div>
       </div>
       <button
@@ -3266,7 +3275,7 @@ const handleSaveGameClick = () => {
         disabled={isMigratingCloudSave || hasMigrationBackup}
         className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
       >
-        {isMigratingCloudSave ? 'Protecting Save…' : hasMigrationBackup ? 'Backup Complete' : loadedCloudSchemaVersion === CAREER_SCHEMA_VERSION ? 'Protect Current v8 Save' : 'Back Up & Migrate to v8'}
+        {isMigratingCloudSave ? 'Protecting Save…' : hasMigrationBackup ? 'Backup Complete' : loadedCloudSchemaVersion === CAREER_SCHEMA_VERSION ? `Protect Current v${CAREER_SCHEMA_VERSION} Save` : `Back Up & Migrate to v${CAREER_SCHEMA_VERSION}`}
       </button>
     </div>
   </div>

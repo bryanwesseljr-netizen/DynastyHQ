@@ -13,7 +13,7 @@ const isRecruitingStars = (key) => /^recruiting\..+\.stars$/.test(key);
 const isNumericFact = (key) => [
   'game.homeScore', 'game.awayScore', 'game.passYds', 'game.passTD', 'game.rushYds',
   'game.rushTD', 'game.int', 'rtg.gpa', 'rtg.energy', 'rtg.coachTrust',
-  'rtg.skillPoints', 'rtg.followers', 'rtg.valuation',
+  'rtg.trustToNext', 'rtg.skillPoints', 'rtg.followers', 'rtg.valuation',
   'coach.dynastyPoints', 'coach.recruitingNIL', 'coach.rosterNIL', 'coach.staffBudget',
   'coach.facilitiesBudget', 'coach.rosterSize', 'coach.scholarshipsUsed', 'coach.portalDepartures',
   'coach.openScholarships', 'coach.classCommits', 'coach.portalAdditions',

@@ -247,9 +247,12 @@ test('publishes a week atomically to logs, fact ledger, recruiting, and chronicl
   assert.equal(next.weeklyUpdates.length, 1);
   assert.equal(next.weeklyUpdates[0].weekKey, 'season-1-week-3');
   assert.equal(next.weeklyUpdates[0].id, 'season-1-week-3');
+  assert.deepEqual(next.weeklyUpdates[0].rtgSnapshot, { gpa: 3.3 });
+  assert.deepEqual(next.weeklyUpdates[0].rtgChanges, []);
   assert.equal(next.careerChronicle[0].title, 'W vs. Test Opponent A, 28-14');
   assert.equal(next.recruiting[1].interest, 80);
   assert.ok(next.factLedger.every((entry) => entry.verified));
+  assert.equal(next.factLedger.some((entry) => entry.key === 'rtg.gpa' && entry.value === 3.3), true);
   assert.equal(next.newsroomIssues.length, 1);
   assert.equal(next.newsroomIssues[0].articles.length, 5);
   assert.ok(next.newsroomIssues[0].articles.every((entry) => entry.paragraphs.length === 4));

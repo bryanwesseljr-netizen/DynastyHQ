@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { buildCommandCenter, CAREER_STAGES } from '../domain/commandCenter';
+import { formatRtgDelta, formatRtgValue } from '../domain/rtgProgress';
 
 const panelIcons = {
   map: Map,
@@ -108,6 +109,90 @@ const RecentGames = ({ model }) => {
   );
 };
 
+const PlayerProgressLedger = ({ model }) => {
+  const progress = model.rtgProgress;
+  const latest = progress.latest || {};
+  const entries = [...(progress.snapshots || [])].reverse().slice(0, 10);
+  const currentMetrics = [
+    ['Depth Chart', 'rank'],
+    ['Coach Trust', 'coachTrust'],
+    ['GPA / Energy', 'gpa', 'energy'],
+    ['Followers / NIL', 'followers', 'valuation'],
+  ];
+
+  return (
+    <div className="rounded-xl border border-blue-500/25 bg-slate-900/90 p-6 shadow-2xl backdrop-blur-md lg:col-span-2">
+      <div className="flex flex-col gap-2 border-b border-slate-700/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-bold uppercase tracking-wide text-white">
+            <Activity size={18} className="text-blue-400" /> RTG Performance & Progression
+          </h3>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Game statistics, player mechanics, and NIL—preserved together every published week</p>
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-wider text-blue-300">{progress.snapshots.length} career snapshot{progress.snapshots.length === 1 ? '' : 's'}</span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {currentMetrics.map(([label, firstKey, secondKey]) => (
+          <div key={label} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+            <div className="text-[8px] font-black uppercase tracking-widest text-slate-600">Current {label}</div>
+            <div className="mt-1 text-sm font-black text-white">
+              {formatRtgValue(firstKey, latest[firstKey])}
+              {secondKey && <span className="text-slate-600"> / </span>}
+              {secondKey && <span className={secondKey === 'valuation' ? 'text-emerald-400' : 'text-white'}>{formatRtgValue(secondKey, latest[secondKey])}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 max-h-[380px] overflow-auto">
+        <table className="min-w-[980px] w-full text-left text-xs">
+          <thead className="sticky top-0 border-b border-slate-700 bg-slate-900 text-slate-400">
+            <tr>
+              <th className="pb-2">Week</th><th className="pb-2">Opponent & game line</th><th className="pb-2">Role & trust</th>
+              <th className="pb-2">GPA & energy</th><th className="pb-2">Followers & NIL</th><th className="pb-2">Weekly movement</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80 text-slate-200">
+            {!entries.length && (
+              <tr><td colSpan="6" className="py-8 text-center text-slate-500">Your current values are visible above. Publish the next week to lock the first permanent RTG/NIL snapshot beside its game stats.</td></tr>
+            )}
+            {entries.map((entry) => {
+              const snapshot = entry.snapshot || {};
+              const game = entry.game;
+              return (
+                <tr key={entry.id} className="align-top hover:bg-slate-800/30">
+                  <td className="py-3 font-mono text-slate-400">S{entry.season} · W{entry.week}</td>
+                  <td className="py-3">
+                    <div className="font-bold text-white">{game?.opponent || 'Weekly update'}</div>
+                    <div className="mt-1 text-[10px] text-slate-500">{game ? `${game.result || '—'} · ${game.didPlay === false ? 'DNP' : `${game.passYds || 0} pass / ${game.rushYds || 0} rush`}` : 'No game attached'}</div>
+                  </td>
+                  <td className="py-3"><div className="font-bold text-amber-300">{formatRtgValue('rank', snapshot.rank)}</div><div className="mt-1 text-slate-500">Trust {formatRtgValue('coachTrust', snapshot.coachTrust)}</div></td>
+                  <td className="py-3"><div>{formatRtgValue('gpa', snapshot.gpa)} GPA</div><div className="mt-1 text-slate-500">Energy {formatRtgValue('energy', snapshot.energy)}</div></td>
+                  <td className="py-3"><div>{formatRtgValue('followers', snapshot.followers)}</div><div className="mt-1 text-emerald-400">{formatRtgValue('valuation', snapshot.valuation)}</div></td>
+                  <td className="py-3">
+                    {entry.changes.length ? (
+                      <div className="flex max-w-[250px] flex-wrap gap-1.5">
+                        {entry.changes.slice(0, 3).map((change) => (
+                          <span key={change.key} className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-wider ${change.kind === 'number' && change.delta < 0 ? 'border-red-500/30 bg-red-950/20 text-red-300' : 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300'}`}>
+                            {change.label} {formatRtgDelta(change)}
+                          </span>
+                        ))}
+                        {entry.changes.length > 3 && <span className="px-1 py-1 text-[8px] font-bold text-slate-500">+{entry.changes.length - 3} more</span>}
+                      </div>
+                    ) : <span className="text-[10px] text-slate-600">Career baseline</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-[10px] leading-relaxed text-slate-500">DynastyHQ records what CFB 27 shows and highlights verified movement. It does not invent hidden gameplay bonuses, penalties, deals, or eligibility outcomes.</p>
+    </div>
+  );
+};
+
 const LegacyEvents = ({ model }) => (
   <div className="rounded-xl border border-slate-700/50 bg-slate-900/85 p-6 shadow-2xl backdrop-blur-md lg:col-span-2">
     <h3 className="mb-4 flex items-center gap-2 text-lg font-bold uppercase tracking-wide text-white">
@@ -165,7 +250,11 @@ const CareerCommandCenter = ({ state, onNavigate, readOnly = false }) => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {model.stage === CAREER_STAGES.RETIRED ? <LegacyEvents model={model} /> : <RecentGames model={model} />}
+        {model.stage === CAREER_STAGES.RETIRED
+          ? <LegacyEvents model={model} />
+          : ([CAREER_STAGES.HIGH_SCHOOL, CAREER_STAGES.COLLEGE].includes(model.stage)
+            ? <PlayerProgressLedger model={model} />
+            : <RecentGames model={model} />)}
         <div className="space-y-3 rounded-xl border border-slate-700/50 bg-slate-900/85 p-6 shadow-2xl backdrop-blur-md">
           <h3 className="flex items-center gap-2 text-lg font-bold uppercase tracking-wide text-white"><Target size={18} className="text-emerald-500" /> Weekly Priorities</h3>
           <p className="border-b border-slate-700/50 pb-3 text-[10px] uppercase tracking-widest text-slate-400">Stage-aware · verified data only</p>

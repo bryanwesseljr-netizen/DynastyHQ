@@ -63,6 +63,30 @@ test('adds verified week-over-week and season context without flattening outlet 
   assert.equal(new Set(issue.articles.map((entry) => entry.paragraphs.join(' '))).size, 5);
 });
 
+test('carries verified RTG mechanics and NIL movement into the weekly coverage', () => {
+  const rtgKeys = ['rtg.gpa', 'rtg.energy', 'rtg.coachTrust', 'rtg.rank', 'rtg.followers', 'rtg.valuation'];
+  const issue = createNewsroomIssue({
+    publicationId: 'week-rtg-2',
+    season: 1,
+    week: 2,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test University' },
+    game: { opponent: 'Test Opponent B', result: 'W', passYds: 240, passTD: 2, rushYds: 60, rushTD: 1, int: 0 },
+    rtg: { gpa: 3.5, energy: 72, coachTrust: 1200, rank: 'QB2', followers: 4500, valuation: 12000 },
+    previousRtg: { gpa: 3.4, energy: 80, coachTrust: 900, rank: 'QB3', followers: 3000, valuation: 9000 },
+    availableFactKeys: [...baseFacts, ...rtgKeys],
+    currentFactKeys: [...baseFacts, ...rtgKeys],
+    publishedAt: '2026-08-07T12:00:00.000Z',
+  });
+
+  const localStory = issue.articles.find((entry) => entry.outletId === 'local');
+  assert.match(localStory.paragraphs.join(' '), /1,200 Coach Trust \(\+300 this week\)/);
+  assert.match(localStory.paragraphs.join(' '), /4,500 followers \(\+1,500 this week\)/);
+  assert.match(localStory.paragraphs.join(' '), /\$12,000 NIL valuation \(\$\+3,000 this week\)/);
+  assert.equal(localStory.groundingStatus, 'verified');
+  assert.match(issue.podcastBrief.summary, /RTG and NIL snapshot is preserved/);
+});
+
 test('does not publish unverified recruiting interest as reporting', () => {
   const issue = createNewsroomIssue({
     publicationId: 'week-2',

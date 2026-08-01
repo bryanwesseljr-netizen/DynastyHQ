@@ -54,6 +54,8 @@ export const buildCareerArchive = (state = {}) => {
       sourceCount: numeric(update.sourceCount),
       factCount: publicationFacts.length || numeric(update.factCount),
       game: update.game || null,
+      rtgSnapshot: update.rtgSnapshot || null,
+      rtgChanges: update.rtgChanges || [],
       quote: update.quote || '',
       facts: publicationFacts,
       hasNewsroom: issuesById.has(update.id),
@@ -73,6 +75,8 @@ export const buildCareerArchive = (state = {}) => {
       sourceCount: 0,
       factCount: (event.factKeys || []).length,
       game: null,
+      rtgSnapshot: null,
+      rtgChanges: [],
       quote: '',
       facts: facts.filter((entry) => event.factKeys?.includes(entry.key)),
       hasNewsroom: issuesById.has(event.id),
@@ -103,6 +107,7 @@ export const filterCareerArchive = (entries, filters = {}) => {
       entry.game?.opponent,
       entry.quote,
       ...entry.facts.map((fact) => `${fact.label} ${fact.value}`),
+      ...Object.entries(entry.rtgSnapshot || {}).map(([key, value]) => `${key} ${JSON.stringify(value)}`),
     ].join(' ').toLowerCase();
     return searchable.includes(query);
   });

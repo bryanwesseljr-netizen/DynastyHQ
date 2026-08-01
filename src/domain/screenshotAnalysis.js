@@ -26,14 +26,22 @@ const GAME_KEYS = new Set([
   'game.int',
 ]);
 
-const RTG_KEYS = new Set([
+const RTG_NUMERIC_KEYS = new Set([
   'rtg.gpa',
   'rtg.energy',
   'rtg.coachTrust',
+  'rtg.trustToNext',
   'rtg.skillPoints',
   'rtg.followers',
   'rtg.valuation',
 ]);
+
+const RTG_TEXT_KEYS = new Set([
+  'rtg.rank',
+  'rtg.sponsorships',
+]);
+
+const RTG_KEYS = new Set([...RTG_NUMERIC_KEYS, ...RTG_TEXT_KEYS]);
 
 const WEAR_KEYS = new Set([
   'rtg.wear.head',
@@ -80,7 +88,7 @@ const NUMERIC_KEYS = new Set([
   'game.rushYds',
   'game.rushTD',
   'game.int',
-  ...RTG_KEYS,
+  ...RTG_NUMERIC_KEYS,
   ...COACH_KEYS,
   ...ROSTER_POSITION_KEYS,
   'retention.overall',

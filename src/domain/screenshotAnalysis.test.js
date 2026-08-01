@@ -40,6 +40,30 @@ test('normalizes supported AI facts into the weekly draft contract', () => {
   assert.equal(result.source.previewUrl, 'blob:preview');
 });
 
+test('preserves numeric and text RTG progression fields from a player screen', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'rtg-screen',
+    fileName: 'player-hub.png',
+    recruiting,
+    analysis: {
+      screenTypes: ['player_mechanics'],
+      screenTitle: 'Player Hub',
+      summary: 'Current player progression.',
+      facts: [
+        { key: 'rtg.trustToNext', label: 'Trust to next rank', value: '1,500', confidence: 0.95, evidence: 'NEXT 1,500' },
+        { key: 'rtg.rank', label: 'Depth chart', value: 'QB2', confidence: 0.96, evidence: 'QB2' },
+        { key: 'rtg.sponsorships', label: 'Brand deals', value: 'Local apparel deal', confidence: 0.91, evidence: 'Local apparel deal' },
+      ],
+    },
+  });
+
+  assert.deepEqual(result.rtgPatch, {
+    trustToNext: 1500,
+    rank: 'QB2',
+    sponsorships: 'Local apparel deal',
+  });
+});
+
 test('rejects unsupported and malformed values instead of inventing updates', () => {
   const result = normalizeScreenshotAnalysis({
     sourceId: 'screen-2',

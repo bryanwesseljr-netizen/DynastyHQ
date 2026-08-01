@@ -1,3 +1,5 @@
+import { buildRtgProgress } from './rtgProgress.js';
+
 export const CAREER_STAGES = Object.freeze({
   HIGH_SCHOOL: 'HighSchool',
   COLLEGE: 'College',
@@ -113,7 +115,7 @@ const getStageGames = (state, stage) => {
   return verified.length ? verified : logs;
 };
 
-const createAdvisor = ({ state, stage, seasonGames, totals, offers, topSchool }) => {
+const createAdvisor = ({ state, stage, seasonGames, totals, offers, topSchool, rtgProgress }) => {
   const advice = [];
   const add = (tone, title, text) => advice.push({ tone, title, text });
   const rtg = state.rtg || {};
@@ -137,6 +139,14 @@ const createAdvisor = ({ state, stage, seasonGames, totals, offers, topSchool })
     else add('success', 'Academic standing', `The verified GPA is ${gpa.toFixed(1)} and currently above the house-rule danger line.`);
     if (energy !== null && energy > 0 && energy < 30) add('warning', 'Low energy', `Weekly energy is ${energy}. Recovery should take priority over optional development.`);
     if (trust !== null && trustTarget !== null && trustTarget > trust) add('info', 'Position battle', `${trustTarget - trust} verified Coach Trust points remain to reach the next depth-chart threshold.`);
+    const latestChanges = rtgProgress?.snapshots?.at(-1)?.changes || [];
+    const rankChange = latestChanges.find((entry) => entry.key === 'rank');
+    const trustChange = latestChanges.find((entry) => entry.key === 'coachTrust');
+    const nilChange = latestChanges.find((entry) => entry.key === 'valuation' || entry.key === 'followers');
+    if (rankChange) add('success', 'Depth-chart movement', `The verified role changed from ${rankChange.previous} to ${rankChange.current}; that promotion is now attached to this week's performance record.`);
+    else if (trustChange) add(trustChange.delta > 0 ? 'success' : 'warning', 'Coach Trust trend', `Coach Trust moved ${trustChange.delta > 0 ? 'up' : 'down'} ${Math.abs(trustChange.delta).toLocaleString()} from the previous published week.`);
+    if (nilChange) add(nilChange.delta > 0 ? 'success' : 'warning', 'NIL trajectory', `${nilChange.label} moved ${nilChange.delta > 0 ? 'up' : 'down'} ${Math.abs(nilChange.delta).toLocaleString()} this week and is now part of the permanent career trend.`);
+    if (numberOrZero(rtg.skillPoints) > 0) add('info', 'Development decision', `${numberOrZero(rtg.skillPoints)} verified skill point${numberOrZero(rtg.skillPoints) === 1 ? ' is' : 's are'} available. Record the next total after spending so the development change remains visible.`);
   }
 
   if (stage === CAREER_STAGES.OC || stage === CAREER_STAGES.HC) {
@@ -173,6 +183,7 @@ export const buildCommandCenter = (state = {}) => {
   const totals = gameTotals(seasonGames);
   const careerTotals = gameTotals(allGames);
   const rtg = state.rtg || {};
+  const rtgProgress = buildRtgProgress(state);
   const coach = state.coach || {};
   const player = state.player || {};
   const recruiting = state.recruiting || [];
@@ -323,8 +334,9 @@ export const buildCommandCenter = (state = {}) => {
     record: seasonRecord,
     metrics,
     panels,
-    advice: createAdvisor({ state, stage, seasonGames, totals, offers, topSchool }),
+    advice: createAdvisor({ state, stage, seasonGames, totals, offers, topSchool, rtgProgress }),
     recentGames: [...seasonGames].sort((left, right) => numberOrZero(right.week) - numberOrZero(left.week)).slice(0, 6),
+    rtgProgress,
     recentEvents: [...(state.careerChronicle || [])].sort((left, right) => (
       numberOrZero(right.season) - numberOrZero(left.season)
       || numberOrZero(right.week) - numberOrZero(left.week)

@@ -9,6 +9,7 @@ import {
   getCareerArchiveFacets,
   summarizeCareerArchive,
 } from '../domain/careerArchive';
+import { formatRtgDelta, formatRtgValue, hasRtgSnapshot, RTG_FIELDS } from '../domain/rtgProgress';
 
 const formatValue = (value) => {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -170,6 +171,32 @@ const CareerArchive = ({ state, onOpenNewsroom }) => {
                         </div>
                       ))}
                     </div>
+                  </section>
+                )}
+
+                {hasRtgSnapshot(selected.rtgSnapshot) && (
+                  <section className="rounded-xl border border-blue-500/20 bg-blue-950/10 p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">RTG Mechanics & NIL snapshot</h3>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Saved with this week</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {RTG_FIELDS.filter(({ key }) => selected.rtgSnapshot[key] !== undefined).map(({ key, label }) => {
+                        const change = selected.rtgChanges?.find((entry) => entry.key === key);
+                        return (
+                          <div key={key} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-600">{label}</div>
+                            <div className="mt-1 flex items-baseline gap-2">
+                              <span className="text-sm font-black text-white">{formatRtgValue(key, selected.rtgSnapshot[key])}</span>
+                              {change && <span className={`text-[10px] font-black ${change.kind === 'number' && change.delta < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{formatRtgDelta(change)}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!!selected.rtgChanges?.length && (
+                      <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-blue-300">{selected.rtgChanges.length} verified change{selected.rtgChanges.length === 1 ? '' : 's'} from the previous published week</p>
+                    )}
                   </section>
                 )}
 

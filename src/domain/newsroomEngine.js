@@ -73,6 +73,41 @@ const weekComparison = ({ previousGame, game, playerName }) => {
   return `${playerName}'s recorded total-yard output ${direction} by ${Math.abs(currentTotal - previousTotal)}, moving from ${previousTotal} against ${previousGame.opponent || 'the prior opponent'} to ${currentTotal} this week.`;
 };
 
+const rtgWeeklyContext = ({ rtg = {}, previousRtg = {}, currentKeys = new Set(), playerName }) => {
+  const verified = (key) => hasValue(rtg[key]) && currentKeys.has(`rtg.${key}`);
+  const keys = [];
+  const onField = (key) => {
+    keys.push(`rtg.${key}`);
+    return rtg[key];
+  };
+  const delta = (key) => verified(key) && hasValue(previousRtg[key])
+    ? numeric(rtg[key]) - numeric(previousRtg[key])
+    : null;
+  const signed = (value, money = false) => {
+    if (value === null || value === 0) return '';
+    const amount = `${value > 0 ? '+' : '−'}${Math.abs(value).toLocaleString()}`;
+    return ` (${money ? '$' : ''}${amount} this week)`;
+  };
+
+  const playerPieces = [];
+  if (verified('rank')) playerPieces.push(`${onField('rank')} on the depth chart`);
+  if (verified('coachTrust')) playerPieces.push(`${numeric(onField('coachTrust')).toLocaleString()} Coach Trust${signed(delta('coachTrust'))}`);
+  if (verified('gpa')) playerPieces.push(`a ${numeric(onField('gpa')).toFixed(1)} GPA`);
+  if (verified('energy')) playerPieces.push(`${numeric(onField('energy'))} energy`);
+  if (verified('skillPoints')) playerPieces.push(`${numeric(onField('skillPoints'))} available skill ${numeric(rtg.skillPoints) === 1 ? 'point' : 'points'}`);
+
+  const brandPieces = [];
+  if (verified('followers')) brandPieces.push(`${numeric(onField('followers')).toLocaleString()} followers${signed(delta('followers'))}`);
+  if (verified('valuation')) brandPieces.push(`a $${numeric(onField('valuation')).toLocaleString()} NIL valuation${signed(delta('valuation'), true)}`);
+
+  if (!playerPieces.length && !brandPieces.length) return null;
+  const sentences = [];
+  if (playerPieces.length) sentences.push(`Beyond the box score, ${playerName}'s verified RTG snapshot lists ${playerPieces.join(', ')}.`);
+  if (brandPieces.length) sentences.push(`The recorded brand footprint stands at ${brandPieces.join(' and ')}.`);
+  sentences.push('Those values now travel with the weekly game line, creating a permanent season-and-career progression record rather than a one-time status entry.');
+  return { paragraph: sentences.join(' '), keys };
+};
+
 const article = ({ outlet, headline, dek, paragraphs, citedFactKeys }) => ({
   id: outlet.id,
   outletId: outlet.id,
@@ -95,6 +130,8 @@ export const createNewsroomIssue = ({
   previousRecruiting = [],
   previousGames = [],
   quote = '',
+  rtg = {},
+  previousRtg = {},
   availableFactKeys = [],
   currentFactKeys = availableFactKeys,
   publishedAt,
@@ -138,6 +175,7 @@ export const createNewsroomIssue = ({
   const previousGame = priorSeasonGames[priorSeasonGames.length - 1];
   const seasonContext = seasonSummary({ games: currentSeasonGames, playerName });
   const comparisonContext = weekComparison({ previousGame, game: { ...(game || {}), week }, playerName });
+  const rtgContext = rtgWeeklyContext({ rtg, previousRtg, currentKeys, playerName });
 
   const totalYardsPhrase = totalYards == null ? 'a newly recorded statistical line' : `${totalYards} total yards`;
   const totalTouchdownPhrase = totalTD == null ? 'no complete touchdown total recorded' : `${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`;
@@ -174,9 +212,10 @@ export const createNewsroomIssue = ({
         `For the hometown record, Week ${week} belongs to a ${outcome} against ${opponent}${score ? `, recorded at ${score}` : ''}. ${playerName}'s performance gives Dearborn readers another concrete entry in a career that will be tracked one verified week at a time.`,
         `The individual line lists ${statLine(game || {})}. ${totalTD == null ? 'A complete touchdown total cannot be calculated from the fields on file.' : `That works out to ${totalTD} combined ${totalTD === 1 ? 'touchdown' : 'touchdowns'} through the air and on the ground.`}`,
         `${comparisonContext} The comparison is drawn only from appearances already preserved in the game log.`,
-        `The meaning of the night will sharpen as the season grows, but the Week ${week} entry already has a permanent place in ${playerName}'s career archive. Personal claims, private conversations, and recruiting speculation remain outside the story unless they are separately verified.`,
+        rtgContext?.paragraph
+          || `The meaning of the night will sharpen as the season grows, but the Week ${week} entry already has a permanent place in ${playerName}'s career archive. Personal claims, private conversations, and recruiting speculation remain outside the story unless they are separately verified.`,
       ],
-      citedFactKeys: gameKeys,
+      citedFactKeys: [...gameKeys, ...(rtgContext?.keys || [])],
     }),
     article({
       outlet: OUTLETS[2],
@@ -250,8 +289,8 @@ export const createNewsroomIssue = ({
     articles: groundedArticles,
     podcastBrief: {
       title: `${school} vs. ${opponent}: the verified Week ${week} briefing`,
-      summary: `${playerName}: ${statLine(game)}. ${leader ? `${leader.name} leads the saved recruiting board at ${numeric(leader.interest)}%.` : 'No recruiting leader is recorded.'}`,
-      citedFactKeys: [...new Set([...gameKeys, ...(leaderKey ? [leaderKey] : [])])].filter((key) => allowedKeys.has(key)),
+      summary: `${playerName}: ${statLine(game)}. ${rtgContext ? 'The weekly RTG and NIL snapshot is preserved with the performance.' : ''} ${leader ? `${leader.name} leads the saved recruiting board at ${numeric(leader.interest)}%.` : 'No recruiting leader is recorded.'}`.replace(/\s+/g, ' ').trim(),
+      citedFactKeys: [...new Set([...gameKeys, ...(rtgContext?.keys || []), ...(leaderKey ? [leaderKey] : [])])].filter((key) => allowedKeys.has(key)),
     },
   };
 };

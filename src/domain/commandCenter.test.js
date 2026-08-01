@@ -55,6 +55,22 @@ test('blank player mechanics never become false crisis warnings', () => {
   assert.equal(model.advice.some((item) => item.title === 'Academics pending'), true);
 });
 
+test('college model exposes weekly RTG and NIL progression with actionable trends', () => {
+  const state = baseState();
+  state.currentSeason = 2;
+  state.player.isCommitted = true;
+  state.player.college = 'Test University';
+  state.rtg = { ...state.rtg, gpa: 3.4, energy: 72, coachTrust: 1200, trustToNext: 1500, rank: 'QB2', followers: 4500, valuation: 12000, skillPoints: 2 };
+  state.weeklyUpdates = [
+    { id: 's2w1', season: 2, week: 1, careerPhase: 'Player', rtgSnapshot: { gpa: 3.4, energy: 80, coachTrust: 900, rank: 'QB3', followers: 3000, valuation: 9000 } },
+    { id: 's2w2', season: 2, week: 2, careerPhase: 'Player', rtgSnapshot: { gpa: 3.4, energy: 72, coachTrust: 1200, rank: 'QB2', followers: 4500, valuation: 12000 }, rtgChanges: [{ key: 'rank', label: 'Depth Chart', previous: 'QB3', current: 'QB2', delta: null, kind: 'text' }] },
+  ];
+  const model = buildCommandCenter(state);
+  assert.equal(model.rtgProgress.snapshots.length, 2);
+  assert.equal(model.rtgProgress.latest.valuation, 12000);
+  assert.equal(model.advice.some((item) => item.title === 'Depth-chart movement'), true);
+});
+
 test('OC model uses verified OC weekly updates before legacy game logs', () => {
   const state = baseState();
   state.careerPhase = 'OC';

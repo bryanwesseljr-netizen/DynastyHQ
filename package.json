@@ -7,14 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test src/domain/*.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.8",
     "@tailwindcss/vite": "^4.3.3",
     "firebase": "^12.16.0",
-    "firebaseui": "^6.1.0",
     "lucide-react": "^*",
+    "openai": "^7.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

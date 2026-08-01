@@ -1,0 +1,163 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createFailedScreenshotResult, normalizeScreenshotAnalysis } from './screenshotAnalysis.js';
+
+const recruiting = [
+  { id: 1, name: 'Test College A', interest: 0, level: 'None', offered: false },
+  { id: 2, name: 'Test University', interest: 0, level: 'None', offered: false },
+];
+
+test('normalizes supported AI facts into the weekly draft contract', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'screen-1',
+    fileName: 'week-1.png',
+    previewUrl: 'blob:preview',
+    recruiting,
+    analysis: {
+      screenTypes: ['box_score', 'rtg_recruiting'],
+      screenTitle: 'Game Summary',
+      summary: 'A completed game and recruiting update.',
+      facts: [
+        { key: 'game.opponent', label: 'Opponent', value: 'Test Opponent A', confidence: 0.97, evidence: 'FORDSON' },
+        { key: 'game.passYds', label: 'Passing yards', value: '287', confidence: 0.94, evidence: 'PASS YDS 287' },
+        { key: 'recruiting.interest', label: 'Interest', value: '91%', confidence: 0.9, evidence: '91%', schoolName: 'Test University' },
+        { key: 'recruiting.offer', label: 'Scholarship offer', value: 'true', confidence: 0.93, evidence: 'OFFER', schoolName: 'Test University' },
+      ],
+    },
+  });
+
+  assert.equal(result.gamePatch.opponent, 'Test Opponent A');
+  assert.equal(result.gamePatch.passYds, 287);
+  assert.deepEqual(result.recruitingPatches, [{
+    id: 2,
+    name: 'Test University',
+    interest: 91,
+    level: 'High',
+    offered: true,
+  }]);
+  assert.deepEqual(result.source.detectedTypes, ['Box Score', 'RTG Recruiting']);
+  assert.equal(result.source.previewUrl, 'blob:preview');
+});
+
+test('rejects unsupported and malformed values instead of inventing updates', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'screen-2',
+    fileName: 'bad.png',
+    recruiting,
+    analysis: {
+      screenTypes: ['unknown'],
+      facts: [
+        { key: 'game.passYds', label: 'Passing yards', value: 'maybe', confidence: 0.2, evidence: '' },
+        { key: 'recruiting.interest', label: 'Interest', value: '80', confidence: 0.8, evidence: '', schoolName: 'Unknown University' },
+        { key: 'invented.award', label: 'Award', value: 'Heisman', confidence: 1, evidence: '' },
+      ],
+    },
+  });
+
+  assert.deepEqual(result.gamePatch, {});
+  assert.deepEqual(result.recruitingPatches, []);
+  assert.deepEqual(result.facts, []);
+});
+
+test('represents a failed source without mutating any weekly fields', () => {
+  const result = createFailedScreenshotResult({
+    sourceId: 'screen-3',
+    fileName: 'failed.png',
+    message: 'Authentication failed',
+  });
+
+  assert.equal(result.source.error, 'Authentication failed');
+  assert.deepEqual(result.facts, []);
+  assert.deepEqual(result.gamePatch, {});
+  assert.deepEqual(result.coachPatch, {});
+});
+
+test('normalizes verified coach budget, roster, and prospect fields', () => {
+  const prospects = [
+    { id: 9, name: 'Test Prospect A', interest: 0, level: 'None', offered: false },
+  ];
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'screen-office',
+    fileName: 'program-office.png',
+    recruiting: prospects,
+    analysis: {
+      screenTypes: ['coach_recruiting', 'nil_budget', 'roster_management'],
+      screenTitle: 'Program Management',
+      summary: 'Visible recruiting, budget, and roster data.',
+      facts: [
+        { key: 'coach.dynastyPoints', label: 'Dynasty Points', value: '1,250', confidence: 0.97, evidence: 'Dynasty Points 1,250', schoolName: '' },
+        { key: 'coach.recruitingNIL', label: 'Recruiting NIL', value: '300', confidence: 0.95, evidence: 'Recruiting NIL 300', schoolName: '' },
+        { key: 'coach.rosterSize', label: 'Roster size', value: '82', confidence: 0.96, evidence: 'Roster 82', schoolName: '' },
+        { key: 'recruiting.position', label: 'Position', value: 'QB', confidence: 0.94, evidence: 'QB', schoolName: 'Test Prospect A' },
+        { key: 'recruiting.stars', label: 'Stars', value: '4', confidence: 0.93, evidence: '4 star', schoolName: 'Test Prospect A' },
+      ],
+    },
+  });
+
+  assert.deepEqual(result.coachPatch, { dynastyPoints: 1250, recruitingNIL: 300, rosterSize: 82 });
+  assert.deepEqual(result.recruitingPatches, [{ id: 9, name: 'Test Prospect A', position: 'QB', stars: 4 }]);
+  assert.deepEqual(result.source.detectedTypes, ['Coach Recruiting', 'NIL / Program Budget', 'Roster Management']);
+});
+
+test('creates a visible coach prospect from a screenshot without manual board entry', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'screen-new-prospect',
+    fileName: 'coach-board.png',
+    recruiting: [],
+    careerPhase: 'OC',
+    analysis: {
+      screenTypes: ['coach_recruiting'],
+      screenTitle: 'Recruiting Board',
+      summary: 'One visible offensive target.',
+      facts: [
+        { key: 'recruiting.position', label: 'Position', value: 'WR', confidence: 0.96, evidence: 'WR', schoolName: 'Test Prospect C' },
+        { key: 'recruiting.interest', label: 'Interest', value: '74', confidence: 0.94, evidence: '74%', schoolName: 'Test Prospect C' },
+      ],
+    },
+  });
+
+  assert.deepEqual(result.recruitingPatches, [{
+    id: 'prospect-test-prospect-c',
+    name: 'Test Prospect C',
+    position: 'WR',
+    interest: 74,
+    level: 'Medium',
+  }]);
+  assert.equal(result.facts[0].key, 'recruiting.prospect-test-prospect-c.position');
+});
+
+test('normalizes offseason roster needs and named retention decisions', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'screen-offseason',
+    fileName: 'retention.png',
+    recruiting: [],
+    retentionBoard: [],
+    careerPhase: 'HC',
+    analysis: {
+      screenTypes: ['roster_management', 'offseason_retention'],
+      screenTitle: 'Manage Roster',
+      summary: 'Visible position needs and one player decision.',
+      facts: [
+        { key: 'roster.qb.count', label: 'Quarterbacks', value: '3', confidence: 0.96, evidence: 'QB 3', schoolName: '', subjectName: '' },
+        { key: 'roster.qb.need', label: 'QB need', value: '1', confidence: 0.95, evidence: 'Need 1', schoolName: '', subjectName: '' },
+        { key: 'coach.openScholarships', label: 'Open scholarships', value: '8', confidence: 0.97, evidence: 'Open 8', schoolName: '', subjectName: '' },
+        { key: 'retention.position', label: 'Position', value: 'QB', confidence: 0.95, evidence: 'QB', schoolName: '', subjectName: 'Test Prospect F' },
+        { key: 'retention.overall', label: 'Overall', value: '84', confidence: 0.94, evidence: '84 OVR', schoolName: '', subjectName: 'Test Prospect F' },
+        { key: 'retention.risk', label: 'Transfer risk', value: 'High', confidence: 0.93, evidence: 'High risk', schoolName: '', subjectName: 'Test Prospect F' },
+      ],
+    },
+  });
+
+  assert.deepEqual(result.coachPatch, { openScholarships: 8 });
+  assert.deepEqual(result.retentionPatches, [{
+    id: 'player-test-prospect-f',
+    name: 'Test Prospect F',
+    position: 'QB',
+    overall: 84,
+    risk: 'High',
+  }]);
+  assert.equal(result.facts.some((entry) => entry.key === 'roster.qb.need'), true);
+  assert.equal(result.facts.some((entry) => entry.key === 'retention.player-test-prospect-f.risk'), true);
+  assert.deepEqual(result.source.detectedTypes, ['Roster Management', 'Roster Retention']);
+});

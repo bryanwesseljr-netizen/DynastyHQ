@@ -1,0 +1,88 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createNewsroomIssue } from './newsroomEngine.js';
+
+const baseFacts = [
+  'profile.player.name', 'profile.player.school', 'game.opponent', 'game.result',
+  'game.homeScore', 'game.awayScore', 'game.passYds', 'game.passTD',
+  'game.rushYds', 'game.rushTD', 'game.int', 'weekly.quote',
+  'recruiting.2.interest',
+];
+
+test('creates five outlet voices from only available facts', () => {
+  const issue = createNewsroomIssue({
+    publicationId: 'week-1',
+    season: 1,
+    week: 1,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School' },
+    game: { opponent: 'Test Opponent A', result: 'W', homeScore: 28, awayScore: 14, passYds: 250, passTD: 2, rushYds: 55, rushTD: 1, int: 0 },
+    recruiting: [
+      { id: 1, name: 'Test College A', interest: 95 },
+      { id: 2, name: 'Test University', interest: 80 },
+    ],
+    quote: 'We earned it.',
+    availableFactKeys: baseFacts,
+    publishedAt: '2026-07-31T12:00:00.000Z',
+  });
+
+  assert.equal(issue.articles.length, 5);
+  assert.ok(issue.articles.every((entry) => entry.groundingStatus === 'verified'));
+  assert.match(issue.articles[0].dek, /305 total yards/);
+  assert.match(issue.articles[2].headline, /Test University/);
+  assert.doesNotMatch(issue.articles[2].headline, /^Test College A leads/);
+});
+
+test('does not publish unverified recruiting interest as reporting', () => {
+  const issue = createNewsroomIssue({
+    publicationId: 'week-2',
+    season: 1,
+    week: 2,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School' },
+    game: { opponent: 'Test Opponent C', result: 'L', passYds: 180, passTD: 1, rushYds: 20, rushTD: 0, int: 2 },
+    recruiting: [{ id: 1, name: 'Test College A', interest: 95 }],
+    availableFactKeys: baseFacts.filter((key) => !key.startsWith('recruiting.')),
+    publishedAt: '2026-08-07T12:00:00.000Z',
+  });
+
+  const recruitingStory = issue.articles.find((entry) => entry.outletId === 'recruiting');
+  assert.match(recruitingStory.headline, /awaits its first verified movement/);
+  assert.doesNotMatch(JSON.stringify(recruitingStory), /95/);
+});
+
+test('film room explicitly avoids claims unsupported by charting data', () => {
+  const issue = createNewsroomIssue({
+    publicationId: 'week-3',
+    season: 1,
+    week: 3,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School' },
+    game: { opponent: 'Test Opponent D', result: 'W', passYds: 310, passTD: 4, rushYds: 42, rushTD: 0, int: 1 },
+    availableFactKeys: baseFacts,
+    publishedAt: '2026-08-14T12:00:00.000Z',
+  });
+
+  const filmRoom = issue.articles.find((entry) => entry.outletId === 'filmroom');
+  assert.match(filmRoom.paragraphs.join(' '), /No formation, coverage, pressure, or blocking claim/);
+  assert.doesNotMatch(filmRoom.paragraphs.join(' '), /Counter Trey|3-deep|0 Sacks/);
+});
+
+test('blank statistics remain unreported instead of becoming invented zeroes', () => {
+  const issue = createNewsroomIssue({
+    publicationId: 'week-4',
+    season: 1,
+    week: 4,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School' },
+    game: { opponent: 'Test Opponent E', result: 'W', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' },
+    availableFactKeys: ['profile.player.name', 'profile.player.school', 'game.opponent', 'game.result'],
+    publishedAt: '2026-08-21T12:00:00.000Z',
+  });
+
+  const combinedCopy = issue.articles.flatMap((entry) => [entry.headline, entry.dek, ...entry.paragraphs]).join(' ');
+  assert.match(combinedCopy, /No individual statistics were recorded/);
+  assert.doesNotMatch(combinedCopy, /0 passing yards|0 total yards/);
+  assert.ok(issue.articles.every((entry) => entry.groundingStatus === 'verified'));
+});

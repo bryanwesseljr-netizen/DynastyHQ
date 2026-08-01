@@ -1,22 +1,26 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-// Read from Vite environment variables (Vercel) or fall back to your config object
+export const appId = 'dynasty-hq';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
-  authDomain: "dynastyhq-a380c.firebaseapp.com",
-  projectId: "dynastyhq-a380c",
-  storageBucket: "dynastyhq-a380c.firebasestorage.app",
-  messagingSenderId: "567349041343",
-  appId: "1:567349041343:web:31b73897044b148ce64e0a"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-console.log("Vercel Env Check:", {
-  hasApiKey: Boolean(firebaseConfig.apiKey),
-  projectId: firebaseConfig.projectId
-});
+const missingFirebaseConfig = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
 
-const app = initializeApp(firebaseConfig);
+if (missingFirebaseConfig.length) {
+  throw new Error(`Missing Firebase configuration: ${missingFirebaseConfig.join(', ')}`);
+}
 
-// 2. ADD THIS LINE TO THE VERY BOTTOM!
-export const auth = getAuth(app);
+export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const auth = getAuth(firebaseApp);
+export const db = getFirestore(firebaseApp);

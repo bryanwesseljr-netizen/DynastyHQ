@@ -1,198 +1,100 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Home, Newspaper, Map, Trophy, Target, 
-  Settings, Play, Save, Activity, Zap, 
+  Settings, Save, Activity, Zap,
   MessageSquare, Star, BarChart2, ShieldCheck,
-  Search, Award, UserCircle, User, UploadCloud, Loader2,
+  Search, Award, User, UploadCloud, Loader2,
   Headphones, Mic, Radio, GraduationCap, Battery,
   HeartPulse, Briefcase, DollarSign, Users, AlertTriangle,
-  Camera, CheckCircle, Plus, Trash2, Medal, Check, X,
+  Camera, CheckCircle, Plus, Trash2, Medal, X,
   Calendar, Megaphone, TrendingUp, GripVertical, FileText, CheckCircle2, Pencil, ScanLine,
-  Share2, Mail, Quote, ClipboardSignature, Printer, Copy, BookOpen
+  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen
 } from 'lucide-react';
 
-// Custom replacements for brand icons removed in lucide-react v1
-const Twitter = (props) => (
-  <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
-);
-const Facebook = (props) => (
-  <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-);
-
 // --- FIREBASE CLOUD DATABASE IMPORTS ---
-import { initializeApp } from 'firebase/app';
 import { 
-  getAuth, 
   signInAnonymously, 
   onAuthStateChanged, 
   signOut, 
+  signInWithCustomToken,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   EmailAuthProvider, 
   linkWithCredential 
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { appId, auth, db } from './firebase';
+import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
+import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
+import { CAREER_STAGES, deriveCareerStage } from './domain/commandCenter';
+import {
+  createEmptyScanDraft,
+  createPublishedWeek,
+  createWeekKey,
+  findPublishedWeekConflict,
+  getWeeklyCompleteness,
+  mergeScanResult,
+  migrateCareerState,
+  removeScanDraftFact,
+  updateScanDraftFact,
+  updateScanDraftWeekType,
+  verifyScanDraftFact,
+  WEEK_TYPES,
+} from './domain/weeklyEngine';
+import {
+  createWeeklyDraftRecoveryRecord,
+  inspectWeeklyDraftRecovery,
+} from './domain/weeklyDraftRecovery';
+import {
+  createFailedScreenshotResult,
+  normalizeScreenshotAnalysis,
+} from './domain/screenshotAnalysis';
+import { analyzeScreenshot } from './services/screenshotClient';
+import {
+  clearWeeklyDraftRecord,
+  loadWeeklyDraftRecord,
+  saveWeeklyDraftRecord,
+} from './services/weeklyDraftStorage';
+import {
+  createCareerMilestone,
+  findMilestoneConflict,
+  MILESTONE_TYPES,
+} from './domain/milestoneEngine';
+import {
+  buildPodcastGenerationPayload,
+  findPodcastEpisode,
+  markPodcastAudioReady,
+  normalizeGeneratedPodcast,
+  upsertPodcastEpisode,
+} from './domain/podcastEngine';
+import { generatePodcastScript, synthesizePodcastSegment } from './services/podcastClient';
+import {
+  loadPodcastAudioCloud,
+  loadPodcastAudioLocal,
+  loadPublicPodcastAudio,
+  savePodcastAudioCloud,
+  savePodcastAudioLocal,
+  savePublicPodcastAudio,
+} from './services/podcastAudioStorage';
+import { compressImage } from './services/imageCompression';
+import {
+  clearLegacyPodcastAudioLocal,
+  loadLegacyPodcastAudioCloud,
+  loadLegacyPodcastAudioLocal,
+  saveLegacyPodcastAudioCloud,
+  saveLegacyPodcastAudioLocal,
+} from './services/legacyPodcastAudioStorage';
 
-// --- FIREBASE CLOUD DATABASE SETUP ---
-let app, auth, db;
-let appId = 'dynasty-hq';
+const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));
+const GroundedNewsroom = lazy(() => import('./components/GroundedNewsroom'));
+const CareerArchive = lazy(() => import('./components/CareerArchive'));
+const MilestoneRecorder = lazy(() => import('./components/MilestoneRecorder'));
+const CareerCommandCenter = lazy(() => import('./components/CareerCommandCenter'));
+const PersonnelCfoWorkspace = lazy(() => import('./components/PersonnelCfoWorkspace'));
+const OffseasonPlanner = lazy(() => import('./components/OffseasonPlanner'));
+const PodcastStudio = lazy(() => import('./components/PodcastStudio'));
 
-const YOUR_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDvBnbeXZewEh90gHY6_PPdieg5LQ4M1rs",
-  authDomain: "dynastyhq-a380c.firebaseapp.com",
-  projectId: "dynastyhq-a380c",
-  storageBucket: "dynastyhq-a380c.firebasestorage.app",
-  messagingSenderId: "567349041343",
-  appId: "1:567349041343:web:31b73897044b148ce64e0a"
-};
-
-try {
-  app = initializeApp(YOUR_FIREBASE_CONFIG);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  console.log("Firebase Connected Successfully!");
-} catch (e) {
-  console.error("Firebase init error:", e);
-}
-
-// ... (The rest of your code, like loadTesseract, continues below here) ...
-
-// --- DYNAMIC SCRIPT LOADER FOR OCR ---
-const loadTesseract = () => {
-  return new Promise((resolve, reject) => {
-    if (window.Tesseract) {
-      resolve(window.Tesseract);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    script.async = true;
-    script.onload = () => resolve(window.Tesseract);
-    script.onerror = () => reject(new Error("Failed to load Tesseract"));
-    document.head.appendChild(script);
-  });
-};
-
-// Example: 
-// const YOUR_FIREBASE_CONFIG = { apiKey: "AIzaSy...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
-
-try {
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : YOUR_FIREBASE_CONFIG;
-  if (typeof __app_id !== 'undefined') appId = __app_id;
-  
-  if (firebaseConfig && firebaseConfig.apiKey) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-  } else {
-    console.warn("Firebase configuration keys are missing.");
-  }
-} catch (e) {
-  console.error("Firebase init error", e);
-}
-
-// --- IMAGE COMPRESSION UTILITY ---
-const compressImage = (file, maxWidth = 800) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scaleSize = maxWidth / img.width;
-        canvas.width = maxWidth;
-        canvas.height = img.height * scaleSize;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6));
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-};
-
-// --- LOCAL AUDIO STORAGE (IndexedDB) ---
-const DB_NAME = "DynastyHQAudioDB";
-const STORE_NAME = "audioStore";
-
-const initAudioDB = () => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-};
-
-const saveAudioLocal = async (audioData) => {
-  try {
-    const db = await initAudioDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(audioData, 'podcastAudio');
-  } catch (err) { console.error("Local Audio Save Error", err); }
-};
-
-const loadAudioLocal = async () => {
-  try {
-    const db = await initAudioDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const request = tx.objectStore(STORE_NAME).get('podcastAudio');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  } catch (err) { return null; }
-};
-
-const clearAudioLocal = async () => {
-    try {
-        const db = await initAudioDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).delete('podcastAudio');
-    } catch (err) {}
-};
-
-// --- FIRESTORE CHUNKING SYSTEM FOR LARGE AUDIO FILES ---
-const saveAudioToCloud = async (db, appId, userId, base64Audio) => {
-    try {
-        const audioCollRef = collection(db, 'artifacts', appId, 'users', userId, 'hq_audio');
-        const snapshot = await getDocs(audioCollRef);
-        const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
-        await Promise.all(deletePromises);
-        if (!base64Audio) return;
-        
-        const chunkSize = 750000; 
-        const numChunks = Math.ceil(base64Audio.length / chunkSize);
-        const savePromises = [];
-        for (let i = 0; i < numChunks; i++) {
-            const chunk = base64Audio.substring(i * chunkSize, (i + 1) * chunkSize);
-            const chunkRef = doc(db, 'artifacts', appId, 'users', userId, 'hq_audio', `chunk_${i}`);
-            savePromises.push(setDoc(chunkRef, { data: chunk, index: i }));
-        }
-        await Promise.all(savePromises);
-    } catch (e) {
-        console.error("Audio chunking error:", e);
-        throw e;
-    }
-};
-
-const loadAudioFromCloud = async (db, appId, userId) => {
-    try {
-        const audioCollRef = collection(db, 'artifacts', appId, 'users', userId, 'hq_audio');
-        const snapshot = await getDocs(audioCollRef);
-        if (snapshot.empty) return null;
-        
-        const chunks = snapshot.docs.map(doc => doc.data()).sort((a, b) => a.index - b.index);
-        return chunks.map(c => c.data).join('');
-    } catch (e) {
-        console.error("Audio load error:", e);
-        return null;
-    }
-};
+const publicationLocks = new Set();
 
 const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -201,6 +103,8 @@ const App = () => {
 
   const [activeTab, setActiveTab] = useState(isReadOnly ? 'dashboard' : 'dataEntry');
   const [newsTheme, setNewsTheme] = useState('scouting');
+  const [newsroomFocusId, setNewsroomFocusId] = useState('');
+  const [podcastFocusId, setPodcastFocusId] = useState('');
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isHouseRulesModalOpen, setIsHouseRulesModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -209,14 +113,18 @@ const App = () => {
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
   
-  // OCR & Upload States
+  // Screenshot analysis & upload states
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [scanDraft, setScanDraft] = useState(null);
+  const [appliedScanDraft, setAppliedScanDraft] = useState(null);
   const fileInputRef = useRef(null);
   const audioLoadedRef = useRef(false);
+  const draftRecoveryOwnerRef = useRef(null);
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadedOwnerId, setLoadedOwnerId] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   // Auth States
@@ -227,48 +135,12 @@ const App = () => {
 
   const valOrEmpty = (v) => (v === null || v === undefined || Number.isNaN(v)) ? '' : v;
 
-  // --- DEFAULT STATE ---
-  const defaultState = {
-    careerPhase: 'Player', // 'Player', 'OC', 'HC'
-    player: { 
-      name: 'Bryan Wessel', pos: 'QB', number: '#2', school: 'Edsel Ford High', 
-      height: "6'1\"", weight: '198 lbs',
-      stars: 3, overall: 70, archetype: 'Dual-Threat', nationalQbRank: 87,
-      headshot: 'https://i.imgur.com/GUsMIVs.jpeg',
-      isCommitted: false, college: ''
-    },
-    coach: {
-      prestige: 'C+', security: 85, contractRemaining: 3, contractYear: 1, budget: 1500, almaMaterStatus: 'Stable'
-    },
-    currentSeason: 1, currentWeek: 1, playoffPicture: "", gameLogs: [],
-    recruiting: [
-      { id: 1, name: 'Michigan', level: 'None', interest: 0, offered: false, customOrder: 1 },
-      { id: 2, name: 'Eastern Michigan', level: 'None', interest: 0, offered: false, customOrder: 2 },
-      { id: 3, name: 'Cincinnati', level: 'None', interest: 0, offered: false, customOrder: 3 },
-      { id: 4, name: 'Iowa State', level: 'None', interest: 0, offered: false, customOrder: 4 },
-      { id: 5, name: 'Central Michigan', level: 'None', interest: 0, offered: false, customOrder: 5 }
-    ],
-    rtg: {
-      gpa: 0, energy: 0, coachTrust: 0, trustToNext: 0, rank: '',
-      skillPoints: 0, followers: 0, valuation: 0, sponsorships: '',
-      wear: { arm: 'Green', legs: 'Green', chest: 'Green', head: 'Green' }
-    },
-    latestQuote: "We executed our script when it counted most. Just trying to stack wins.",
-    outletImages: {
-      broadsheet: 'https://i.imgur.com/OrmuBb1.jpeg', 
-      on3: 'https://i.imgur.com/03AsLq6.jpeg',       
-      local: 'https://i.imgur.com/uDOaqfM.jpeg',      
-      filmroom: 'https://i.imgur.com/7n4Pd1F.jpeg',   
-      podcast: 'https://i.imgur.com/hkKAzZC.jpeg'     
-    }, 
-    trophies: [], rumors: [], podcastAudio: '', hasCloudAudio: false
-  };
+  const defaultState = DEFAULT_CAREER_STATE;
   const [appState, setAppState] = useState(defaultState);
   const [newGame, setNewGame] = useState({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
   const [rtgUpdate, setRtgUpdate] = useState(defaultState.rtg);
   const [coachUpdate, setCoachUpdate] = useState(defaultState.coach);
   const [newRumor, setNewRumor] = useState("");
-  const [newTrophy, setNewTrophy] = useState({ name: '', year: 'Senior Year', type: 'Award' });
   const [editingGameIndex, setEditingGameIndex] = useState(null);
   const [dragEnabledId, setDragEnabledId] = useState(null);
   const [bulkAddText, setBulkAddText] = useState("");
@@ -277,18 +149,11 @@ const App = () => {
 
   // --- FIREBASE AUTHENTICATION LOGIC ---
   useEffect(() => {
-    if (!auth) {
-      console.warn("Firebase Auth not initialized. Loading local/default state.");
-      setAppState(defaultState);
-      setIsLoaded(true);
-      setIsAuthenticating(false);
-      return;
-    }
-
     const initAuth = async () => {
       // Only auto-login in the AI Sandbox environment
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        try { await signInWithCustomToken(auth, __initial_auth_token); } catch (err) { console.error(err); }
+      const initialAuthToken = globalThis.__initial_auth_token;
+      if (initialAuthToken) {
+        try { await signInWithCustomToken(auth, initialAuthToken); } catch (error) { console.error(error); }
       }
     };
     initAuth();
@@ -296,6 +161,7 @@ const App = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUserState(user);
       setIsAuthenticating(false);
+      if (!user) setIsLoaded(true);
     });
     return () => unsubscribe();
   }, []);
@@ -337,6 +203,10 @@ const App = () => {
   const handleLogout = () => {
     signOut(auth);
     setAppState(defaultState);
+    setScanDraft(null);
+    setAppliedScanDraft(null);
+    setLoadedOwnerId(null);
+    draftRecoveryOwnerRef.current = null;
   };
 
   // --- FIREBASE CLOUD DATA FETCHING ---
@@ -348,7 +218,7 @@ const App = () => {
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', viewId);
         const unsubscribe = onSnapshot(docRef, async (docSnap) => {
             if (docSnap.exists()) {
-                const cloudData = docSnap.data();
+                const cloudData = migrateCareerState(docSnap.data(), defaultState);
                 if (!cloudData.careerPhase) cloudData.careerPhase = 'Player';
                 if (!cloudData.coach) cloudData.coach = defaultState.coach;
                 if (!cloudData.player.stars) cloudData.player.stars = 3;
@@ -382,20 +252,17 @@ const App = () => {
                 setMessageModal({ isOpen: true, text: "Shared dynasty not found.", type: 'error' });
             }
             setIsLoaded(true);
-        }, (error) => { setIsLoaded(true); });
+        }, () => { setIsLoaded(true); });
         return () => unsubscribe();
     }
 
     // --- OWNER PRIVATE FETCH (Requires Auth) ---
-    if (!userState) {
-        setIsLoaded(true);
-        return;
-    }
+    if (!userState) return;
 
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
-        const cloudData = docSnap.data();
+        const cloudData = migrateCareerState(docSnap.data(), defaultState);
         if (!cloudData.careerPhase) cloudData.careerPhase = 'Player';
         if (!cloudData.coach) cloudData.coach = defaultState.coach;
         if (!cloudData.player.stars) cloudData.player.stars = 3;
@@ -407,7 +274,7 @@ const App = () => {
 
         if (cloudData.hasCloudAudio && !audioLoadedRef.current) {
             audioLoadedRef.current = true;
-            loadAudioFromCloud(db, appId, userState.uid).then(base64 => {
+            loadLegacyPodcastAudioCloud({ db, appId, userId: userState.uid }).then(base64 => {
                 if (base64) setAppState(prev => ({ ...prev, podcastAudio: base64 }));
             });
         }
@@ -421,22 +288,83 @@ const App = () => {
         setRtgUpdate(cloudData.rtg || defaultState.rtg);
         setCoachUpdate(cloudData.coach || defaultState.coach);
       } else {
-        const localAudio = await loadAudioLocal();
+        const localAudio = await loadLegacyPodcastAudioLocal();
         const freshState = { ...defaultState, podcastAudio: localAudio || '' };
         setDoc(docRef, freshState).catch(console.error);
         setAppState(freshState);
         setRtgUpdate(freshState.rtg);
         setCoachUpdate(freshState.coach);
       }
+      setLoadedOwnerId(userState.uid);
       setIsLoaded(true);
-    }, (error) => { setIsLoaded(true); });
+    }, () => { setIsLoaded(true); });
     
     return () => unsubscribe();
-  }, [userState, db, isReadOnly, viewId]);
+  }, [userState, isReadOnly, viewId, defaultState]);
+
+  // Recover only the signed-in owner's unfinished current-week draft. Screenshot
+  // previews are intentionally omitted from local storage to avoid browser quota failures.
+  useEffect(() => {
+    if (isReadOnly || !userState || !isLoaded || loadedOwnerId !== userState.uid) return;
+    if (draftRecoveryOwnerRef.current === userState.uid) return;
+    draftRecoveryOwnerRef.current = userState.uid;
+
+    const record = loadWeeklyDraftRecord(userState.uid);
+    const recovery = inspectWeeklyDraftRecovery({ record, ownerId: userState.uid, state: appState });
+    if (recovery.status === 'recoverable') {
+      const recoveredScan = recovery.record.scanDraft
+        ? { ...recovery.record.scanDraft, recoveredAt: new Date().toISOString() }
+        : null;
+      const recoveredApplied = recovery.record.appliedScanDraft
+        ? { ...recovery.record.appliedScanDraft, recoveredAt: new Date().toISOString() }
+        : null;
+      const recoveryTimer = window.setTimeout(() => {
+        setScanDraft(recoveredScan);
+        setAppliedScanDraft(recoveredApplied);
+        if (recovery.record.newGame) setNewGame(recovery.record.newGame);
+        if (recovery.record.rtgUpdate) setRtgUpdate(recovery.record.rtgUpdate);
+        if (recovery.record.coachUpdate) setCoachUpdate(recovery.record.coachUpdate);
+        setMessageModal({ isOpen: true, text: `Recovered your unfinished Season ${recoveredApplied?.season || recoveredScan?.season}, Week ${recoveredApplied?.week || recoveredScan?.week} update.`, type: 'success' });
+        setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 4000);
+      }, 0);
+      return () => window.clearTimeout(recoveryTimer);
+    }
+    if (record) clearWeeklyDraftRecord(userState.uid);
+  }, [appState, isLoaded, isReadOnly, loadedOwnerId, userState]);
+
+  useEffect(() => {
+    if (isReadOnly || !userState || loadedOwnerId !== userState.uid) return;
+    if (draftRecoveryOwnerRef.current !== userState.uid) return;
+    const record = createWeeklyDraftRecoveryRecord({
+      ownerId: userState.uid,
+      scanDraft,
+      appliedScanDraft,
+      newGame,
+      rtgUpdate,
+      coachUpdate,
+    });
+    if (record) saveWeeklyDraftRecord(userState.uid, record);
+    else clearWeeklyDraftRecord(userState.uid);
+  }, [appliedScanDraft, coachUpdate, isReadOnly, loadedOwnerId, newGame, rtgUpdate, scanDraft, userState]);
 
   const updateAppState = (newStateOrUpdater, successMessage = null) => {
     setAppState((prev) => {
-      const newState = typeof newStateOrUpdater === 'function' ? newStateOrUpdater(prev) : newStateOrUpdater;
+      let newState;
+      try {
+        newState = typeof newStateOrUpdater === 'function' ? newStateOrUpdater(prev) : newStateOrUpdater;
+      } catch (error) {
+        const text = error.code === 'DUPLICATE_WEEK'
+          ? 'That season and week has already been published. The duplicate was blocked.'
+          : (error.code === 'DUPLICATE_MILESTONE'
+            ? 'That career milestone is already in the Chronicle. The duplicate was blocked.'
+          : (error.code === 'STALE_WEEK'
+            ? 'This draft belongs to an older week and cannot overwrite the current career week.'
+            : (error.code === 'INVALID_MILESTONE'
+              ? 'The milestone is incomplete and was not published.'
+              : 'The update could not be published. Your draft is still available.')));
+        setMessageModal({ isOpen: true, text, type: 'error' });
+        return prev;
+      }
       if (userState && db) {
         const cloudState = { ...newState };
         if (cloudState.podcastAudio && cloudState.podcastAudio.startsWith('data:audio')) {
@@ -453,7 +381,7 @@ const App = () => {
                setMessageModal({ isOpen: true, text: successMessage, type: 'success' });
                setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
             }
-          }).catch(err => {
+          }).catch(() => {
              setMessageModal({ isOpen: true, text: "Error syncing to cloud.", type: 'error' });
              setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
           });
@@ -463,7 +391,9 @@ const App = () => {
   };
 
   // --- DERIVED STATS ---
-  const isCoach = appState.careerPhase === 'OC' || appState.careerPhase === 'HC';
+  const isCoach = ['OC', 'HC', 'Retired'].includes(appState.careerPhase);
+  const careerStage = deriveCareerStage(appState);
+  const appliedCompleteness = appliedScanDraft ? getWeeklyCompleteness(appliedScanDraft) : null;
   const totals = appState.gameLogs.reduce((acc, game) => {
     acc.passYds += Number(game.passYds || 0);
     acc.passTD += Number(game.passTD || 0);
@@ -476,149 +406,139 @@ const App = () => {
   const wins = appState.gameLogs.filter(g => g.result === 'W' && (g.season || 1) === (appState.currentSeason || 1)).length;
   const losses = appState.gameLogs.filter(g => g.result === 'L' && (g.season || 1) === (appState.currentSeason || 1)).length;
   const totalOffers = appState.recruiting.filter(s => s.offered).length;
-  
   const activeSchools = appState.recruiting.filter(s => s.interest > 0 && s.level !== 'None');
-  const hasActiveRecruiting = activeSchools.length > 0;
-  const topSchool = [...activeSchools].sort((a, b) => (Number(b.interest) || 0) - (Number(a.interest) || 0))[0] || { name: 'Unknown', interest: 0 };
   
   const gamesPlayed = appState.gameLogs.length;
-  const currentSeason = appState.currentSeason || 1;
-  const currentSeasonGames = appState.gameLogs.filter(g => (g.season || 1) === currentSeason);
-  const priorGames = appState.gameLogs.filter(g => (g.season || 1) < currentSeason);
-  const isPreseason = currentSeasonGames.length === 0;
-  const hasPriorHistory = priorGames.length > 0;
-  const priorPassYds = priorGames.reduce((acc, g) => acc + Number(g.passYds || 0), 0);
-  const priorTDs = priorGames.reduce((acc, g) => acc + Number(g.passTD || 0) + Number(g.rushTD || 0), 0);
 
   // --- BACKGROUND ENGINE ---
   const getBgImage = () => {
     switch(activeTab) {
       case 'dashboard': return 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80'; 
+      case 'frontOffice': return 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1920&q=80';
+      case 'offseason': return 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1920&q=80';
       case 'recruiting': return 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1920&q=80'; 
       case 'newsroom': return 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1920&q=80'; 
+      case 'podcast': return 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=1920&q=80';
       case 'trophies': return 'https://images.unsplash.com/photo-1587280590050-1d99ce697928?auto=format&fit=crop&w=1920&q=80'; 
       case 'dataEntry': return 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1920&q=80'; 
       case 'settings': return 'https://images.unsplash.com/photo-1518063319808-88e89f8d16d0?auto=format&fit=crop&w=1920&q=80'; 
-      default: return 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
-      return appState.bgDashboard || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
-  
+      default: return appState.bgDashboard || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
     }
   };
 
-  // --- OCR / AUTO-SCAN ENGINE ---
+  // --- SECURE SCREENSHOT ANALYSIS ENGINE ---
   const handleUniversalScan = async (e) => {
     const targetInput = e.target;
-    const file = targetInput.files[0];
-    if (!file) return;
+    const files = [...targetInput.files];
+    if (!files.length) return;
     setIsScanning(true);
     setScanProgress(0);
     try {
-      const TesseractAPI = await loadTesseract();
-      const compressedImage = await compressImage(file, 1200); 
-      
-      TesseractAPI.recognize(
-        compressedImage, 'eng',
-        { logger: m => { if (m.status === 'recognizing text') setScanProgress(Math.round(m.progress * 100)); } }
-      ).then(({ data: { text } }) => {
-        
-        let parsedGame = { ...newGame };
-        let parsedRtg = { ...rtgUpdate };
-        let parsedRecruiting = [...appState.recruiting];
-        
-        let detectedTypes = [];
-        let doRecruitingUpdate = false;
-        
-        const textLower = text.toLowerCase();
-        if (/pass[ing]?\s*y[ar]*ds?/i.test(text) || /rush[ing]?\s*y[ar]*ds?/i.test(text) || /int[erceptions]?/i.test(text)) {
-           detectedTypes.push("Box Score");
-           const extractNumber = (regexString) => { const regex = new RegExp(regexString, 'i'); const match = text.match(regex); return match ? parseInt(match[1]) : ''; };
-           parsedGame.passYds = extractNumber(/pass[ing]?\s*y[ar]*ds?[\s:]*(\d+)/i) || parsedGame.passYds;
-           parsedGame.passTD = extractNumber(/pass[ing]?\s*tds?[\s:]*(\d+)/i) || parsedGame.passTD;
-           parsedGame.rushYds = extractNumber(/rush[ing]?\s*y[ar]*ds?[\s:]*(\d+)/i) || parsedGame.rushYds;
-           parsedGame.rushTD = extractNumber(/rush[ing]?\s*tds?[\s:]*(\d+)/i) || parsedGame.rushTD;
-           parsedGame.int = extractNumber(/int[erceptions]*[\s:]*(\d+)/i) || parsedGame.int;
-           setNewGame(parsedGame);
-        }
-        if (!isCoach && (/gpa/i.test(text) || /energy/i.test(text) || /trust/i.test(text) || /wear/i.test(text))) {
-           detectedTypes.push("Player Mechanics");
-           const extractFloat = (regexString) => { const regex = new RegExp(regexString, 'i'); const match = text.match(regex); return match ? parseFloat(match[1]) : ''; };
-           const extractInt = (regexString) => { const regex = new RegExp(regexString, 'i'); const match = text.match(regex); return match ? parseInt(match[1].replace(/,/g, '')) : ''; };
-           const extractWear = (part) => {
-              const regex = new RegExp(`${part}[\\s:]*(green|yellow|red)`, 'i');
-              const match = text.match(regex);
-              if (match) { const status = match[1].toLowerCase(); return status.charAt(0).toUpperCase() + status.slice(1); }
-              return parsedRtg.wear?.[part] || 'Green';
-           };
-           parsedRtg.gpa = extractFloat(/gpa[\s:]*(\d+\.\d+)/i) || parsedRtg.gpa;
-           parsedRtg.energy = extractInt(/energy[\s:]*(\d+)/i) || parsedRtg.energy;
-           parsedRtg.coachTrust = extractInt(/coach\s*trust[\s:]*(\d+)/i) || parsedRtg.coachTrust;
-           parsedRtg.skillPoints = extractInt(/skill\s*points?[\s:]*(\d+)/i) || parsedRtg.skillPoints;
-           parsedRtg.wear = { ...(parsedRtg.wear || {}), head: extractWear('head'), chest: extractWear('chest'), arm: extractWear('arm'), legs: extractWear('legs') };
-           if(/followers?/i.test(text)) parsedRtg.followers = extractInt(/followers?[\s:]*(\d+)/i) || parsedRtg.followers;
-           if(/valuation|\$/i.test(text)) parsedRtg.valuation = extractInt(/(?:valuation|\$)[\s:]*(\d+)/i) || parsedRtg.valuation;
-           setRtgUpdate(parsedRtg);
-        }
-        
-        const existingNames = parsedRecruiting.map(s => s.name.toLowerCase()).filter(n => n.length > 2);
-        const hasExistingSchool = existingNames.some(n => textLower.includes(n));
-        const isRecruitingBoard = /(interest|%|school|top|pipeline|offer|scout|target|board|commit|michigan|state|tech|university|college|ovr)/i.test(text) || /^(?:[1-9]|10|11|12|13|14|15)[\.\)\-\s]+[A-Z]/m.test(text);
-        
-        if (hasExistingSchool || isRecruitingBoard) {
-            detectedTypes.push("Recruiting Board");
-            doRecruitingUpdate = true;
-            parsedRecruiting = parsedRecruiting.map(school => {
-                const escapeRegex = (s) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                const regex = new RegExp(`${escapeRegex(school.name)}[^0-9]*(\\d{1,3})`, 'i');
-                const match = text.match(regex);
-                if (match) {
-                    let val = parseInt(match[1]);
-                    if (val <= 100) {
-                        let newLevel = school.level;
-                        if (val >= 75) newLevel = 'High'; else if (val >= 50) newLevel = 'Medium'; else if (val >= 25) newLevel = 'Low'; else newLevel = 'None';
-                        return { ...school, interest: val, level: newLevel };
-                    }
-                }
-                return school;
-            });
-            const lines = text.split('\n');
-            lines.forEach(line => {
-                let cleanLine = line.trim().replace(/^[^a-zA-Z0-9]+/, ''); 
-                const match = cleanLine.match(/^(?:(?:[1-9]|10|11|12|13|14|15)[\.\)\-\s]+)?([A-Za-z][A-Za-z\s&]{2,25})(?:[^0-9a-zA-Z]*(\d{1,3})\s*%?)?/);
-                if (match) {
-                    const name = match[1].trim();
-                    const interest = match[2] ? parseInt(match[2]) : null;
-                    const invalidWords = ['pass', 'rush', 'energy', 'gpa', 'trust', 'wear', 'followers', 'commit', 'target', 'board', 'pipeline', 'total', 'season', 'interest', 'schools', 'ovr', 'pos', 'menu', 'options', 'defense', 'offense', 'overall'];
-                    const isInvalid = invalidWords.some(w => name.toLowerCase().includes(w));
-                    if (name.length > 3 && !isInvalid) {
-                        const exists = parsedRecruiting.some(s => s.name.toLowerCase() === name.toLowerCase());
-                        if (!exists) {
-                            let newLevel = 'None'; let finalInt = 10;
-                            if (interest && interest <= 100) {
-                                finalInt = interest;
-                                if (interest >= 75) newLevel = 'High'; else if (interest >= 50) newLevel = 'Medium'; else if (interest >= 25) newLevel = 'Low';
-                            }
-                            parsedRecruiting.push({ id: Date.now() + Math.random(), name: name, level: newLevel, interest: finalInt, offered: false });
-                        }
-                    }
-                }
-            });
-        }
-        if (doRecruitingUpdate) updateAppState(prev => ({ ...prev, recruiting: parsedRecruiting }));
-        
-        if (detectedTypes.length > 0) {
-            setMessageModal({ isOpen: true, text: `Scanned Data: ${detectedTypes.join(', ')}. Review inputs.`, type: 'success' });
-        } else {
-            setMessageModal({ isOpen: true, text: `No recognizable data found in image.`, type: 'error' });
-        }
-        setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 4000);
-      }).catch(err => {
-        setMessageModal({ isOpen: true, text: "Error scanning image. Please input manually.", type: 'error' });
-        setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 3000);
-      }).finally(() => {
-        setIsScanning(false);
-        targetInput.value = ''; 
+      if (!userState) throw new Error('Sign in before analyzing screenshots.');
+      const idToken = await userState.getIdToken();
+      let nextDraft = createEmptyScanDraft({
+        season: appState.currentSeason,
+        week: appState.currentWeek,
+        careerPhase: appState.careerPhase,
+        isCommitted: appState.player.isCommitted,
       });
-    } catch (err) { setIsScanning(false); targetInput.value = ''; }
+
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const sourceId = `${Date.now()}-${index}`;
+        const compressedImage = await compressImage(file);
+        setScanProgress(Math.round(((index + 0.25) / files.length) * 100));
+
+        try {
+          const { analysis } = await analyzeScreenshot({
+            idToken,
+            imageDataUrl: compressedImage,
+            fileName: file.name,
+            careerPhase: appState.careerPhase,
+            player: appState.player,
+            recruitingSchools: appState.recruiting.map(({ name }) => ({ name })),
+            rosterPlayers: (appState.retentionBoard || []).map(({ name }) => ({ name })),
+          });
+          const result = normalizeScreenshotAnalysis({
+            analysis,
+            sourceId,
+            fileName: file.name,
+            previewUrl: compressedImage,
+            recruiting: appState.recruiting,
+            retentionBoard: appState.retentionBoard || [],
+            careerPhase: appState.careerPhase,
+          });
+          nextDraft = mergeScanResult(nextDraft, result);
+        } catch (error) {
+          nextDraft = mergeScanResult(nextDraft, createFailedScreenshotResult({
+            sourceId,
+            fileName: file.name,
+            previewUrl: compressedImage,
+            message: error.message,
+          }));
+        }
+        setScanProgress(Math.round(((index + 1) / files.length) * 100));
+      }
+
+      setScanDraft(nextDraft);
+      const failedCount = nextDraft.sources.filter((source) => source.error).length;
+      setMessageModal({
+        isOpen: true,
+        text: nextDraft.facts.length
+          ? `${nextDraft.facts.length} facts extracted${failedCount ? `; ${failedCount} screenshot failed` : ''}. Review them before applying.`
+          : (nextDraft.sources[0]?.error || 'No reliable facts found. Try a tighter screenshot crop.'),
+        type: nextDraft.facts.length ? 'success' : 'error',
+      });
+      setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 4000);
+    } catch (err) {
+      console.error('Screenshot analysis failed', err);
+      setMessageModal({ isOpen: true, text: `${err.message || 'Error analyzing screenshots.'} Your saved career was not changed.`, type: 'error' });
+      setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 3000);
+    } finally {
+      setIsScanning(false);
+      setScanProgress(0);
+      targetInput.value = '';
+    }
+  };
+
+  const handleApplyScanDraft = () => {
+    if (!scanDraft) return;
+    if (scanDraft.weekType !== WEEK_TYPES.BYE) {
+      setNewGame((current) => ({
+        ...current,
+        ...scanDraft.gamePatch,
+        ...(scanDraft.weekType === WEEK_TYPES.NO_APPEARANCE
+          ? { passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' }
+          : {}),
+      }));
+    }
+    setRtgUpdate((current) => ({
+      ...current,
+      ...scanDraft.rtgPatch,
+      wear: { ...(current.wear || {}), ...(scanDraft.rtgPatch.wear || {}) },
+    }));
+    setCoachUpdate((current) => ({ ...current, ...(scanDraft.coachPatch || {}) }));
+    setAppliedScanDraft({ ...scanDraft, status: 'ready' });
+    setScanDraft(null);
+    setMessageModal({ isOpen: true, text: 'Verified draft applied. Correct anything needed, then publish the week.', type: 'success' });
+    setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 4000);
+  };
+
+  const getPublicationTarget = (draft = appliedScanDraft) => ({
+    season: draft?.season || appState.currentSeason || 1,
+    week: draft?.week || appState.currentWeek,
+    weekKey: draft?.weekKey || draft?.id || createWeekKey(appState.currentSeason || 1, appState.currentWeek),
+  });
+
+  const reservePublication = (target) => {
+    const lockKey = `${userState?.uid || 'local'}:${target.weekKey}`;
+    if (publicationLocks.has(lockKey)
+      || findPublishedWeekConflict(appState, target)) {
+      setMessageModal({ isOpen: true, text: 'That season and week has already been published. The duplicate was blocked.', type: 'error' });
+      return false;
+    }
+    publicationLocks.add(lockKey);
+    return true;
   };
 
   // --- HANDLERS ---
@@ -664,10 +584,18 @@ const App = () => {
             await Promise.all(promises);
         }
 
+        for (const episode of (appState.podcastEpisodes || []).filter((entry) => entry.audioStatus === 'ready')) {
+            const segments = await loadPodcastAudioLocal(episode.id)
+              || await loadPodcastAudioCloud({ db, appId, userId: userState.uid, episodeId: episode.id });
+            if (segments?.length) {
+              await savePublicPodcastAudio({ db, appId, ownerId: userState.uid, episodeId: episode.id, segments });
+            }
+        }
+
         const baseUrl = window.location.href.split('?')[0];
         setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${userState.uid}` });
         setMessageModal({ isOpen: false, text: '', type: 'success' });
-    } catch (err) { setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
+    } catch { setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
   };
 
   // --- INTERACTIVE PRESS CONFERENCE AI ---
@@ -731,9 +659,14 @@ const handleSaveGameClick = () => {
     }
     
     // Check if we are logging a valid new game
-    if (newGame.opponent && newGame.opponent.trim() !== "" && editingGameIndex === null) {
+    if (newGame.opponent && newGame.opponent.trim() !== "" && editingGameIndex === null && (!appliedScanDraft || appliedScanDraft.weekType === WEEK_TYPES.GAME)) {
+        const target = getPublicationTarget();
+        if (findPublishedWeekConflict(appState, target)) {
+          setMessageModal({ isOpen: true, text: 'That season and week has already been published. The duplicate was blocked.', type: 'error' });
+          return;
+        }
         const presserData = generatePresserQuestions(newGame);
-        setPressConference({ game: { ...newGame }, rumors: updatedRumors, presserData });
+        setPressConference({ game: { ...newGame }, rumors: updatedRumors, presserData, target });
         return; 
     }
 
@@ -748,26 +681,53 @@ const handleSaveGameClick = () => {
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      updateAppState(prev => ({
-        ...prev, rtg: rtgUpdate, coach: coachUpdate, rumors: updatedRumors
-      }), "Agenda updates & rumors synced to the cloud!");
+      const publicationTarget = appliedScanDraft ? getPublicationTarget(appliedScanDraft) : null;
+      if (publicationTarget && !reservePublication(publicationTarget)) return;
+      updateAppState(prev => {
+        if (!appliedScanDraft) {
+          return { ...prev, rtg: rtgUpdate, coach: coachUpdate, rumors: updatedRumors };
+        }
+        const publishedState = createPublishedWeek({
+          state: prev,
+          game: newGame,
+          rtg: rtgUpdate,
+          coach: coachUpdate,
+          recruitingPatches: appliedScanDraft.recruitingPatches,
+          retentionPatches: appliedScanDraft.retentionPatches || [],
+          facts: appliedScanDraft.facts,
+          sources: appliedScanDraft.sources,
+          weekType: appliedScanDraft.weekType,
+          ...publicationTarget,
+        });
+        return { ...publishedState, rumors: updatedRumors };
+      }, appliedScanDraft ? "Verified weekly update published!" : "Agenda updates & rumors synced to the cloud!");
+      setAppliedScanDraft(null);
       setActiveTab('dashboard'); 
     }
   };
 
   const finalizeGameSaveWithQuote = (selectedQuote) => {
-      const { game, rumors } = pressConference;
-      updateAppState(prev => ({
-        ...prev,
-        currentWeek: prev.currentWeek + 1,
-        latestQuote: selectedQuote,
-        gameLogs: [...prev.gameLogs, { ...game, week: prev.currentWeek, season: prev.currentSeason || 1 }],
-        rtg: rtgUpdate,
-        coach: coachUpdate,
-        rumors: rumors
-      }), "Weekly Agenda, Press Quote & Game Log synced to the cloud!");
+      const { game, rumors, target = getPublicationTarget() } = pressConference;
+      if (!reservePublication(target)) return;
+      updateAppState(prev => {
+        const publishedState = createPublishedWeek({
+          state: prev,
+          game,
+          rtg: rtgUpdate,
+          coach: coachUpdate,
+          recruitingPatches: appliedScanDraft?.recruitingPatches || [],
+          retentionPatches: appliedScanDraft?.retentionPatches || [],
+          quote: selectedQuote,
+          facts: appliedScanDraft?.facts || [],
+          sources: appliedScanDraft?.sources || [],
+          weekType: appliedScanDraft?.weekType,
+          ...target,
+        });
+        return { ...publishedState, rumors };
+      }, "Week published to stats, Fact Ledger, and Career Chronicle!");
       
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
+      setAppliedScanDraft(null);
       setPressConference(null);
       setActiveTab('newsroom'); 
   };
@@ -810,27 +770,48 @@ const handleSaveGameClick = () => {
   };
 
   const handleCommitment = (school) => {
-    updateAppState(prev => ({
-      ...prev,
-      player: { ...prev.player, isCommitted: true, college: school.name },
-      latestQuote: `I am incredibly blessed to announce my commitment to ${school.name}. Let's get to work!`,
-      rumors: [`BREAKING: ${prev.player.stars}-Star ${prev.player.pos} ${prev.player.name} commits to ${school.name}!`, ...prev.rumors]
-    }));
+    updateAppState(prev => {
+      const milestoneState = createCareerMilestone({
+        state: prev,
+        draft: {
+          type: MILESTONE_TYPES.COMMITMENT,
+          season: prev.currentSeason || 1,
+          week: prev.currentWeek || 1,
+          institution: school.name,
+          previousInstitution: '',
+          achievement: '',
+          notes: '',
+          confirmed: true,
+        },
+      });
+      return {
+        ...milestoneState,
+        rumors: [`BREAKING: ${prev.player.stars}-Star ${prev.player.pos} ${prev.player.name} commits to ${school.name}!`, ...prev.rumors],
+      };
+    }, 'Commitment verified and added to the Career Chronicle!');
     setIsCommitModalOpen(false);
     setNewsTheme('on3');
-    setActiveTab('newsroom');
+    setActiveTab('chronicle');
   };
 
-  const handleAddTrophy = () => {
-    if(!newTrophy.name) return;
-    updateAppState(prev => ({ ...prev, trophies: [{ ...newTrophy, id: Date.now() }, ...prev.trophies] }), "Milestone added to Legacy Case!");
-    setNewTrophy({ name: '', year: `Season ${appState.currentSeason || 1}`, type: 'Award' });
+  const handlePublishMilestone = (draft) => {
+    if (findMilestoneConflict(appState, draft)) {
+      setMessageModal({ isOpen: true, text: 'That career milestone is already in the Chronicle. The duplicate was blocked.', type: 'error' });
+      return false;
+    }
+    updateAppState(
+      prev => createCareerMilestone({ state: prev, draft }),
+      'Verified milestone added to the Fact Ledger and Career Chronicle!',
+    );
+    return true;
   };
 
   const handleResetRequest = () => setIsResetModalOpen(true);
   const confirmReset = () => {
-      clearAudioLocal();
-      if (db && userState) saveAudioToCloud(db, appId, userState.uid, ''); 
+      clearLegacyPodcastAudioLocal();
+      if (db && userState) {
+        saveLegacyPodcastAudioCloud({ db, appId, userId: userState.uid, base64Audio: '' });
+      }
       updateAppState(defaultState, "Cloud Database formatted. Starting fresh.");
       setIsResetModalOpen(false);
   };
@@ -850,18 +831,86 @@ const handleSaveGameClick = () => {
         if (db && userState && !userState.isAnonymous) {
             setMessageModal({ isOpen: true, text: "Uploading chunks to cloud...", type: 'success' });
             try {
-                await saveAudioToCloud(db, appId, userState.uid, base64Audio);
+                await saveLegacyPodcastAudioCloud({ db, appId, userId: userState.uid, base64Audio });
                 updateAppState(prev => ({ ...prev, podcastAudio: base64Audio, hasCloudAudio: true }), "Audio saved securely to the Cloud Database!");
-            } catch (err) {
+            } catch {
                 setMessageModal({ isOpen: true, text: "Error uploading to cloud.", type: 'error' });
                 setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 4000);
             }
         } else {
-           await saveAudioLocal(base64Audio);
+           await saveLegacyPodcastAudioLocal(base64Audio);
            updateAppState(prev => ({ ...prev, podcastAudio: base64Audio }), "Audio saved to local device (Login required for cloud sync).");
         }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleLoadPodcastAudio = useCallback(async (episodeId) => {
+    const local = await loadPodcastAudioLocal(episodeId);
+    if (local?.length) return local;
+    if (!db) return null;
+    const cloud = isReadOnly && viewId
+      ? await loadPublicPodcastAudio({ db, appId, ownerId: viewId, episodeId })
+      : (userState ? await loadPodcastAudioCloud({ db, appId, userId: userState.uid, episodeId }) : null);
+    if (cloud?.length) await savePodcastAudioLocal(episodeId, cloud);
+    return cloud;
+  }, [isReadOnly, userState, viewId]);
+
+  const handleGeneratePodcast = async (publicationId, onProgress = () => {}) => {
+    if (!userState) throw new Error('Sign in before generating a podcast episode.');
+    const idToken = await userState.getIdToken();
+    let episode = findPodcastEpisode(appState, publicationId);
+
+    if (!episode) {
+      onProgress({ stage: 'Writing grounded script', current: 0, total: 1 });
+      const payload = buildPodcastGenerationPayload(appState, publicationId);
+      const generated = await generatePodcastScript({ idToken, payload });
+      episode = normalizeGeneratedPodcast({ generated: generated.episode, payload, model: generated.model });
+      updateAppState(
+        prev => upsertPodcastEpisode(prev, episode),
+        'Grounded Gridiron Grind transcript saved!',
+      );
+    }
+
+    const audioSegments = [];
+    let audioModel = '';
+    for (let index = 0; index < episode.segments.length; index += 1) {
+      onProgress({ stage: 'Rendering two-host audio', current: index, total: episode.segments.length });
+      const segment = episode.segments[index];
+      const rendered = await synthesizePodcastSegment({ idToken, hostId: segment.hostId, text: segment.text });
+      audioModel = rendered.model || audioModel;
+      audioSegments.push({
+        index,
+        data: rendered.audioBase64,
+        mimeType: rendered.mimeType,
+        hostId: segment.hostId,
+      });
+    }
+    onProgress({ stage: 'Archiving episode', current: episode.segments.length, total: episode.segments.length });
+    await savePodcastAudioLocal(episode.id, audioSegments);
+
+    if (db && !userState.isAnonymous) {
+      try {
+        await savePodcastAudioCloud({ db, appId, userId: userState.uid, episodeId: episode.id, segments: audioSegments });
+      } catch (error) {
+        console.error('Podcast cloud archive failed', error);
+        setMessageModal({ isOpen: true, text: 'Episode audio is ready on this device, but cloud archiving failed.', type: 'error' });
+      }
+    }
+
+    const readyEpisode = {
+      ...episode,
+      status: 'published',
+      audioStatus: 'ready',
+      audioModel,
+      audioSegmentCount: audioSegments.length,
+      audioGeneratedAt: new Date().toISOString(),
+    };
+    updateAppState(
+      prev => markPodcastAudioReady(prev, publicationId, { model: audioModel, segmentCount: audioSegments.length }),
+      'The Gridiron Grind episode is ready!',
+    );
+    return { episode: readyEpisode, audioSegments };
   };
 
   const handlePrint = () => {
@@ -902,7 +951,7 @@ const handleSaveGameClick = () => {
             setMessageModal({ isOpen: true, text: "Print blocked! Please allow pop-ups for this site, or press Ctrl+P / Cmd+P.", type: 'error' });
             setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
         }
-    } catch (e) {
+    } catch {
         setMessageModal({ isOpen: true, text: "Print failed. Try using your browser's print function (Ctrl+P / Cmd+P).", type: 'error' });
         setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 5000);
     }
@@ -951,8 +1000,7 @@ const handleSaveGameClick = () => {
       const newRecruiting = prev.recruiting.map(s => {
         if (s.id === id) {
           const val = Number(s.interest) || 0;
-          let newLevel = s.level;
-          if (val >= 75) newLevel = 'High'; else if (val >= 50) newLevel = 'Medium'; else if (val >= 25) newLevel = 'Low'; else newLevel = 'None';
+          const newLevel = val >= 75 ? 'High' : val >= 50 ? 'Medium' : val >= 25 ? 'Low' : 'None';
           return { ...s, level: newLevel };
         }
         return s;
@@ -966,8 +1014,7 @@ const handleSaveGameClick = () => {
         const newRecruiting = prev.recruiting.map(s => {
             if (s.id === id) {
                 const val = newInterest;
-                let newLevel = s.level;
-                if (val >= 75) newLevel = 'High'; else if (val >= 50) newLevel = 'Medium'; else if (val >= 25) newLevel = 'Low'; else newLevel = 'None';
+                const newLevel = val >= 75 ? 'High' : val >= 50 ? 'Medium' : val >= 25 ? 'Low' : 'None';
                 return { ...s, interest: val, level: newLevel };
             }
             return s;
@@ -1072,7 +1119,7 @@ const handleSaveGameClick = () => {
           else if (totalOffers > 0) advice.push({ type: 'success', icon: Award, text: `Offers Received (${totalOffers}): You have official offers! Decide whether to commit early or wait for a 'Reach' school.`});
         }
         
-        const wornParts = Object.entries(rtg.wear || {}).filter(([k,v]) => v !== 'Green');
+        const wornParts = Object.entries(rtg.wear || {}).filter(([, value]) => value !== 'Green');
         if (wornParts.length > 0) {
           const partsText = wornParts.map(p => p[0].charAt(0).toUpperCase() + p[0].slice(1)).join(' and ');
           advice.push({ type: 'warning', icon: HeartPulse, text: `Wear & Tear Alert: Your ${partsText} condition has dropped. Limit extra hits outside the pocket.`});
@@ -1153,15 +1200,30 @@ const handleSaveGameClick = () => {
 
   // --- RENDERERS ---
   const renderNav = () => {
+    const commandCenterLabel = careerStage === CAREER_STAGES.HIGH_SCHOOL
+      ? 'Recruit Command Center'
+      : (careerStage === CAREER_STAGES.COLLEGE
+        ? 'Player Command Center'
+        : (careerStage === CAREER_STAGES.OC
+          ? 'Coordinator Office'
+          : (careerStage === CAREER_STAGES.HC ? 'Program Center' : 'Legacy Center')));
     const navItems = isReadOnly ? [
-      { id: 'dashboard', icon: Home, label: isCoach ? 'Coach Office' : 'Command Center' },
+      { id: 'dashboard', icon: Home, label: commandCenterLabel },
+      ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office' }] : []),
+      ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room' }] : []),
       { id: 'recruiting', icon: Map, label: isCoach ? "Coach's Prospect Board" : 'Recruiting Board' },
       { id: 'newsroom', icon: Newspaper, label: 'The Newsroom' },
+      { id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' },
+      { id: 'chronicle', icon: BookOpen, label: 'Career Chronicle' },
       { id: 'trophies', icon: Trophy, label: 'Legacy Trophy Case' }
     ] : [
-      { id: 'dashboard', icon: Home, label: isCoach ? 'Coach Office' : 'Command Center' },
+      { id: 'dashboard', icon: Home, label: commandCenterLabel },
+      ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office' }] : []),
+      ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room' }] : []),
       { id: 'recruiting', icon: Map, label: isCoach ? "Coach's Prospect Board" : 'Recruiting Board' },
       { id: 'newsroom', icon: Newspaper, label: 'The Newsroom' },
+      { id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' },
+      { id: 'chronicle', icon: BookOpen, label: 'Career Chronicle' },
       { id: 'trophies', icon: Trophy, label: 'Legacy Trophy Case' },
       { id: 'dataEntry', icon: Activity, label: 'Log Weekly Agenda' },
       { id: 'settings', icon: Settings, label: 'Hub Settings' },
@@ -1188,7 +1250,7 @@ const handleSaveGameClick = () => {
             <div className="mt-2 space-y-1.5">
                <div className="flex items-center gap-2 text-xs font-black">
                  {isCoach ? (
-                    <span className="text-emerald-400 tracking-widest drop-shadow-md">{appState.careerPhase === 'OC' ? 'Offensive Coordinator' : 'Head Coach'}</span>
+                    <span className="text-emerald-400 tracking-widest drop-shadow-md">{appState.careerPhase === 'OC' ? 'Offensive Coordinator' : (appState.careerPhase === 'HC' ? 'Head Coach' : 'Retired')}</span>
                  ) : (
                     <span className="text-amber-400 tracking-widest drop-shadow-md">{starString}</span>
                  )}
@@ -1211,7 +1273,13 @@ const handleSaveGameClick = () => {
             return (
               <button key={item.id} 
                 onClick={() => {
-                  if (item.id === 'rules') { setIsHouseRulesModalOpen(true); } else { setActiveTab(item.id); }
+                  if (item.id === 'rules') {
+                    setIsHouseRulesModalOpen(true);
+                  } else {
+                    if (item.id === 'newsroom') setNewsroomFocusId('');
+                    if (item.id === 'podcast') setPodcastFocusId('');
+                    setActiveTab(item.id);
+                  }
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-bold ${
                   activeTab === item.id && item.id !== 'rules' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
@@ -1238,6 +1306,18 @@ const handleSaveGameClick = () => {
   };
 
   const renderDashboard = () => {
+    if (Object.values(CAREER_STAGES).includes(careerStage)) {
+      return (
+        <CareerCommandCenter
+          state={appState}
+          readOnly={isReadOnly}
+          onNavigate={(tab) => {
+            if (tab === 'newsroom') setNewsroomFocusId('');
+            setActiveTab(tab);
+          }}
+        />
+      );
+    }
     const hasRedWear = Object.values(appState.rtg.wear || {}).includes('Red');
     const hasYellowWear = Object.values(appState.rtg.wear || {}).includes('Yellow');
     const gameDayStatus = hasRedWear ? { text: 'QUESTIONABLE', color: 'text-red-400 bg-red-950/40 border-red-500/30', Icon: AlertTriangle } : 
@@ -1734,7 +1814,7 @@ const handleSaveGameClick = () => {
                             value={currentInterest} 
                             disabled={isLocked || isReadOnly}
                             onChange={(e) => setTempInterests(prev => ({...prev, [school.id]: e.target.value === '' ? '' : parseInt(e.target.value)}))}
-                            onBlur={(e) => {
+                            onBlur={() => {
                                if (tempInterests[school.id] !== undefined) {
                                    commitInterestChange(school.id, tempInterests[school.id] === '' ? 0 : parseInt(tempInterests[school.id]));
                                    setTempInterests(prev => { const n = {...prev}; delete n[school.id]; return n; });
@@ -1841,6 +1921,24 @@ const handleSaveGameClick = () => {
   };
 
   const renderNewsroom = () => {
+    if (appState.newsroomIssues?.length) {
+      return (
+        <GroundedNewsroom
+          key={newsroomFocusId || 'latest-newsroom'}
+          issues={appState.newsroomIssues}
+          initialIssueId={newsroomFocusId}
+          newsTheme={newsTheme}
+          setNewsTheme={setNewsTheme}
+          outletImages={appState.outletImages}
+          podcastEpisodes={appState.podcastEpisodes}
+          onOpenPodcast={(publicationId) => {
+            setPodcastFocusId(publicationId);
+            setActiveTab('podcast');
+          }}
+        />
+      );
+    }
+
     const currentSeasonStr = appState.currentSeason || 1;
     const currentSeasonGames = appState.gameLogs.filter(g => (g.season || 1) === currentSeasonStr);
     const priorGames = appState.gameLogs.filter(g => (g.season || 1) < currentSeasonStr);
@@ -1888,13 +1986,12 @@ const handleSaveGameClick = () => {
     const totalOffers = appState.recruiting.filter(s => s.offered).length;
 
     // --- DYNAMIC SCOUTING REPORT LOGIC ---
-    let playerComparison = "";
-    let strengthDetails = "";
-    let areaForDevDetails = "";
-    let visualsDetails = "";
+    let playerComparison;
+    let strengthDetails;
+    let areaForDevDetails;
     
     if (archetypeLower.includes("dual")) {
-        playerComparison = "A scaled-down, gritty Josh Allen or a right-handed Jalen Hurts.";
+        playerComparison = "A compact, powerful left-handed dual-threat with proven off-script playmaking ability.";
         strengthDetails = `${offName.split(' ')[1] || offName} is a field general built for a modern spread RPO system. While he lacks the towering 6'5" frame of a prototypical pocket passer, he compensates with elite short-to-intermediate accuracy and a phenomenal feel for the pocket. His standout trait is his escapability. He isn't going to run a 4.3-second 40-yard dash and burn secondaries on designed QB draws, but he possesses the functional strength and lateral quickness to break arm tackles, extend plays outside the hashes, and throw off-platform.`;
     } else if (archetypeLower.includes("pocket") || archetypeLower.includes("field")) {
         playerComparison = "A young Jared Goff or Mac Jones type with high-end processor speed.";
@@ -1916,7 +2013,7 @@ const handleSaveGameClick = () => {
 
     const currentSchoolOrCollege = appState.player.isCommitted && appState.currentSeason > 1 ? appState.player.college : appState.player.school;
     
-    visualsDetails = `Reviewing the uploaded media, ${offName.split(' ')[1] || offName} clearly looks the part of a Friday night field general. The dark smoked visor, the asymmetric sleeve setup (compression on the left, bare/glove on the right), and the wrist coach indicate a player who is locked in and taking the mental side of the game seriously.`;
+    const visualsDetails = `Reviewing the uploaded media, ${offName.split(' ')[1] || offName} clearly looks the part of a Friday night field general. The dark smoked visor, the asymmetric sleeve setup (compression on the left, bare/glove on the right), and the wrist coach indicate a player who is locked in and taking the mental side of the game seriously.`;
 
     const crowdReaction = isPreseason ? "Anticipation is building" : (outcome === 'W' ? "The crowd erupted in cheers" : "A stunned silence fell over the stands");
     const trenchesTalk = isPreseason ? "The offensive line has been grinding in camp" : "The battle in the trenches dictated the pace of the game";
@@ -2432,13 +2529,13 @@ const handleSaveGameClick = () => {
       
       <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl mb-6 text-center">
         <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>
-        <p className="text-slate-300 text-sm font-bold drop-shadow">Upload a screenshot of your Box Score, Player Hub, or Recruiting Board. The AI will extract the data automatically.</p>
+        <p className="text-slate-300 text-sm font-bold drop-shadow">Upload your Box Score, Player Hub, and Recruiting Board screenshots together. Nothing changes until you review and publish.</p>
         
         <div className="mt-6 p-8 border-2 border-dashed border-amber-500/50 rounded-xl bg-slate-950/60 hover:bg-slate-900/80 transition-colors shadow-inner relative overflow-hidden group">
           {isScanning ? (
             <div className="flex flex-col items-center gap-3 text-amber-500 py-4 relative z-10">
               <ScanLine className="w-10 h-10 animate-bounce" />
-              <span className="text-sm font-bold animate-pulse uppercase tracking-wider">Tesseract AI Scanning: {scanProgress}%</span>
+              <span className="text-sm font-bold animate-pulse uppercase tracking-wider">Secure AI Analysis: {scanProgress}%</span>
               <div className="w-64 bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
                 <div className="bg-amber-500 h-full transition-all duration-300" style={{width: `${scanProgress}%`}}></div>
               </div>
@@ -2446,13 +2543,45 @@ const handleSaveGameClick = () => {
           ) : (
             <label className="cursor-pointer flex flex-col items-center gap-2 text-slate-300 hover:text-white relative z-10">
               <UploadCloud className="w-10 h-10 text-amber-500 mb-1 drop-shadow-md group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-bold uppercase tracking-wider text-amber-400">Drop Any Screenshot Here</span>
-              <span className="text-[11px] font-medium text-slate-400">Supported: Box Scores, RTG Mechanics, Target Boards</span>
-              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleUniversalScan} />
+              <span className="text-sm font-bold uppercase tracking-wider text-amber-400">Choose Weekly Screenshots</span>
+              <span className="text-[11px] font-medium text-slate-400">Select one or several: Box Scores, RTG Mechanics, Target Boards</span>
+              <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleUniversalScan} />
             </label>
           )}
         </div>
       </div>
+
+      <WeeklyReviewPanel
+        draft={scanDraft}
+        onApply={handleApplyScanDraft}
+        onDiscard={() => setScanDraft(null)}
+        onChangeFact={(factKey, value) => setScanDraft((current) => updateScanDraftFact(current, factKey, value))}
+        onVerifyFact={(factKey) => setScanDraft((current) => verifyScanDraftFact(current, factKey))}
+        onRemoveFact={(factKey) => setScanDraft((current) => removeScanDraftFact(current, factKey))}
+        onChangeWeekType={(weekType) => setScanDraft((current) => updateScanDraftWeekType(current, weekType))}
+      />
+
+      {appliedScanDraft && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="text-emerald-400" size={20} />
+            <div>
+              <p className="text-sm font-black uppercase text-emerald-200">Verified draft ready</p>
+              <p className="text-xs text-slate-400">
+                {appliedScanDraft.weekType === WEEK_TYPES.BYE
+                  ? 'Bye week'
+                  : (appliedScanDraft.weekType === WEEK_TYPES.NO_APPEARANCE ? 'Team game · no appearance' : 'Game week')} · {
+                  appliedCompleteness.missingRequired
+                    ? `${appliedCompleteness.missingRequired} essential item${appliedCompleteness.missingRequired === 1 ? '' : 's'} intentionally missing. `
+                    : 'Essential facts complete. '
+                }
+                Publish Week will write the verified facts and Career Chronicle together.
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setAppliedScanDraft(null)} className="text-xs font-bold uppercase text-slate-400 hover:text-red-300">Remove draft</button>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
@@ -2621,7 +2750,7 @@ const handleSaveGameClick = () => {
               {appState.recruiting.length === 0 ? (
                 <div className="text-xs text-slate-500 italic text-center py-4">No prospects on board.</div>
               ) : (
-                appState.recruiting.sort((a,b)=> (Number(b.interest) || 0) - (Number(a.interest) || 0)).map(school => (
+                [...appState.recruiting].sort((a,b)=> (Number(b.interest) || 0) - (Number(a.interest) || 0)).map(school => (
                   <div key={school.id} className="flex flex-col gap-2 bg-slate-950/50 p-3 rounded-lg border border-slate-800/50">
                     <div className="flex justify-between items-center">
                       <div className="text-xs font-bold text-white truncate w-1/2">{school.name}</div>
@@ -2737,21 +2866,13 @@ const handleSaveGameClick = () => {
              <input type="text" value={newRumor} onChange={e => setNewRumor(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs italic" placeholder="e.g. Rival coach on the hot seat..." />
           </div>
           
-          <div className="border-t border-slate-700/50 pt-4 space-y-4">
-             <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">Record New Legacy Milestone</h4>
-             <div>
-               <input type="text" placeholder="Award / Milestone (e.g. State Champ)" value={newTrophy.name} onChange={e => setNewTrophy({...newTrophy, name: e.target.value})} className="w-full bg-slate-950/50 border border-slate-700 rounded p-2 text-white text-sm mb-3" />
-             </div>
-             <div className="grid grid-cols-2 gap-3">
-               <input type="text" placeholder="Year / Season" value={newTrophy.year} onChange={e => setNewTrophy({...newTrophy, year: e.target.value})} className="w-full bg-slate-950/50 border border-slate-700 rounded p-2 text-white text-sm" />
-               <select value={newTrophy.type} onChange={e => setNewTrophy({...newTrophy, type: e.target.value})} className="w-full bg-slate-950/50 border border-slate-700 rounded p-2 text-white text-sm font-bold">
-                 <option value="Award" className="bg-slate-900">Individual Award</option>
-                 <option value="Championship" className="bg-slate-900">Championship</option>
-                 <option value="Milestone" className="bg-slate-900">Record / Milestone</option>
-               </select>
-             </div>
-             <button onClick={handleAddTrophy} className="w-full bg-amber-600 hover:bg-amber-500 text-slate-900 px-4 py-3 rounded font-black text-xs uppercase tracking-wider transition-colors mt-2 shadow-[0_0_10px_rgba(217,119,6,0.3)]">Add to Legacy Case</button>
-          </div>
+          <MilestoneRecorder
+            key={`${appState.currentSeason}-${appState.currentWeek}-${appState.careerPhase}`}
+            season={appState.currentSeason}
+            week={appState.currentWeek}
+            institution={appState.player.college || (isCoach ? appState.player.school : '')}
+            onPublish={handlePublishMilestone}
+          />
         </div>
 
       </div>
@@ -2767,7 +2888,7 @@ const handleSaveGameClick = () => {
         </div>
       ) : (
         <button onClick={handleSaveGameClick} className="w-full mb-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(52,211,153,0.4)] relative z-10">
-          <Save size={18} /> Save & Process Weekly Agenda
+          <Save size={18} /> {appliedScanDraft ? 'Publish Verified Week' : 'Save & Process Weekly Agenda'}
         </button>
       )}
 
@@ -2899,17 +3020,13 @@ const handleSaveGameClick = () => {
         <h3 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow">
           <Briefcase className="text-amber-500" /> Career Era Toggle
         </h3>
-        <p className="text-xs text-slate-400 mb-4">Switch your dashboard interface to match your current phase in the Dynasty journey.</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-700/50 pt-4">
-          {['Player', 'OC', 'HC'].map((phase) => (
-             <button 
-                key={phase}
-                onClick={() => updateAppState(prev => ({...prev, careerPhase: phase}), `Career Phase updated to ${phase === 'Player' ? 'RTG Player' : phase === 'OC' ? 'Offensive Coordinator' : 'Head Coach'}!`)}
-                className={`p-4 rounded-xl border transition-all ${appState.careerPhase === phase ? 'bg-amber-600/20 border-amber-500 text-amber-400 font-black shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-950/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white font-bold'}`}
-             >
-                {phase === 'Player' ? 'Road to Glory (Player)' : phase === 'OC' ? 'Offensive Coordinator' : 'Head Coach'}
-             </button>
-          ))}
+        <p className="text-xs text-slate-400 mb-4">Career stages now advance through verified Chronicle milestones, preserving when and where every transition happened.</p>
+        <div className="flex flex-col gap-3 border-t border-slate-700/50 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Current verified stage</div>
+            <div className="mt-1 text-lg font-black text-amber-400">{appState.careerPhase === 'Player' ? 'Road to Glory Player' : appState.careerPhase === 'OC' ? 'Offensive Coordinator' : appState.careerPhase === 'HC' ? 'Head Coach' : 'Retired'}</div>
+          </div>
+          <button type="button" onClick={() => setActiveTab('dataEntry')} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-amber-300 hover:bg-amber-500/20">Record Career Milestone</button>
         </div>
       </div>
 
@@ -2945,12 +3062,47 @@ const handleSaveGameClick = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/60 to-slate-950"></div>
          </div>
 
-         {activeTab === 'dashboard' && renderDashboard()}
-         {activeTab === 'recruiting' && renderRecruiting()}
-         {activeTab === 'newsroom' && renderNewsroom()}
-         {activeTab === 'dataEntry' && renderDataEntry()}
-         {activeTab === 'trophies' && renderTrophies()}
-         {activeTab === 'settings' && renderSettings()}
+         <Suspense fallback={<div className="relative z-10 flex min-h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-amber-500" aria-label="Loading workspace" /></div>}>
+           {activeTab === 'dashboard' && renderDashboard()}
+           {activeTab === 'frontOffice' && (
+             <PersonnelCfoWorkspace
+               state={appState}
+               readOnly={isReadOnly}
+               onNavigate={setActiveTab}
+             />
+           )}
+           {activeTab === 'offseason' && (
+             <OffseasonPlanner
+               state={appState}
+               readOnly={isReadOnly}
+               onNavigate={setActiveTab}
+             />
+           )}
+           {activeTab === 'recruiting' && renderRecruiting()}
+           {activeTab === 'newsroom' && renderNewsroom()}
+           {activeTab === 'podcast' && (
+             <PodcastStudio
+               key={podcastFocusId || 'latest-podcast'}
+               state={appState}
+               readOnly={isReadOnly}
+               initialPublicationId={podcastFocusId}
+               onGenerate={handleGeneratePodcast}
+               onLoadAudio={handleLoadPodcastAudio}
+             />
+           )}
+           {activeTab === 'chronicle' && (
+             <CareerArchive
+               state={appState}
+               onOpenNewsroom={(publicationId) => {
+                 setNewsroomFocusId(publicationId);
+                 setActiveTab('newsroom');
+               }}
+             />
+           )}
+           {activeTab === 'dataEntry' && renderDataEntry()}
+           {activeTab === 'trophies' && renderTrophies()}
+           {activeTab === 'settings' && renderSettings()}
+         </Suspense>
        </div>
 
        {/* Modals */}
@@ -3100,5 +3252,3 @@ const handleSaveGameClick = () => {
 };
 
 export default App;
-
-

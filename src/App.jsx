@@ -2191,7 +2191,6 @@ const handleSaveGameClick = () => {
           newsTheme={newsTheme}
           setNewsTheme={setNewsTheme}
           outletImages={appState.outletImages}
-          podcastEpisodes={appState.podcastEpisodes}
           readOnly={isReadOnly}
           mediaLibrary={appState.newsroomMediaLibrary || []}
           mediaBusy={newsroomMediaBusy}
@@ -2203,10 +2202,6 @@ const handleSaveGameClick = () => {
           onToggleReference={handleToggleNewsroomReference}
           onDeleteMedia={handleDeleteNewsroomMedia}
           onSetAutoGenerateLead={handleSetAutoGenerateLead}
-          onOpenPodcast={(publicationId) => {
-            setPodcastFocusId(publicationId);
-            setActiveTab('podcast');
-          }}
         />
       );
     }
@@ -2314,10 +2309,6 @@ const handleSaveGameClick = () => {
             <button onClick={() => setNewsTheme('filmroom')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'filmroom' ? 'bg-emerald-500 text-slate-900 font-black' : 'text-slate-400 hover:text-white'}`}>
                 <Activity size={14} />
                 <span>X's & O's Film Room</span>
-            </button>
-            <button onClick={() => setNewsTheme('podcast')} className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-shrink-0 ${newsTheme === 'podcast' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                <Headphones size={14} />
-                <span>Podcast</span>
             </button>
           </div>
           <button onClick={handlePrint} className="ml-4 bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-colors border border-slate-600 shadow-md">

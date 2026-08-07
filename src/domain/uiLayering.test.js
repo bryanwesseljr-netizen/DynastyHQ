@@ -27,3 +27,15 @@ test('Career Chronicle ships with the app shell so commitment navigation cannot 
   assert.match(appSource, /import CareerArchive from '\.\/components\/CareerArchive';/);
   assert.doesNotMatch(appSource, /lazy\(\(\) => import\('\.\/components\/CareerArchive'\)\)/);
 });
+
+test('the newsroom keeps podcast controls in the dedicated Gridiron Grind workspace', async () => {
+  const [appSource, newsroomSource] = await Promise.all([
+    readFile(appSourceUrl, 'utf8'),
+    readFile(newsroomSourceUrl, 'utf8'),
+  ]);
+
+  assert.doesNotMatch(appSource, /setNewsTheme\('podcast'\)/);
+  assert.doesNotMatch(newsroomSource, /Podcast Brief|Open Podcast Studio|openStory\('podcast'\)/);
+  assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' \}/);
+  assert.match(appSource, /activeTab === 'podcast'/);
+});

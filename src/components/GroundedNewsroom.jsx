@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Activity, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, Headphones, Newspaper,
-  Quote, Radio, ShieldCheck, Star, Zap,
+  Activity, ArrowRight, BookOpen, ChevronLeft, Newspaper, Quote, ShieldCheck, Star, Zap,
 } from 'lucide-react';
 import NewsroomMediaManager from './NewsroomMediaManager';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
@@ -12,7 +11,6 @@ const tabs = [
   { theme: 'on3', outletId: 'recruiting', label: 'Recruiting Wire', icon: Star },
   { theme: 'filmroom', outletId: 'filmroom', label: 'Film Room', icon: Activity },
   { theme: 'national', outletId: 'national', label: 'Saturday National', icon: BookOpen },
-  { theme: 'podcast', outletId: 'podcast', label: 'Podcast Brief', icon: Headphones },
 ];
 
 const themeStyles = {
@@ -21,10 +19,7 @@ const themeStyles = {
   on3: { shell: 'bg-zinc-950 text-zinc-100 border-amber-500/40', accent: 'text-amber-400', rule: 'border-amber-500' },
   filmroom: { shell: 'bg-[#081528] text-slate-100 border-emerald-500/40', accent: 'text-emerald-400', rule: 'border-emerald-500' },
   national: { shell: 'bg-slate-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
-  podcast: { shell: 'bg-gradient-to-br from-slate-950 to-blue-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
 };
-
-const storyTabs = tabs.filter((tab) => tab.theme !== 'podcast');
 
 const GroundedNewsroom = ({
   issues,
@@ -32,8 +27,6 @@ const GroundedNewsroom = ({
   newsTheme,
   setNewsTheme,
   outletImages,
-  podcastEpisodes = [],
-  onOpenPodcast,
   readOnly = false,
   mediaLibrary = [],
   mediaBusy = false,
@@ -60,7 +53,6 @@ const GroundedNewsroom = ({
   const selectedTab = tabs.find((tab) => tab.theme === activeTheme) || tabs[0];
   const style = themeStyles[selectedTab.theme] || themeStyles.broadsheet;
   const story = selectedIssue.articles.find((entry) => entry.outletId === selectedTab.outletId);
-  const podcastEpisode = podcastEpisodes.find((entry) => entry.publicationId === selectedIssue.publicationId);
   const imageKey = selectedTab.theme === 'on3' ? 'on3' : selectedTab.theme;
   const currentMedia = resolveNewsroomMedia({
     article: story,
@@ -112,7 +104,7 @@ const GroundedNewsroom = ({
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {storyTabs.map(({ theme, outletId, label, icon: Icon }) => {
+            {tabs.map(({ theme, outletId, label, icon: Icon }) => {
               const cardStory = selectedIssue.articles.find((entry) => entry.outletId === outletId);
               if (!cardStory) return null;
               return (
@@ -131,17 +123,6 @@ const GroundedNewsroom = ({
               );
             })}
 
-            <button
-              type="button"
-              onClick={() => openStory('podcast')}
-              className="group flex min-h-52 cursor-pointer flex-col rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-950 to-slate-950 p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 hover:border-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 md:col-span-2"
-              aria-label="Open this week's Gridiron Grind podcast brief"
-            >
-              <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-400"><Headphones size={15} /> The Gridiron Grind</span>
-              <span className="mt-4 text-xl font-black uppercase leading-tight text-white">{selectedIssue.podcastBrief.title}</span>
-              <span className="mt-3 text-sm leading-relaxed text-slate-400">{selectedIssue.podcastBrief.summary}</span>
-              <span className="mt-auto flex items-center gap-2 pt-5 text-xs font-black uppercase tracking-wider text-blue-300 transition-colors group-hover:text-white">Open podcast brief <ArrowRight size={15} /></span>
-            </button>
           </div>
         </section>
       )}
@@ -172,35 +153,7 @@ const GroundedNewsroom = ({
         </>
       )}
 
-      {isReaderOpen && selectedTab.theme === 'podcast' ? (
-        <section className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
-          <div className="flex items-center justify-between border-b border-blue-500/30 bg-black/20 p-5 text-xs font-black uppercase tracking-widest">
-            <span className="flex items-center gap-2"><Radio className="text-blue-400" size={16} /> The Gridiron Grind</span>
-            <span className="text-blue-300">Grounded episode brief</span>
-          </div>
-          <div className="grid gap-8 p-6 md:grid-cols-[260px_minmax(0,1fr)] md:p-9">
-            <div className="space-y-4">
-              <div className="aspect-square overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
-                {outletImages?.podcast ? <img src={outletImages.podcast} alt="The Gridiron Grind cover" className="h-full w-full object-cover" /> : <Headphones className="m-auto h-full w-20 text-slate-600" />}
-              </div>
-              <div className="rounded-xl border border-slate-700 bg-black/20 p-4">
-                <div className="space-y-3 text-center">
-                  <p className="text-xs text-slate-400">{podcastEpisode?.audioStatus === 'ready' ? 'The full two-host episode is archived and ready to play.' : podcastEpisode ? 'The grounded transcript is saved; audio is ready to be rendered.' : 'This verified brief is ready for episode generation.'}</p>
-                  <button type="button" onClick={() => onOpenPodcast(selectedIssue.publicationId)} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-black uppercase text-white hover:bg-blue-500">
-                    Open Podcast Studio
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-blue-400">Season {selectedIssue.season} · Week {selectedIssue.week}</p>
-              <h1 className="text-3xl font-black uppercase leading-tight md:text-5xl">{selectedIssue.podcastBrief.title}</h1>
-              <p className="mt-6 rounded-xl border border-slate-700 bg-black/20 p-5 text-base leading-relaxed text-slate-300">{selectedIssue.podcastBrief.summary}</p>
-              <div className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-300"><CheckCircle2 size={15} /> {selectedIssue.podcastBrief.citedFactKeys.length} verified facts available to the episode generator</div>
-            </div>
-          </div>
-        </section>
-      ) : isReaderOpen && story ? (
+      {isReaderOpen && story ? (
         <article className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
           <header className="border-b border-current/20 p-6 md:p-9">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">

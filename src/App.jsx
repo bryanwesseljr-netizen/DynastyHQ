@@ -30,7 +30,7 @@ import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
 import {
   createMigrationBackupPayload,
   describeCloudSchema,
-  MIGRATION_BACKUP_DOCUMENT_ID,
+  getMigrationBackupDocumentId,
 } from './domain/migrationProtection';
 import { CAREER_STAGES, deriveCareerStage } from './domain/commandCenter';
 import {
@@ -301,7 +301,7 @@ const App = () => {
       if (docSnap.exists()) {
         const rawCloudData = docSnap.data();
         setLoadedCloudSchemaVersion(Number(rawCloudData?.schemaVersion) || 0);
-        const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', MIGRATION_BACKUP_DOCUMENT_ID);
+        const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', getMigrationBackupDocumentId(CAREER_SCHEMA_VERSION));
         getDoc(backupRef)
           .then((backupSnapshot) => setHasMigrationBackup(backupSnapshot.exists()))
           .catch(() => setHasMigrationBackup(false));
@@ -596,7 +596,7 @@ const App = () => {
     setIsMigratingCloudSave(true);
     try {
       const sourceRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
-      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', MIGRATION_BACKUP_DOCUMENT_ID);
+      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', getMigrationBackupDocumentId(CAREER_SCHEMA_VERSION));
       const sourceSnapshot = await getDoc(sourceRef);
       if (!sourceSnapshot.exists()) throw new Error('The master save could not be found.');
 

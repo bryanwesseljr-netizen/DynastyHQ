@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createMigrationBackupPayload,
   describeCloudSchema,
+  getMigrationBackupDocumentId,
   MIGRATION_BACKUP_DOCUMENT_ID,
 } from './migrationProtection.js';
 
@@ -28,6 +29,12 @@ test('creates a restorable migration backup without changing source fields', () 
     createdAt: '2026-07-31T12:00:00.000Z',
   });
   assert.equal(MIGRATION_BACKUP_DOCUMENT_ID, 'migration_backup_pre_v8');
+});
+
+test('uses a dedicated non-overwriting backup document for every target schema', () => {
+  assert.equal(getMigrationBackupDocumentId(8), MIGRATION_BACKUP_DOCUMENT_ID);
+  assert.equal(getMigrationBackupDocumentId(11), 'migration_backup_pre_v11');
+  assert.throws(() => getMigrationBackupDocumentId(0), /valid target schema version/);
 });
 
 test('describes versioned and legacy cloud saves clearly', () => {

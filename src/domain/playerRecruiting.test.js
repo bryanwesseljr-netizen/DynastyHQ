@@ -61,12 +61,12 @@ test('a closed transfer window does not change the current college', () => {
   assert.equal(stayed.playerRecruiting.transfer.targets.length, 0);
 });
 
-test('captures weekly interest and offer movement for the five-game timeline', () => {
+test('captures game-displayed progress and offer movement for the five-game timeline', () => {
   const changes = snapshotRecruitingChanges(
-    [{ id: 1, name: 'Test University A', interest: 50, offered: false }],
-    [{ id: 1, name: 'Test University A', interest: 80, offered: true }],
+    [{ id: 1, name: 'Test University A', progressStage: 'partial', offered: false }],
+    [{ id: 1, name: 'Test University A', progressStage: 'near', offered: true }],
   );
-  assert.deepEqual(changes.map((entry) => entry.type), ['interest', 'offer']);
-  assert.equal(changes[0].from, 50);
-  assert.equal(changes[0].to, 80);
+  assert.deepEqual(changes.map((entry) => entry.type), ['progress', 'offer']);
+  assert.equal(changes[0].from, 'partial');
+  assert.equal(changes[0].to, 'near');
 });

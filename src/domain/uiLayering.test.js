@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const newsroomSourceUrl = new URL('../components/GroundedNewsroom.jsx', import.meta.url);
+const newsroomEmptyStateSourceUrl = new URL('../components/NewsroomEmptyState.jsx', import.meta.url);
 
 test('the fixed workspace background cannot intercept newsroom article clicks', async () => {
   const [appSource, newsroomSource] = await Promise.all([
@@ -38,4 +39,24 @@ test('the newsroom keeps podcast controls in the dedicated Gridiron Grind worksp
   assert.doesNotMatch(newsroomSource, /Podcast Brief|Open Podcast Studio|openStory\('podcast'\)/);
   assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' \}/);
   assert.match(appSource, /activeTab === 'podcast'/);
+});
+
+test('schema v12 keeps an unpublished newsroom factual and empty', async () => {
+  const [appSource, emptyStateSource] = await Promise.all([
+    readFile(appSourceUrl, 'utf8'),
+    readFile(newsroomEmptyStateSourceUrl, 'utf8'),
+  ]);
+
+  assert.match(appSource, /appState\.schemaVersion >= 12/);
+  assert.match(emptyStateSource, /No edition published yet/);
+  assert.match(emptyStateSource, /No placeholder players, invented statistics, Crystal Ball picks/);
+  assert.doesNotMatch(emptyStateSource, /crystalBallText|Javion Butts|defHeadshot/);
+});
+
+test('player data entry presents Top Schools as preferences instead of interest sliders', async () => {
+  const appSource = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(appSource, /This is your personal Top Schools order from the game—not a school-interest percentage/);
+  assert.match(appSource, /isCoach \? '3\. Manual Recruiting Updates' : '3\. Top Schools Snapshot'/);
+  assert.match(appSource, /school\.preferenceRank \|\| school\.customOrder/);
 });

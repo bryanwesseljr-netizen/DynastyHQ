@@ -95,6 +95,58 @@ const NUMERIC_KEYS = new Set([
   'retention.nilDemand',
   'recruiting.interest',
   'recruiting.stars',
+  'recruiting.recruitStars',
+  'recruiting.tapeScore',
+  'recruiting.nationalRank',
+  'recruiting.stateRank',
+  'recruiting.positionRank',
+  'recruiting.gameNumber',
+  'recruiting.topSchoolsSelected',
+  'recruiting.preferenceRank',
+  'recruiting.programStars',
+  'recruiting.teamRank',
+  'recruiting.tapeScoreAssessed',
+  'recruiting.tapeScoreRequired',
+  'recruiting.teamOverall',
+  'recruiting.teamOffense',
+  'recruiting.teamDefense',
+  'recruiting.runPercent',
+  'recruiting.passPercent',
+  'recruiting.aggressivePercent',
+  'recruiting.conservativePercent',
+  'recruiting.coachLevel',
+  'recruiting.bonusAcademics',
+  'recruiting.bonusBrand',
+  'recruiting.bonusLeadership',
+  'recruiting.bonusFitness',
+  'recruiting.bonusCoachTrust',
+  'recruiting.bonusSkillPoints',
+]);
+
+const PLAYER_RECRUITING_PROFILE_FIELDS = new Map([
+  ['recruiting.recruitStars', 'recruitStars'],
+  ['recruiting.tapeScore', 'tapeScore'],
+  ['recruiting.gameNumber', 'gameNumber'],
+  ['recruiting.topSchoolsSelected', 'topSchoolsSelected'],
+]);
+
+const PLAYER_RECRUITING_RANK_FIELDS = new Map([
+  ['recruiting.nationalRank', 'national'],
+  ['recruiting.stateRank', 'state'],
+  ['recruiting.positionRank', 'position'],
+]);
+
+const SCHOOL_RECRUITING_FIELDS = new Set([
+  'recruiting.preferenceRank', 'recruiting.progressStage', 'recruiting.offer',
+  'recruiting.programStars', 'recruiting.teamRank', 'recruiting.schemeFit',
+  'recruiting.tapeScoreAssessed', 'recruiting.tapeScoreRequired', 'recruiting.projectedRole',
+  'recruiting.teamOverall', 'recruiting.teamOffense', 'recruiting.teamDefense',
+  'recruiting.offensiveScheme', 'recruiting.runPercent', 'recruiting.passPercent',
+  'recruiting.aggressivePercent', 'recruiting.conservativePercent', 'recruiting.headCoach',
+  'recruiting.coachArchetype', 'recruiting.coachLevel', 'recruiting.coachImpact',
+  'recruiting.bonusAcademics', 'recruiting.bonusBrand', 'recruiting.bonusLeadership',
+  'recruiting.bonusFitness', 'recruiting.bonusCoachTrust', 'recruiting.bonusSkillPoints',
+  'recruiting.depthQB1', 'recruiting.depthQB2', 'recruiting.depthQB3',
 ]);
 
 const cleanString = (value) => String(value ?? '').trim();
@@ -105,7 +157,7 @@ const normalizeValue = (key, value) => {
     const number = Number(cleaned.replace(/[$%]/g, ''));
     return Number.isFinite(number) ? number : '';
   }
-  if (key === 'recruiting.offer') return /^(true|yes|offered|offer)$/i.test(cleaned);
+  if (key === 'recruiting.offer' || key === 'recruiting.schemeFit') return /^(true|yes|offered|offer|fit)$/i.test(cleaned);
   if (key === 'game.result') {
     const result = cleaned.toUpperCase();
     return result === 'W' || result === 'L' ? result : '';
@@ -166,6 +218,7 @@ export const normalizeScreenshotAnalysis = ({
   const wearPatch = {};
   const recruitingById = new Map();
   const retentionById = new Map();
+  const playerRecruitingPatch = { rankings: {} };
 
   (analysis?.facts || []).forEach((rawFact, index) => {
     const key = cleanString(rawFact.key);
@@ -173,7 +226,7 @@ export const normalizeScreenshotAnalysis = ({
     if (!key || value === '') return;
 
     const subjectName = cleanString(rawFact.subjectName || rawFact.schoolName);
-    const knownSchool = key.startsWith('recruiting.')
+    const knownSchool = SCHOOL_RECRUITING_FIELDS.has(key) || ['recruiting.interest', 'recruiting.position', 'recruiting.stars', 'recruiting.status'].includes(key)
       ? findSchool(recruiting, subjectName)
       : null;
     const knownRetentionPlayer = key.startsWith('retention.')
@@ -199,6 +252,13 @@ export const normalizeScreenshotAnalysis = ({
       coachPatch[key.slice('coach.'.length)] = value;
     } else if (ROSTER_POSITION_KEYS.has(key)) {
       ledgerKey = key;
+    } else if (PLAYER_RECRUITING_PROFILE_FIELDS.has(key)) {
+      playerRecruitingPatch[PLAYER_RECRUITING_PROFILE_FIELDS.get(key)] = Number(value);
+      ledgerKey = `recruiting.profile.${PLAYER_RECRUITING_PROFILE_FIELDS.get(key)}`;
+    } else if (PLAYER_RECRUITING_RANK_FIELDS.has(key)) {
+      const field = PLAYER_RECRUITING_RANK_FIELDS.get(key);
+      playerRecruitingPatch.rankings[field] = Number(value);
+      ledgerKey = `recruiting.profile.${field}Rank`;
     } else if (school && key === 'recruiting.interest') {
       const interest = Math.min(100, Math.max(0, Number(value)));
       const current = recruitingById.get(school.id) || { id: school.id, name: school.name };
@@ -216,6 +276,31 @@ export const normalizeScreenshotAnalysis = ({
     } else if (school && key === 'recruiting.status') {
       const current = recruitingById.get(school.id) || { id: school.id, name: school.name };
       recruitingById.set(school.id, { ...current, status: cleanString(value).slice(0, 80) });
+    } else if (school && SCHOOL_RECRUITING_FIELDS.has(key)) {
+      const field = key.slice('recruiting.'.length);
+      const current = recruitingById.get(school.id) || { id: school.id, name: school.name };
+      if (field.startsWith('bonus')) {
+        const bonusKey = field.slice('bonus'.length);
+        const normalizedKey = bonusKey.charAt(0).toLowerCase() + bonusKey.slice(1);
+        current.scholarshipBonuses = { ...(current.scholarshipBonuses || {}), [normalizedKey]: Number(value) };
+      } else if (field === 'teamOverall' || field === 'teamOffense' || field === 'teamDefense') {
+        const ratingKey = field.replace('team', '').toLowerCase();
+        current.programRatings = { ...(current.programRatings || {}), [ratingKey]: Number(value) };
+      } else if (['runPercent', 'passPercent', 'aggressivePercent', 'conservativePercent'].includes(field)) {
+        const tendencyKey = field.replace('Percent', '');
+        current.tendencies = { ...(current.tendencies || {}), [tendencyKey]: Number(value) };
+      } else if (field.startsWith('depthQB')) {
+        const slot = field.slice('depth'.length).toUpperCase();
+        const depthChart = Array.isArray(current.depthChart) ? [...current.depthChart] : [];
+        const existing = depthChart.findIndex((entry) => entry.role === slot);
+        const entry = { role: slot, summary: cleanString(value) };
+        if (existing >= 0) depthChart[existing] = entry;
+        else depthChart.push(entry);
+        current.depthChart = depthChart;
+      } else {
+        current[field] = value;
+      }
+      recruitingById.set(school.id, current);
     } else if (retentionPlayer && RETENTION_KEYS.has(key)) {
       const field = key.slice('retention.'.length);
       const current = retentionById.get(retentionPlayer.id) || { id: retentionPlayer.id, name: retentionPlayer.name };
@@ -264,6 +349,10 @@ export const normalizeScreenshotAnalysis = ({
     rtgPatch,
     coachPatch,
     recruitingPatches: [...recruitingById.values()],
+    playerRecruitingPatch: {
+      ...playerRecruitingPatch,
+      ...(Object.keys(playerRecruitingPatch.rankings).length ? {} : { rankings: undefined }),
+    },
     retentionPatches: [...retentionById.values()],
   };
 };
@@ -283,5 +372,6 @@ export const createFailedScreenshotResult = ({ sourceId, fileName, previewUrl = 
   rtgPatch: {},
   coachPatch: {},
   recruitingPatches: [],
+  playerRecruitingPatch: {},
   retentionPatches: [],
 });

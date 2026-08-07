@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { buildCommandCenter, CAREER_STAGES } from '../domain/commandCenter';
 import { formatRtgDelta, formatRtgValue } from '../domain/rtgProgress';
+import CareerTransitionPanel from './CareerTransitionPanel';
 
 const panelIcons = {
   map: Map,
@@ -211,7 +212,16 @@ const LegacyEvents = ({ model }) => (
   </div>
 );
 
-const CareerCommandCenter = ({ state, onNavigate, readOnly = false }) => {
+const CareerCommandCenter = ({
+  state,
+  onNavigate,
+  readOnly = false,
+  onBeginCollege,
+  onChecklistChange,
+  onGraduate,
+  onCreateCoachingUniverse,
+  onBeginOcCareer,
+}) => {
   const model = buildCommandCenter(state);
   return (
     <div className="relative z-10 mx-auto max-w-7xl space-y-6 pb-20 animate-in fade-in">
@@ -235,6 +245,17 @@ const CareerCommandCenter = ({ state, onNavigate, readOnly = false }) => {
           )}
         </div>
       </div>
+
+      <CareerTransitionPanel
+        state={state}
+        stage={model.stage}
+        readOnly={readOnly}
+        onBeginCollege={onBeginCollege}
+        onChecklistChange={onChecklistChange}
+        onGraduate={onGraduate}
+        onCreateCoachingUniverse={onCreateCoachingUniverse}
+        onBeginOcCareer={onBeginOcCareer}
+      />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {model.metrics.map((metric) => (

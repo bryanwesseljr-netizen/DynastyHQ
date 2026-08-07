@@ -34,6 +34,42 @@ const FACT_KEYS = [
   'recruiting.position',
   'recruiting.stars',
   'recruiting.status',
+  'recruiting.recruitStars',
+  'recruiting.tapeScore',
+  'recruiting.nationalRank',
+  'recruiting.stateRank',
+  'recruiting.positionRank',
+  'recruiting.gameNumber',
+  'recruiting.topSchoolsSelected',
+  'recruiting.preferenceRank',
+  'recruiting.progressStage',
+  'recruiting.programStars',
+  'recruiting.teamRank',
+  'recruiting.schemeFit',
+  'recruiting.tapeScoreAssessed',
+  'recruiting.tapeScoreRequired',
+  'recruiting.projectedRole',
+  'recruiting.teamOverall',
+  'recruiting.teamOffense',
+  'recruiting.teamDefense',
+  'recruiting.offensiveScheme',
+  'recruiting.runPercent',
+  'recruiting.passPercent',
+  'recruiting.aggressivePercent',
+  'recruiting.conservativePercent',
+  'recruiting.headCoach',
+  'recruiting.coachArchetype',
+  'recruiting.coachLevel',
+  'recruiting.coachImpact',
+  'recruiting.bonusAcademics',
+  'recruiting.bonusBrand',
+  'recruiting.bonusLeadership',
+  'recruiting.bonusFitness',
+  'recruiting.bonusCoachTrust',
+  'recruiting.bonusSkillPoints',
+  'recruiting.depthQB1',
+  'recruiting.depthQB2',
+  'recruiting.depthQB3',
   'coach.dynastyPoints',
   'coach.recruitingNIL',
   'coach.rosterNIL',
@@ -137,6 +173,12 @@ Rules:
 - game.homeScore means the tracked player's TEAM score and game.awayScore means the OPPONENT score, regardless of the real venue.
 - For game.result, use W or L only when a final score and the tracked team are clear.
 - For RTG recruiting facts, schoolName must exactly match a clearly visible school. For coach recruiting facts, schoolName must contain the exact visible prospect name, including a new target not yet present in the supplied entries. Use an empty schoolName for non-recruiting facts.
+- For the player's RTG recruiting profile, use recruiting.recruitStars, tapeScore, nationalRank, stateRank, positionRank, gameNumber, and topSchoolsSelected with an empty schoolName.
+- The RTG Top Schools screen is an ordered preference list. Use preferenceRank for the visible 1-10 order. Never convert the colored progress bar into a percentage; describe its visible state with progressStage (for example empty, partial, near, or complete).
+- Use schemeFit only when YES or NO SCHEME FIT is explicitly visible. Use tapeScoreAssessed and tapeScoreRequired for the two visible values around the requirement bar.
+- On a school overview, projectedRole is QB1/QB2/QB3 when visible. Store team ratings, offensive scheme, run/pass and aggressive/conservative percentages, coach details, and depth-chart summaries only when plainly legible.
+- For depthQB1/depthQB2/depthQB3, preserve one concise visible string in the form "Player name | OVR | Class". Do not infer missing pieces.
+- On an official offer screen, use offer=true and the six bonus fields. Zero is a valid visible bonus. Do not treat the standard scholarship letter language as a player evaluation.
 - For retention.* facts, subjectName must contain the exact visible player name. Use an empty subjectName for all other facts.
 - Map visible roster-position totals and explicit needs into roster.<group>.count or roster.<group>.need. Group offensive line together as ol, defensive line as dl, safeties as s, and kickers/punters as st. Never calculate a need that is not displayed.
 - Use recruiting.status to preserve a visible classification such as Transfer Portal, Committed, Signed, or JUCO.

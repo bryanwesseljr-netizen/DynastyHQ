@@ -103,6 +103,10 @@ const topRecruit = (recruiting = []) => [...recruiting]
   .filter((entry) => numberOrZero(entry.interest) > 0)
   .sort((left, right) => numberOrZero(right.interest) - numberOrZero(left.interest))[0] || null;
 
+const topPlayerPreference = (recruiting = []) => [...recruiting]
+  .filter((entry) => entry?.name)
+  .sort((left, right) => numberOrZero(left.preferenceRank || left.customOrder || 999) - numberOrZero(right.preferenceRank || right.customOrder || 999))[0] || null;
+
 const getStageGames = (state, stage) => {
   const season = numberOrZero(state.currentSeason) || 1;
   const logs = (state.gameLogs || []).filter((game) => numberOrZero(game.season) === season);
@@ -129,7 +133,7 @@ const createAdvisor = ({ state, stage, seasonGames, totals, offers, topSchool, r
   if (stage === CAREER_STAGES.HIGH_SCHOOL) {
     if (!offers.length) add('info', 'Recruiting runway', 'No verified scholarship offer is on the board yet. Keep building tape and publish each recruiting update.');
     else add('success', 'Offer leverage', `${offers.length} verified offer${offers.length === 1 ? '' : 's'} on the board. Keep the decision grounded in the in-game options.`);
-    if (topSchool) add('info', 'Current leader', `${topSchool.name} has the strongest verified interest at ${numberOrZero(topSchool.interest)}%.`);
+    if (topSchool) add('info', 'Top personal preference', `${topSchool.name} is currently first in the ordered Top Schools list. This is the player's preference—not a school-interest percentage.`);
     if (state.player?.isCommitted) add('success', 'Decision locked', `The commitment to ${state.player.college} is in the permanent Chronicle. Finish the high-school chapter.`);
   }
 
@@ -188,8 +192,9 @@ export const buildCommandCenter = (state = {}) => {
   const player = state.player || {};
   const recruiting = state.recruiting || [];
   const offers = recruiting.filter((entry) => entry.offered);
-  const topSchool = topRecruit(recruiting);
+  const topSchool = stage === CAREER_STAGES.HIGH_SCHOOL ? topPlayerPreference(recruiting) : topRecruit(recruiting);
   const activeTargets = recruiting.filter((entry) => numberOrZero(entry.interest) > 0);
+  const highSchoolRecruiting = state.playerRecruiting?.highSchool || {};
   const totalTouchdowns = totals.passTD + totals.rushTD;
   const careerTouchdowns = careerTotals.passTD + careerTotals.rushTD;
   const healthStates = Object.values(rtg.wear || {});
@@ -207,18 +212,18 @@ export const buildCommandCenter = (state = {}) => {
       { label: 'Season record', value: `${seasonRecord.wins}-${seasonRecord.losses}`, tone: 'default' },
       { label: 'Verified offers', value: String(offers.length), tone: 'gold' },
       { label: 'Season total TD', value: String(totalTouchdowns), tone: 'gold' },
-      { label: 'QB national rank', value: display(numberOrNull(player.nationalQbRank), ''), tone: 'default' },
+      { label: 'National rank', value: highSchoolRecruiting.rankings?.national ? `#${highSchoolRecruiting.rankings.national}` : '—', tone: 'default' },
     ];
     panels = [
       panel('recruiting', 'Recruiting Race', 'map', [
         row('Current status', player.isCommitted ? `Committed · ${player.college}` : 'Uncommitted', player.isCommitted ? 'success' : 'gold'),
         row('Verified offers', offers.length),
-        row('Interest leader', topSchool ? `${topSchool.name} · ${numberOrZero(topSchool.interest)}%` : 'No verified leader'),
+        row('Top preference', topSchool ? `#${topSchool.preferenceRank || topSchool.customOrder || 1} · ${topSchool.name}` : 'Top Schools not captured'),
       ]),
       panel('tape', 'Tape & Development', 'film', [
-        row('Prospect grade', `${numberOrZero(player.stars) || 3}-star`),
-        row('Overall', display(numberOrNull(player.overall))),
-        row('Season pass / rush', `${totals.passYds} / ${totals.rushYds} yds`),
+        row('Prospect grade', `${numberOrZero(highSchoolRecruiting.recruitStars) || numberOrZero(player.stars) || 3}-star`),
+        row('Tape Score', numberOrZero(highSchoolRecruiting.tapeScore).toLocaleString()),
+        row('State / position rank', `${highSchoolRecruiting.rankings?.state ? `#${highSchoolRecruiting.rankings.state}` : '—'} / ${highSchoolRecruiting.rankings?.position ? `#${highSchoolRecruiting.rankings.position}` : '—'}`),
       ]),
       panel('availability', 'Friday Night Status', 'health', [
         row('Availability', healthStatus, healthStatus === 'Active' ? 'success' : 'warning'),

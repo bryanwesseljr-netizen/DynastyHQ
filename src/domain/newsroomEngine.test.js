@@ -7,7 +7,7 @@ const baseFacts = [
   'profile.player.name', 'profile.player.school', 'game.opponent', 'game.result',
   'game.homeScore', 'game.awayScore', 'game.passYds', 'game.passTD',
   'game.rushYds', 'game.rushTD', 'game.int', 'weekly.quote',
-  'recruiting.2.interest',
+  'recruiting.2.preferenceRank',
 ];
 
 test('creates five outlet voices from only available facts', () => {
@@ -19,8 +19,8 @@ test('creates five outlet voices from only available facts', () => {
     player: { name: 'Test Player', school: 'Test High School' },
     game: { opponent: 'Test Opponent A', result: 'W', homeScore: 28, awayScore: 14, passYds: 250, passTD: 2, rushYds: 55, rushTD: 1, int: 0 },
     recruiting: [
-      { id: 1, name: 'Test College A', interest: 95 },
-      { id: 2, name: 'Test University', interest: 80 },
+      { id: 1, name: 'Test College A', preferenceRank: 2 },
+      { id: 2, name: 'Test University', preferenceRank: 1 },
     ],
     quote: 'We earned it.',
     availableFactKeys: baseFacts,
@@ -32,8 +32,9 @@ test('creates five outlet voices from only available facts', () => {
   assert.ok(issue.articles.every((entry) => entry.paragraphs.every((paragraph) => paragraph.trim().length > 40)));
   assert.ok(issue.articles.every((entry) => entry.groundingStatus === 'verified'));
   assert.match(issue.articles[0].dek, /305 total yards/);
-  assert.match(issue.articles[2].headline, /Test University/);
-  assert.doesNotMatch(issue.articles[2].headline, /^Test College A leads/);
+  assert.match(issue.articles[2].headline, /ordered Top 1/);
+  assert.match(issue.articles[2].paragraphs.join(' '), /Test University/);
+  assert.doesNotMatch(JSON.stringify(issue.articles[2]), /interest percentage of/);
 });
 
 test('adds verified week-over-week and season context without flattening outlet voices', () => {
@@ -47,10 +48,10 @@ test('adds verified week-over-week and season context without flattening outlet 
     previousGames: [
       { season: 1, week: 1, opponent: 'Test Opponent A', result: 'W', passYds: 200, passTD: 2, rushYds: 50, rushTD: 0, int: 1 },
     ],
-    previousRecruiting: [{ id: 2, name: 'Test University', interest: 50 }],
-    recruiting: [{ id: 2, name: 'Test University', interest: 80 }],
-    availableFactKeys: baseFacts,
-    currentFactKeys: baseFacts,
+    previousRecruiting: [{ id: 2, name: 'Test University', preferenceRank: 1, progressStage: 'partial' }],
+    recruiting: [{ id: 2, name: 'Test University', preferenceRank: 1, progressStage: 'near' }],
+    availableFactKeys: [...baseFacts, 'recruiting.2.progressStage'],
+    currentFactKeys: [...baseFacts, 'recruiting.2.progressStage'],
     publishedAt: '2026-08-07T12:00:00.000Z',
   });
 
@@ -58,7 +59,7 @@ test('adds verified week-over-week and season context without flattening outlet 
   const recruitingStory = issue.articles.find((entry) => entry.outletId === 'recruiting');
   const nationalStory = issue.articles.find((entry) => entry.outletId === 'national');
   assert.match(localStory.paragraphs.join(' '), /increased by 50/);
-  assert.match(recruitingStory.paragraphs.join(' '), /rising from 50% to 80%/);
+  assert.match(recruitingStory.paragraphs.join(' '), /newly verified recruiting-progress state/);
   assert.match(nationalStory.paragraphs.join(' '), /team is 2-0/);
   assert.equal(new Set(issue.articles.map((entry) => entry.paragraphs.join(' '))).size, 5);
 });
@@ -123,7 +124,7 @@ test('does not publish unverified recruiting interest as reporting', () => {
 
   const recruitingStory = issue.articles.find((entry) => entry.outletId === 'recruiting');
   assert.equal(recruitingStory.paragraphs.length, 4);
-  assert.match(recruitingStory.headline, /awaits its first verified movement/);
+  assert.match(recruitingStory.headline, /awaits its first verified update/);
   assert.doesNotMatch(JSON.stringify(recruitingStory), /95/);
 });
 

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   createEmptyScanDraft,
   createPublishedWeek,
+  createStandaloneRecruitingUpdate,
+  correctPublishedWeek,
   createWeekKey,
   DuplicateWeekPublicationError,
   findPublishedWeekConflict,
@@ -236,7 +238,7 @@ test('publishes a week atomically to logs, fact ledger, recruiting, and chronicl
     state,
     game: { opponent: 'Test Opponent A', result: 'W', homeScore: 28, awayScore: 14, passYds: 250, passTD: 2, rushYds: 55, rushTD: 1, int: 0 },
     rtg: { gpa: 3.3 },
-    recruitingPatches: [{ id: 2, name: 'Test University', interest: 80, level: 'High' }],
+    recruitingPatches: [{ id: 2, name: 'Test University', preferenceRank: 1, progressStage: 'near' }],
     quote: 'We earned it.',
     facts: [{ id: 'x', key: 'game.passYds', label: 'Passing yards', value: 250, confidence: 0.92, sourceId: 'box', verified: false }],
     sources: [{ id: 'box' }],
@@ -250,14 +252,48 @@ test('publishes a week atomically to logs, fact ledger, recruiting, and chronicl
   assert.deepEqual(next.weeklyUpdates[0].rtgSnapshot, { gpa: 3.3 });
   assert.deepEqual(next.weeklyUpdates[0].rtgChanges, []);
   assert.equal(next.careerChronicle[0].title, 'W vs. Test Opponent A, 28-14');
-  assert.equal(next.recruiting[1].interest, 80);
-  assert.equal(next.weeklyUpdates[0].recruitingSnapshot[1].interest, 80);
-  assert.equal(next.weeklyUpdates[0].recruitingChanges.some((entry) => entry.type === 'interest'), true);
+  assert.equal(next.recruiting[1].preferenceRank, 1);
+  assert.equal(next.weeklyUpdates[0].recruitingSnapshot[1].progressStage, 'near');
+  assert.equal(next.weeklyUpdates[0].recruitingChanges.some((entry) => entry.type === 'progress'), true);
   assert.ok(next.factLedger.every((entry) => entry.verified));
   assert.equal(next.factLedger.some((entry) => entry.key === 'rtg.gpa' && entry.value === 3.3), true);
   assert.equal(next.newsroomIssues.length, 1);
   assert.equal(next.newsroomIssues[0].articles.length, 5);
   assert.ok(next.newsroomIssues[0].articles.every((entry) => entry.paragraphs.length === 4));
+});
+
+test('publishes a preseason recruiting update without consuming Game 1', () => {
+  const state = {
+    schemaVersion: 11,
+    currentSeason: 1,
+    currentWeek: 1,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School', pos: 'QB', stars: 3 },
+    playerRecruiting: {},
+    gameLogs: [],
+    recruiting: [{ id: 2, name: 'Test University', customOrder: 1 }],
+    weeklyUpdates: [],
+    factLedger: [],
+    careerChronicle: [],
+    newsroomIssues: [],
+  };
+  const next = createStandaloneRecruitingUpdate({
+    state,
+    recruitingPatches: [{ id: 2, name: 'Test University', preferenceRank: 1, progressStage: 'partial' }],
+    playerRecruitingPatch: { recruitStars: 3, tapeScore: 0, rankings: { national: 431, state: 16, position: 28 } },
+    facts: [
+      { id: 'rank', key: 'recruiting.profile.nationalRank', label: 'National rank', value: 431, confidence: 0.98, sourceId: 'ranking' },
+      { id: 'pref', key: 'recruiting.2.preferenceRank', label: 'Preference', value: 1, confidence: 0.98, sourceId: 'top-ten' },
+    ],
+    sources: [{ id: 'ranking' }, { id: 'top-ten' }],
+  });
+
+  assert.equal(next.currentWeek, 1);
+  assert.equal(next.gameLogs.length, 0);
+  assert.equal(next.playerRecruiting.highSchool.rankings.national, 431);
+  assert.equal(next.weeklyUpdates[0].editionType, 'recruiting');
+  assert.equal(next.newsroomIssues[0].articles[0].outletId, 'recruiting');
+  assert.equal(next.careerChronicle[0].type, 'recruiting-update');
 });
 
 test('deleting a game also removes every publication artifact derived from that week', () => {
@@ -297,6 +333,40 @@ test('deleting a game also removes every publication artifact derived from that 
   assert.deepEqual(reset.podcastEpisodes, []);
   assert.deepEqual(reset.newsroomMediaLibrary, [{ id: 'reusable-photo' }]);
   assert.deepEqual(reset.careerChronicle, [{ id: 'milestone-1', type: 'milestone', season: 1, week: 1 }]);
+});
+
+test('corrects a published game across the ledger, Chronicle, Newsroom, and podcast status', () => {
+  const published = createPublishedWeek({
+    state: {
+      schemaVersion: 12,
+      currentSeason: 1,
+      currentWeek: 1,
+      careerPhase: 'Player',
+      player: { name: 'Test Player', school: 'Test High School' },
+      playerRecruiting: {},
+      gameLogs: [], recruiting: [], rtg: {}, weeklyUpdates: [], factLedger: [],
+      careerChronicle: [], newsroomIssues: [], podcastEpisodes: [],
+    },
+    game: { opponent: 'Test Opponent A', result: 'L', homeScore: 14, awayScore: 21, passYds: 180, passTD: 1, rushYds: 20, rushTD: 0, int: 2 },
+    facts: [{ id: 'pass', key: 'game.passYds', label: 'Passing yards', value: 180, confidence: 0.98, sourceId: 'box' }],
+    sources: [{ id: 'box' }],
+  });
+  published.podcastEpisodes = [{ id: 'podcast-season-1-week-1', publicationId: 'season-1-week-1', status: 'published', audioStatus: 'ready', segments: [{ text: 'Old result' }] }];
+  published.newsroomIssues[0].articles[0].mediaAssetId = 'photo-1';
+
+  const corrected = correctPublishedWeek({
+    state: published,
+    gameIndex: 0,
+    game: { opponent: 'Test Opponent A', result: 'W', homeScore: 24, awayScore: 21, passYds: 275, passTD: 3, rushYds: 45, rushTD: 1, int: 1 },
+  });
+
+  assert.equal(corrected.gameLogs[0].passYds, 275);
+  assert.equal(corrected.factLedger.find((entry) => entry.key === 'game.passYds').value, 275);
+  assert.match(corrected.careerChronicle[0].title, /^W vs\. Test Opponent A, 24-21/);
+  assert.match(corrected.newsroomIssues[0].articles[0].headline, /turn back Test Opponent A/);
+  assert.equal(corrected.newsroomIssues[0].articles[0].mediaAssetId, 'photo-1');
+  assert.equal(corrected.podcastEpisodes[0].status, 'needs-regeneration');
+  assert.equal(corrected.podcastEpisodes[0].audioStatus, 'stale');
 });
 
 test('blocks publishing the same season and week more than once', () => {

@@ -8,7 +8,7 @@ import {
   HeartPulse, Briefcase, DollarSign, Users, AlertTriangle,
   Camera, CheckCircle, Plus, Trash2, Medal, X,
   Calendar, Megaphone, TrendingUp, GripVertical, FileText, CheckCircle2, Pencil, ScanLine,
-  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen
+  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen, Menu
 } from 'lucide-react';
 
 // --- FIREBASE CLOUD DATABASE IMPORTS ---
@@ -22,7 +22,7 @@ import {
   EmailAuthProvider, 
   linkWithCredential 
 } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db, firebaseApp } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
 import CareerArchive from './components/CareerArchive';
@@ -34,9 +34,17 @@ import {
 } from './domain/migrationProtection';
 import { CAREER_STAGES, deriveCareerStage } from './domain/commandCenter';
 import {
+  beginCollegeCareer,
+  createCoachingUniverse,
+  isGraduationReady,
+  updateGraduationChecklist,
+} from './domain/careerTransitions';
+import {
   CAREER_SCHEMA_VERSION,
   createEmptyScanDraft,
   createPublishedWeek,
+  createStandaloneRecruitingUpdate,
+  correctPublishedWeek,
   createWeekKey,
   findPublishedWeekConflict,
   getWeeklyCompleteness,
@@ -118,6 +126,7 @@ import {
 
 const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));
 const GroundedNewsroom = lazy(() => import('./components/GroundedNewsroom'));
+const NewsroomEmptyState = lazy(() => import('./components/NewsroomEmptyState'));
 const MilestoneRecorder = lazy(() => import('./components/MilestoneRecorder'));
 const CareerCommandCenter = lazy(() => import('./components/CareerCommandCenter'));
 const PersonnelCfoWorkspace = lazy(() => import('./components/PersonnelCfoWorkspace'));
@@ -125,6 +134,7 @@ const OffseasonPlanner = lazy(() => import('./components/OffseasonPlanner'));
 const PodcastStudio = lazy(() => import('./components/PodcastStudio'));
 
 const publicationLocks = new Set();
+const SAVE_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'dynastyhq-device';
 const createMediaAssetId = () => globalThis.crypto?.randomUUID?.()
   || `news-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -163,6 +173,12 @@ const App = () => {
   const [hasMigrationBackup, setHasMigrationBackup] = useState(false);
   const [isMigratingCloudSave, setIsMigratingCloudSave] = useState(false);
   const [newsroomMediaBusy, setNewsroomMediaBusy] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState({ state: 'idle', lastSavedAt: null, message: '' });
+  const cloudRevisionRef = useRef(0);
+  const cloudWriteQueueRef = useRef(Promise.resolve());
+  const pendingCloudStateRef = useRef(null);
+  const retryTimerRef = useRef(null);
 
   // Auth States
   const [authEmail, setAuthEmail] = useState('');
@@ -182,7 +198,6 @@ const App = () => {
   const [dragEnabledId, setDragEnabledId] = useState(null);
   const [bulkAddText, setBulkAddText] = useState("");
   const [tempInterests, setTempInterests] = useState({});
-  const [tempUrls, setTempUrls] = useState({});
 
   // --- FIREBASE AUTHENTICATION LOGIC ---
   useEffect(() => {
@@ -300,6 +315,7 @@ const App = () => {
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
         const rawCloudData = docSnap.data();
+        cloudRevisionRef.current = Number(rawCloudData?._sync?.revision) || 0;
         setLoadedCloudSchemaVersion(Number(rawCloudData?.schemaVersion) || 0);
         const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', getMigrationBackupDocumentId(CAREER_SCHEMA_VERSION));
         getDoc(backupRef)
@@ -390,7 +406,76 @@ const App = () => {
     else clearWeeklyDraftRecord(userState.uid);
   }, [appliedScanDraft, coachUpdate, isReadOnly, loadedOwnerId, newGame, rtgUpdate, scanDraft, userState]);
 
-  const updateAppState = useCallback((newStateOrUpdater, successMessage = null) => {
+  const persistCloudState = useCallback((nextState, successMessage = null, isRetry = false, options = {}) => {
+    if (!userState || !db) return Promise.resolve();
+    const cloudState = { ...nextState };
+    if (cloudState.podcastAudio && cloudState.podcastAudio.startsWith('data:audio')) {
+      cloudState.podcastAudio = '';
+      cloudState.hasCloudAudio = true;
+    } else if (!cloudState.podcastAudio) {
+      cloudState.hasCloudAudio = false;
+    }
+    pendingCloudStateRef.current = { state: cloudState, options };
+    setSaveStatus((current) => ({ ...current, state: isRetry ? 'retrying' : 'saving', message: '' }));
+    const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+    const task = async () => {
+      try {
+        await runTransaction(db, async (transaction) => {
+          const remoteSnapshot = await transaction.get(docRef);
+          const remoteSync = remoteSnapshot.exists() ? remoteSnapshot.data()?._sync : null;
+          const remoteRevision = Number(remoteSync?.revision) || 0;
+          const expectedRevision = cloudRevisionRef.current;
+          if (remoteRevision > expectedRevision && remoteSync?.deviceId && remoteSync.deviceId !== SAVE_DEVICE_ID) {
+            const conflict = new Error('This save changed on another device. Reload before saving again.');
+            conflict.code = 'SAVE_CONFLICT';
+            throw conflict;
+          }
+          const revision = Math.max(remoteRevision, expectedRevision) + 1;
+          transaction.set(docRef, {
+            ...cloudState,
+            _sync: { revision, deviceId: SAVE_DEVICE_ID, updatedAt: new Date().toISOString() },
+          });
+          cloudRevisionRef.current = revision;
+        });
+        pendingCloudStateRef.current = null;
+        if (options.clearDraftAfterSave) {
+          setAppliedScanDraft(null);
+          clearWeeklyDraftRecord(userState.uid);
+        }
+        const savedAt = new Date().toISOString();
+        setSaveStatus({ state: 'saved', lastSavedAt: savedAt, message: '' });
+        if (successMessage) {
+          setMessageModal({ isOpen: true, text: successMessage, type: 'success' });
+          setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
+        }
+      } catch (error) {
+        const conflict = error?.code === 'SAVE_CONFLICT';
+        setSaveStatus({
+          state: conflict ? 'conflict' : 'error',
+          lastSavedAt: null,
+          message: conflict ? error.message : 'Cloud save failed. Your changes remain on this device.',
+        });
+      }
+    };
+    cloudWriteQueueRef.current = cloudWriteQueueRef.current.then(task, task);
+    return cloudWriteQueueRef.current;
+  }, [userState]);
+
+  useEffect(() => () => window.clearTimeout(retryTimerRef.current), []);
+
+  const retryCloudSave = useCallback(() => {
+    const pending = pendingCloudStateRef.current;
+    if (pending) persistCloudState(pending.state, null, true, pending.options);
+  }, [persistCloudState]);
+
+  useEffect(() => {
+    if (saveStatus.state !== 'error' || !pendingCloudStateRef.current) return undefined;
+    window.clearTimeout(retryTimerRef.current);
+    retryTimerRef.current = window.setTimeout(retryCloudSave, 2500);
+    return () => window.clearTimeout(retryTimerRef.current);
+  }, [retryCloudSave, saveStatus.state]);
+
+  const updateAppState = useCallback((newStateOrUpdater, successMessage = null, saveOptions = {}) => {
     setAppState((prev) => {
       let newState;
       try {
@@ -409,29 +494,11 @@ const App = () => {
         return prev;
       }
       if (userState && db) {
-        const cloudState = { ...newState };
-        if (cloudState.podcastAudio && cloudState.podcastAudio.startsWith('data:audio')) {
-            cloudState.podcastAudio = ''; 
-            cloudState.hasCloudAudio = true;
-        } else if (!cloudState.podcastAudio) {
-            cloudState.hasCloudAudio = false;
-        }
-
-        const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
-        setDoc(docRef, cloudState)
-          .then(() => {
-            if (successMessage) {
-               setMessageModal({ isOpen: true, text: successMessage, type: 'success' });
-               setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
-            }
-          }).catch(() => {
-             setMessageModal({ isOpen: true, text: "Error syncing to cloud.", type: 'error' });
-             setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
-          });
+        persistCloudState(newState, successMessage, false, saveOptions);
       }
       return newState;
     });
-  }, [userState]);
+  }, [persistCloudState, userState]);
 
   // --- DERIVED STATS ---
   const isCoach = ['OC', 'HC', 'Retired'].includes(appState.careerPhase);
@@ -546,6 +613,21 @@ const App = () => {
 
   const handleApplyScanDraft = () => {
     if (!scanDraft) return;
+    const hasGameFacts = scanDraft.facts.some((entry) => entry.key.startsWith('game.'));
+    const hasRecruitingFacts = scanDraft.facts.some((entry) => entry.key.startsWith('recruiting.'));
+    if (!hasGameFacts && hasRecruitingFacts && appState.careerPhase === 'Player' && !appState.player.isCommitted) {
+      updateAppState((prev) => createStandaloneRecruitingUpdate({
+        state: prev,
+        recruitingPatches: scanDraft.recruitingPatches || [],
+        playerRecruitingPatch: scanDraft.playerRecruitingPatch || {},
+        facts: scanDraft.facts,
+        sources: scanDraft.sources,
+      }), 'Verified recruiting update saved to the board, Chronicle, and Recruiting Wire!');
+      setScanDraft(null);
+      setAppliedScanDraft(null);
+      setActiveTab('recruiting');
+      return;
+    }
     if (scanDraft.weekType !== WEEK_TYPES.BYE) {
       setNewGame((current) => ({
         ...current,
@@ -585,12 +667,6 @@ const App = () => {
   };
 
   // --- HANDLERS ---
-  const handleGlobalSave = () => {
-    updateAppState(prev => ({
-      ...prev, rtg: rtgUpdate, coach: coachUpdate
-    }), "Progress saved to cloud!");
-  };
-
   const handleProtectedCloudMigration = async () => {
     if (!userState || !db || isReadOnly || isMigratingCloudSave) return;
     setIsMigratingCloudSave(true);
@@ -693,6 +769,25 @@ const App = () => {
     } catch { setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
   };
 
+  const handleRevokePublicLink = async () => {
+    if (!userState || !db || !window.confirm('Revoke the public DynastyHQ link and remove its shared audio copies? Your private master save will not change.')) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', userState.uid));
+      const legacyAudio = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${userState.uid}`);
+      const legacySnapshot = await getDocs(legacyAudio);
+      await Promise.all(legacySnapshot.docs.map((entry) => deleteDoc(entry.ref)));
+      for (const episode of appState.podcastEpisodes || []) {
+        const safeEpisodeId = String(episode.id || '').replaceAll('/', '-').slice(0, 180);
+        const publicAudio = collection(db, 'artifacts', appId, 'public', 'data', `shared_podcast_${userState.uid}_${safeEpisodeId}`);
+        const snapshot = await getDocs(publicAudio);
+        await Promise.all(snapshot.docs.map((entry) => deleteDoc(entry.ref)));
+      }
+      setMessageModal({ isOpen: true, text: 'Public link revoked. Your private master save is unchanged.', type: 'success' });
+    } catch {
+      setMessageModal({ isOpen: true, text: 'The public link could not be fully revoked. Try again.', type: 'error' });
+    }
+  };
+
   // --- INTERACTIVE PRESS CONFERENCE AI ---
   const generatePresserQuestions = (game) => {
     const isWin = game.result === 'W';
@@ -768,10 +863,9 @@ const handleSaveGameClick = () => {
     // Standard Save / Edit without Presser (FIXED: Added rumors here)
     if (editingGameIndex !== null) {
       updateAppState(prev => {
-        const updatedLogs = [...prev.gameLogs];
-        updatedLogs[editingGameIndex] = { ...newGame, week: updatedLogs[editingGameIndex].week, season: updatedLogs[editingGameIndex].season || 1 };
-        return { ...prev, gameLogs: updatedLogs, rtg: rtgUpdate, coach: coachUpdate, rumors: updatedRumors };
-      }, "Game log successfully updated!");
+        const corrected = correctPublishedWeek({ state: prev, gameIndex: editingGameIndex, game: newGame });
+        return { ...corrected, rtg: rtgUpdate, coach: coachUpdate, rumors: updatedRumors };
+      }, "Published week corrected across the Ledger, Chronicle, Newsroom, and podcast status!");
       setEditingGameIndex(null);
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -788,6 +882,7 @@ const handleSaveGameClick = () => {
           rtg: rtgUpdate,
           coach: coachUpdate,
           recruitingPatches: appliedScanDraft.recruitingPatches,
+          playerRecruitingPatch: appliedScanDraft.playerRecruitingPatch || {},
           retentionPatches: appliedScanDraft.retentionPatches || [],
           facts: appliedScanDraft.facts,
           sources: appliedScanDraft.sources,
@@ -795,8 +890,8 @@ const handleSaveGameClick = () => {
           ...publicationTarget,
         });
         return { ...publishedState, rumors: updatedRumors };
-      }, appliedScanDraft ? "Verified weekly update published!" : "Agenda updates & rumors synced to the cloud!");
-      setAppliedScanDraft(null);
+      }, appliedScanDraft ? "Verified weekly update published!" : "Agenda updates & rumors synced to the cloud!", { clearDraftAfterSave: Boolean(appliedScanDraft) });
+      if (!userState || !db) setAppliedScanDraft(null);
       setActiveTab('dashboard'); 
     }
   };
@@ -811,6 +906,7 @@ const handleSaveGameClick = () => {
           rtg: rtgUpdate,
           coach: coachUpdate,
           recruitingPatches: appliedScanDraft?.recruitingPatches || [],
+          playerRecruitingPatch: appliedScanDraft?.playerRecruitingPatch || {},
           retentionPatches: appliedScanDraft?.retentionPatches || [],
           quote: selectedQuote,
           facts: appliedScanDraft?.facts || [],
@@ -819,10 +915,10 @@ const handleSaveGameClick = () => {
           ...target,
         });
         return { ...publishedState, rumors };
-      }, "Week published to stats, Fact Ledger, and Career Chronicle!");
+      }, "Week published to stats, Fact Ledger, and Career Chronicle!", { clearDraftAfterSave: true });
       
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
-      setAppliedScanDraft(null);
+      if (!userState || !db) setAppliedScanDraft(null);
       setPressConference(null);
       setActiveTab('newsroom'); 
   };
@@ -892,6 +988,54 @@ const handleSaveGameClick = () => {
     setActiveTab('chronicle');
   };
 
+  const handleBeginCollegeCareer = () => {
+    updateAppState((prev) => beginCollegeCareer(prev), `College career started at ${appState.player.college}!`);
+    setActiveTab('dashboard');
+  };
+
+  const handleGraduationChecklist = (field, checked) => {
+    updateAppState((prev) => updateGraduationChecklist(prev, field, checked));
+  };
+
+  const handleGraduatePlayer = () => {
+    updateAppState((prev) => {
+      if (!isGraduationReady(prev)) return prev;
+      return createCareerMilestone({
+        state: prev,
+        draft: {
+          type: MILESTONE_TYPES.GRADUATION,
+          season: prev.currentSeason || 1,
+          week: prev.currentWeek || 1,
+          institution: prev.player.college || prev.player.school,
+          previousInstitution: '', achievement: '', notes: '', confirmed: true,
+        },
+      });
+    }, 'Road to Glory career archived and graduation recorded!');
+  };
+
+  const handleCreateCoachingUniverse = () => {
+    updateAppState((prev) => createCoachingUniverse(prev), 'Coaching universe created with a clean prospect board!');
+  };
+
+  const handleBeginOcCareer = () => {
+    updateAppState((prev) => {
+      const nextSeason = (prev.currentSeason || 1) + 1;
+      const institution = prev.player.graduationSchool || prev.player.college || prev.player.school;
+      const milestoneState = createCareerMilestone({
+        state: prev,
+        draft: {
+          type: MILESTONE_TYPES.OC_HIRE,
+          season: nextSeason,
+          week: 1,
+          institution,
+          previousInstitution: '', achievement: '', notes: '', confirmed: true,
+        },
+      });
+      return { ...milestoneState, currentSeason: nextSeason, currentWeek: 1, careerStage: CAREER_STAGES.OC };
+    }, 'Offensive coordinator career started!');
+    setActiveTab('dashboard');
+  };
+
   const handleAddPlayerRecruitingSchool = (name) => {
     updateAppState(prev => {
       if (prev.recruiting.some((school) => school.name.trim().toLowerCase() === name.trim().toLowerCase())) return prev;
@@ -903,8 +1047,18 @@ const handleSaveGameClick = () => {
           level: 'None',
           interest: 0,
           offered: false,
+          preferenceRank: prev.recruiting.length + 1,
+          progressStage: '',
+          schemeFit: null,
           customOrder: prev.recruiting.length + 1,
         }],
+        playerRecruiting: {
+          ...prev.playerRecruiting,
+          highSchool: {
+            ...prev.playerRecruiting?.highSchool,
+            topSchoolsSelected: Math.min(10, prev.recruiting.length + 1),
+          },
+        },
       };
     });
   };
@@ -1287,22 +1441,6 @@ const handleSaveGameClick = () => {
     }
   };
 
-  const handleUrlBlur = (field, subfield) => {
-      const key = `${field}-${subfield}`;
-      if (tempUrls[key] !== undefined) {
-          let formatted = tempUrls[key].trim();
-          if (formatted.match(/^https?:\/\/imgur\.com\/[a-zA-Z0-9]+$/)) {
-              formatted = formatted.replace('imgur.com', 'i.imgur.com') + '.jpeg';
-          }
-          updateAppState(prev => {
-              if (field === 'player') return { ...prev, player: { ...prev.player, [subfield]: formatted } };
-              else if (field === 'outletImages') return { ...prev, outletImages: { ...(prev.outletImages || {}), [subfield]: formatted } };
-              return prev;
-          });
-          setTempUrls(prev => { const n = {...prev}; delete n[key]; return n; });
-      }
-  };
-
   // --- UNIVERSAL SORTING ENGINE ---
   const sortSchools = (schools) => {
     const levelWeights = { 'High': 4, 'Medium': 3, 'Low': 2, 'None': 1 };
@@ -1318,7 +1456,21 @@ const handleSaveGameClick = () => {
   };
 
   const deleteSchool = (id) => {
-    updateAppState(prev => ({ ...prev, recruiting: prev.recruiting.filter(s => s.id !== id) }));
+    updateAppState(prev => {
+      const recruiting = prev.recruiting.filter(s => s.id !== id);
+      if (isCoach) return { ...prev, recruiting };
+      return {
+        ...prev,
+        recruiting,
+        playerRecruiting: {
+          ...prev.playerRecruiting,
+          highSchool: {
+            ...prev.playerRecruiting?.highSchool,
+            topSchoolsSelected: Math.min(10, recruiting.length),
+          },
+        },
+      };
+    });
   };
 
   const addSchool = (level) => {
@@ -1565,7 +1717,7 @@ const handleSaveGameClick = () => {
     const starString = '★'.repeat(stars) + '☆'.repeat(5 - stars);
 
     return (
-      <div className="w-72 shrink-0 bg-slate-950/90 backdrop-blur-xl border-r border-slate-800 flex flex-col no-print shrink-0 z-50 shadow-2xl relative">
+      <div className={`fixed inset-y-0 left-0 z-[120] flex w-72 shrink-0 flex-col border-r border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur-xl transition-transform no-print lg:relative lg:z-50 lg:translate-x-0 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-800/50 relative">
           <h1 className="text-[22px] font-black tracking-wider flex items-center gap-2 drop-shadow-md text-white font-sans">
             <Trophy size={20} /> DYNASTY <span className="text-amber-500">HQ</span>
@@ -1609,6 +1761,7 @@ const handleSaveGameClick = () => {
                     if (item.id === 'newsroom') setNewsroomFocusId('');
                     if (item.id === 'podcast') setPodcastFocusId('');
                     setActiveTab(item.id);
+                    setMobileNavOpen(false);
                   }
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-bold ${
@@ -1620,12 +1773,11 @@ const handleSaveGameClick = () => {
           })}
         </nav>
         
-        {/* QUICK SAVE SIDEBAR BUTTON */}
+        {/* Cloud status and sharing */}
         {!isReadOnly && (
             <div className="p-4 border-t border-slate-800/50 space-y-2">
-                <button onClick={handleGlobalSave} className="w-full bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-4 py-3 rounded-lg font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-slate-700 hover:border-emerald-500 shadow-md">
-                    <Save size={16} /> Quick Save
-                </button>
+                <div className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${saveStatus.state === 'error' || saveStatus.state === 'conflict' ? 'border-red-500/40 bg-red-950/30 text-red-300' : saveStatus.state === 'saving' || saveStatus.state === 'retrying' ? 'border-blue-500/40 bg-blue-950/30 text-blue-300' : 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300'}`}>{saveStatus.state === 'saving' ? 'Saving…' : saveStatus.state === 'retrying' ? 'Retrying save…' : saveStatus.state === 'conflict' ? 'Reload required' : saveStatus.state === 'error' ? 'Retry needed' : saveStatus.lastSavedAt ? `Saved ${new Date(saveStatus.lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Automatic cloud save ready'}</div>
+                {(saveStatus.state === 'error' || saveStatus.state === 'conflict') && <button type="button" onClick={saveStatus.state === 'conflict' ? () => window.location.reload() : retryCloudSave} className="w-full rounded-lg border border-red-500/40 bg-red-950/20 px-3 py-2 text-[10px] font-black uppercase text-red-300">{saveStatus.state === 'conflict' ? 'Reload latest save' : 'Retry cloud save'}</button>}
                 <button onClick={handlePublishToPublic} className="w-full bg-slate-900 hover:bg-blue-600 text-slate-400 hover:text-white px-4 py-3 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-slate-800 hover:border-blue-500 shadow-md">
                     <Share2 size={14} /> Get Share Link
                 </button>
@@ -1645,6 +1797,11 @@ const handleSaveGameClick = () => {
             if (tab === 'newsroom') setNewsroomFocusId('');
             setActiveTab(tab);
           }}
+          onBeginCollege={handleBeginCollegeCareer}
+          onChecklistChange={handleGraduationChecklist}
+          onGraduate={handleGraduatePlayer}
+          onCreateCoachingUniverse={handleCreateCoachingUniverse}
+          onBeginOcCareer={handleBeginOcCareer}
         />
       );
     }
@@ -2291,6 +2448,22 @@ const handleSaveGameClick = () => {
           onAssignMedia={handleAssignNewsroomMedia}
           onClearMedia={handleClearNewsroomMedia}
           onGenerateMedia={handleGenerateNewsroomMedia}
+          onToggleReference={handleToggleNewsroomReference}
+          onDeleteMedia={handleDeleteNewsroomMedia}
+          onSetAutoGenerateLead={handleSetAutoGenerateLead}
+        />
+      );
+    }
+
+    if (appState.schemaVersion >= 12) {
+      return (
+        <NewsroomEmptyState
+          readOnly={isReadOnly}
+          mediaLibrary={appState.newsroomMediaLibrary || []}
+          mediaBusy={newsroomMediaBusy}
+          autoGenerateLead={Boolean(appState.newsroomMediaSettings?.autoGenerateLead)}
+          onOpenCommandCenter={() => setActiveTab('dataEntry')}
+          onUploadMedia={handleUploadNewsroomMedia}
           onToggleReference={handleToggleNewsroomReference}
           onDeleteMedia={handleDeleteNewsroomMedia}
           onSetAutoGenerateLead={handleSetAutoGenerateLead}
@@ -3105,53 +3278,78 @@ const handleSaveGameClick = () => {
 
         <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-4 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
-            <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Map size={16} className="text-blue-500"/> 3. Manual Recruiting Updates</h3>
+            <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Map size={16} className="text-blue-500"/> {isCoach ? '3. Manual Recruiting Updates' : '3. Top Schools Snapshot'}</h3>
           </div>
-          <p className="text-xs text-slate-400">If the scanner missed a prospect's interest level, you can manually override the sliders here.</p>
-          
-          <div className="pt-2">
-            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2">
-              {appState.recruiting.length === 0 ? (
-                <div className="text-xs text-slate-500 italic text-center py-4">No prospects on board.</div>
-              ) : (
-                [...appState.recruiting].sort((a,b)=> (Number(b.interest) || 0) - (Number(a.interest) || 0)).map(school => (
-                  <div key={school.id} className="flex flex-col gap-2 bg-slate-950/50 p-3 rounded-lg border border-slate-800/50">
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs font-bold text-white truncate w-1/2">{school.name}</div>
-                      <button 
-                        onClick={() => updateSchool(school.id, 'offered', !school.offered)}
-                        className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-colors ${school.offered ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'}`}
-                      >
-                        {school.offered ? (isCoach ? 'Scholarship' : 'Offered') : 'No Offer'}
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input 
-                        type="range" min="0" max="100" value={valOrEmpty(school.interest)} 
-                        onChange={(e) => updateSchool(school.id, 'interest', parseInt(e.target.value))}
-                        onMouseUp={() => autoCategorizeSchool(school.id)}
-                        onTouchEnd={() => autoCategorizeSchool(school.id)}
-                        onKeyUp={() => autoCategorizeSchool(school.id)}
-                        className={`w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer ${getSliderAccent(school.interest)}`}
-                      />
-                      <div className="flex items-center">
-                        <input 
-                          type="number" 
-                          min="0" max="100" 
-                          value={valOrEmpty(school.interest)} 
-                          onChange={(e) => updateSchool(school.id, 'interest', e.target.value === '' ? '' : parseInt(e.target.value))}
-                          onBlur={() => autoCategorizeSchool(school.id)}
-                          onKeyDown={(e) => e.key === 'Enter' && autoCategorizeSchool(school.id)}
-                          className={`w-7 bg-transparent text-right text-[10px] font-bold ${getInterestColor(school.interest)} border-b border-transparent focus:border-blue-400 outline-none p-0 hide-arrows transition-colors`}
-                        />
-                        <span className={`text-[10px] font-bold ${getInterestColor(school.interest)} transition-colors`}>%</span>
+          {isCoach ? (
+            <>
+              <p className="text-xs text-slate-400">If the scanner missed a prospect's interest level, you can manually override the sliders here.</p>
+              <div className="pt-2">
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2">
+                  {appState.recruiting.length === 0 ? (
+                    <div className="text-xs text-slate-500 italic text-center py-4">No prospects on board.</div>
+                  ) : (
+                    [...appState.recruiting].sort((a,b)=> (Number(b.interest) || 0) - (Number(a.interest) || 0)).map(school => (
+                      <div key={school.id} className="flex flex-col gap-2 bg-slate-950/50 p-3 rounded-lg border border-slate-800/50">
+                        <div className="flex justify-between items-center">
+                          <div className="text-xs font-bold text-white truncate w-1/2">{school.name}</div>
+                          <button
+                            onClick={() => updateSchool(school.id, 'offered', !school.offered)}
+                            className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-colors ${school.offered ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'}`}
+                          >
+                            {school.offered ? 'Scholarship' : 'No Offer'}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range" min="0" max="100" value={valOrEmpty(school.interest)}
+                            onChange={(e) => updateSchool(school.id, 'interest', parseInt(e.target.value))}
+                            onMouseUp={() => autoCategorizeSchool(school.id)}
+                            onTouchEnd={() => autoCategorizeSchool(school.id)}
+                            onKeyUp={() => autoCategorizeSchool(school.id)}
+                            className={`w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer ${getSliderAccent(school.interest)}`}
+                          />
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              min="0" max="100"
+                              value={valOrEmpty(school.interest)}
+                              onChange={(e) => updateSchool(school.id, 'interest', e.target.value === '' ? '' : parseInt(e.target.value))}
+                              onBlur={() => autoCategorizeSchool(school.id)}
+                              onKeyDown={(e) => e.key === 'Enter' && autoCategorizeSchool(school.id)}
+                              className={`w-7 bg-transparent text-right text-[10px] font-bold ${getInterestColor(school.interest)} border-b border-transparent focus:border-blue-400 outline-none p-0 hide-arrows transition-colors`}
+                            />
+                            <span className={`text-[10px] font-bold ${getInterestColor(school.interest)} transition-colors`}>%</span>
+                          </div>
+                        </div>
                       </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs leading-relaxed text-slate-400">This is your personal Top Schools order from the game—not a school-interest percentage. Use the Recruiting Board to correct preference rank, scheme fit, scholarship offers, or school details.</p>
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                <div><p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Tape Score</p><p className="mt-1 font-mono text-lg font-black text-blue-400">{Number(appState.playerRecruiting?.highSchool?.tapeScore || 0).toLocaleString()}</p></div>
+                <div><p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Scholarship Offers</p><p className="mt-1 font-mono text-lg font-black text-emerald-400">{appState.recruiting.filter((school) => school.offered).length}</p></div>
+              </div>
+              <div className="max-h-[300px] space-y-2 overflow-y-auto pr-1">
+                {[...appState.recruiting]
+                  .sort((a, b) => (Number(a.preferenceRank || a.customOrder) || 999) - (Number(b.preferenceRank || b.customOrder) || 999))
+                  .slice(0, 10)
+                  .map((school, index) => (
+                    <div key={school.id} className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-slate-900 font-mono text-xs font-black text-blue-400">#{school.preferenceRank || school.customOrder || index + 1}</span>
+                      <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-white">{school.name}</p><p className="mt-1 text-[9px] font-bold uppercase text-slate-500">{school.progressStage || 'Progress not captured'} · {school.schemeFit === true ? 'Scheme fit: Yes' : school.schemeFit === false ? 'Scheme fit: No' : 'Scheme fit unknown'}</p></div>
+                      <span className={`rounded px-2 py-1 text-[8px] font-black uppercase ${school.offered ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-500'}`}>{school.offered ? 'Offer' : 'No offer'}</span>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+                  ))}
+                {!appState.recruiting.length && <div className="py-5 text-center text-xs italic text-slate-500">No Top Schools captured yet.</div>}
+              </div>
+              <button type="button" onClick={() => setActiveTab('recruiting')} className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500">Open Recruiting Board</button>
+            </>
+          )}
         </div>
 
         <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 shadow-2xl space-y-6 flex flex-col justify-start">
@@ -3163,69 +3361,6 @@ const handleSaveGameClick = () => {
              <h4 className="text-[10px] font-bold text-slate-300 uppercase">Newsroom Photos</h4>
              <p className="mt-2 text-xs leading-relaxed text-slate-500">Upload, reuse, and assign photos directly inside each published Newsroom article. No image link is required.</p>
              <button type="button" onClick={() => setActiveTab('newsroom')} className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500">Open Newsroom Media Manager</button>
-             <h5 className="mb-3 mt-5 border-t border-slate-800 pt-4 text-[9px] font-bold uppercase tracking-widest text-slate-600">Legacy fallback URLs (optional)</h5>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1">The Bolt</span>
-                  <input 
-                    type="text" 
-                    value={tempUrls['outletImages-broadsheet'] !== undefined ? tempUrls['outletImages-broadsheet'] : (appState.outletImages?.broadsheet || '')} 
-                    onChange={(e) => setTempUrls(prev => ({...prev, 'outletImages-broadsheet': e.target.value}))}
-                    onBlur={() => handleUrlBlur('outletImages', 'broadsheet')}
-                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none focus:border-slate-400 transition-colors" 
-                    placeholder="Paste Imgur link..." 
-                  />
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1">On3 / Gridiron</span>
-                  <input 
-                    type="text" 
-                    value={tempUrls['outletImages-on3'] !== undefined ? tempUrls['outletImages-on3'] : (appState.outletImages?.on3 || '')} 
-                    onChange={(e) => setTempUrls(prev => ({...prev, 'outletImages-on3': e.target.value}))}
-                    onBlur={() => handleUrlBlur('outletImages', 'on3')}
-                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none focus:border-amber-500 transition-colors" 
-                    placeholder="Paste Imgur link..." 
-                  />
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1">News-Herald</span>
-                  <input 
-                    type="text" 
-                    value={tempUrls['outletImages-local'] !== undefined ? tempUrls['outletImages-local'] : (appState.outletImages?.local || '')} 
-                    onChange={(e) => setTempUrls(prev => ({...prev, 'outletImages-local': e.target.value}))}
-                    onBlur={() => handleUrlBlur('outletImages', 'local')}
-                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none focus:border-amber-900 transition-colors" 
-                    placeholder="Paste Imgur link..." 
-                  />
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1">Film Room Tape</span>
-                  <input 
-                    type="text" 
-                    value={tempUrls['outletImages-filmroom'] !== undefined ? tempUrls['outletImages-filmroom'] : (appState.outletImages?.filmroom || '')} 
-                    onChange={(e) => setTempUrls(prev => ({...prev, 'outletImages-filmroom': e.target.value}))}
-                    onBlur={() => handleUrlBlur('outletImages', 'filmroom')}
-                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none focus:border-emerald-500 transition-colors" 
-                    placeholder="Paste Imgur link..." 
-                  />
-                </div>
-                <div className="md:col-span-2 pt-2 border-t border-slate-800">
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1">Podcast Cover Art URL</span>
-                  <input 
-                    type="text" 
-                    value={tempUrls['outletImages-podcast'] !== undefined ? tempUrls['outletImages-podcast'] : (appState.outletImages?.podcast || '')} 
-                    onChange={(e) => setTempUrls(prev => ({...prev, 'outletImages-podcast': e.target.value}))}
-                    onBlur={() => handleUrlBlur('outletImages', 'podcast')}
-                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none focus:border-blue-500 transition-colors" 
-                    placeholder="Paste Imgur link (leave empty for default graphic)..." 
-                  />
-                </div>
-             </div>
           </div>
           
           <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 shadow-inner">
@@ -3266,8 +3401,8 @@ const handleSaveGameClick = () => {
                   <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
                       <div className="bg-blue-600 p-2 rounded-full"><Mic className="text-white w-6 h-6"/></div>
                       <div>
-                          <h2 className="text-2xl font-black text-white uppercase tracking-tight">Post-Game Presser</h2>
-                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Local Media Availability</p>
+                          <h2 className="text-2xl font-black text-white uppercase tracking-tight">Optional Post-Game Roleplay</h2>
+                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">DynastyHQ-generated scene · not an in-game fact</p>
                       </div>
                   </div>
                   
@@ -3285,6 +3420,7 @@ const handleSaveGameClick = () => {
                               <div className="text-white font-medium pl-2">{ans.text}</div>
                           </button>
                       ))}
+                      <button type="button" onClick={() => finalizeGameSaveWithQuote('')} className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs font-black uppercase tracking-wider text-slate-400 hover:border-blue-400 hover:text-white">Publish without a roleplay quote</button>
                   </div>
               </div>
           </div>
@@ -3338,12 +3474,14 @@ const handleSaveGameClick = () => {
     <h3 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow">
       <UploadCloud className="text-blue-500" /> Cloud Sync Status
     </h3>
-    <p className="text-sm font-bold text-emerald-400 mb-4 flex items-center gap-2">
-       <CheckCircle size={16}/> Silent Cloud Sync Active (Master Save)
+    <p className={`text-sm font-bold mb-4 flex items-center gap-2 ${saveStatus.state === 'error' || saveStatus.state === 'conflict' ? 'text-red-400' : saveStatus.state === 'saving' || saveStatus.state === 'retrying' ? 'text-blue-400' : 'text-emerald-400'}`}>
+       {saveStatus.state === 'saving' || saveStatus.state === 'retrying' ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16}/>} {saveStatus.state === 'saving' ? 'Saving to cloud…' : saveStatus.state === 'retrying' ? 'Retrying cloud save…' : saveStatus.state === 'conflict' ? 'Another device updated this save' : saveStatus.state === 'error' ? 'Cloud save needs attention' : 'Automatic cloud sync active'}
     </p>
     <p className="text-xs text-slate-400">
-       Your data is automatically syncing to the cloud in the background. You can open this app on any device (phone, PC, incognito mode) and your Dynasty will be waiting for you instantly. No passwords required.
+       Signed-in changes save automatically. DynastyHQ shows the last confirmed save, retries temporary failures, and stops before overwriting a newer version from another device.
     </p>
+    {saveStatus.message && <p className="rounded-lg border border-red-500/30 bg-red-950/20 p-3 text-xs font-bold text-red-300">{saveStatus.message}</p>}
+    <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>Last saved: {saveStatus.lastSavedAt ? new Date(saveStatus.lastSavedAt).toLocaleString() : 'Not confirmed this session'}</span>{saveStatus.state === 'error' && <button type="button" onClick={retryCloudSave} className="rounded border border-red-500/40 px-3 py-1.5 text-red-300">Retry now</button>}{saveStatus.state === 'conflict' && <button type="button" onClick={() => window.location.reload()} className="rounded border border-amber-500/40 px-3 py-1.5 text-amber-300">Reload latest save</button>}</div>
     <div className="border-t border-slate-700/50 pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Master save schema</div>
@@ -3393,7 +3531,10 @@ const handleSaveGameClick = () => {
            </form>
         )}
 
-        <div className="border-t border-slate-700/50 pt-4 text-right">
+        <div className="flex flex-wrap justify-end gap-3 border-t border-slate-700/50 pt-4">
+           <button onClick={handleRevokePublicLink} className="rounded border border-amber-700 bg-amber-950/20 px-4 py-2 text-xs font-bold uppercase tracking-wider text-amber-300 transition-colors hover:bg-amber-900/40">
+              Revoke Public Link
+           </button>
            <button onClick={handleLogout} className="bg-slate-800 hover:bg-red-600 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-colors border border-slate-600 hover:border-red-500">
               Sign Out
            </button>
@@ -3408,7 +3549,7 @@ const handleSaveGameClick = () => {
         <div className="flex flex-col gap-3 border-t border-slate-700/50 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Current verified stage</div>
-            <div className="mt-1 text-lg font-black text-amber-400">{appState.careerPhase === 'Player' ? 'Road to Glory Player' : appState.careerPhase === 'OC' ? 'Offensive Coordinator' : appState.careerPhase === 'HC' ? 'Head Coach' : 'Retired'}</div>
+            <div className="mt-1 text-lg font-black text-amber-400">{careerStage === CAREER_STAGES.HIGH_SCHOOL ? 'High School Recruit' : careerStage === CAREER_STAGES.COLLEGE ? 'Road to Glory Player' : careerStage === CAREER_STAGES.OC ? 'Offensive Coordinator' : careerStage === CAREER_STAGES.HC ? 'Head Coach' : 'Retired'}</div>
           </div>
           <button type="button" onClick={() => setActiveTab('dataEntry')} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-amber-300 hover:bg-amber-500/20">Record Career Milestone</button>
         </div>
@@ -3422,9 +3563,15 @@ const handleSaveGameClick = () => {
            Use these options to manage your save state locally or in the cloud.
         </p>
         <div className="border-t border-slate-700/50 pt-4 flex gap-4">
-           <button onClick={requestAdvanceSeason} className="flex-1 bg-amber-600/90 hover:bg-amber-500 text-slate-900 px-4 py-3 rounded-lg font-black text-xs uppercase tracking-wider transition-colors shadow-md flex justify-center items-center gap-2">
-              <Calendar size={16} /> Advance to Next Season
-           </button>
+           {careerStage === CAREER_STAGES.HIGH_SCHOOL ? (
+             <button onClick={() => setActiveTab('dashboard')} className="flex-1 bg-amber-600/90 hover:bg-amber-500 text-slate-900 px-4 py-3 rounded-lg font-black text-xs uppercase tracking-wider transition-colors shadow-md flex justify-center items-center gap-2">
+                <Calendar size={16} /> Use Career Transition
+             </button>
+           ) : (
+             <button onClick={requestAdvanceSeason} disabled={careerStage === CAREER_STAGES.RETIRED} className="flex-1 bg-amber-600/90 hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 text-slate-900 px-4 py-3 rounded-lg font-black text-xs uppercase tracking-wider transition-colors shadow-md flex justify-center items-center gap-2">
+                <Calendar size={16} /> {careerStage === CAREER_STAGES.RETIRED ? 'Career Complete' : 'Advance to Next Season'}
+             </button>
+           )}
            <button onClick={handleResetRequest} className="flex-1 bg-red-900/50 hover:bg-red-600 text-red-200 hover:text-white px-4 py-3 rounded-lg font-black text-xs uppercase tracking-wider transition-colors border border-red-700 flex justify-center items-center gap-2 shadow-md">
               <Trash2 size={16} /> Factory Reset Database
            </button>
@@ -3435,11 +3582,13 @@ const handleSaveGameClick = () => {
 
   return (
     <div className="flex h-screen bg-slate-950 font-sans text-slate-200 overflow-hidden selection:bg-amber-500/30">
+       {mobileNavOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} className="fixed inset-0 z-[110] bg-black/70 lg:hidden" />}
        {/* Nav */}
        {renderNav()}
        
        {/* Main Content Area */}
-       <div className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+       <div className="flex-1 overflow-y-auto p-4 pt-20 md:p-8 lg:pt-8 relative">
+         <button type="button" onClick={() => setMobileNavOpen(true)} className="fixed left-4 top-4 z-[100] flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 text-xs font-black uppercase text-white shadow-xl lg:hidden"><Menu size={18} /> Menu</button>
          {/* Background Image */}
          <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true">
             <img src={getBgImage()} className="w-full h-full object-cover opacity-20 mix-blend-luminosity" alt="Background" />

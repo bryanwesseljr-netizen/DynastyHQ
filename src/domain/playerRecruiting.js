@@ -10,6 +10,15 @@ const numeric = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 export const DEFAULT_PLAYER_RECRUITING = Object.freeze({
   highSchoolGameTarget: HIGH_SCHOOL_GAME_TARGET,
+  highSchool: {
+    stage: 'setup',
+    gameNumber: 0,
+    tapeScore: 0,
+    recruitStars: 3,
+    rankings: { national: '', state: '', position: '' },
+    topSchoolsSelected: 0,
+    events: [],
+  },
   finalists: [],
   highSchoolArchive: null,
   transfer: {
@@ -24,6 +33,15 @@ export const DEFAULT_PLAYER_RECRUITING = Object.freeze({
 export const normalizePlayerRecruiting = (value = {}) => ({
   ...DEFAULT_PLAYER_RECRUITING,
   ...value,
+  highSchool: {
+    ...DEFAULT_PLAYER_RECRUITING.highSchool,
+    ...(value.highSchool || {}),
+    rankings: {
+      ...DEFAULT_PLAYER_RECRUITING.highSchool.rankings,
+      ...(value.highSchool?.rankings || {}),
+    },
+    events: Array.isArray(value.highSchool?.events) ? value.highSchool.events : [],
+  },
   finalists: Array.isArray(value.finalists) ? value.finalists.map(String).slice(0, 3) : [],
   highSchoolArchive: value.highSchoolArchive || null,
   transfer: {
@@ -40,10 +58,72 @@ export const countHighSchoolGames = (state = {}) => {
   return Math.min(HIGH_SCHOOL_GAME_TARGET, (state.gameLogs || []).filter((game) => game?.didPlay !== false).length);
 };
 
-export const sortedRecruitingSchools = (schools = []) => [...schools].sort((left, right) => (
-  numeric(right.interest) - numeric(left.interest)
-  || numeric(left.customOrder || 999) - numeric(right.customOrder || 999)
-));
+export const normalizeRecruitingSchool = (school = {}, index = 0) => ({
+  ...school,
+  preferenceRank: school.preferenceRank || school.customOrder || index + 1,
+  customOrder: school.customOrder || school.preferenceRank || index + 1,
+  progressStage: school.progressStage ?? '',
+  offered: Boolean(school.offered),
+  schemeFit: typeof school.schemeFit === 'boolean' ? school.schemeFit : null,
+  scholarshipBonuses: {
+    academics: 0,
+    brand: 0,
+    leadership: 0,
+    fitness: 0,
+    coachTrust: 0,
+    skillPoints: 0,
+    ...(school.scholarshipBonuses || {}),
+  },
+  programRatings: {
+    overall: '', offense: '', defense: '',
+    ...(school.programRatings || {}),
+  },
+  tendencies: {
+    run: '', pass: '', aggressive: '', conservative: '',
+    ...(school.tendencies || {}),
+  },
+  depthChart: Array.isArray(school.depthChart) ? school.depthChart : [],
+});
+
+export const sortedRecruitingSchools = (schools = []) => schools
+  .map(normalizeRecruitingSchool)
+  .sort((left, right) => (
+    numeric(left.preferenceRank || 999) - numeric(right.preferenceRank || 999)
+    || numeric(left.customOrder || 999) - numeric(right.customOrder || 999)
+    || left.name.localeCompare(right.name)
+  ));
+
+export const applyPlayerRecruitingPatch = (state = {}, patch = {}) => {
+  if (!patch || !Object.keys(patch).length) return state;
+  const playerRecruiting = normalizePlayerRecruiting(state.playerRecruiting);
+  const previous = playerRecruiting.highSchool;
+  const next = {
+    ...previous,
+    ...patch,
+    rankings: { ...previous.rankings, ...(patch.rankings || {}) },
+  };
+  const changed = [
+    ['tapeScore', previous.tapeScore, next.tapeScore],
+    ['recruitStars', previous.recruitStars, next.recruitStars],
+    ['nationalRank', previous.rankings.national, next.rankings.national],
+    ['stateRank', previous.rankings.state, next.rankings.state],
+    ['positionRank', previous.rankings.position, next.rankings.position],
+    ['topSchoolsSelected', previous.topSchoolsSelected, next.topSchoolsSelected],
+  ].filter(([, before, after]) => String(before) !== String(after));
+  if (changed.length) {
+    next.events = [...previous.events, {
+      id: `recruiting-profile-${Date.now()}-${previous.events.length}`,
+      gameNumber: numeric(next.gameNumber),
+      capturedAt: new Date().toISOString(),
+      changes: changed.map(([field, from, to]) => ({ field, from, to })),
+    }];
+  }
+  return {
+    ...state,
+    player: patch.recruitStars ? { ...state.player, stars: patch.recruitStars } : state.player,
+    playerRecruiting: { ...playerRecruiting, highSchool: next },
+  };
+};
 
 export const toggleRecruitingFinalist = (state, schoolId) => {
   const playerRecruiting = normalizePlayerRecruiting(state.playerRecruiting);
@@ -69,6 +149,7 @@ export const archiveHighSchoolRecruiting = (state, committedSchool, committedAt 
         committedAt,
         gamesCompleted: countHighSchoolGames(state),
         starRating: state.player?.stars || '',
+        highSchoolProfile: { ...playerRecruiting.highSchool },
         offerCount: sortedSchools.filter((school) => school.offered).length,
         finalists: (selectedFinalists.length ? selectedFinalists : fallbackFinalists).map((school) => ({ ...school })),
         schools: sortedSchools.map((school) => ({ ...school })),
@@ -196,10 +277,11 @@ export const snapshotRecruitingChanges = (previous = [], current = []) => {
   const previousById = new Map(previous.map((school) => [String(school.id), school]));
   return current.flatMap((school) => {
     const prior = previousById.get(String(school.id));
-    if (!prior) return [{ schoolId: school.id, school: school.name, type: 'added', interest: numeric(school.interest), offered: Boolean(school.offered) }];
+    if (!prior) return [{ schoolId: school.id, school: school.name, type: 'added', preferenceRank: school.preferenceRank, offered: Boolean(school.offered) }];
     const changes = [];
-    if (numeric(prior.interest) !== numeric(school.interest)) changes.push({ schoolId: school.id, school: school.name, type: 'interest', from: numeric(prior.interest), to: numeric(school.interest) });
+    if (prior.progressStage !== school.progressStage && school.progressStage !== '') changes.push({ schoolId: school.id, school: school.name, type: 'progress', from: prior.progressStage, to: school.progressStage });
     if (!prior.offered && school.offered) changes.push({ schoolId: school.id, school: school.name, type: 'offer' });
+    if (prior.schemeFit !== school.schemeFit && typeof school.schemeFit === 'boolean') changes.push({ schoolId: school.id, school: school.name, type: 'scheme-fit', to: school.schemeFit });
     return changes;
   });
 };
@@ -220,7 +302,7 @@ export const applyCommitmentToLatestNewsroom = (state, schoolName) => {
       paragraphs: [
         `${state.player?.name || 'The quarterback'} has officially committed to ${schoolName}, closing the high-school recruiting process with a user-confirmed decision.`,
         `The permanent recruiting archive preserves every school, offer, finalist, and verified weekly movement that led to the choice.`,
-        `Interest percentages remain historical snapshots of the process. They are not carried forward as current college or transfer-portal interest.`,
+        `The ordered Top 10, game-supplied progress bars, scholarship offers, and school overviews remain frozen as recruiting history. They are not carried forward as current college or transfer-portal interest.`,
         `DynastyHQ will now move the recruiting workspace into college mode. It will remain quiet unless a future transfer decision is intentionally opened.`,
       ],
       citedFactKeys,

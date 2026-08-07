@@ -17,11 +17,12 @@ const NewsroomMediaManager = ({
   onToggleReference,
   onDelete,
   onSetAutoGenerateLead,
+  lockerOnly = false,
 }) => {
   const uploadRef = useRef(null);
   const referenceRef = useRef(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [lockerOpen, setLockerOpen] = useState(false);
+  const [lockerOpen, setLockerOpen] = useState(lockerOnly);
 
   const receiveFile = (event, asReference) => {
     const file = event.target.files?.[0];
@@ -34,26 +35,26 @@ const NewsroomMediaManager = ({
       <div className="flex flex-wrap items-center gap-2">
         <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFile(event, false)} />
         <input ref={referenceRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFile(event, true)} />
-        <button type="button" disabled={busy} onClick={() => uploadRef.current?.click()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500 disabled:opacity-50">
+        {!lockerOnly && <button type="button" disabled={busy} onClick={() => uploadRef.current?.click()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500 disabled:opacity-50">
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Upload Photo
-        </button>
-        <button type="button" disabled={busy || !mediaLibrary.length} onClick={() => setLibraryOpen((open) => !open)} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-wider hover:border-slate-500 disabled:opacity-40">
+        </button>}
+        {!lockerOnly && <button type="button" disabled={busy || !mediaLibrary.length} onClick={() => setLibraryOpen((open) => !open)} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-wider hover:border-slate-500 disabled:opacity-40">
           <Images size={14} /> Media Library
-        </button>
-        <button type="button" disabled={busy || article.groundingStatus !== 'verified'} onClick={() => onGenerate({ issue, article })} className="flex items-center gap-2 rounded-lg border border-violet-500/50 bg-violet-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
+        </button>}
+        {!lockerOnly && <button type="button" disabled={busy || article?.groundingStatus !== 'verified'} onClick={() => onGenerate({ issue, article })} className="flex items-center gap-2 rounded-lg border border-violet-500/50 bg-violet-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Generate AI Photo
-        </button>
+        </button>}
         {currentMedia?.asset && (
           <button type="button" disabled={busy} onClick={() => onClear({ issue, article })} className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:border-red-500/50 hover:text-red-300">
             <X size={14} /> Remove From Article
           </button>
         )}
-        <button type="button" onClick={() => setLockerOpen((open) => !open)} className="ml-auto flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/20">
+        <button type="button" onClick={() => setLockerOpen((open) => !open)} className={`${lockerOnly ? '' : 'ml-auto'} flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/20`}>
           <ImagePlus size={14} /> Reference Locker ({mediaLibrary.filter((asset) => asset.isReference).length})
         </button>
       </div>
 
-      <p className="mt-2 text-[10px] leading-relaxed text-slate-500">Photos are assigned only to this article. AI images use verified story copy and up to four approved references.</p>
+      <p className="mt-2 text-[10px] leading-relaxed text-slate-500">{lockerOnly ? 'Prepare approved player, uniform, helmet, and equipment references before the first article is published.' : 'Photos are assigned only to this article. AI images use verified story copy and up to four approved references.'}</p>
 
       {libraryOpen && (
         <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-4">
@@ -63,11 +64,11 @@ const NewsroomMediaManager = ({
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {[...mediaLibrary].reverse().map((asset) => (
-              <button key={asset.id} type="button" onClick={() => { onAssign({ issue, article, asset }); setLibraryOpen(false); }} className={`group overflow-hidden rounded-lg border text-left ${article.mediaAssetId === asset.id ? 'border-blue-400' : 'border-slate-700 hover:border-slate-500'}`}>
+              <button key={asset.id} type="button" onClick={() => { onAssign({ issue, article, asset }); setLibraryOpen(false); }} className={`group overflow-hidden rounded-lg border text-left ${article?.mediaAssetId === asset.id ? 'border-blue-400' : 'border-slate-700 hover:border-slate-500'}`}>
                 <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-cover" />
                 <div className="flex items-center justify-between gap-2 p-2">
                   <span className="truncate text-[9px] font-bold text-slate-300">{asset.fileName}</span>
-                  {article.mediaAssetId === asset.id && <Check size={12} className="shrink-0 text-blue-400" />}
+                  {article?.mediaAssetId === asset.id && <Check size={12} className="shrink-0 text-blue-400" />}
                 </div>
               </button>
             ))}

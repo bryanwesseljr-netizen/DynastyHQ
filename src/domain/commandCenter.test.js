@@ -9,7 +9,8 @@ const baseState = () => ({
   player: { name: 'Test Player', school: 'Test High School', college: '', isCommitted: false, stars: 3, overall: 70, nationalQbRank: 87 },
   coach: { security: 85, prestige: 'C+', budget: 1500, contractYear: 1, contractRemaining: 3 },
   rtg: { gpa: 0, energy: 0, coachTrust: 0, trustToNext: 0, wear: { head: 'Green', chest: 'Green', arm: 'Green', legs: 'Green' } },
-  recruiting: [{ id: 1, name: 'Test University', interest: 62, offered: true }],
+  playerRecruiting: { highSchool: { tapeScore: 730, recruitStars: 3, rankings: { national: 431, state: 16, position: 28 } } },
+  recruiting: [{ id: 1, name: 'Test University', preferenceRank: 1, offered: true }],
   gameLogs: [{ season: 1, week: 3, opponent: 'Test Opponent A', result: 'W', homeScore: 28, awayScore: 14, passYds: 210, passTD: 2, rushYds: 65, rushTD: 1, int: 0 }],
   weeklyUpdates: [],
   careerChronicle: [],
@@ -40,7 +41,8 @@ test('high school model emphasizes verified recruiting and tape facts', () => {
   const model = buildCommandCenter(baseState());
   assert.equal(model.stage, CAREER_STAGES.HIGH_SCHOOL);
   assert.equal(model.metrics.find((metric) => metric.label === 'Verified offers').value, '1');
-  assert.equal(model.panels.find((panel) => panel.id === 'recruiting').rows[2].value, 'Test University · 62%');
+  assert.equal(model.panels.find((panel) => panel.id === 'recruiting').rows[2].value, '#1 · Test University');
+  assert.equal(model.panels.find((panel) => panel.id === 'tape').rows[1].value, '730');
   assert.match(model.description, /three-star grind/i);
 });
 

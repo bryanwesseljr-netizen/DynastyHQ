@@ -132,6 +132,7 @@ export const createNewsroomIssue = ({
   quote = '',
   rtg = {},
   previousRtg = {},
+  playerRecruiting = {},
   availableFactKeys = [],
   currentFactKeys = availableFactKeys,
   publishedAt,
@@ -154,12 +155,17 @@ export const createNewsroomIssue = ({
   if (score) gameKeys.push('game.homeScore', 'game.awayScore');
   if (quote) gameKeys.push('weekly.quote');
 
-  const activeSchools = (isCollegePlayer ? [] : recruiting)
-    .filter((schoolEntry) => numeric(schoolEntry.interest) > 0 && allowedKeys.has(`recruiting.${schoolEntry.id}.interest`))
-    .sort((a, b) => numeric(b.interest) - numeric(a.interest));
-  const leader = activeSchools[0];
-  const leaderKey = leader ? `recruiting.${leader.id}.interest` : null;
-  const recruitingKeys = activeSchools.map((entry) => `recruiting.${entry.id}.interest`);
+  const topSchools = (isCollegePlayer ? [] : recruiting)
+    .filter((entry) => entry?.name && [
+      'preferenceRank', 'progressStage', 'offer', 'schemeFit', 'tapeScoreRequired', 'projectedRole',
+    ].some((field) => allowedKeys.has(`recruiting.${entry.id}.${field}`)))
+    .sort((a, b) => numeric(a.preferenceRank || a.customOrder || 999) - numeric(b.preferenceRank || b.customOrder || 999));
+  const topChoice = topSchools[0];
+  const recruitingKeys = topSchools.flatMap((entry) => [
+    `recruiting.${entry.id}.preferenceRank`,
+    `recruiting.${entry.id}.progressStage`,
+    `recruiting.${entry.id}.offer`,
+  ]).filter((key) => allowedKeys.has(key));
   const previousSchools = new Map(previousRecruiting.map((entry) => [String(entry.id), entry]));
   const newOffers = (isCollegePlayer ? [] : recruiting).filter((entry) => (
     entry.offered
@@ -167,17 +173,13 @@ export const createNewsroomIssue = ({
     && !previousSchools.get(String(entry.id))?.offered
   ));
   const offerKeys = newOffers.map((entry) => `recruiting.${entry.id}.offer`);
-  const previousInterest = new Map(previousRecruiting.map((entry) => [String(entry.id), numeric(entry.interest)]));
-  const verifiedMovements = activeSchools
-    .filter((entry) => currentKeys.has(`recruiting.${entry.id}.interest`) && previousInterest.has(String(entry.id)))
-    .map((entry) => ({
-      ...entry,
-      previousInterest: previousInterest.get(String(entry.id)),
-      change: numeric(entry.interest) - previousInterest.get(String(entry.id)),
-    }))
-    .filter((entry) => entry.change !== 0)
-    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
-  const largestMovement = verifiedMovements[0];
+  const progressChanges = topSchools.filter((entry) => {
+    const previous = previousSchools.get(String(entry.id));
+    return previous && previous.progressStage !== entry.progressStage
+      && currentKeys.has(`recruiting.${entry.id}.progressStage`);
+  });
+  const tapeScore = numeric(playerRecruiting?.highSchool?.tapeScore);
+  const tapeScoreKey = 'recruiting.profile.tapeScore';
 
   const priorSeasonGames = recordedAppearances(previousGames, season);
   const currentSeasonGames = [...priorSeasonGames, { ...(game || {}), season }];
@@ -232,55 +234,55 @@ export const createNewsroomIssue = ({
         ? `${playerName}'s transfer desk remains quiet at ${currentCollege}`
         : newOffers.length
           ? `${newOffers[0].name} adds a verified offer to ${playerName}'s recruitment`
-        : leader
-        ? `${leader.name} leads the verified recruiting board at ${numeric(leader.interest)}%`
-        : `${playerName}'s recruiting board awaits its first verified movement`,
+        : topSchools.length
+        ? `${playerName}'s ordered Top ${topSchools.length} develops after Week ${week}`
+        : `${playerName}'s recruiting board awaits its first verified update`,
       dek: isCollegePlayer
         ? 'No transfer decision is active; the high-school recruiting board remains archived.'
         : newOffers.length
           ? `${newOffers.length} new scholarship ${newOffers.length === 1 ? 'offer is' : 'offers are'} confirmed in the Week ${week} Fact Ledger.`
-        : leader
-        ? `${activeSchools.length} ${activeSchools.length === 1 ? 'program has' : 'programs have'} registered interest above zero.`
-        : 'No school-interest percentage has been published yet.',
+        : topSchools.length
+        ? `${topSchools.length} school${topSchools.length === 1 ? ' is' : 's are'} recorded in the game-supplied preference order${currentKeys.has(tapeScoreKey) ? ` at a Tape Score of ${tapeScore}` : ''}.`
+        : 'No Top Schools list or scholarship offer has been published yet.',
       paragraphs: isCollegePlayer
         ? [
             `${playerName} remains enrolled at ${currentCollege}, and DynastyHQ has no active transfer decision on record for this weekly edition.`,
-            `The interest percentages and scholarship offers from the five-game high-school recruiting process are preserved as history, not reused as current college recruiting data.`,
+            `The Top 10 order, progress bars, Scheme Fit values, and scholarship offers from the five-game high-school process are preserved as history, not reused as current college recruiting data.`,
             `Because no portal process is active, the Recruiting Wire will not invent outreach, destinations, projected roles, or private conversations.`,
             `If a real transfer decision appears in CFB 27, the separate Transfer Hub can be opened for that decision and closed again without changing schools if ${playerName} stays.`,
           ]
         : newOffers.length
           ? [
               `${newOffers.map((entry) => entry.name).join(', ')} ${newOffers.length === 1 ? 'has' : 'have'} joined the verified offer list for ${playerName} after the latest high-school performance.`,
-              leader
-                ? `${leader.name} remains the current interest leader at ${numeric(leader.interest)}%, while the board now contains ${recruiting.filter((entry) => entry.offered).length} confirmed scholarship ${recruiting.filter((entry) => entry.offered).length === 1 ? 'offer' : 'offers'}.`
-                : `The offer is verified, but no numerical school-interest leader is available in the published facts.`,
-              largestMovement
-                ? `${largestMovement.name} also recorded the week's largest interest move, ${largestMovement.change > 0 ? 'rising' : 'falling'} from ${largestMovement.previousInterest}% to ${numeric(largestMovement.interest)}%.`
-                : `No separate week-over-week interest change is verified, so the scholarship development stands as the week's primary recruiting movement.`,
-              `Every offer and percentage remains tied to the game-supplied recruiting screen. No visit, private conversation, or commitment projection is added without verification.`,
+              topChoice
+                ? `${topChoice.name} is No. 1 in the player's personal preference order; that position does not claim the school is the recruiting leader. The board now contains ${recruiting.filter((entry) => entry.offered).length} confirmed scholarship ${recruiting.filter((entry) => entry.offered).length === 1 ? 'offer' : 'offers'}.`
+                : `The offer is verified, but no ordered Top Schools list is available in the published facts.`,
+              progressChanges.length
+                ? `${progressChanges.map((entry) => entry.name).join(', ')} also ${progressChanges.length === 1 ? 'shows' : 'show'} a verified change in the game-displayed progress bar.`
+                : `No separate progress-bar change is verified, so the scholarship development stands as the week's primary recruiting movement.`,
+              `Every offer, progress bar, and preference rank remains tied to a game-supplied screen. No interest percentage, visit, private conversation, or commitment projection is invented.`,
             ]
-        : leader
+        : topSchools.length
         ? [
-            `${leader.name} currently holds the highest recorded interest in ${playerName} at ${numeric(leader.interest)}%.`,
-            `The race is beginning to take shape: ${activeSchools.length} ${activeSchools.length === 1 ? 'program is' : 'programs are'} above zero on the verified board${activeSchools.length > 1 ? `, led by ${activeSchools.slice(0, 3).map((entry) => `${entry.name} at ${numeric(entry.interest)}%`).join(', ')}` : ''}. Those percentages describe the current board—not a projected destination.`,
-            largestMovement
-              ? `${largestMovement.name} recorded the week's largest verified move, ${largestMovement.change > 0 ? 'rising' : 'falling'} from ${largestMovement.previousInterest}% to ${numeric(largestMovement.interest)}%.`
-              : `No week-over-week percentage change is verified for Week ${week}, making this edition the clean baseline against which the next recruiting update will be judged.`,
+            `${topChoice.name} is No. 1 on ${playerName}'s personal Top Schools list. The ranking records the player's preference—not which program is recruiting him most aggressively.`,
+            `The verified order currently begins ${topSchools.slice(0, 3).map((entry, index) => `${entry.preferenceRank || entry.customOrder || index + 1}. ${entry.name}`).join(', ')}${topSchools.length > 3 ? `, with ${topSchools.length - 3} more school${topSchools.length - 3 === 1 ? '' : 's'} on the board` : ''}.`,
+            progressChanges.length
+              ? `${progressChanges.map((entry) => entry.name).join(', ')} ${progressChanges.length === 1 ? 'has' : 'have'} a newly verified recruiting-progress state this week.`
+              : `No week-over-week progress-bar change is verified for Week ${week}, making this edition the clean baseline for the next update.`,
             `The intrigue is real, but the guardrails remain firm: this report will not project a commitment, private conversation, visit, or scholarship decision that is absent from the published Fact Ledger.`,
           ]
         : [
-            `The recruiting spotlight is waiting for its first verified movement. DynastyHQ has not received a school-interest percentage for ${playerName}, so no program can yet be placed at the front of the race.`,
-            `The Week ${week} Fact Ledger contains no numerical leader, scholarship change, or confirmed visit to separate one school from another. That absence is treated as unknown information—not as zero interest.`,
+            `The recruiting spotlight is waiting for its first verified update. DynastyHQ has not received an ordered Top Schools list for ${playerName}, so no program can yet be placed in the player's preference order.`,
+            `The Week ${week} Fact Ledger contains no Top 10 order, scholarship change, or school overview. That absence is treated as unknown information—not as zero interest.`,
             `Rather than turn an empty board into a rumor cycle, the recruiting desk is leaving offers, visits, and commitment projections unreported. The story will change only when the game supplies a readable update.`,
-            `A future edition will transform that new screen or confirmed entry into a week-over-week recruiting story, preserving the first real rise, fall, offer, or decision as part of the career timeline.`,
+            `A future edition will transform that new screen into a verified Top 10, progress-bar, Scheme Fit, offer, Top 3, or commitment update in the career timeline.`,
           ],
       citedFactKeys: isCollegePlayer
         ? ['profile.player.name', 'profile.player.college']
         : newOffers.length
           ? ['profile.player.name', ...offerKeys, ...recruitingKeys]
-        : leaderKey
-        ? ['profile.player.name', ...recruitingKeys]
+        : topSchools.length
+        ? ['profile.player.name', ...recruitingKeys, ...(currentKeys.has(tapeScoreKey) ? [tapeScoreKey] : [])]
         : ['profile.player.name'],
     }),
     article({
@@ -328,10 +330,84 @@ export const createNewsroomIssue = ({
     articles: groundedArticles,
     podcastBrief: {
       title: `${school} vs. ${opponent}: the verified Week ${week} briefing`,
-      summary: `${playerName}: ${statLine(game)}. ${rtgContext ? 'The weekly RTG and NIL snapshot is preserved with the performance.' : ''} ${isCollegePlayer ? 'No transfer decision is active.' : (leader ? `${leader.name} leads the saved recruiting board at ${numeric(leader.interest)}%.` : 'No recruiting leader is recorded.')}`.replace(/\s+/g, ' ').trim(),
-      citedFactKeys: [...new Set([...gameKeys, ...(rtgContext?.keys || []), ...(leaderKey ? [leaderKey] : [])])].filter((key) => allowedKeys.has(key)),
+      summary: `${playerName}: ${statLine(game)}. ${rtgContext ? 'The weekly RTG and NIL snapshot is preserved with the performance.' : ''} ${isCollegePlayer ? 'No transfer decision is active.' : (topChoice ? `${topChoice.name} is first in the saved personal preference order.` : 'No Top Schools order is recorded.')}`.replace(/\s+/g, ' ').trim(),
+      citedFactKeys: [...new Set([...gameKeys, ...(rtgContext?.keys || []), ...recruitingKeys])].filter((key) => allowedKeys.has(key)),
     },
   };
 };
 
 export const getLatestNewsroomIssue = (issues = []) => issues.length ? issues[issues.length - 1] : null;
+
+export const createRecruitingNewsroomIssue = ({
+  publicationId,
+  season = 1,
+  week = 0,
+  player = {},
+  playerRecruiting = {},
+  recruiting = [],
+  previousRecruiting = [],
+  currentFactKeys = [],
+  publishedAt = new Date().toISOString(),
+}) => {
+  const playerName = player.name || 'The quarterback';
+  const profile = playerRecruiting?.highSchool || {};
+  const schools = [...recruiting]
+    .filter((entry) => entry?.name)
+    .sort((a, b) => numeric(a.preferenceRank || a.customOrder || 999) - numeric(b.preferenceRank || b.customOrder || 999));
+  const previous = new Map(previousRecruiting.map((entry) => [String(entry.id), entry]));
+  const newOffers = schools.filter((entry) => entry.offered && !previous.get(String(entry.id))?.offered);
+  const hasTopTen = schools.length > 0;
+  const rankingText = [
+    profile.rankings?.national ? `No. ${profile.rankings.national} nationally` : '',
+    profile.rankings?.state ? `No. ${profile.rankings.state} in the state` : '',
+    profile.rankings?.position ? `No. ${profile.rankings.position} at his position` : '',
+  ].filter(Boolean).join(', ');
+  const headline = newOffers.length
+    ? `${newOffers[0].name} extends a verified scholarship offer to ${playerName}`
+    : hasTopTen
+      ? `${playerName} reveals an ordered Top ${schools.length}`
+      : `${playerName} opens the five-game recruiting evaluation`;
+  const paragraphs = newOffers.length
+    ? [
+        `${newOffers.map((entry) => entry.name).join(', ')} ${newOffers.length === 1 ? 'has' : 'have'} officially joined ${playerName}'s scholarship offer list.`,
+        `${schools[0]?.name || newOffers[0].name} is currently first in the player's personal preference order. That order does not represent which school is recruiting him most aggressively.`,
+        `The offer details, including any visible annual bonuses, are preserved on the school overview. Standard letter language is not treated as a verified player evaluation.`,
+        `DynastyHQ will not invent interest percentages, visits, private conversations, or a commitment projection.`,
+      ]
+    : hasTopTen
+      ? [
+          `${playerName}'s personal list currently begins ${schools.slice(0, 3).map((entry) => `${entry.preferenceRank || entry.customOrder}. ${entry.name}`).join(', ')}${schools.length > 3 ? `, with ${schools.length - 3} additional school${schools.length - 3 === 1 ? '' : 's'} recorded` : ''}.`,
+          `The list is a preference ranking selected by the player. The game-displayed recruiting bars are stored as nonnumeric progress states, not converted into invented percentages.`,
+          `${profile.tapeScore !== '' && profile.tapeScore !== undefined ? `The current Tape Score is ${numeric(profile.tapeScore).toLocaleString()}.` : 'No Tape Score was verified in this update.'} ${rankingText ? `The saved rankings list ${rankingText}.` : 'No ranking values were verified in this update.'}`,
+          `Scheme Fit, scholarship requirements, projected role, team ratings, coaches, depth-chart competition, and offer bonuses appear only when a school overview or offer screen verifies them.`,
+        ]
+      : [
+          `${profile.recruitStars || player.stars || 3}-star ${player.pos || 'quarterback'} ${playerName} begins the five-game high-school evaluation period with a Tape Score of ${numeric(profile.tapeScore).toLocaleString()}.`,
+          rankingText ? `The initial recruiting update lists ${rankingText}.` : `No national, state, or position ranking has been verified yet.`,
+          `No Top Schools list or scholarship offer is on file in this edition. That information remains unknown rather than being treated as zero interest.`,
+          `Future verified screens will update the ordered Top 10, progress states, Scheme Fit, scholarship requirements, offers, Top 3, and Signing Day decision.`,
+        ];
+  const citedFactKeys = [...new Set(['profile.player.name', ...currentFactKeys])];
+  return {
+    id: publicationId,
+    publicationId,
+    season,
+    week,
+    label: week === 0 ? 'Preseason recruiting' : `Recruiting update ${week}`,
+    careerPhase: 'Player',
+    publishedAt,
+    status: 'published',
+    editionType: 'recruiting',
+    articles: [article({
+      outlet: OUTLETS[2],
+      headline,
+      dek: newOffers.length
+        ? `${newOffers.length} official scholarship ${newOffers.length === 1 ? 'offer is' : 'offers are'} now verified.`
+        : hasTopTen
+          ? `The game-supplied preference order is preserved without invented interest percentages.`
+          : `The first verified recruiting baseline is now on the record.`,
+      paragraphs,
+      citedFactKeys,
+    })].map((entry) => ({ ...entry, groundingStatus: 'verified' })),
+  };
+};

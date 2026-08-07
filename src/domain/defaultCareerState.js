@@ -1,5 +1,6 @@
 import { CAREER_SCHEMA_VERSION } from './weeklyEngine';
 import { DEFAULT_PLAYER_RECRUITING } from './playerRecruiting';
+import { DEFAULT_CAREER_TRANSITIONS } from './careerTransitions';
 
 export const DEFAULT_CAREER_STATE = {
   schemaVersion: CAREER_SCHEMA_VERSION,
@@ -44,6 +45,7 @@ export const DEFAULT_CAREER_STATE = {
   gameLogs: [],
   recruiting: [],
   playerRecruiting: DEFAULT_PLAYER_RECRUITING,
+  careerTransitions: DEFAULT_CAREER_TRANSITIONS,
   rtg: {
     gpa: '',
     energy: '',

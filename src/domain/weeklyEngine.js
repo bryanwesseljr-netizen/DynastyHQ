@@ -1,8 +1,14 @@
-import { createNewsroomIssue } from './newsroomEngine.js';
+import { createNewsroomIssue, createRecruitingNewsroomIssue } from './newsroomEngine.js';
 import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress.js';
-import { normalizePlayerRecruiting, snapshotRecruitingChanges } from './playerRecruiting.js';
+import { normalizeCareerTransitions } from './careerTransitions.js';
+import {
+  applyPlayerRecruitingPatch,
+  normalizePlayerRecruiting,
+  normalizeRecruitingSchool,
+  snapshotRecruitingChanges,
+} from './playerRecruiting.js';
 
-export const CAREER_SCHEMA_VERSION = 11;
+export const CAREER_SCHEMA_VERSION = 12;
 
 export class DuplicateWeekPublicationError extends Error {
   constructor(weekKey) {
@@ -72,23 +78,160 @@ export const removePublishedGame = (state, gameIndex) => {
   const latestRemainingQuote = [...remainingUpdates]
     .reverse()
     .find((entry) => entry.quote)?.quote || '';
+  const latestSnapshot = [...remainingUpdates]
+    .reverse()
+    .find((entry) => entry.recruitingSnapshot || entry.playerRecruitingSnapshot || hasRtgSnapshot(entry.rtgSnapshot));
+  const removedCommitment = (state.careerMilestones || []).some((entry) => (
+    entry.type === 'commitment'
+    && Number(entry.season || 1) === season
+    && Number(entry.week || 1) === week
+  ));
+  const playerRecruiting = normalizePlayerRecruiting(state.playerRecruiting);
 
   return {
     ...state,
     currentWeek: Math.max(0, ...remainingCurrentSeasonWeeks) + 1,
     latestQuote: latestRemainingQuote,
     gameLogs: remainingGames,
+    player: removedCommitment ? { ...state.player, isCommitted: false, college: '' } : state.player,
+    recruiting: latestSnapshot?.recruitingSnapshot
+      ? latestSnapshot.recruitingSnapshot.map(normalizeRecruitingSchool)
+      : (state.recruiting || []),
+    playerRecruiting: {
+      ...playerRecruiting,
+      ...(removedCommitment ? { finalists: [], highSchoolArchive: null } : {}),
+      highSchool: latestSnapshot?.playerRecruitingSnapshot
+        ? { ...playerRecruiting.highSchool, ...latestSnapshot.playerRecruitingSnapshot }
+        : playerRecruiting.highSchool,
+    },
+    rtg: latestSnapshot?.rtgSnapshot && hasRtgSnapshot(latestSnapshot.rtgSnapshot)
+      ? { ...(state.rtg || {}), ...latestSnapshot.rtgSnapshot }
+      : state.rtg,
     weeklyUpdates: remainingUpdates,
     factLedger: (state.factLedger || []).filter((entry) => entry.publicationId !== publicationId),
     careerChronicle: (state.careerChronicle || []).filter(
       (entry) => entry.id !== publicationId && entry.publicationId !== publicationId,
     ),
+    careerMilestones: (state.careerMilestones || []).filter((entry) => !(
+      removedCommitment
+      && entry.type === 'commitment'
+      && Number(entry.season || 1) === season
+      && Number(entry.week || 1) === week
+    )),
     newsroomIssues: (state.newsroomIssues || []).filter(
       (entry) => !matchesPublication(entry, publicationId, season, week),
     ),
     podcastEpisodes: (state.podcastEpisodes || []).filter(
       (entry) => entry.publicationId !== publicationId && entry.id !== `podcast-${publicationId}`,
     ),
+  };
+};
+
+export const correctPublishedWeek = ({ state, gameIndex, game }) => {
+  const existingGame = state?.gameLogs?.[gameIndex];
+  if (!existingGame) return state;
+  const season = Number(existingGame.season || 1);
+  const week = Number(existingGame.week || 1);
+  const publicationId = createWeekKey(season, week);
+  const correctedGame = { ...existingGame, ...game, season, week };
+  const updateIndex = (state.weeklyUpdates || []).findIndex((entry) => matchesPublication(entry, publicationId, season, week));
+  if (updateIndex < 0) {
+    const gameLogs = [...state.gameLogs];
+    gameLogs[gameIndex] = correctedGame;
+    return { ...state, gameLogs };
+  }
+
+  const weeklyUpdates = [...state.weeklyUpdates];
+  const previousUpdate = weeklyUpdates[updateIndex];
+  const factMap = new Map((state.factLedger || [])
+    .filter((entry) => entry.publicationId === publicationId)
+    .map((entry) => [entry.key, entry]));
+  [
+    ['opponent', 'Opponent'], ['result', 'Result'], ['homeScore', 'Team score'],
+    ['awayScore', 'Opponent score'], ['passYds', 'Passing yards'], ['passTD', 'Passing touchdowns'],
+    ['rushYds', 'Rushing yards'], ['rushTD', 'Rushing touchdowns'], ['int', 'Interceptions'],
+  ].forEach(([field, label]) => {
+    const key = `game.${field}`;
+    factMap.set(key, {
+      ...(factMap.get(key) || fact(key, label, correctedGame[field], 1, publicationId)),
+      value: correctedGame[field],
+      verified: true,
+      publicationId,
+      correctedAt: new Date().toISOString(),
+    });
+  });
+  const correctedFacts = [...factMap.values()];
+  const factLedger = [
+    ...(state.factLedger || []).filter((entry) => entry.publicationId !== publicationId),
+    ...correctedFacts,
+  ];
+  const previousRecruiting = [...weeklyUpdates]
+    .slice(0, updateIndex)
+    .reverse()
+    .find((entry) => entry.recruitingSnapshot)?.recruitingSnapshot || [];
+  const previousGames = state.gameLogs.filter((_, index) => index !== gameIndex && Number(_.season || 1) === season && Number(_.week || 0) < week);
+  const rebuiltIssue = createNewsroomIssue({
+    publicationId,
+    season,
+    week,
+    careerPhase: previousUpdate.careerPhase || state.careerPhase,
+    player: state.player,
+    game: correctedGame,
+    recruiting: previousUpdate.recruitingSnapshot || state.recruiting || [],
+    previousRecruiting,
+    previousGames,
+    quote: previousUpdate.quote || '',
+    rtg: previousUpdate.rtgSnapshot || {},
+    previousRtg: [...weeklyUpdates].slice(0, updateIndex).reverse().find((entry) => hasRtgSnapshot(entry.rtgSnapshot))?.rtgSnapshot || {},
+    playerRecruiting: { highSchool: previousUpdate.playerRecruitingSnapshot || {} },
+    availableFactKeys: factLedger.map((entry) => entry.key),
+    currentFactKeys: correctedFacts.map((entry) => entry.key),
+    publishedAt: previousUpdate.publishedAt,
+  });
+  const oldIssue = (state.newsroomIssues || []).find((entry) => matchesPublication(entry, publicationId, season, week));
+  if (oldIssue) {
+    rebuiltIssue.articles = rebuiltIssue.articles.map((articleEntry) => {
+      const priorArticle = oldIssue.articles?.find((entry) => entry.outletId === articleEntry.outletId);
+      return priorArticle?.mediaAssetId ? {
+        ...articleEntry,
+        mediaAssetId: priorArticle.mediaAssetId,
+        mediaSource: priorArticle.mediaSource,
+        mediaDisclosure: priorArticle.mediaDisclosure,
+      } : articleEntry;
+    });
+  }
+  weeklyUpdates[updateIndex] = {
+    ...previousUpdate,
+    game: correctedGame,
+    factCount: correctedFacts.length,
+    correctedAt: new Date().toISOString(),
+  };
+  const gameLogs = [...state.gameLogs];
+  gameLogs[gameIndex] = correctedGame;
+  const scoreLine = correctedGame.homeScore !== '' && correctedGame.awayScore !== ''
+    ? `, ${correctedGame.homeScore}-${correctedGame.awayScore}` : '';
+  return {
+    ...state,
+    gameLogs,
+    weeklyUpdates,
+    factLedger,
+    careerChronicle: (state.careerChronicle || []).map((entry) => matchesPublication(entry, publicationId, season, week) ? {
+      ...entry,
+      title: `${correctedGame.result} vs. ${correctedGame.opponent}${scoreLine}`,
+      summary: correctedGame.didPlay === false
+        ? 'The corrected team result is recorded; the tracked player did not appear.'
+        : `${correctedGame.passYds || 0} passing yards, ${correctedGame.passTD || 0} passing TD, ${correctedGame.rushYds || 0} rushing yards, ${correctedGame.rushTD || 0} rushing TD.`,
+      factKeys: correctedFacts.map((entryFact) => entryFact.key),
+      correctedAt: new Date().toISOString(),
+    } : entry),
+    newsroomIssues: (state.newsroomIssues || []).map((entry) => matchesPublication(entry, publicationId, season, week) ? rebuiltIssue : entry),
+    podcastEpisodes: (state.podcastEpisodes || []).map((entry) => entry.publicationId === publicationId || entry.id === `podcast-${publicationId}` ? {
+      ...entry,
+      status: 'needs-regeneration',
+      audioStatus: 'stale',
+      segments: [],
+      correctedAt: new Date().toISOString(),
+    } : entry),
   };
 };
 
@@ -162,8 +305,48 @@ const EDITABLE_NUMERIC_KEYS = new Set([
 ]);
 
 const recruitingFactParts = (key) => {
-  const match = String(key).match(/^recruiting\.(.+)\.(interest|offer|position|stars|status)$/);
+  const match = String(key).match(/^recruiting\.(?!profile\.)(.+)\.([a-zA-Z0-9]+)$/);
   return match ? { schoolId: match[1], field: match[2] } : null;
+};
+
+const playerRecruitingFactParts = (key) => {
+  const match = String(key).match(/^recruiting\.profile\.(recruitStars|tapeScore|nationalRank|stateRank|positionRank|gameNumber|topSchoolsSelected)$/);
+  return match ? { field: match[1] } : null;
+};
+
+const PLAYER_RECRUITING_NUMERIC_FIELDS = new Set([
+  'recruitStars', 'tapeScore', 'nationalRank', 'stateRank', 'positionRank', 'gameNumber', 'topSchoolsSelected',
+]);
+
+const SCHOOL_RECRUITING_NUMERIC_FIELDS = new Set([
+  'interest', 'stars', 'preferenceRank', 'programStars', 'teamRank', 'tapeScoreAssessed',
+  'tapeScoreRequired', 'teamOverall', 'teamOffense', 'teamDefense', 'runPercent', 'passPercent',
+  'aggressivePercent', 'conservativePercent', 'coachLevel', 'bonusAcademics', 'bonusBrand',
+  'bonusLeadership', 'bonusFitness', 'bonusCoachTrust', 'bonusSkillPoints',
+]);
+
+const setRecruitingPatchField = (school, field, value) => {
+  const current = { ...school };
+  if (field.startsWith('bonus')) {
+    const suffix = field.slice('bonus'.length);
+    const key = suffix.charAt(0).toLowerCase() + suffix.slice(1);
+    current.scholarshipBonuses = { ...(current.scholarshipBonuses || {}), [key]: Number(value) };
+  } else if (field.startsWith('team') && ['teamOverall', 'teamOffense', 'teamDefense'].includes(field)) {
+    current.programRatings = { ...(current.programRatings || {}), [field.slice(4).toLowerCase()]: Number(value) };
+  } else if (field.endsWith('Percent')) {
+    current.tendencies = { ...(current.tendencies || {}), [field.replace('Percent', '')]: Number(value) };
+  } else if (field.startsWith('depthQB')) {
+    const role = field.slice('depth'.length).toUpperCase();
+    const depthChart = Array.isArray(current.depthChart) ? [...current.depthChart] : [];
+    const existing = depthChart.findIndex((entry) => entry.role === role);
+    const entry = { role, summary: String(value).trim() };
+    if (existing >= 0) depthChart[existing] = entry;
+    else depthChart.push(entry);
+    current.depthChart = depthChart;
+  } else {
+    current[field] = SCHOOL_RECRUITING_NUMERIC_FIELDS.has(field) ? Number(value) : value;
+  }
+  return current;
 };
 
 const retentionFactParts = (key) => {
@@ -174,11 +357,12 @@ const retentionFactParts = (key) => {
 const editableValue = (key, value) => {
   if (value === '' || value === null || value === undefined) return '';
   const retentionParts = retentionFactParts(key);
-  if (EDITABLE_NUMERIC_KEYS.has(key) || ['interest', 'stars'].includes(recruitingFactParts(key)?.field) || ['overall', 'nilDemand'].includes(retentionParts?.field)) {
+  const profileParts = playerRecruitingFactParts(key);
+  if (EDITABLE_NUMERIC_KEYS.has(key) || SCHOOL_RECRUITING_NUMERIC_FIELDS.has(recruitingFactParts(key)?.field) || PLAYER_RECRUITING_NUMERIC_FIELDS.has(profileParts?.field) || ['overall', 'nilDemand'].includes(retentionParts?.field)) {
     const parsed = Number(String(value).replace(/[$,%]/g, ''));
     return Number.isFinite(parsed) ? parsed : value;
   }
-  if (recruitingFactParts(key)?.field === 'offer') {
+  if (['offer', 'schemeFit'].includes(recruitingFactParts(key)?.field)) {
     return value === true || /^(true|yes|offered|offer)$/i.test(String(value).trim());
   }
   return String(value).trim();
@@ -189,20 +373,24 @@ export const validateScanFact = (factEntry) => {
   if (value === '' || value === null || value === undefined) return 'Enter a value or ignore this fact.';
 
   const recruitingParts = recruitingFactParts(key);
+  const profileParts = playerRecruitingFactParts(key);
   const retentionParts = retentionFactParts(key);
-  if (EDITABLE_NUMERIC_KEYS.has(key) || ['interest', 'stars'].includes(recruitingParts?.field) || ['overall', 'nilDemand'].includes(retentionParts?.field)) {
+  if (EDITABLE_NUMERIC_KEYS.has(key) || SCHOOL_RECRUITING_NUMERIC_FIELDS.has(recruitingParts?.field) || PLAYER_RECRUITING_NUMERIC_FIELDS.has(profileParts?.field) || ['overall', 'nilDemand'].includes(retentionParts?.field)) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return 'Enter a valid number.';
     if (parsed < 0) return 'Value cannot be negative.';
     if (key === 'rtg.gpa' && parsed > 4) return 'GPA must be between 0 and 4.';
     if ((key === 'rtg.energy' || recruitingParts?.field === 'interest') && parsed > 100) return 'Value must be between 0 and 100.';
     if (recruitingParts?.field === 'stars' && (parsed < 1 || parsed > 5)) return 'Star rating must be between 1 and 5.';
+    if (profileParts?.field === 'recruitStars' && (parsed < 1 || parsed > 5)) return 'Star rating must be between 1 and 5.';
+    if (profileParts?.field === 'gameNumber' && parsed > 5) return 'High-school game number must be between 0 and 5.';
+    if (profileParts?.field === 'topSchoolsSelected' && parsed > 10) return 'Top Schools count must be between 0 and 10.';
     if (retentionParts?.field === 'overall' && parsed > 99) return 'Overall rating must be between 0 and 99.';
   }
 
   if (key === 'game.result' && !['W', 'L'].includes(String(value).toUpperCase())) return 'Choose a win or loss.';
   if (key.startsWith('rtg.wear.') && !['Green', 'Yellow', 'Red'].includes(value)) return 'Choose Green, Yellow, or Red.';
-  if (recruitingParts?.field === 'offer' && typeof value !== 'boolean') return 'Choose whether an offer was received.';
+  if (['offer', 'schemeFit'].includes(recruitingParts?.field) && typeof value !== 'boolean') return 'Choose Yes or No.';
   return '';
 };
 
@@ -215,6 +403,7 @@ const rebuildDraftPatches = (draft, facts) => {
   const originalPlayers = new Map((draft.retentionPatches || []).map((player) => [String(player.id), player]));
   const recruitingById = new Map();
   const retentionById = new Map();
+  const playerRecruitingPatch = { rankings: {} };
 
   facts.forEach((entry) => {
     if (validateScanFact(entry)) return;
@@ -236,6 +425,18 @@ const rebuildDraftPatches = (draft, facts) => {
     }
     if (entry.key.startsWith('roster.')) return;
 
+    const playerRecruitingParts = playerRecruitingFactParts(entry.key);
+    if (playerRecruitingParts) {
+      const field = playerRecruitingParts.field;
+      if (field.endsWith('Rank')) {
+        const rankKey = field.replace('Rank', '');
+        playerRecruitingPatch.rankings[rankKey] = Number(entry.value);
+      } else {
+        playerRecruitingPatch[field] = Number(entry.value);
+      }
+      return;
+    }
+
     const retentionParts = retentionFactParts(entry.key);
     if (retentionParts) {
       const original = originalPlayers.get(retentionParts.playerId);
@@ -256,12 +457,16 @@ const rebuildDraftPatches = (draft, facts) => {
     if (parts.field === 'interest') {
       current.interest = Number(entry.value);
       current.level = getInterestLevel(current.interest);
-    } else if (parts.field === 'offer') {
+    } else if (parts.field === 'offer' || parts.field === 'schemeFit') {
       current.offered = entry.value;
+      if (parts.field === 'schemeFit') {
+        delete current.offered;
+        current.schemeFit = entry.value;
+      }
     } else if (parts.field === 'stars') {
       current.stars = Number(entry.value);
     } else {
-      current[parts.field] = String(entry.value).trim();
+      Object.assign(current, setRecruitingPatchField(current, parts.field, entry.value));
     }
     recruitingById.set(parts.schoolId, current);
   });
@@ -273,6 +478,10 @@ const rebuildDraftPatches = (draft, facts) => {
     coachPatch,
     recruitingPatches: [...recruitingById.values()],
     retentionPatches: [...retentionById.values()],
+    playerRecruitingPatch: {
+      ...playerRecruitingPatch,
+      ...(Object.keys(playerRecruitingPatch.rankings).length ? {} : { rankings: undefined }),
+    },
   };
 };
 
@@ -330,6 +539,7 @@ export const createEmptyScanDraft = ({
   coachPatch: {},
   recruitingPatches: [],
   retentionPatches: [],
+  playerRecruitingPatch: {},
 });
 
 export const updateScanDraftWeekType = (draft, weekType) => {
@@ -596,6 +806,14 @@ export const mergeScanResult = (draft, result) => {
     coachPatch: { ...(draft.coachPatch || {}), ...(result.coachPatch || {}) },
     recruitingPatches: [...schoolsById.values()],
     retentionPatches: [...playersById.values()],
+    playerRecruitingPatch: {
+      ...(draft.playerRecruitingPatch || {}),
+      ...(result.playerRecruitingPatch || {}),
+      rankings: {
+        ...(draft.playerRecruitingPatch?.rankings || {}),
+        ...(result.playerRecruitingPatch?.rankings || {}),
+      },
+    },
   };
 };
 
@@ -610,7 +828,7 @@ export const applyRecruitingPatches = (recruiting = [], patches = []) => {
       customOrder: recruiting.length + index + 1,
       ...patch,
     }));
-  return [...updated, ...additions];
+  return [...updated, ...additions].map(normalizeRecruitingSchool);
 };
 
 export const applyRetentionPatches = (retentionBoard = [], patches = []) => {
@@ -623,12 +841,92 @@ export const applyRetentionPatches = (retentionBoard = [], patches = []) => {
   ];
 };
 
+export const createStandaloneRecruitingUpdate = ({
+  state,
+  recruitingPatches = [],
+  playerRecruitingPatch = {},
+  facts = [],
+  sources = [],
+}) => {
+  const publishedAt = new Date().toISOString();
+  const stateWithProfile = applyPlayerRecruitingPatch(state, playerRecruitingPatch);
+  const recruiting = applyRecruitingPatches(stateWithProfile.recruiting || [], recruitingPatches);
+  const highSchool = normalizePlayerRecruiting(stateWithProfile.playerRecruiting).highSchool;
+  const sequence = (state.weeklyUpdates || []).filter((entry) => entry.editionType === 'recruiting').length + 1;
+  const publicationId = `season-${state.currentSeason || 1}-preseason-recruiting-${sequence}`;
+  const verifiedFacts = facts
+    .filter((entry) => entry.key.startsWith('recruiting.'))
+    .map((entry) => ({ ...entry, verified: true, publicationId }));
+  const profileFact = {
+    id: `${publicationId}:profile.player.name`,
+    key: 'profile.player.name',
+    label: 'Player',
+    value: stateWithProfile.player?.name || '',
+    confidence: 1,
+    sourceId: publicationId,
+    verified: true,
+    publicationId,
+  };
+  const factKeys = [profileFact, ...verifiedFacts].map((entry) => entry.key);
+  const recruitingChanges = snapshotRecruitingChanges(state.recruiting || [], recruiting);
+  const weeklyUpdate = {
+    id: publicationId,
+    weekKey: publicationId,
+    status: 'published',
+    editionType: 'recruiting',
+    season: state.currentSeason || 1,
+    week: 0,
+    careerPhase: state.careerPhase,
+    publishedAt,
+    sourceCount: sources.length,
+    factCount: verifiedFacts.length + 1,
+    game: null,
+    recruitingSnapshot: recruiting.map((school) => ({ ...school })),
+    recruitingChanges,
+    playerRecruitingSnapshot: highSchool,
+  };
+  const newsroomIssue = createRecruitingNewsroomIssue({
+    publicationId,
+    season: state.currentSeason || 1,
+    week: 0,
+    player: stateWithProfile.player,
+    playerRecruiting: stateWithProfile.playerRecruiting,
+    recruiting,
+    previousRecruiting: state.recruiting || [],
+    currentFactKeys: factKeys,
+    publishedAt,
+  });
+  return {
+    ...stateWithProfile,
+    schemaVersion: CAREER_SCHEMA_VERSION,
+    recruiting,
+    weeklyUpdates: [...(state.weeklyUpdates || []), weeklyUpdate],
+    factLedger: [...(state.factLedger || []), profileFact, ...verifiedFacts],
+    careerChronicle: [...(state.careerChronicle || []), {
+      id: publicationId,
+      publicationId,
+      type: 'recruiting-update',
+      season: state.currentSeason || 1,
+      week: 0,
+      careerPhase: state.careerPhase,
+      occurredAt: publishedAt,
+      title: recruitingChanges.some((entry) => entry.type === 'offer')
+        ? 'Scholarship offer update'
+        : (recruiting.length ? `Top ${recruiting.length} recruiting update` : 'Initial recruiting rankings'),
+      summary: `${highSchool.recruitStars || state.player?.stars || 3}-star · Tape Score ${Number(highSchool.tapeScore || 0).toLocaleString()} · ${recruiting.filter((entry) => entry.offered).length} offer${recruiting.filter((entry) => entry.offered).length === 1 ? '' : 's'}`,
+      factKeys,
+    }],
+    newsroomIssues: [...(state.newsroomIssues || []), newsroomIssue],
+  };
+};
+
 export const createPublishedWeek = ({
   state,
   game,
   rtg,
   coach,
   recruitingPatches = [],
+  playerRecruitingPatch = {},
   retentionPatches = [],
   quote = '',
   facts = [],
@@ -679,9 +977,10 @@ export const createPublishedWeek = ({
     });
   };
 
-  publicationFact('profile.player.name', 'Player', state.player?.name);
-  publicationFact('profile.player.school', 'School', state.player?.school);
-  publicationFact('profile.player.college', 'Committed college', state.player?.college);
+  const stateWithRecruitingProfile = applyPlayerRecruitingPatch(state, playerRecruitingPatch);
+  publicationFact('profile.player.name', 'Player', stateWithRecruitingProfile.player?.name);
+  publicationFact('profile.player.school', 'School', stateWithRecruitingProfile.player?.school);
+  publicationFact('profile.player.college', 'Committed college', stateWithRecruitingProfile.player?.college);
   if (hasGame) {
     [
       ['opponent', 'Opponent'], ['result', 'Result'], ['homeScore', 'Team score'],
@@ -732,7 +1031,7 @@ export const createPublishedWeek = ({
     factKeys: finalLedgerFacts.map((entry) => entry.key),
   };
 
-  const updatedRecruiting = applyRecruitingPatches(state.recruiting, recruitingPatches);
+  const updatedRecruiting = applyRecruitingPatches(stateWithRecruitingProfile.recruiting, recruitingPatches);
   const recruitingChanges = snapshotRecruitingChanges(state.recruiting || [], updatedRecruiting);
   const weeklyUpdate = {
     id: publicationId,
@@ -751,6 +1050,7 @@ export const createPublishedWeek = ({
     quote,
     recruitingSnapshot: updatedRecruiting.map((school) => ({ ...school })),
     recruitingChanges,
+    playerRecruitingSnapshot: normalizePlayerRecruiting(stateWithRecruitingProfile.playerRecruiting).highSchool,
   };
 
   const updatedRetentionBoard = applyRetentionPatches(state.retentionBoard || [], retentionPatches);
@@ -759,7 +1059,7 @@ export const createPublishedWeek = ({
     season: targetSeason,
     week: targetWeek,
     careerPhase: state.careerPhase,
-    player: state.player,
+    player: stateWithRecruitingProfile.player,
     game: gameRecord,
     recruiting: updatedRecruiting,
     previousRecruiting: state.recruiting,
@@ -767,13 +1067,14 @@ export const createPublishedWeek = ({
     quote,
     rtg: rtgSnapshot,
     previousRtg: previousRtgSnapshot,
+    playerRecruiting: stateWithRecruitingProfile.playerRecruiting,
     availableFactKeys: [...(state.factLedger || []), ...finalLedgerFacts].map((entry) => entry.key),
     currentFactKeys: finalLedgerFacts.map((entry) => entry.key),
     publishedAt,
   }) : null;
 
   return {
-    ...state,
+    ...stateWithRecruitingProfile,
     schemaVersion: CAREER_SCHEMA_VERSION,
     currentWeek: advancesWeek ? state.currentWeek + 1 : state.currentWeek,
     latestQuote: quote || state.latestQuote,
@@ -802,10 +1103,10 @@ export const migrateCareerState = (state, defaults) => ({
     wear: { ...defaults.rtg.wear, ...(state?.rtg?.wear || {}) },
   },
   recruiting: (state?.recruiting || defaults.recruiting).map((school, index) => ({
-    ...school,
-    customOrder: school.customOrder || index + 1,
+    ...normalizeRecruitingSchool(school, index),
   })),
   playerRecruiting: normalizePlayerRecruiting(state?.playerRecruiting || defaults.playerRecruiting),
+  careerTransitions: normalizeCareerTransitions(state?.careerTransitions || defaults.careerTransitions),
   schemaVersion: CAREER_SCHEMA_VERSION,
   weeklyUpdates: (state?.weeklyUpdates || []).map((entry) => ({
     ...entry,

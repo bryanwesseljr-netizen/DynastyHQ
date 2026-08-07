@@ -78,7 +78,7 @@ const GroundedNewsroom = ({
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 shrink-0 text-emerald-400" size={20} />
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Verified weekly edition</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Verified career edition</p>
               <p className="mt-1 text-sm text-slate-300">Every claim below is generated from published Fact Ledger entries. Unsupported tactics, awards, quotes, and rumors are excluded.</p>
             </div>
           </div>
@@ -89,7 +89,7 @@ const GroundedNewsroom = ({
             aria-label="Choose weekly newsroom edition"
           >
             {[...issues].reverse().map((issue) => (
-              <option key={issue.id} value={issue.id}>Season {issue.season} · Week {issue.week}</option>
+              <option key={issue.id} value={issue.id}>{issue.label || `Season ${issue.season} · Week ${issue.week}`}</option>
             ))}
           </select>
         </div>
@@ -98,7 +98,7 @@ const GroundedNewsroom = ({
       {!isReaderOpen && (
         <section className="rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-7" aria-labelledby="weekly-coverage-title">
           <div className="mb-5">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Season {selectedIssue.season} · Week {selectedIssue.week}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{selectedIssue.label || `Season ${selectedIssue.season} · Week ${selectedIssue.week}`}</p>
             <h2 id="weekly-coverage-title" className="mt-1 text-2xl font-black uppercase text-white md:text-3xl">This Week&rsquo;s Coverage</h2>
             <p className="mt-2 text-sm text-slate-400">Choose any newsroom below to open its complete article.</p>
           </div>

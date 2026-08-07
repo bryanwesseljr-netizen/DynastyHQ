@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  ArrowRightLeft, CheckCircle2, Circle, GraduationCap, Map, Plus, ShieldCheck, Star, Trash2,
+  ArrowRightLeft, CheckCircle2, Circle, ChevronDown, GraduationCap, Map, Plus, ShieldCheck, Star, Trash2,
 } from 'lucide-react';
 import {
   buildRecruitingTimeline,
@@ -9,14 +9,6 @@ import {
   sortedRecruitingSchools,
   TRANSFER_STATUSES,
 } from '../domain/playerRecruiting';
-
-const interestTone = (value) => {
-  const interest = Number(value) || 0;
-  if (interest >= 75) return 'text-emerald-400';
-  if (interest >= 50) return 'text-blue-400';
-  if (interest >= 25) return 'text-amber-400';
-  return 'text-slate-500';
-};
 
 const PlayerRecruitingWorkspace = ({
   state,
@@ -48,6 +40,7 @@ const PlayerRecruitingWorkspace = ({
   const eligibleCommitments = finalists.filter((school) => school.offered);
   const canCommit = gamesComplete >= 5 && eligibleCommitments.length > 0;
   const timeline = buildRecruitingTimeline(state);
+  const highSchool = playerRecruiting.highSchool;
   const committed = Boolean(state.player?.isCommitted);
   const transfer = playerRecruiting.transfer;
   const collegeCareerStarted = careerStage === 'College';
@@ -122,7 +115,7 @@ const PlayerRecruitingWorkspace = ({
         <details className="rounded-2xl border border-slate-800 bg-slate-950/80 p-5 shadow-xl">
           <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-slate-300">View archived high-school recruiting history</summary>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {(archive?.finalists || finalists).map((school) => <div key={school.id} className="rounded-lg border border-slate-800 bg-slate-900 p-3"><p className="font-black text-white">{school.name}</p><p className="mt-1 text-xs text-slate-500">Final interest: {Number(school.interest) || 0}%{school.offered ? ' · Offer' : ''}</p></div>)}
+            {(archive?.finalists || finalists).map((school) => <div key={school.id} className="rounded-lg border border-slate-800 bg-slate-900 p-3"><p className="font-black text-white">{school.name}</p><p className="mt-1 text-xs text-slate-500">Preference #{school.preferenceRank || school.customOrder || '—'}{school.offered ? ' · Scholarship offer' : ''}</p></div>)}
           </div>
         </details>
       </div>
@@ -134,27 +127,55 @@ const PlayerRecruitingWorkspace = ({
       <section className="rounded-2xl border border-blue-500/30 bg-slate-950/90 p-6 shadow-2xl md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-blue-400"><Map size={16} /> High School Recruiting Tracker</p><h2 className="mt-2 text-3xl font-black uppercase text-white">Five games. One decision.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">Update the board from each postgame recruiting screen. DynastyHQ will carry verified movement into that week&rsquo;s Recruiting Wire article.</p></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-center"><p className="text-[9px] font-black uppercase text-slate-500">Games</p><p className="text-xl font-black text-white">{gamesComplete}/5</p></div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-center"><p className="text-[9px] font-black uppercase text-slate-500">Games</p><p className="text-xl font-black text-white">{Math.max(gamesComplete, Number(highSchool.gameNumber) || 0)}/5</p></div>
+            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-center"><p className="text-[9px] font-black uppercase text-slate-500">Tape Score</p><p className="text-xl font-black text-blue-400">{Number(highSchool.tapeScore || 0).toLocaleString()}</p></div>
+            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-center"><p className="text-[9px] font-black uppercase text-slate-500">Top Schools</p><p className="text-xl font-black text-white">{highSchool.topSchoolsSelected || schools.length}/10</p></div>
             <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-center"><p className="text-[9px] font-black uppercase text-slate-500">Offers</p><p className="text-xl font-black text-emerald-400">{offers.length}</p></div>
-            <div className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-center"><p className="text-[9px] font-black uppercase text-slate-500">Finalists</p><p className="text-xl font-black text-amber-400">{finalists.length}/3</p></div>
           </div>
+        </div>
+        <div className="mt-6 grid gap-3 border-t border-slate-800 pt-5 sm:grid-cols-4">
+          <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Recruit rating</p><p className="mt-1 text-lg font-black text-amber-400">{highSchool.recruitStars || state.player.stars || 3}-star</p></div>
+          <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">National rank</p><p className="mt-1 text-lg font-black text-white">{highSchool.rankings.national ? `#${highSchool.rankings.national}` : 'Not captured'}</p></div>
+          <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">State rank</p><p className="mt-1 text-lg font-black text-white">{highSchool.rankings.state ? `#${highSchool.rankings.state}` : 'Not captured'}</p></div>
+          <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Position rank</p><p className="mt-1 text-lg font-black text-white">{highSchool.rankings.position ? `#${highSchool.rankings.position}` : 'Not captured'}</p></div>
         </div>
       </section>
 
       <section className="rounded-2xl border border-slate-700/70 bg-slate-900/90 p-5 shadow-2xl md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h3 className="text-xl font-black uppercase text-white">Active School Board</h3><p className="mt-1 text-xs text-slate-500">Compact rankings replace the old four-column war room.</p></div>{!readOnly && <form onSubmit={addSchool} className="flex gap-2"><input value={schoolInput} onChange={(event) => setSchoolInput(event.target.value)} placeholder="Add school" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /><button className="rounded-lg bg-blue-600 px-3 text-white"><Plus size={16} /></button></form>}</div>
-        <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b border-slate-700 text-[9px] font-black uppercase tracking-widest text-slate-500"><tr><th className="px-3 py-3">Rank</th><th className="px-3 py-3">School</th><th className="px-3 py-3">Interest</th><th className="px-3 py-3">Offer</th><th className="px-3 py-3">Top 3</th><th className="px-3 py-3"></th></tr></thead>
-            <tbody className="divide-y divide-slate-800">
-              {schools.map((school, index) => {
-                const finalist = finalistIds.has(String(school.id));
-                return <tr key={school.id} className="hover:bg-slate-800/50"><td className="px-3 py-3 font-mono font-black text-slate-500">#{index + 1}</td><td className="px-3 py-3"><input value={school.name} disabled={readOnly} onChange={(event) => onUpdateSchool(school.id, 'name', event.target.value)} className="w-full bg-transparent font-black text-white outline-none" /></td><td className="px-3 py-3"><div className="flex items-center gap-2"><input type="number" min="0" max="100" value={school.interest ?? 0} disabled={readOnly} onChange={(event) => onUpdateSchool(school.id, 'interest', Math.max(0, Math.min(100, Number(event.target.value) || 0)))} className={`w-16 rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono font-black ${interestTone(school.interest)}`} /><span className={interestTone(school.interest)}>%</span></div></td><td className="px-3 py-3"><button type="button" disabled={readOnly} onClick={() => onUpdateSchool(school.id, 'offered', !school.offered)} className={school.offered ? 'text-emerald-400' : 'text-slate-600'}>{school.offered ? <CheckCircle2 size={19} /> : <Circle size={19} />}</button></td><td className="px-3 py-3"><button type="button" disabled={readOnly || (!finalist && finalists.length >= 3)} onClick={() => onToggleFinalist(school.id)} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-black uppercase ${finalist ? 'bg-amber-500 text-slate-950' : 'border border-slate-700 text-slate-500'}`}><Star size={12} fill={finalist ? 'currentColor' : 'none'} /> {finalist ? 'Finalist' : 'Select'}</button></td><td className="px-3 py-3">{!readOnly && <button type="button" onClick={() => onDeleteSchool(school.id)} className="text-slate-700 hover:text-red-400"><Trash2 size={15} /></button>}</td></tr>;
-              })}
-            </tbody>
-          </table>
-          {!schools.length && <p className="py-10 text-center text-sm text-slate-500">Add your initial Top 10 to begin.</p>}
+        <div className="mt-5 space-y-3">
+          {schools.map((school, index) => {
+            const finalist = finalistIds.has(String(school.id));
+            const bonuses = Object.entries(school.scholarshipBonuses || {}).filter(([, value]) => value !== '' && value !== null && value !== undefined);
+            return (
+              <details key={school.id} className="group rounded-xl border border-slate-700 bg-slate-950/70 p-4 open:border-blue-500/40">
+                <summary className="flex cursor-pointer list-none flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 font-mono font-black text-blue-400">#{school.preferenceRank || index + 1}</span>
+                    <div className="min-w-0"><input value={school.name} disabled={readOnly} onChange={(event) => onUpdateSchool(school.id, 'name', event.target.value)} onClick={(event) => event.stopPropagation()} className="w-full bg-transparent font-black text-white outline-none" /><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{school.projectedRole || 'Role not captured'} · {school.offensiveScheme || 'Scheme not captured'}</p></div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded px-2 py-1 text-[9px] font-black uppercase ${school.schemeFit === true ? 'bg-emerald-500/15 text-emerald-300' : school.schemeFit === false ? 'bg-amber-500/15 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>{school.schemeFit === true ? 'Scheme fit: Yes' : school.schemeFit === false ? 'Scheme fit: No' : 'Scheme fit unknown'}</span>
+                    <span className={`rounded px-2 py-1 text-[9px] font-black uppercase ${school.offered ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>{school.offered ? 'Scholarship offer' : 'No offer'}</span>
+                    <ChevronDown size={16} className="text-slate-500 transition-transform group-open:rotate-180" />
+                  </div>
+                </summary>
+                <div className="mt-4 grid gap-4 border-t border-slate-800 pt-4 lg:grid-cols-[1fr_1fr_auto]">
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div><p className="text-[9px] font-black uppercase text-slate-600">Tape requirement</p><p className="mt-1 font-bold text-white">{school.tapeScoreAssessed ?? '—'} / {school.tapeScoreRequired ?? '—'}</p></div>
+                    <div><p className="text-[9px] font-black uppercase text-slate-600">Program</p><p className="mt-1 font-bold text-white">{school.programRatings?.overall || '—'} OVR · {school.programRatings?.offense || '—'} OFF · {school.programRatings?.defense || '—'} DEF</p></div>
+                    <div><p className="text-[9px] font-black uppercase text-slate-600">Head coach</p><p className="mt-1 font-bold text-white">{school.headCoach || 'Not captured'}{school.coachLevel ? ` · Level ${school.coachLevel}` : ''}</p></div>
+                    <div><p className="text-[9px] font-black uppercase text-slate-600">Tendencies</p><p className="mt-1 font-bold text-white">{school.tendencies?.run !== '' ? `${school.tendencies.run}% run / ${school.tendencies.pass}% pass` : 'Not captured'}</p></div>
+                  </div>
+                  <div className="space-y-2"><p className="text-[9px] font-black uppercase text-slate-600">Projected competition</p>{school.depthChart?.length ? school.depthChart.map((entry) => <p key={entry.role} className="rounded bg-slate-900 px-2 py-1.5 text-xs text-slate-300"><strong className="text-white">{entry.role}</strong> · {entry.summary}</p>) : <p className="text-xs text-slate-600">No depth chart captured.</p>}</div>
+                  <div className="flex flex-wrap items-start gap-2 lg:max-w-52">{bonuses.length ? bonuses.map(([key, value]) => <span key={key} className="rounded border border-emerald-500/25 bg-emerald-950/20 px-2 py-1 text-[9px] font-bold uppercase text-emerald-300">{key.replace(/([A-Z])/g, ' $1')} +{value}</span>) : <span className="text-xs text-slate-600">Bonuses unlock with an offer.</span>}</div>
+                </div>
+                {!readOnly && <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-800 pt-4"><label className="flex items-center gap-2 rounded border border-slate-700 px-2 py-1 text-[9px] font-black uppercase text-slate-500">Preference <input type="number" min="1" max="10" value={school.preferenceRank || index + 1} onChange={(event) => onUpdateSchool(school.id, 'preferenceRank', Math.max(1, Math.min(10, Number(event.target.value) || 1)))} className="w-10 bg-transparent text-center text-white outline-none" /></label><select value={school.schemeFit === null ? '' : String(school.schemeFit)} onChange={(event) => onUpdateSchool(school.id, 'schemeFit', event.target.value === '' ? null : event.target.value === 'true')} className="rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-black uppercase text-slate-400"><option value="">Scheme fit unknown</option><option value="true">Scheme fit: Yes</option><option value="false">Scheme fit: No</option></select><button type="button" disabled={!finalist && finalists.length >= 3} onClick={() => onToggleFinalist(school.id)} className={`flex items-center gap-1 rounded px-3 py-2 text-[10px] font-black uppercase ${finalist ? 'bg-amber-500 text-slate-950' : 'border border-slate-700 text-slate-400'}`}><Star size={12} fill={finalist ? 'currentColor' : 'none'} /> {finalist ? 'Top 3 finalist' : 'Select for Top 3'}</button><button type="button" onClick={() => onUpdateSchool(school.id, 'offered', !school.offered)} className="flex items-center gap-1 rounded border border-slate-700 px-3 py-2 text-[10px] font-black uppercase text-slate-400">{school.offered ? <CheckCircle2 size={14} /> : <Circle size={14} />} Toggle offer</button><button type="button" onClick={() => onDeleteSchool(school.id)} className="ml-auto rounded border border-slate-800 p-2 text-slate-600 hover:text-red-400"><Trash2 size={15} /></button></div>}
+              </details>
+            );
+          })}
+          {!schools.length && <p className="py-10 text-center text-sm text-slate-500">Add your initial Top 10 or upload the game&rsquo;s Top Schools screen to begin.</p>}
         </div>
       </section>
 

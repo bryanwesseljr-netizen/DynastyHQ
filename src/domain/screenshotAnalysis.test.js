@@ -40,6 +40,44 @@ test('normalizes supported AI facts into the weekly draft contract', () => {
   assert.equal(result.source.previewUrl, 'blob:preview');
 });
 
+test('captures the verified CFB 27 high-school recruiting profile and school overview without percentages', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'rtg-recruiting-v12',
+    fileName: 'top-schools.png',
+    recruiting: [{ id: 7, name: 'Toledo' }],
+    analysis: {
+      screenTypes: ['rtg_recruiting'],
+      screenTitle: 'Recruiting Overview',
+      summary: 'Initial ranking and one school overview.',
+      facts: [
+        { key: 'recruiting.recruitStars', label: 'Recruit rating', value: '3', confidence: 0.98, evidence: '3 stars', schoolName: '' },
+        { key: 'recruiting.tapeScore', label: 'Tape Score', value: '730', confidence: 0.98, evidence: 'Tape Score 730', schoolName: '' },
+        { key: 'recruiting.nationalRank', label: 'National rank', value: '431', confidence: 0.97, evidence: 'National 431', schoolName: '' },
+        { key: 'recruiting.preferenceRank', label: 'Preference', value: '1', confidence: 0.96, evidence: '1 Toledo', schoolName: 'Toledo' },
+        { key: 'recruiting.schemeFit', label: 'Scheme Fit', value: 'yes', confidence: 0.98, evidence: 'YES SCHEME FIT', schoolName: 'Toledo' },
+        { key: 'recruiting.tapeScoreRequired', label: 'Required Tape Score', value: '1900', confidence: 0.96, evidence: '0 / 1,900', schoolName: 'Toledo' },
+        { key: 'recruiting.projectedRole', label: 'Projected role', value: 'QB3', confidence: 0.97, evidence: 'Projected QB3', schoolName: 'Toledo' },
+      ],
+    },
+  });
+
+  assert.deepEqual(result.playerRecruitingPatch, {
+    recruitStars: 3,
+    tapeScore: 730,
+    rankings: { national: 431 },
+  });
+  assert.deepEqual(result.recruitingPatches, [{
+    id: 7,
+    name: 'Toledo',
+    preferenceRank: 1,
+    schemeFit: true,
+    tapeScoreRequired: 1900,
+    projectedRole: 'QB3',
+  }]);
+  assert.equal(result.facts.some((entry) => entry.key === 'recruiting.7.schemeFit'), true);
+  assert.equal(result.facts.some((entry) => entry.key === 'recruiting.profile.tapeScore'), true);
+});
+
 test('preserves numeric and text RTG progression fields from a player screen', () => {
   const result = normalizeScreenshotAnalysis({
     sourceId: 'rtg-screen',

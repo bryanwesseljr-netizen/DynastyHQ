@@ -263,6 +263,7 @@ export const createCareerMilestone = ({ state, draft, occurredAt = new Date().to
     ...state,
     schemaVersion: CAREER_SCHEMA_VERSION,
     ...transition,
+    recruiting: type === MILESTONE_TYPES.OC_HIRE ? [] : (state.recruiting || []),
     careerMilestones: [...(state.careerMilestones || []), milestone],
     careerChronicle: [...(state.careerChronicle || []), milestone],
     factLedger: [...(state.factLedger || []), ...facts],

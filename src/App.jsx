@@ -87,6 +87,17 @@ import {
 import { compressImage } from './services/imageCompression';
 import { generateNewsroomImage } from './services/newsroomImageClient';
 import { deleteNewsroomMedia, uploadNewsroomMedia } from './services/newsroomMediaStorage';
+import PlayerRecruitingWorkspace from './components/PlayerRecruitingWorkspace';
+import {
+  addTransferTarget,
+  applyCommitmentToLatestNewsroom,
+  archiveHighSchoolRecruiting,
+  closeTransferRecruiting,
+  openTransferRecruiting,
+  removeTransferTarget,
+  toggleRecruitingFinalist,
+  updateTransferTarget,
+} from './domain/playerRecruiting';
 import {
   assignNewsroomMedia,
   buildPublicNewsroomMediaLibrary,
@@ -854,26 +865,84 @@ const handleSaveGameClick = () => {
 
   const handleCommitment = (school) => {
     updateAppState(prev => {
+      const occurredAt = new Date().toISOString();
+      const archivedState = archiveHighSchoolRecruiting(prev, school.name, occurredAt);
+      const finalHighSchoolGame = (prev.gameLogs || []).filter((game) => game?.didPlay !== false).slice(0, 5).at(-1);
       const milestoneState = createCareerMilestone({
-        state: prev,
+        state: archivedState,
         draft: {
           type: MILESTONE_TYPES.COMMITMENT,
           season: prev.currentSeason || 1,
-          week: prev.currentWeek || 1,
+          week: finalHighSchoolGame?.week || Math.max(1, (prev.currentWeek || 1) - 1),
           institution: school.name,
           previousInstitution: '',
           achievement: '',
           notes: '',
           confirmed: true,
         },
+        occurredAt,
       });
-      return {
+      return applyCommitmentToLatestNewsroom({
         ...milestoneState,
         rumors: [`BREAKING: ${prev.player.stars}-Star ${prev.player.pos} ${prev.player.name} commits to ${school.name}!`, ...prev.rumors],
-      };
+      }, school.name);
     }, 'Commitment verified and added to the Career Chronicle!');
     setIsCommitModalOpen(false);
     setNewsTheme('on3');
+    setActiveTab('chronicle');
+  };
+
+  const handleAddPlayerRecruitingSchool = (name) => {
+    updateAppState(prev => {
+      if (prev.recruiting.some((school) => school.name.trim().toLowerCase() === name.trim().toLowerCase())) return prev;
+      return {
+        ...prev,
+        recruiting: [...prev.recruiting, {
+          id: Date.now(),
+          name,
+          level: 'None',
+          interest: 0,
+          offered: false,
+          customOrder: prev.recruiting.length + 1,
+        }],
+      };
+    });
+  };
+
+  const handleToggleRecruitingFinalist = (schoolId) => {
+    updateAppState(prev => toggleRecruitingFinalist(prev, schoolId));
+  };
+
+  const handleOpenTransferRecruiting = () => {
+    updateAppState(prev => openTransferRecruiting(prev), 'Transfer decision opened. No school change has been made.');
+  };
+
+  const handleStayAtCurrentSchool = () => {
+    updateAppState(prev => closeTransferRecruiting(prev, 'stay'), `Staying at ${appState.player.college}. No transfer was recorded.`);
+  };
+
+  const handleAddTransferTarget = (name) => updateAppState(prev => addTransferTarget(prev, name));
+  const handleUpdateTransferTarget = (targetId, field, value) => updateAppState(prev => updateTransferTarget(prev, targetId, field, value));
+  const handleDeleteTransferTarget = (targetId) => updateAppState(prev => removeTransferTarget(prev, targetId));
+
+  const handleTransferDecision = (target) => {
+    updateAppState(prev => {
+      const previousInstitution = prev.player.college || prev.player.school || '';
+      const decisionState = closeTransferRecruiting(prev, 'transfer', target.name);
+      return createCareerMilestone({
+        state: decisionState,
+        draft: {
+          type: MILESTONE_TYPES.TRANSFER,
+          season: prev.currentSeason || 1,
+          week: prev.currentWeek || 1,
+          institution: target.name,
+          previousInstitution,
+          achievement: '',
+          notes: target.projectedRole ? `Projected role: ${target.projectedRole}` : '',
+          confirmed: true,
+        },
+      });
+    }, `Transfer to ${target.name} verified and added to the Career Chronicle.`);
     setActiveTab('chronicle');
   };
 
@@ -1917,6 +1986,29 @@ const handleSaveGameClick = () => {
   };
 
   const renderRecruiting = () => {
+    if (!isCoach) {
+      return (
+        <PlayerRecruitingWorkspace
+          state={appState}
+          careerStage={careerStage}
+          readOnly={isReadOnly}
+          commitOpen={isCommitModalOpen}
+          onOpenCommit={() => setIsCommitModalOpen(true)}
+          onCloseCommit={() => setIsCommitModalOpen(false)}
+          onAddSchool={handleAddPlayerRecruitingSchool}
+          onUpdateSchool={(id, field, value) => field === 'interest' ? commitInterestChange(id, value) : updateSchool(id, field, value)}
+          onDeleteSchool={deleteSchool}
+          onToggleFinalist={handleToggleRecruitingFinalist}
+          onCommit={handleCommitment}
+          onOpenTransfer={handleOpenTransferRecruiting}
+          onAddTransferTarget={handleAddTransferTarget}
+          onUpdateTransferTarget={handleUpdateTransferTarget}
+          onDeleteTransferTarget={handleDeleteTransferTarget}
+          onStay={handleStayAtCurrentSchool}
+          onTransfer={handleTransferDecision}
+        />
+      );
+    }
     const offeredSchools = appState.recruiting.filter(s => s.offered);
     
     const levels = isCoach ? [

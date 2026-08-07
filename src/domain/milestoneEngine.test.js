@@ -19,6 +19,7 @@ const state = {
   careerChronicle: [],
   factLedger: [],
   trophies: [],
+  recruiting: [{ id: 1, name: 'Test University', interest: 80 }],
 };
 
 const confirmed = (type, overrides = {}) => ({
@@ -69,6 +70,7 @@ test('moves the career through graduation, OC, head coach, and retirement stages
   });
   assert.equal(graduated.player.graduated, true);
   assert.equal(oc.careerPhase, 'OC');
+  assert.deepEqual(oc.recruiting, []);
   assert.equal(hc.careerPhase, 'HC');
   assert.equal(hc.player.school, 'Test State University');
   assert.equal(retired.careerPhase, 'Retired');

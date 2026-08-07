@@ -1,7 +1,8 @@
 import { createNewsroomIssue } from './newsroomEngine.js';
 import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress.js';
+import { normalizePlayerRecruiting, snapshotRecruitingChanges } from './playerRecruiting.js';
 
-export const CAREER_SCHEMA_VERSION = 10;
+export const CAREER_SCHEMA_VERSION = 11;
 
 export class DuplicateWeekPublicationError extends Error {
   constructor(weekKey) {
@@ -680,6 +681,7 @@ export const createPublishedWeek = ({
 
   publicationFact('profile.player.name', 'Player', state.player?.name);
   publicationFact('profile.player.school', 'School', state.player?.school);
+  publicationFact('profile.player.college', 'Committed college', state.player?.college);
   if (hasGame) {
     [
       ['opponent', 'Opponent'], ['result', 'Result'], ['homeScore', 'Team score'],
@@ -730,6 +732,8 @@ export const createPublishedWeek = ({
     factKeys: finalLedgerFacts.map((entry) => entry.key),
   };
 
+  const updatedRecruiting = applyRecruitingPatches(state.recruiting, recruitingPatches);
+  const recruitingChanges = snapshotRecruitingChanges(state.recruiting || [], updatedRecruiting);
   const weeklyUpdate = {
     id: publicationId,
     weekKey: targetWeekKey,
@@ -745,9 +749,10 @@ export const createPublishedWeek = ({
     rtgSnapshot,
     rtgChanges,
     quote,
+    recruitingSnapshot: updatedRecruiting.map((school) => ({ ...school })),
+    recruitingChanges,
   };
 
-  const updatedRecruiting = applyRecruitingPatches(state.recruiting, recruitingPatches);
   const updatedRetentionBoard = applyRetentionPatches(state.retentionBoard || [], retentionPatches);
   const newsroomIssue = hasGame && !isNoAppearance ? createNewsroomIssue({
     publicationId,
@@ -800,6 +805,7 @@ export const migrateCareerState = (state, defaults) => ({
     ...school,
     customOrder: school.customOrder || index + 1,
   })),
+  playerRecruiting: normalizePlayerRecruiting(state?.playerRecruiting || defaults.playerRecruiting),
   schemaVersion: CAREER_SCHEMA_VERSION,
   weeklyUpdates: (state?.weeklyUpdates || []).map((entry) => ({
     ...entry,

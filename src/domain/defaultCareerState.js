@@ -1,4 +1,5 @@
 import { CAREER_SCHEMA_VERSION } from './weeklyEngine';
+import { DEFAULT_PLAYER_RECRUITING } from './playerRecruiting';
 
 export const DEFAULT_CAREER_STATE = {
   schemaVersion: CAREER_SCHEMA_VERSION,
@@ -42,6 +43,7 @@ export const DEFAULT_CAREER_STATE = {
   playoffPicture: '',
   gameLogs: [],
   recruiting: [],
+  playerRecruiting: DEFAULT_PLAYER_RECRUITING,
   rtg: {
     gpa: '',
     energy: '',

@@ -63,6 +63,27 @@ test('adds verified week-over-week and season context without flattening outlet 
   assert.equal(new Set(issue.articles.map((entry) => entry.paragraphs.join(' '))).size, 5);
 });
 
+test('makes a newly verified scholarship offer the weekly recruiting headline', () => {
+  const issue = createNewsroomIssue({
+    publicationId: 'week-offer',
+    season: 1,
+    week: 3,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School' },
+    game: { opponent: 'Test Opponent C', result: 'W', passYds: 240, passTD: 2, rushYds: 70, rushTD: 1, int: 0 },
+    previousRecruiting: [{ id: 2, name: 'Test University', interest: 70, offered: false }],
+    recruiting: [{ id: 2, name: 'Test University', interest: 82, offered: true }],
+    availableFactKeys: [...baseFacts, 'recruiting.2.offer'],
+    currentFactKeys: [...baseFacts, 'recruiting.2.offer'],
+    publishedAt: '2026-08-14T12:00:00.000Z',
+  });
+
+  const recruitingStory = issue.articles.find((entry) => entry.outletId === 'recruiting');
+  assert.match(recruitingStory.headline, /adds a verified offer/i);
+  assert.match(recruitingStory.paragraphs.join(' '), /confirmed scholarship offer/);
+  assert.equal(recruitingStory.groundingStatus, 'verified');
+});
+
 test('carries verified RTG mechanics and NIL movement into the weekly coverage', () => {
   const rtgKeys = ['rtg.gpa', 'rtg.energy', 'rtg.coachTrust', 'rtg.rank', 'rtg.followers', 'rtg.valuation'];
   const issue = createNewsroomIssue({
@@ -121,6 +142,26 @@ test('film room explicitly avoids claims unsupported by charting data', () => {
   const filmRoom = issue.articles.find((entry) => entry.outletId === 'filmroom');
   assert.match(filmRoom.paragraphs.join(' '), /No formation, coverage, pressure, or blocking claim/);
   assert.doesNotMatch(filmRoom.paragraphs.join(' '), /Counter Trey|3-deep|0 Sacks/);
+});
+
+test('college coverage does not reuse archived high-school interest as current recruiting news', () => {
+  const issue = createNewsroomIssue({
+    publicationId: 'college-week-2',
+    season: 2,
+    week: 2,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test University A', college: 'Test University A', isCommitted: true },
+    game: { opponent: 'Test Opponent B', result: 'W', passYds: 220, passTD: 2, rushYds: 45, rushTD: 1, int: 0 },
+    recruiting: [{ id: 1, name: 'Old High School Leader', interest: 99 }],
+    availableFactKeys: [...baseFacts, 'profile.player.college'],
+    currentFactKeys: [...baseFacts, 'profile.player.college'],
+    publishedAt: '2026-09-01T12:00:00.000Z',
+  });
+
+  const recruitingStory = issue.articles.find((entry) => entry.outletId === 'recruiting');
+  assert.match(recruitingStory.headline, /transfer desk remains quiet/i);
+  assert.doesNotMatch(JSON.stringify(recruitingStory), /Old High School Leader|99%/);
+  assert.equal(recruitingStory.groundingStatus, 'verified');
 });
 
 test('blank statistics remain unreported instead of becoming invented zeroes', () => {

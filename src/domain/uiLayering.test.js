@@ -62,13 +62,16 @@ test('the homepage summarizes every major DynastyHQ workspace', async () => {
     'Current Phase',
     'Season Snapshot',
     'My Profile',
+    'Road to Glory',
     'Career Timeline',
-    'Weekly Priorities',
+    'Journey Central',
+    'Dynasty Central',
     'Newsroom',
     'Recruiting Board',
-    'Gridiron Grind Podcast',
+    'Gridiron Grind',
     'Quick Actions',
-    'Legacy Watch',
+    'Recent Schedule',
+    'Legacy Goals',
   ]) {
     assert.match(source, new RegExp(title));
   }

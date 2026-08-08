@@ -86,6 +86,9 @@ test('OC model uses verified OC weekly updates before legacy game logs', () => {
   assert.equal(model.stage, CAREER_STAGES.OC);
   assert.equal(model.metrics.find((metric) => metric.label === 'Offense record').value, '0-1');
   assert.equal(model.recentGames[0].opponent, 'Test Opponent B');
+  assert.equal(model.totals.points, 17);
+  assert.equal(model.totals.pointsAgainst, 24);
+  assert.equal(model.seasonGames.length, 1);
 });
 
 test('head coach and retirement models expose program and legacy workspaces', () => {

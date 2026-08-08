@@ -1932,17 +1932,28 @@ const handleSaveGameClick = () => {
       { id: 'settings', icon: Settings, label: 'Settings', shortLabel: 'Settings' },
       { id: 'rules', icon: FileText, label: 'Career Handbook', shortLabel: 'Handbook' }
     ];
-    const desktopNavItems = navItems.filter((item) => item.id !== 'rules');
+    const desktopNavItems = [
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'roadToGlory', label: 'Road to Glory' },
+      { id: 'dynastyHub', label: 'Dynasty' },
+      { id: 'recruiting', label: 'Recruiting' },
+      { id: 'newsroom', label: 'Newsroom' },
+      { id: 'chronicle', label: 'History' },
+      ...(!isReadOnly ? [{ id: 'settings', label: 'Settings' }] : []),
+    ];
 
     const player = appState.player;
 
     const openNavItem = (item) => {
       if (item.id === 'rules') {
         setIsHouseRulesModalOpen(true);
-      } else if (item.id === 'commandCenter') {
+      } else if (['commandCenter', 'roadToGlory', 'dynastyHub'].includes(item.id)) {
         setActiveTab('dashboard');
         requestAnimationFrame(() => {
-          const target = document.getElementById('recruit-command-center');
+          const targetId = item.id === 'roadToGlory'
+            ? 'road-to-glory-snapshot'
+            : (item.id === 'dynastyHub' ? 'dynasty-central-snapshot' : 'recruit-command-center');
+          const target = document.getElementById(targetId);
           const scroller = document.querySelector('main');
           if (!target || !scroller) return;
           const top = scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
@@ -1965,27 +1976,30 @@ const handleSaveGameClick = () => {
           : (saveStatus.state === 'error' ? 'Retry needed' : 'Cloud save ready')));
 
     return (
-      <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#03080c]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
-        <div className="mx-auto flex h-[44px] max-w-[1800px] items-stretch px-3 sm:px-4">
-          <button type="button" onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} className="flex shrink-0 items-center gap-2 pr-2.5 text-left 2xl:pr-4" aria-label="Open Dynasty HQ dashboard">
-            <span className="flex h-7 w-7 items-center justify-center border border-amber-400/80 bg-amber-500/10 text-amber-400 shadow-inner shadow-amber-500/20 [clip-path:polygon(50%_0,92%_20%,92%_72%,50%_100%,8%_72%,8%_20%)]">
-              <Trophy size={13} />
+      <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
+        <div className="mx-auto flex h-[68px] max-w-[1500px] items-stretch px-3 sm:px-5">
+          <button type="button" onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} className="flex shrink-0 items-center gap-2.5 pr-4 text-left" aria-label="Open College Football 27 Command Center dashboard">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300/60 bg-slate-100 text-[8px] font-black leading-none text-slate-950 shadow-inner">
+              CF27
             </span>
-            <span className="hidden text-[15px] font-black uppercase tracking-[0.075em] text-slate-100 sm:block">Dynasty <span className="text-amber-400">HQ</span></span>
+            <span className="hidden sm:block">
+              <span className="block text-[18px] font-black uppercase leading-[0.84] tracking-[-0.03em] text-slate-100">College<br />Football <span className="text-[24px]">27</span></span>
+              <span className="mt-1.5 block text-[7px] font-black uppercase tracking-[0.17em] text-slate-500">Command Center</span>
+            </span>
           </button>
 
-          <nav className="hidden min-w-0 flex-1 items-stretch justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[1180px]:flex" aria-label="Primary navigation">
+          <nav className="hidden min-w-0 flex-1 items-stretch justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[1100px]:flex" aria-label="Primary navigation">
             {desktopNavItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 title={item.label}
-                aria-current={activeTab === item.id && item.id !== 'rules' ? 'page' : undefined}
+                aria-current={activeTab === item.id ? 'page' : undefined}
                 onClick={() => openNavItem(item)}
-                className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap px-1.5 font-black uppercase tracking-[0.07em] transition-colors min-[1380px]:px-2 2xl:px-2.5 ${activeTab === item.id && item.id !== 'rules' ? 'text-white' : 'text-slate-500 hover:text-white'}`}
+                className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap px-4 font-black uppercase tracking-[0.06em] transition-colors xl:px-5 ${activeTab === item.id ? 'text-white' : 'text-slate-500 hover:text-white'}`}
               >
                 <span>{item.label}</span>
-                {activeTab === item.id && item.id !== 'rules' && <span className="absolute inset-x-2 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.75)]" />}
+                {activeTab === item.id && <span className="absolute inset-x-3 bottom-0 h-px bg-slate-100 shadow-[0_0_12px_rgba(255,255,255,0.55)]" />}
               </button>
             ))}
           </nav>
@@ -1997,23 +2011,23 @@ const handleSaveGameClick = () => {
                 <button type="button" onClick={() => handlePublishToPublic()} aria-label="Get share link" title="Get share link" className="hidden h-8 w-8 items-center justify-center rounded border border-slate-800 bg-slate-950 text-slate-500 hover:border-amber-400/50 hover:text-white sm:flex"><Share2 size={13} /></button>
               </>
             )}
-            <div className="hidden items-center gap-2 min-[1540px]:flex">
+            <div className="hidden items-center gap-2 min-[1100px]:flex">
               <button type="button" onClick={() => setActiveTab('settings')} className="flex items-center gap-2 text-left" aria-label="Open Dynasty HQ settings">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-500/40 bg-slate-900 text-[10px] font-black text-amber-400">{player.number || (player.name?.[0] || 'D')}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-500/50 bg-slate-900 text-[10px] font-black text-slate-200">{player.number || (player.name?.[0] || 'D')}</span>
                 <span className="max-w-36">
-                  <span className="block truncate text-[8px] font-black uppercase tracking-[0.08em] text-white">Build. Recruit. Win.</span>
-                  <span className="block truncate text-[7px] font-bold text-slate-500">Your Legacy Starts Now.</span>
+                  <span className="block truncate text-[8px] font-black uppercase tracking-[0.08em] text-white">Gridiron Legacy</span>
+                  <span className="block truncate text-[7px] font-bold text-slate-500">{player.name || 'Bryan Wessel Jr.'}</span>
                 </span>
               </button>
               <button type="button" onClick={() => setIsHouseRulesModalOpen(true)} className="flex h-8 w-6 items-center justify-center text-slate-500 hover:text-amber-400" aria-label="Open career handbook" title="Career Handbook"><ChevronDown size={13} /></button>
               {isReadOnly && <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-black tracking-widest text-white">VIEWER</span>}
             </div>
-            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1180px]:hidden"><Menu size={16} /> Menu</button>
+            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1100px]:hidden"><Menu size={16} /> Menu</button>
           </div>
         </div>
 
         {mobileNavOpen && (
-          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1180px]:hidden">
+          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1100px]:hidden">
             <nav className="mx-auto grid max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Mobile primary navigation">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -3880,7 +3894,7 @@ const handleSaveGameClick = () => {
        {renderNav()}
        
        {/* Main Content Area */}
-       <main className="relative h-full overflow-y-auto px-3 pb-8 pt-[52px] sm:px-5 lg:px-8">
+       <main className={`relative h-full overflow-y-auto pb-8 pt-[68px] ${activeTab === 'dashboard' ? 'px-0' : 'px-3 sm:px-5 lg:px-8'}`}>
          {/* Background Image */}
          <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true">
             <img src={getBgImage()} className="w-full h-full object-cover opacity-20 mix-blend-luminosity" alt="Background" />

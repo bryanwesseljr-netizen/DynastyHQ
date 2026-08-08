@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { Download, ExternalLink, ImagePlus, Printer, RefreshCw, Share2, ShieldCheck, X } from 'lucide-react';
+import { Download, ExternalLink, ImagePlus, Printer, RefreshCw, Save, Share2, ShieldCheck, X } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { buildPostgameFrontPageTextPatch, createPostgameFrontPageTextDraft } from '../domain/postgameFrontPage';
 
 const assetUrl = (library, assetId) => library.find((asset) => asset.id === assetId)?.downloadUrl || '';
 const safeFileName = (page) => `dynastyhq-${page.season}-${page.week}-front-page.png`;
@@ -31,13 +32,34 @@ const PostgameFrontPage = ({
 }) => {
   const pageRef = useRef(null);
   const [exporting, setExporting] = useState(false);
+  const [textDraft, setTextDraft] = useState(() => createPostgameFrontPageTextDraft(page));
+  const [hasUnsavedText, setHasUnsavedText] = useState(false);
+  const textPatch = buildPostgameFrontPageTextPatch(page, textDraft);
+  const editorPage = { ...page, ...textPatch };
   const gamePhotoUrl = assetUrl(mediaLibrary, page.gamePhotoAssetId);
   const playerHeadshot = assetUrl(mediaLibrary, page.player?.headshotAssetId) || page.player?.headshotUrl || '';
-  const visibleTeammates = readOnly ? (page.teammates || []).filter((entry) => entry.name) : (page.teammates || []);
+  const visibleTeammates = readOnly ? (page.teammates || []).filter((entry) => entry.name) : editorPage.teammates;
+
+  const updateTextDraft = (patch) => {
+    setTextDraft((current) => ({ ...current, ...patch }));
+    setHasUnsavedText(true);
+  };
 
   const updateTeammate = (index, patch) => {
-    const teammates = (page.teammates || []).map((entry, entryIndex) => entryIndex === index ? { ...entry, ...patch } : entry);
-    onUpdate({ teammates });
+    setTextDraft((current) => ({
+      ...current,
+      teammates: current.teammates.map((entry, entryIndex) => entryIndex === index ? { ...entry, ...patch } : entry),
+    }));
+    setHasUnsavedText(true);
+  };
+
+  const saveTextChanges = () => {
+    onUpdate(textPatch, 'Front-page customization saved!');
+    setHasUnsavedText(false);
+  };
+
+  const closeEditor = () => {
+    if (!hasUnsavedText || window.confirm('Discard the unsaved front-page changes?')) onClose();
   };
 
   const renderPng = async () => {
@@ -77,7 +99,7 @@ const PostgameFrontPage = ({
       if (!navigator.share || (navigator.canShare && !navigator.canShare({ files: [file] }))) {
         throw new Error('Direct sharing is not available in this browser. Download the PNG and share that file instead.');
       }
-      await navigator.share({ title: page.headline, text: `${page.masthead} postgame front page`, files: [file] });
+      await navigator.share({ title: editorPage.headline, text: `${page.masthead} postgame front page`, files: [file] });
     } catch (error) {
       if (error?.name !== 'AbortError') onNotify?.(error?.message || 'The front page could not be shared.', 'error');
     } finally {
@@ -90,12 +112,12 @@ const PostgameFrontPage = ({
       <div className="no-print flex flex-col gap-3 rounded-2xl border border-slate-700 bg-slate-950 p-4 shadow-xl lg:flex-row lg:items-center lg:justify-between">
         <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Weekly keepsake</p><h2 className="mt-1 text-xl font-black uppercase text-white">Postgame Front Page</h2>{page.needsRegeneration && <p className="mt-1 text-xs font-bold text-red-300">This page contains pre-correction facts. Regenerate it before printing or sharing.</p>}</div>
         <div className="flex flex-wrap gap-2">
-          {!readOnly && <button type="button" onClick={onRegenerate} className="flex items-center gap-1 rounded-lg border border-amber-400/40 px-3 py-2 text-[10px] font-black uppercase text-amber-200"><RefreshCw size={13} /> Regenerate story</button>}
-          <button type="button" disabled={page.needsRegeneration || exporting} onClick={downloadPng} className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-40"><Download size={13} /> PNG</button>
-          <button type="button" disabled={page.needsRegeneration} onClick={() => window.print()} className="flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-40"><Printer size={13} /> Print / PDF</button>
-          <button type="button" disabled={page.needsRegeneration || exporting} onClick={sharePng} className="flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-40"><Share2 size={13} /> Share</button>
-          {!readOnly && <button type="button" disabled={page.needsRegeneration} onClick={onOpenPublic} className="flex items-center gap-1 rounded-lg border border-emerald-500/40 px-3 py-2 text-[10px] font-black uppercase text-emerald-300 disabled:opacity-40"><ExternalLink size={13} /> Public version</button>}
-          <button type="button" onClick={onClose} aria-label="Close front page" className="rounded-lg border border-slate-700 p-2 text-slate-400"><X size={15} /></button>
+          {!readOnly && <button type="button" disabled={hasUnsavedText} onClick={onRegenerate} className="flex items-center gap-1 rounded-lg border border-amber-400/40 px-3 py-2 text-[10px] font-black uppercase text-amber-200 disabled:opacity-40"><RefreshCw size={13} /> Regenerate story</button>}
+          <button type="button" disabled={page.needsRegeneration || hasUnsavedText || exporting} onClick={downloadPng} className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-40"><Download size={13} /> PNG</button>
+          <button type="button" disabled={page.needsRegeneration || hasUnsavedText} onClick={() => window.print()} className="flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-40"><Printer size={13} /> Print / PDF</button>
+          <button type="button" disabled={page.needsRegeneration || hasUnsavedText || exporting} onClick={sharePng} className="flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-40"><Share2 size={13} /> Share</button>
+          {!readOnly && <button type="button" disabled={page.needsRegeneration || hasUnsavedText} onClick={onOpenPublic} className="flex items-center gap-1 rounded-lg border border-emerald-500/40 px-3 py-2 text-[10px] font-black uppercase text-emerald-300 disabled:opacity-40"><ExternalLink size={13} /> Public version</button>}
+          <button type="button" onClick={closeEditor} aria-label="Close front page" className="rounded-lg border border-slate-700 p-2 text-slate-400"><X size={15} /></button>
         </div>
       </div>
 
@@ -103,15 +125,15 @@ const PostgameFrontPage = ({
         <details className="no-print rounded-2xl border border-slate-800 bg-slate-900/90 p-5" open>
           <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-blue-300">Customize photos and verified player cards</summary>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Headline<input value={page.headline} onChange={(event) => onUpdate({ headline: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-white" /></label>
-            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Subheadline<input value={page.subheadline} onChange={(event) => onUpdate({ subheadline: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white" /></label>
+            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Headline<input value={textDraft.headline} onChange={(event) => updateTextDraft({ headline: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-white" /></label>
+            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Subheadline<input value={textDraft.subheadline} onChange={(event) => updateTextDraft({ subheadline: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white" /></label>
             <PhotoPicker label="Game photo" value={page.gamePhotoAssetId} mediaLibrary={mediaLibrary} onSelect={(gamePhotoAssetId) => onUpdate({ gamePhotoAssetId })} onUpload={(file) => onUploadPhoto(file, { target: 'gamePhoto' })} />
             <PhotoPicker label="Player headshot" value={page.player?.headshotAssetId} mediaLibrary={mediaLibrary} onSelect={(headshotAssetId) => onUpdate({ player: { headshotAssetId } })} onUpload={(file) => onUploadPhoto(file, { target: 'playerHeadshot' })} />
-            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Photo caption<input value={page.gamePhotoCaption} onChange={(event) => onUpdate({ gamePhotoCaption: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white" /></label>
-            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Photo credit<input value={page.photoCredit} onChange={(event) => onUpdate({ photoCredit: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white" placeholder="Optional" /></label>
+            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Photo caption<input value={textDraft.gamePhotoCaption} onChange={(event) => updateTextDraft({ gamePhotoCaption: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white" /></label>
+            <label className="text-[9px] font-black uppercase tracking-wider text-slate-500">Photo credit<input value={textDraft.photoCredit} onChange={(event) => updateTextDraft({ photoCredit: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white" placeholder="Optional" /></label>
           </div>
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {(page.teammates || []).map((teammate, index) => (
+            {editorPage.teammates.map((teammate, index) => (
               <div key={teammate.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
                 <p className="text-[9px] font-black uppercase tracking-widest text-amber-300">Optional teammate {index + 1}</p>
                 <div className="mt-3 grid grid-cols-[1fr_90px] gap-2"><input value={teammate.name} onChange={(event) => updateTeammate(index, { name: event.target.value })} placeholder="Player name" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" /><input value={teammate.position} onChange={(event) => updateTeammate(index, { position: event.target.value })} placeholder="Pos." className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" /></div>
@@ -120,7 +142,10 @@ const PostgameFrontPage = ({
               </div>
             ))}
           </div>
-          <p className="mt-4 flex items-start gap-2 text-[10px] leading-relaxed text-slate-500"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-400" /> Teammate names and statistics are user-verified additions. DynastyHQ never invents injuries, awards, quotes, or teammate production.</p>
+          <div className="mt-4 flex flex-col gap-3 border-t border-slate-800 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-start gap-2 text-[10px] leading-relaxed text-slate-500"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-400" /> Teammate names and statistics are user-verified additions. Typing stays in this editor until you save.</p>
+            <button type="button" disabled={!hasUnsavedText} onClick={saveTextChanges} className="flex shrink-0 items-center justify-center gap-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white disabled:cursor-not-allowed disabled:opacity-40"><Save size={13} /> {hasUnsavedText ? 'Save front-page changes' : 'Changes saved'}</button>
+          </div>
         </details>
       )}
 
@@ -130,12 +155,12 @@ const PostgameFrontPage = ({
             <div className="flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.28em] text-red-700">{page.editionLabel}</p><h1 className="font-serif text-[50px] font-black leading-none tracking-tight">{page.masthead}</h1></div><div className="text-right text-[11px] font-bold uppercase"><p>Season {page.season} · Week {page.week}</p><p>{new Date(page.updatedAt || page.generatedAt).toLocaleDateString()}</p></div></div>
           </header>
           <div className="grid grid-cols-[1fr_190px] gap-5 px-8 pb-3 pt-5">
-            <div><h2 className="font-serif text-[43px] font-black leading-[0.95] tracking-tight">{page.headline}</h2><p className="mt-3 border-l-4 border-red-700 pl-3 text-[16px] font-semibold leading-snug text-stone-700">{page.subheadline}</p></div>
+            <div><h2 className="font-serif text-[43px] font-black leading-[0.95] tracking-tight">{editorPage.headline}</h2><p className="mt-3 border-l-4 border-red-700 pl-3 text-[16px] font-semibold leading-snug text-stone-700">{editorPage.subheadline}</p></div>
             <div className="self-start border-y-4 border-stone-900 bg-white/50 py-3 text-center"><p className="text-[10px] font-black uppercase tracking-widest text-red-700">Final</p><div className="mt-2 grid grid-cols-[1fr_auto] items-center gap-x-3 px-3 text-left"><strong className="truncate text-[14px]">{page.score.team}</strong><strong className="text-[27px]">{page.score.teamScore === '' ? '—' : page.score.teamScore}</strong><strong className="truncate text-[14px]">{page.score.opponent}</strong><strong className="text-[27px]">{page.score.opponentScore === '' ? '—' : page.score.opponentScore}</strong></div><p className="mt-2 text-[10px] font-black uppercase tracking-widest">Season record {page.seasonRecord}</p></div>
           </div>
           <figure className="mx-8 overflow-hidden border-y-4 border-stone-900 bg-stone-900">
             {gamePhotoUrl ? <img src={gamePhotoUrl} alt="Postgame action" className="h-[350px] w-full object-cover" /> : <div className="flex h-[350px] items-center justify-center bg-stone-800 text-sm font-black uppercase tracking-widest text-stone-400">Add a game-action photo</div>}
-            <figcaption className="flex justify-between gap-4 bg-[#f4efe2] px-2 py-2 text-[9px] leading-tight text-stone-600"><span>{page.gamePhotoCaption}</span>{page.photoCredit && <span className="shrink-0">Photo: {page.photoCredit}</span>}</figcaption>
+            <figcaption className="flex justify-between gap-4 bg-[#f4efe2] px-2 py-2 text-[9px] leading-tight text-stone-600"><span>{editorPage.gamePhotoCaption}</span>{editorPage.photoCredit && <span className="shrink-0">Photo: {editorPage.photoCredit}</span>}</figcaption>
           </figure>
           <div className="grid grid-cols-[1fr_210px] gap-6 px-8 pb-7 pt-4">
             <div className="columns-2 gap-5 font-serif text-[13px] leading-[1.45]">{page.paragraphs.map((paragraph, index) => <p key={`${page.id}-paragraph-${index}`} className="mb-3 break-inside-avoid first-letter:font-black">{paragraph}</p>)}</div>

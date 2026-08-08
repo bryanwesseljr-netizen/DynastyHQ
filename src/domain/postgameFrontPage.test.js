@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildPostgameFrontPageTextPatch,
   buildPostgameFrontPage,
+  createPostgameFrontPageTextDraft,
   markPostgameFrontPageStale,
   updatePostgameFrontPage,
   upsertPostgameFrontPage,
@@ -41,4 +43,26 @@ test('preserves edits and photo choices while regenerating corrected story facts
   assert.equal(regenerated.headline, 'My custom headline');
   assert.equal(regenerated.photoCredit, 'Family photo');
   assert.equal(regenerated.needsRegeneration, false);
+});
+
+test('keeps front-page typing in a draft until one explicit save patch is built', () => {
+  const page = {
+    headline: 'Original headline',
+    subheadline: 'Original deck',
+    teammates: [
+      { id: 'teammate-1', name: '', position: '', statLine: '', headshotAssetId: 'headshot-1' },
+      { id: 'teammate-2', name: '', position: '', statLine: '', headshotAssetId: '' },
+    ],
+  };
+  const draft = createPostgameFrontPageTextDraft(page);
+
+  draft.teammates[0].name = 'Jordan';
+  draft.teammates[0].position = 'WR';
+  draft.teammates[0].statLine = '7 REC · 112 YDS · 2 TD';
+
+  assert.equal(page.teammates[0].name, '');
+  const patch = buildPostgameFrontPageTextPatch(page, draft);
+  assert.equal(patch.teammates[0].name, 'Jordan');
+  assert.equal(patch.teammates[0].headshotAssetId, 'headshot-1');
+  assert.equal(patch.teammates[0].statLine, '7 REC · 112 YDS · 2 TD');
 });

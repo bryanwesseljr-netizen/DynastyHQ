@@ -184,10 +184,11 @@ const GroundedNewsroom = ({
 
       {isFrontPageOpen && frontPage ? (
         <PostgameFrontPage
+          key={`${frontPage.publicationId}-${frontPage.revision}`}
           page={frontPage}
           mediaLibrary={mediaLibrary}
           readOnly={readOnly}
-          onUpdate={(patch) => onUpdateFrontPage(frontPage.publicationId, patch)}
+          onUpdate={(patch, successMessage) => onUpdateFrontPage(frontPage.publicationId, patch, successMessage)}
           onRegenerate={() => onRegenerateFrontPage(frontPage.publicationId)}
           onUploadPhoto={(file, target) => onUploadFrontPagePhoto(file, { ...target, publicationId: frontPage.publicationId })}
           onOpenPublic={() => onOpenFrontPagePublic(frontPage.publicationId)}

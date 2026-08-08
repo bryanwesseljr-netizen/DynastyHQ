@@ -50,6 +50,30 @@ const blankTeammate = (index) => ({
   headshotAssetId: '',
 });
 
+export const createPostgameFrontPageTextDraft = (page = {}) => ({
+  headline: page.headline || '',
+  subheadline: page.subheadline || '',
+  gamePhotoCaption: page.gamePhotoCaption || '',
+  photoCredit: page.photoCredit || '',
+  teammates: Array.from({ length: 2 }, (_, index) => ({
+    name: page.teammates?.[index]?.name || '',
+    position: page.teammates?.[index]?.position || '',
+    statLine: page.teammates?.[index]?.statLine || '',
+  })),
+});
+
+export const buildPostgameFrontPageTextPatch = (page = {}, draft = {}) => ({
+  headline: draft.headline ?? page.headline ?? '',
+  subheadline: draft.subheadline ?? page.subheadline ?? '',
+  gamePhotoCaption: draft.gamePhotoCaption ?? page.gamePhotoCaption ?? '',
+  photoCredit: draft.photoCredit ?? page.photoCredit ?? '',
+  teammates: Array.from({ length: 2 }, (_, index) => ({
+    ...blankTeammate(index),
+    ...(page.teammates?.[index] || {}),
+    ...(draft.teammates?.[index] || {}),
+  })),
+});
+
 export const normalizePostgameFrontPage = (page = {}) => ({
   ...page,
   id: clean(page.id, 160),

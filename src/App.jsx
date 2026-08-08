@@ -1305,8 +1305,8 @@ const handleSaveGameClick = () => {
     updateAppState((prev) => upsertPostgameFrontPage(prev, buildPostgameFrontPage({ state: prev, publicationId })), 'Postgame front page generated!');
   };
 
-  const handleUpdateFrontPage = (publicationId, patch) => {
-    updateAppState((prev) => updatePostgameFrontPage(prev, publicationId, patch));
+  const handleUpdateFrontPage = (publicationId, patch, successMessage = null) => {
+    updateAppState((prev) => updatePostgameFrontPage(prev, publicationId, patch), successMessage);
   };
 
   const handleRegenerateFrontPage = (publicationId) => {

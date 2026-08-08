@@ -19,6 +19,7 @@ const isNumericFact = (key) => [
   'coach.openScholarships', 'coach.classCommits', 'coach.portalAdditions',
 ].includes(key) || /^roster\.(?:qb|rb|wr|te|ol|dl|lb|cb|s|st)\.(?:count|need)$/.test(key)
   || /^retention\..+\.(?:overall|nilDemand)$/.test(key)
+  || /^recruiting\.profile\.(?:recruitStars|tapeScore|nationalRank|stateRank|positionRank|gameNumber|topSchoolsSelected)$/.test(key)
   || isRecruitingInterest(key) || isRecruitingStars(key);
 
 const FactEditor = ({ entry, onChange }) => {
@@ -35,6 +36,15 @@ const FactEditor = ({ entry, onChange }) => {
       <select value={entry.value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-blue-400">
         <option value="W">Win</option>
         <option value="L">Loss</option>
+      </select>
+    );
+  }
+  if (/^highSchool\.moment\.\d\.result$/.test(entry.key)) {
+    return (
+      <select value={entry.value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-blue-400">
+        <option value="success">Successful</option>
+        <option value="partial">Partial</option>
+        <option value="failed">Failed</option>
       </select>
     );
   }
@@ -76,6 +86,7 @@ const WeeklyReviewPanel = ({
   const invalidCount = draft.facts.filter((entry) => validateScanFact(entry)).length;
   const detectedTypes = [...new Set(draft.sources.flatMap((source) => source.detectedTypes))];
   const completeness = getWeeklyCompleteness(draft);
+  const isHighSchool = draft.careerPhase === 'Player' && !draft.isCommitted;
 
   return (
     <section className="mb-6 overflow-hidden rounded-2xl border border-blue-500/40 bg-slate-900/95 shadow-2xl">
@@ -154,7 +165,9 @@ const WeeklyReviewPanel = ({
           <div className="rounded-xl border border-slate-700/70 bg-slate-950/50 p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-300"><ClipboardCheck size={14} /> Weekly completeness</h4>
-              <select
+              {isHighSchool ? (
+                <span className="rounded-lg border border-blue-500/30 bg-blue-950/30 px-2 py-1.5 text-[10px] font-black uppercase text-blue-200">High-school evaluation</span>
+              ) : <select
                 value={draft.weekType || WEEK_TYPES.GAME}
                 onChange={(event) => onChangeWeekType(event.target.value)}
                 className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] font-black uppercase text-white outline-none focus:border-blue-400"
@@ -163,7 +176,7 @@ const WeeklyReviewPanel = ({
                 <option value={WEEK_TYPES.GAME}>Game week</option>
                 {draft.careerPhase === 'Player' && <option value={WEEK_TYPES.NO_APPEARANCE}>Team game · no appearance</option>}
                 <option value={WEEK_TYPES.BYE}>Bye week</option>
-              </select>
+              </select>}
             </div>
             <div className="space-y-2">
               {completeness.checks.map((check) => (

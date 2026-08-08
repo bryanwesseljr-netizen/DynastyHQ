@@ -4,6 +4,11 @@ import { normalizeCareerTransitions } from './careerTransitions.js';
 import { normalizeCollegeNewsroom } from './collegeNewsroom.js';
 import { markPostgameFrontPageStale, normalizePostgameFrontPage } from './postgameFrontPage.js';
 import {
+  highSchoolEvaluationFacts,
+  normalizeHighSchoolEvaluation,
+  summarizeHighSchoolMoments,
+} from './highSchoolEvaluation.js';
+import {
   applyPlayerRecruitingPatch,
   normalizePlayerRecruiting,
   normalizeRecruitingSchool,
@@ -89,22 +94,35 @@ export const removePublishedGame = (state, gameIndex) => {
     && Number(entry.week || 1) === week
   ));
   const playerRecruiting = normalizePlayerRecruiting(state.playerRecruiting);
+  const removedHighSchoolEvaluation = game.stage === 'high-school' || Boolean(game.evaluation);
+  const restoredHighSchool = latestSnapshot?.playerRecruitingSnapshot
+    ? { ...playerRecruiting.highSchool, ...latestSnapshot.playerRecruitingSnapshot }
+    : removedHighSchoolEvaluation
+      ? {
+          ...playerRecruiting.highSchool,
+          gameNumber: Math.max(0, Number(game.evaluation?.gameNumber || 1) - 1),
+          tapeScore: Number(game.evaluation?.tapeScoreBefore || 0),
+          recruitStars: Number(game.evaluation?.recruitStarsBefore || state.player?.stars || 3),
+        }
+      : playerRecruiting.highSchool;
 
   return {
     ...state,
     currentWeek: Math.max(0, ...remainingCurrentSeasonWeeks) + 1,
     latestQuote: latestRemainingQuote,
     gameLogs: remainingGames,
-    player: removedCommitment ? { ...state.player, isCommitted: false, college: '' } : state.player,
+    player: removedCommitment
+      ? { ...state.player, isCommitted: false, college: '' }
+      : (removedHighSchoolEvaluation && !latestSnapshot?.playerRecruitingSnapshot
+        ? { ...state.player, stars: restoredHighSchool.recruitStars }
+        : state.player),
     recruiting: latestSnapshot?.recruitingSnapshot
       ? latestSnapshot.recruitingSnapshot.map(normalizeRecruitingSchool)
       : (state.recruiting || []),
     playerRecruiting: {
       ...playerRecruiting,
       ...(removedCommitment ? { finalists: [], highSchoolArchive: null } : {}),
-      highSchool: latestSnapshot?.playerRecruitingSnapshot
-        ? { ...playerRecruiting.highSchool, ...latestSnapshot.playerRecruitingSnapshot }
-        : playerRecruiting.highSchool,
+      highSchool: restoredHighSchool,
     },
     rtg: latestSnapshot?.rtgSnapshot && hasRtgSnapshot(latestSnapshot.rtgSnapshot)
       ? { ...(state.rtg || {}), ...latestSnapshot.rtgSnapshot }
@@ -148,6 +166,102 @@ export const correctPublishedWeek = ({ state, gameIndex, game }) => {
 
   const weeklyUpdates = [...state.weeklyUpdates];
   const previousUpdate = weeklyUpdates[updateIndex];
+  const isHighSchoolEvaluation = existingGame.stage === 'high-school' || Boolean(existingGame.evaluation);
+  if (isHighSchoolEvaluation) {
+    const evaluation = normalizeHighSchoolEvaluation(game?.evaluation || correctedGame.evaluation || {}, {
+      gameNumber: existingGame.evaluation?.gameNumber || week,
+      tapeScoreBefore: existingGame.evaluation?.tapeScoreBefore || 0,
+      recruitStarsBefore: existingGame.evaluation?.recruitStarsBefore || 3,
+    });
+    const correctedEvaluationGame = { ...existingGame, ...game, stage: 'high-school', evaluation, season, week, didPlay: true };
+    const preservedFacts = (state.factLedger || []).filter((entry) => (
+      entry.publicationId === publicationId
+      && !entry.key.startsWith('highSchool.')
+      && !['recruiting.profile.tapeScore', 'recruiting.profile.recruitStars'].includes(entry.key)
+    ));
+    const correctedFacts = [...preservedFacts, ...highSchoolEvaluationFacts(evaluation, publicationId)]
+      .map((entry) => ({ ...entry, correctedAt: new Date().toISOString() }));
+    const factLedger = [
+      ...(state.factLedger || []).filter((entry) => entry.publicationId !== publicationId),
+      ...correctedFacts,
+    ];
+    const previousRecruiting = [...weeklyUpdates].slice(0, updateIndex).reverse()
+      .find((entry) => entry.recruitingSnapshot)?.recruitingSnapshot || [];
+    const playerRecruitingSnapshot = {
+      ...(previousUpdate.playerRecruitingSnapshot || {}),
+      gameNumber: evaluation.gameNumber,
+      tapeScore: evaluation.tapeScoreAfter,
+      recruitStars: evaluation.recruitStarsAfter,
+    };
+    const oldIssue = (state.newsroomIssues || []).find((entry) => matchesPublication(entry, publicationId, season, week));
+    const rebuiltIssue = createNewsroomIssue({
+      publicationId,
+      season,
+      week,
+      careerPhase: previousUpdate.careerPhase || state.careerPhase,
+      player: { ...state.player, stars: evaluation.recruitStarsAfter },
+      game: correctedEvaluationGame,
+      recruiting: previousUpdate.recruitingSnapshot || state.recruiting || [],
+      previousRecruiting,
+      playerRecruiting: { highSchool: playerRecruitingSnapshot },
+      coverageStage: 'high-school',
+      availableFactKeys: factLedger.map((entry) => entry.key),
+      currentFactKeys: correctedFacts.map((entry) => entry.key),
+      publishedAt: previousUpdate.publishedAt,
+    });
+    if (oldIssue) {
+      rebuiltIssue.articles = rebuiltIssue.articles.map((articleEntry) => {
+        const priorArticle = oldIssue.articles?.find((entry) => entry.outletId === articleEntry.outletId);
+        return priorArticle?.mediaAssetId ? {
+          ...articleEntry,
+          mediaAssetId: priorArticle.mediaAssetId,
+          mediaSource: priorArticle.mediaSource,
+          mediaDisclosure: priorArticle.mediaDisclosure,
+        } : articleEntry;
+      });
+    }
+    const momentSummary = summarizeHighSchoolMoments(evaluation);
+    weeklyUpdates[updateIndex] = {
+      ...previousUpdate,
+      game: correctedEvaluationGame,
+      highSchoolEvaluation: evaluation,
+      playerRecruitingSnapshot,
+      factCount: correctedFacts.length,
+      correctedAt: new Date().toISOString(),
+    };
+    const gameLogs = [...state.gameLogs];
+    gameLogs[gameIndex] = correctedEvaluationGame;
+    const hasLaterEvaluation = gameLogs.some((entry, index) => index !== gameIndex
+      && (entry.stage === 'high-school' || entry.evaluation)
+      && (Number(entry.season || 1) > season || Number(entry.week || 0) > week));
+    const currentRecruiting = normalizePlayerRecruiting(state.playerRecruiting);
+    return {
+      ...state,
+      player: hasLaterEvaluation ? state.player : { ...state.player, stars: evaluation.recruitStarsAfter },
+      playerRecruiting: hasLaterEvaluation ? state.playerRecruiting : {
+        ...currentRecruiting,
+        highSchool: { ...currentRecruiting.highSchool, ...playerRecruitingSnapshot },
+      },
+      gameLogs,
+      weeklyUpdates,
+      factLedger,
+      careerChronicle: (state.careerChronicle || []).map((entry) => matchesPublication(entry, publicationId, season, week) ? {
+        ...entry,
+        title: `High-school Game ${evaluation.gameNumber} tape evaluation`,
+        summary: `${momentSummary.success} successful, ${momentSummary.partial} partial, ${momentSummary.failed} failed · Tape Score ${Number(evaluation.tapeScoreAfter).toLocaleString()} · ${evaluation.recruitStarsAfter}-star`,
+        factKeys: correctedFacts.map((entryFact) => entryFact.key),
+        correctedAt: new Date().toISOString(),
+      } : entry),
+      newsroomIssues: (state.newsroomIssues || []).map((entry) => matchesPublication(entry, publicationId, season, week) ? rebuiltIssue : entry),
+      podcastEpisodes: (state.podcastEpisodes || []).map((entry) => entry.publicationId === publicationId || entry.id === `podcast-${publicationId}` ? {
+        ...entry,
+        status: 'needs-regeneration',
+        audioStatus: 'stale',
+        segments: [],
+        correctedAt: new Date().toISOString(),
+      } : entry),
+    };
+  }
   const factMap = new Map((state.factLedger || [])
     .filter((entry) => entry.publicationId === publicationId)
     .map((entry) => [entry.key, entry]));
@@ -421,6 +535,7 @@ export const validateScanFact = (factEntry) => {
   }
 
   if (key === 'game.result' && !['W', 'L'].includes(String(value).toUpperCase())) return 'Choose a win or loss.';
+  if (/^highSchool\.moment\.\d\.result$/.test(key) && !['success', 'partial', 'failed'].includes(String(value))) return 'Choose Successful, Partial, or Failed.';
   if (key.startsWith('rtg.wear.') && !['Green', 'Yellow', 'Red'].includes(value)) return 'Choose Green, Yellow, or Red.';
   if (['offer', 'schemeFit'].includes(recruitingParts?.field) && typeof value !== 'boolean') return 'Choose Yes or No.';
   return '';
@@ -436,11 +551,26 @@ const rebuildDraftPatches = (draft, facts) => {
   const recruitingById = new Map();
   const retentionById = new Map();
   const playerRecruitingPatch = { rankings: {} };
+  const highSchoolEvaluationPatch = { moments: [] };
 
   facts.forEach((entry) => {
     if (validateScanFact(entry)) return;
     if (entry.key.startsWith('game.')) {
       gamePatch[entry.key.slice('game.'.length)] = entry.value;
+      return;
+    }
+    const highSchoolMoment = entry.key.match(/^highSchool\.moment\.?(\d)\.(result|objective)$/)
+      || entry.key.match(/^highSchool\.moment(\d)\.(result|objective)$/);
+    if (highSchoolMoment) {
+      const index = Number(highSchoolMoment[1]) - 1;
+      highSchoolEvaluationPatch.moments[index] = {
+        ...(highSchoolEvaluationPatch.moments[index] || { id: index + 1 }),
+        [highSchoolMoment[2]]: entry.value,
+      };
+      return;
+    }
+    if (entry.key === 'highSchool.teamImpact') {
+      highSchoolEvaluationPatch.teamImpact = entry.value;
       return;
     }
     if (entry.key.startsWith('rtg.wear.')) {
@@ -514,6 +644,7 @@ const rebuildDraftPatches = (draft, facts) => {
       ...playerRecruitingPatch,
       ...(Object.keys(playerRecruitingPatch.rankings).length ? {} : { rankings: undefined }),
     },
+    highSchoolEvaluationPatch,
   };
 };
 
@@ -572,6 +703,7 @@ export const createEmptyScanDraft = ({
   recruitingPatches: [],
   retentionPatches: [],
   playerRecruitingPatch: {},
+  highSchoolEvaluationPatch: {},
 });
 
 export const updateScanDraftWeekType = (draft, weekType) => {
@@ -593,6 +725,7 @@ export const getWeeklyCompleteness = (draft) => {
   const unresolvedFacts = (draft.facts || []).filter((entry) => entry.confidence < 0.9 && !entry.userVerified);
   const invalidFacts = (draft.facts || []).filter((entry) => validateScanFact(entry));
   const isPlayer = draft.careerPhase === 'Player';
+  const isHighSchool = isPlayer && !draft.isCommitted;
   const isBye = draft.weekType === WEEK_TYPES.BYE;
   const isNoAppearance = draft.weekType === WEEK_TYPES.NO_APPEARANCE;
   const gameIdentityKeys = ['game.opponent', 'game.result', 'game.homeScore', 'game.awayScore'];
@@ -637,6 +770,26 @@ export const getWeeklyCompleteness = (draft) => {
       nonGameFacts.length ? 'complete' : 'missing',
       'required',
     );
+  } else if (isHighSchool) {
+    const momentResultKeys = Array.from({ length: 4 }, (_, index) => `highSchool.moment.${index + 1}.result`);
+    const hasFourMoments = hasEveryFact(momentResultKeys, availableKeys);
+    const hasEvaluationSnapshot = hasEveryFact([
+      'recruiting.profile.tapeScore', 'recruiting.profile.recruitStars',
+    ], availableKeys);
+    addCheck(
+      'high-school-moments',
+      'Four playable moments',
+      hasFourMoments ? 'All four moment outcomes were extracted.' : 'Review or enter Successful, Partial, or Failed for all four moments below.',
+      hasFourMoments ? 'complete' : 'missing',
+      'required',
+    );
+    addCheck(
+      'high-school-evaluation',
+      'Tape Score and star rating',
+      hasEvaluationSnapshot ? 'The postgame recruiting evaluation is captured.' : 'Add the Tape Score and star rating shown after the game.',
+      hasEvaluationSnapshot ? 'complete' : 'missing',
+      'required',
+    );
   } else {
     addCheck(
       'final-score',
@@ -656,7 +809,7 @@ export const getWeeklyCompleteness = (draft) => {
     }
   }
 
-  if (isPlayer) {
+  if (isPlayer && !isHighSchool) {
     addCheck(
       'player-status',
       'Player status',
@@ -846,6 +999,14 @@ export const mergeScanResult = (draft, result) => {
         ...(result.playerRecruitingPatch?.rankings || {}),
       },
     },
+    highSchoolEvaluationPatch: {
+      ...(draft.highSchoolEvaluationPatch || {}),
+      ...(result.highSchoolEvaluationPatch || {}),
+      moments: Array.from({ length: 4 }, (_, index) => ({
+        ...(draft.highSchoolEvaluationPatch?.moments?.[index] || {}),
+        ...(result.highSchoolEvaluationPatch?.moments?.[index] || {}),
+      })),
+    },
   };
 };
 
@@ -981,17 +1142,36 @@ export const createPublishedWeek = ({
 
   const publishedAt = new Date().toISOString();
   const isNoAppearance = weekType === WEEK_TYPES.NO_APPEARANCE;
-  const hasGame = weekType !== WEEK_TYPES.BYE && Boolean(game?.opponent?.trim());
+  const isHighSchoolEvaluation = game?.stage === 'high-school' || Boolean(game?.evaluation);
+  const highSchoolProfileBefore = normalizePlayerRecruiting(state.playerRecruiting).highSchool;
+  const evaluation = isHighSchoolEvaluation ? normalizeHighSchoolEvaluation(game?.evaluation || game, {
+    gameNumber: Number(highSchoolProfileBefore.gameNumber || 0) + 1 || targetWeek,
+    tapeScoreBefore: highSchoolProfileBefore.tapeScore,
+    recruitStarsBefore: highSchoolProfileBefore.recruitStars || state.player?.stars || 3,
+  }) : null;
+  const effectivePlayerRecruitingPatch = isHighSchoolEvaluation ? {
+    ...playerRecruitingPatch,
+    gameNumber: evaluation.gameNumber,
+    tapeScore: evaluation.tapeScoreAfter,
+    recruitStars: evaluation.recruitStarsAfter,
+    rankings: { ...(playerRecruitingPatch.rankings || {}) },
+  } : playerRecruitingPatch;
+  const hasGame = weekType !== WEEK_TYPES.BYE && (isHighSchoolEvaluation || Boolean(game?.opponent?.trim()));
   const advancesWeek = hasGame || weekType === WEEK_TYPES.BYE;
   const playerStatFactKeys = new Set(['game.passYds', 'game.passTD', 'game.rushYds', 'game.rushTD', 'game.int']);
   const publishableFacts = facts.filter((entry) => {
     if (weekType === WEEK_TYPES.BYE) return !entry.key.startsWith('game.');
+    if (isHighSchoolEvaluation) return !entry.key.startsWith('game.') && !entry.key.startsWith('rtg.');
     if (isNoAppearance) return !playerStatFactKeys.has(entry.key);
     return true;
   });
   const gameRecord = hasGame ? {
-    ...game,
-    ...(isNoAppearance ? { passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false } : {}),
+    ...(isHighSchoolEvaluation
+      ? { stage: 'high-school', evaluation, didPlay: true }
+      : {
+          ...game,
+          ...(isNoAppearance ? { passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false } : {}),
+        }),
     week: targetWeek,
     season: targetSeason,
   } : null;
@@ -1009,21 +1189,25 @@ export const createPublishedWeek = ({
     });
   };
 
-  const stateWithRecruitingProfile = applyPlayerRecruitingPatch(state, playerRecruitingPatch);
+  const stateWithRecruitingProfile = applyPlayerRecruitingPatch(state, effectivePlayerRecruitingPatch);
   publicationFact('profile.player.name', 'Player', stateWithRecruitingProfile.player?.name);
   publicationFact('profile.player.school', 'School', stateWithRecruitingProfile.player?.school);
   publicationFact('profile.player.college', 'Committed college', stateWithRecruitingProfile.player?.college);
   if (hasGame) {
-    [
-      ['opponent', 'Opponent'], ['result', 'Result'], ['homeScore', 'Team score'],
-      ['awayScore', 'Opponent score'], ['passYds', 'Passing yards'],
-      ['passTD', 'Passing touchdowns'], ['rushYds', 'Rushing yards'],
-      ['rushTD', 'Rushing touchdowns'], ['int', 'Interceptions'],
-    ].forEach(([key, label]) => publicationFact(`game.${key}`, label, gameRecord[key]));
+    if (isHighSchoolEvaluation) {
+      highSchoolEvaluationFacts(evaluation, publicationId).forEach((entry) => verifiedFactsByKey.set(entry.key, entry));
+    } else {
+      [
+        ['opponent', 'Opponent'], ['result', 'Result'], ['homeScore', 'Team score'],
+        ['awayScore', 'Opponent score'], ['passYds', 'Passing yards'],
+        ['passTD', 'Passing touchdowns'], ['rushYds', 'Rushing yards'],
+        ['rushTD', 'Rushing touchdowns'], ['int', 'Interceptions'],
+      ].forEach(([key, label]) => publicationFact(`game.${key}`, label, gameRecord[key]));
+    }
   }
   if (quote) publicationFact('weekly.quote', 'Postgame quote', quote);
 
-  const isPlayerCareer = !['OC', 'HC', 'Retired'].includes(state.careerPhase);
+  const isPlayerCareer = !['OC', 'HC', 'Retired'].includes(state.careerPhase) && !isHighSchoolEvaluation;
   const rtgSnapshot = isPlayerCareer ? createRtgSnapshot(rtg || state.rtg || {}) : {};
   const previousRtgSnapshot = [...(state.weeklyUpdates || [])]
     .reverse()
@@ -1040,20 +1224,28 @@ export const createPublishedWeek = ({
   }
   const finalLedgerFacts = [...verifiedFactsByKey.values()];
 
-  const scoreLine = hasGame && gameRecord.homeScore !== '' && gameRecord.awayScore !== ''
+  const scoreLine = hasGame && !isHighSchoolEvaluation && gameRecord.homeScore !== '' && gameRecord.awayScore !== ''
     ? `, ${gameRecord.homeScore}-${gameRecord.awayScore}`
     : '';
   const chronicleEvent = {
     id: publicationId,
-    type: hasGame ? 'game' : (weekType === WEEK_TYPES.BYE ? 'bye' : 'weekly-update'),
+    type: isHighSchoolEvaluation ? 'high-school-evaluation' : (hasGame ? 'game' : (weekType === WEEK_TYPES.BYE ? 'bye' : 'weekly-update')),
     season: targetSeason,
     week: targetWeek,
     careerPhase: state.careerPhase,
     occurredAt: publishedAt,
-    title: hasGame
+    title: isHighSchoolEvaluation
+      ? `High-school Game ${evaluation.gameNumber} tape evaluation`
+      : hasGame
       ? `${gameRecord.result} vs. ${gameRecord.opponent}${scoreLine}`
       : (weekType === WEEK_TYPES.BYE ? `Week ${targetWeek} bye` : `Week ${targetWeek} update`),
-    summary: hasGame
+    summary: isHighSchoolEvaluation
+      ? (() => {
+          const momentSummary = summarizeHighSchoolMoments(evaluation);
+          const delta = momentSummary.tapeScoreDelta === null ? '' : ` (${momentSummary.tapeScoreDelta >= 0 ? '+' : '−'}${Math.abs(momentSummary.tapeScoreDelta).toLocaleString()})`;
+          return `${momentSummary.success} successful, ${momentSummary.partial} partial, ${momentSummary.failed} failed · Tape Score ${Number(evaluation.tapeScoreAfter).toLocaleString()}${delta} · ${evaluation.recruitStarsAfter}-star`;
+        })()
+      : hasGame
       ? (isNoAppearance
         ? 'The team result was recorded; the tracked player did not appear.'
         : `${gameRecord.passYds || 0} passing yards, ${gameRecord.passTD || 0} passing TD, ${gameRecord.rushYds || 0} rushing yards, ${gameRecord.rushTD || 0} rushing TD.`)
@@ -1077,6 +1269,7 @@ export const createPublishedWeek = ({
     sourceCount: sources.length,
     factCount: finalLedgerFacts.length,
     game: gameRecord,
+    highSchoolEvaluation: evaluation,
     rtgSnapshot,
     rtgChanges,
     quote,

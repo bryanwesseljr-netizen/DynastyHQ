@@ -138,7 +138,7 @@ test('lets a reviewed scholarship offer be corrected before publication', () => 
 });
 
 test('reports missing essential game facts separately from recommended player screenshots', () => {
-  const draft = mergeScanResult(createEmptyScanDraft({ season: 1, week: 2, careerPhase: 'Player' }), {
+  const draft = mergeScanResult(createEmptyScanDraft({ season: 1, week: 2, careerPhase: 'Player', isCommitted: true }), {
     source: { id: 'box', fileName: 'box.png', detectedTypes: ['Box Score'] },
     facts: [{ id: 'box:pass', key: 'game.passYds', label: 'Passing yards', value: 287, confidence: 0.96, sourceId: 'box' }],
     gamePatch: { passYds: 287 },
@@ -197,6 +197,7 @@ test('tracks a team game with no player appearance without demanding or publishi
     season: 1,
     week: 2,
     careerPhase: 'Player',
+    isCommitted: true,
     weekType: WEEK_TYPES.NO_APPEARANCE,
   }), {
     source: { id: 'score', fileName: 'score.png', detectedTypes: ['Box Score'] },
@@ -260,6 +261,40 @@ test('publishes a week atomically to logs, fact ledger, recruiting, and chronicl
   assert.equal(next.newsroomIssues.length, 1);
   assert.equal(next.newsroomIssues[0].articles.length, 5);
   assert.ok(next.newsroomIssues[0].articles.every((entry) => entry.paragraphs.length === 4));
+});
+
+test('publishes high school from four moment outcomes and verified Tape Score instead of box-score stats', () => {
+  const state = {
+    schemaVersion: 12,
+    currentSeason: 1,
+    currentWeek: 1,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School', stars: 3, isCommitted: false },
+    latestQuote: '', gameLogs: [], recruiting: [], rtg: {}, weeklyUpdates: [], factLedger: [],
+    careerChronicle: [], newsroomIssues: [], playerRecruiting: {
+      highSchool: { gameNumber: 0, tapeScore: 0, recruitStars: 3, rankings: {}, events: [] },
+    },
+  };
+  const evaluation = {
+    gameNumber: 1, tapeScoreBefore: 0, tapeScoreAfter: 720,
+    recruitStarsBefore: 3, recruitStarsAfter: 3,
+    moments: [
+      { result: 'success', objective: 'Complete a pass on the run' },
+      { result: 'partial', objective: 'Complete two highlight objectives' },
+      { result: 'failed', objective: 'Protect the football' },
+      { result: 'success', objective: 'Lead the scoring drive' },
+    ],
+  };
+  const next = createPublishedWeek({ state, game: { stage: 'high-school', evaluation } });
+  assert.equal(next.currentWeek, 2);
+  assert.equal(next.gameLogs[0].stage, 'high-school');
+  assert.equal(next.playerRecruiting.highSchool.tapeScore, 720);
+  assert.equal(next.playerRecruiting.highSchool.gameNumber, 1);
+  assert.equal(next.factLedger.some((entry) => entry.key === 'game.passYds'), false);
+  assert.equal(next.factLedger.filter((entry) => entry.key.includes('highSchool.moment.') && entry.key.endsWith('.result')).length, 4);
+  assert.equal(next.careerChronicle[0].type, 'high-school-evaluation');
+  assert.equal(next.newsroomIssues[0].editionType, 'high-school-evaluation');
+  assert.doesNotMatch(JSON.stringify(next.newsroomIssues[0]), /\d+ passing yards|game\.passYds/i);
 });
 
 test('publishes a preseason recruiting update without consuming Game 1', () => {
@@ -371,6 +406,52 @@ test('corrects a published game across the ledger, Chronicle, Newsroom, and podc
   assert.equal(corrected.podcastEpisodes[0].status, 'needs-regeneration');
   assert.equal(corrected.podcastEpisodes[0].audioStatus, 'stale');
   assert.equal(corrected.postgameFrontPages[0].needsRegeneration, true);
+});
+
+test('corrects a high-school evaluation without introducing box-score facts', () => {
+  const state = {
+    schemaVersion: 12,
+    currentSeason: 1,
+    currentWeek: 1,
+    careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School', stars: 3, isCommitted: false },
+    latestQuote: '', gameLogs: [], recruiting: [], rtg: {}, weeklyUpdates: [], factLedger: [],
+    careerChronicle: [], newsroomIssues: [], podcastEpisodes: [], playerRecruiting: {
+      highSchool: { gameNumber: 0, tapeScore: 0, recruitStars: 3, rankings: {}, events: [] },
+    },
+  };
+  const published = createPublishedWeek({
+    state,
+    game: { stage: 'high-school', evaluation: {
+      gameNumber: 1, tapeScoreBefore: 0, tapeScoreAfter: 600,
+      recruitStarsBefore: 3, recruitStarsAfter: 3,
+      moments: ['success', 'partial', 'failed', 'success'].map((result) => ({ result })),
+    } },
+  });
+  published.podcastEpisodes = [{
+    id: 'podcast-season-1-week-1', publicationId: 'season-1-week-1',
+    status: 'published', audioStatus: 'ready', segments: [{ text: 'Old evaluation' }],
+  }];
+
+  const corrected = correctPublishedWeek({
+    state: published,
+    gameIndex: 0,
+    game: { stage: 'high-school', evaluation: {
+      gameNumber: 1, tapeScoreBefore: 0, tapeScoreAfter: 825,
+      recruitStarsBefore: 3, recruitStarsAfter: 4,
+      moments: ['success', 'success', 'partial', 'success'].map((result) => ({ result })),
+    } },
+  });
+
+  assert.equal(corrected.gameLogs[0].evaluation.tapeScoreAfter, 825);
+  assert.equal(corrected.playerRecruiting.highSchool.tapeScore, 825);
+  assert.equal(corrected.player.stars, 4);
+  assert.equal(corrected.factLedger.find((entry) => entry.key === 'recruiting.profile.tapeScore').value, 825);
+  assert.equal(corrected.factLedger.some((entry) => entry.key.startsWith('game.')), false);
+  assert.match(corrected.careerChronicle[0].summary, /Tape Score 825/);
+  assert.equal(corrected.newsroomIssues[0].editionType, 'high-school-evaluation');
+  assert.equal(corrected.podcastEpisodes[0].status, 'needs-regeneration');
+  assert.deepEqual(corrected.podcastEpisodes[0].segments, []);
 });
 
 test('blocks publishing the same season and week more than once', () => {

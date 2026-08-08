@@ -55,6 +55,8 @@ export const normalizePlayerRecruiting = (value = {}) => ({
 export const countHighSchoolGames = (state = {}) => {
   const archived = state.playerRecruiting?.highSchoolArchive?.gamesCompleted;
   if (archived !== undefined && archived !== null) return Math.min(HIGH_SCHOOL_GAME_TARGET, numeric(archived));
+  const evaluations = (state.gameLogs || []).filter((game) => game?.stage === 'high-school' || game?.evaluation);
+  if (evaluations.length) return Math.min(HIGH_SCHOOL_GAME_TARGET, evaluations.length);
   return Math.min(HIGH_SCHOOL_GAME_TARGET, (state.gameLogs || []).filter((game) => game?.didPlay !== false).length);
 };
 

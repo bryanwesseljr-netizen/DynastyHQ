@@ -8,6 +8,16 @@ const normalizedPhase = (value) => String(value || 'Player').trim() || 'Player';
 const fallbackEvent = (update) => {
   const game = update.game;
   if (game) {
+    if (game.stage === 'high-school' || game.evaluation) {
+      const evaluation = game.evaluation || game;
+      return {
+        id: update.id,
+        type: 'high-school-evaluation',
+        title: `High-school Game ${evaluation.gameNumber || update.week} tape evaluation`,
+        summary: `Tape Score ${Number(evaluation.tapeScoreAfter || 0).toLocaleString()} · ${evaluation.recruitStarsAfter || '—'}-star rating.`,
+        factKeys: [],
+      };
+    }
     const score = game.homeScore !== '' && game.awayScore !== ''
       ? `, ${game.homeScore}-${game.awayScore}`
       : '';
@@ -114,7 +124,7 @@ export const filterCareerArchive = (entries, filters = {}) => {
 };
 
 export const summarizeCareerArchive = (entries) => {
-  const games = entries.filter((entry) => entry.game);
+  const games = entries.filter((entry) => entry.game && entry.game.stage !== 'high-school' && !entry.game.evaluation);
   const appearances = games.filter((entry) => entry.game.didPlay !== false);
   return {
     updates: entries.length,

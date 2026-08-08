@@ -189,3 +189,30 @@ test('blank statistics remain unreported instead of becoming invented zeroes', (
   assert.doesNotMatch(combinedCopy, /0 passing yards|0 total yards/);
   assert.ok(issue.articles.every((entry) => entry.groundingStatus === 'verified'));
 });
+
+test('builds high-school coverage and podcast brief from moment outcomes and Tape Score movement', () => {
+  const highSchoolKeys = [
+    'profile.player.name', 'profile.player.school', 'highSchool.gameNumber',
+    'highSchool.tapeScoreBefore', 'recruiting.profile.tapeScore',
+    'highSchool.recruitStarsBefore', 'recruiting.profile.recruitStars',
+    ...Array.from({ length: 4 }, (_, index) => `highSchool.moment.${index + 1}.result`),
+  ];
+  const issue = createNewsroomIssue({
+    publicationId: 'season-1-week-1', season: 1, week: 1, careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School', stars: 3 },
+    game: { stage: 'high-school', evaluation: {
+      gameNumber: 1, tapeScoreBefore: 0, tapeScoreAfter: 700,
+      recruitStarsBefore: 3, recruitStarsAfter: 3,
+      moments: [{ result: 'success' }, { result: 'success' }, { result: 'partial' }, { result: 'failed' }],
+    } },
+    playerRecruiting: { highSchool: { tapeScore: 700, recruitStars: 3, rankings: {} } },
+    availableFactKeys: highSchoolKeys,
+    currentFactKeys: highSchoolKeys,
+    publishedAt: '2026-08-08T12:00:00.000Z',
+  });
+  assert.equal(issue.articles.length, 5);
+  assert.equal(issue.editionType, 'high-school-evaluation');
+  assert.match(issue.podcastBrief.summary, /2 successful, 1 partial, and 1 failed/i);
+  assert.match(issue.articles.find((entry) => entry.outletId === 'filmroom').paragraphs.join(' '), /four playable moments/i);
+  assert.doesNotMatch(JSON.stringify(issue), /\d+ passing yards|\d+ rushing yards|game\.homeScore/i);
+});

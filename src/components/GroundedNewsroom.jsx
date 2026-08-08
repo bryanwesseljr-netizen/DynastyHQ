@@ -147,7 +147,7 @@ const GroundedNewsroom = ({
             })}
 
           </div>
-          {selectedIssue.week > 0 && selectedIssue.editionType !== 'recruiting' && (!readOnly || frontPage) && (
+          {selectedIssue.week > 0 && !['recruiting', 'high-school-evaluation'].includes(selectedIssue.editionType) && (!readOnly || frontPage) && (
             <div className="mt-5 flex flex-col gap-4 rounded-xl border border-amber-400/30 bg-amber-950/15 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300"><FileImage size={15} /> Postgame keepsake</p><h3 className="mt-1 text-xl font-black uppercase text-white">{frontPage ? 'Printable front page ready' : 'Create a one-page newspaper front page'}</h3><p className="mt-1 text-xs leading-relaxed text-slate-400">Uses this week&rsquo;s verified score, player line, dynamic story, game photo, and optional teammate cards.</p></div>
               <button type="button" onClick={() => { if (!frontPage) onCreateFrontPage(selectedIssue.publicationId || selectedIssue.id); setFrontPageIssueId(selectedIssue.publicationId || selectedIssue.id); }} className="shrink-0 rounded-xl bg-amber-500 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-950">{frontPage ? 'Open front page' : 'Generate front page'}</button>

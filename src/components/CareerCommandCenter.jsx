@@ -73,17 +73,20 @@ const StagePanel = ({ panel }) => {
 };
 
 const RecentGames = ({ model }) => {
-  const playerView = [CAREER_STAGES.HIGH_SCHOOL, CAREER_STAGES.COLLEGE].includes(model.stage);
+  const isHighSchool = model.stage === CAREER_STAGES.HIGH_SCHOOL;
+  const playerView = model.stage === CAREER_STAGES.COLLEGE;
   return (
     <div className="rounded-xl border border-slate-700/50 bg-slate-900/85 p-6 shadow-2xl backdrop-blur-md lg:col-span-2">
       <h3 className="mb-4 flex items-center gap-2 text-lg font-bold uppercase tracking-wide text-white">
-        <Activity size={18} className="text-amber-500" /> Verified Season Results
+        <Activity size={18} className="text-amber-500" /> {isHighSchool ? 'Verified Tape Evaluations' : 'Verified Season Results'}
       </h3>
       <div className="max-h-[300px] overflow-auto">
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 border-b border-slate-700 bg-slate-900 text-slate-400">
             <tr>
-              <th className="pb-2">Wk</th><th className="pb-2">Opponent</th><th className="pb-2">Result</th><th className="pb-2">Score</th>
+              {isHighSchool
+                ? <><th className="pb-2">Game</th><th className="pb-2">Moment results</th><th className="pb-2">Tape Score</th><th className="pb-2">Rating</th></>
+                : <><th className="pb-2">Wk</th><th className="pb-2">Opponent</th><th className="pb-2">Result</th><th className="pb-2">Score</th></>}
               {playerView && <><th className="pb-2">Pass</th><th className="pb-2">Rush</th></>}
             </tr>
           </thead>
@@ -91,8 +94,16 @@ const RecentGames = ({ model }) => {
             {!model.recentGames.length && (
               <tr><td colSpan={playerView ? 6 : 4} className="py-8 text-center text-slate-500">No verified result has been published for this season.</td></tr>
             )}
-            {model.recentGames.map((game, index) => (
-              <tr key={`${game.season || model.season}-${game.week || index}-${game.opponent}`} className="hover:bg-slate-800/30">
+            {model.recentGames.map((game, index) => {
+              const evaluation = game.evaluation || {};
+              const counts = (evaluation.moments || []).reduce((result, moment) => ({ ...result, [moment.result]: (result[moment.result] || 0) + 1 }), {});
+              return <tr key={`${game.season || model.season}-${game.week || index}-${game.opponent || evaluation.gameNumber}`} className="hover:bg-slate-800/30">
+                {isHighSchool ? <>
+                  <td className="py-3 font-mono text-slate-400">{evaluation.gameNumber || game.week || '—'}/5</td>
+                  <td className="py-3 font-bold text-white">{counts.success || 0} successful · {counts.partial || 0} partial · {counts.failed || 0} failed</td>
+                  <td className="py-3 font-mono text-blue-300">{evaluation.tapeScoreAfter === '' || evaluation.tapeScoreAfter === undefined ? '—' : Number(evaluation.tapeScoreAfter).toLocaleString()}</td>
+                  <td className="py-3 font-black text-amber-400">{evaluation.recruitStarsAfter || '—'}-star</td>
+                </> : <>
                 <td className="py-3 font-mono text-slate-400">{game.week || '—'}</td>
                 <td className="py-3 font-bold text-white">{game.opponent || 'Unknown opponent'}</td>
                 <td className={`py-3 font-black ${game.result === 'W' ? 'text-emerald-400' : 'text-red-400'}`}>{game.result || '—'}</td>
@@ -101,8 +112,9 @@ const RecentGames = ({ model }) => {
                   <td className="py-3">{game.didPlay === false ? 'DNP' : `${game.passYds || 0}/${game.passTD || 0}`}</td>
                   <td className="py-3 text-amber-400">{game.didPlay === false ? 'DNP' : `${game.rushYds || 0}/${game.rushTD || 0}`}</td>
                 </>}
-              </tr>
-            ))}
+                </>}
+              </tr>;
+            })}
           </tbody>
         </table>
       </div>
@@ -273,7 +285,7 @@ const CareerCommandCenter = ({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {model.stage === CAREER_STAGES.RETIRED
           ? <LegacyEvents model={model} />
-          : ([CAREER_STAGES.HIGH_SCHOOL, CAREER_STAGES.COLLEGE].includes(model.stage)
+          : (model.stage === CAREER_STAGES.COLLEGE
             ? <PlayerProgressLedger model={model} />
             : <RecentGames model={model} />)}
         <div className="space-y-3 rounded-xl border border-slate-700/50 bg-slate-900/85 p-6 shadow-2xl backdrop-blur-md">

@@ -107,7 +107,7 @@ export const buildPostgameFrontPage = ({ state, publicationId, generatedAt = new
   const game = update?.game || (state.gameLogs || []).find((entry) => (
     Number(entry.season || 1) === Number(issue?.season || 1) && Number(entry.week || 1) === Number(issue?.week || 1)
   ));
-  if (!issue || !game || game.didPlay === false) {
+  if (!issue || !game || game.didPlay === false || game.stage === 'high-school' || game.evaluation) {
     throw new Error('A published game with a verified player appearance is required for a postgame front page.');
   }
   const current = (state.postgameFrontPages || []).find((entry) => entry.publicationId === publicationId);

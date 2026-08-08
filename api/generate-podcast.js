@@ -79,6 +79,8 @@ Non-negotiable editorial rules:
 - Use only the supplied verified facts for factual claims. Do not invent opponents, rankings, awards, quotations, injuries, tactics, recruiting contact, crowd reactions, or future schedules.
 - Clearly distinguish analysis and opinion from verified fact. The hosts may disagree, but their disagreement must be interpretation of the supplied facts.
 - Never call the subject a star, champion, award winner, or elite player unless a supplied fact explicitly supports that label.
+- When the packet contains highSchool.* moment facts, treat it as one of five high-school tape-evaluation games. Discuss the four Successful, Partial, or Failed moment outcomes, the verified Tape Score movement, star-rating movement, rankings, and recruiting changes. Do not describe a final score, win/loss, passing line, full-game production, or college RTG mechanics unless those exact facts are supplied.
+- Do not assign or estimate Tape Score points for an individual moment. CFB 27 objectives, partial completion, and Team Impact can carry different values; use only the supplied before-and-after Tape Score.
 - Do not mention that this is a video game, database, JSON, screenshot, AI, prompt, or fact ledger.
 - Produce 8 to 12 alternating host turns totaling 700 to 850 spoken words, designed for roughly five to six minutes.
 - Give Marcus Grant a measured recruiting-insider voice. Give Tyler Brooks a sharper college-football analyst voice. Keep both natural, conversational, and family-friendly.

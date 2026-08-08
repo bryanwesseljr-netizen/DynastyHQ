@@ -97,6 +97,12 @@ import { compressImage } from './services/imageCompression';
 import { generateNewsroomImage } from './services/newsroomImageClient';
 import { deleteNewsroomMedia, uploadNewsroomMedia } from './services/newsroomMediaStorage';
 import PlayerRecruitingWorkspace from './components/PlayerRecruitingWorkspace';
+import HighSchoolEvaluationEditor from './components/HighSchoolEvaluationEditor';
+import {
+  createEmptyHighSchoolEvaluation,
+  normalizeHighSchoolEvaluation,
+  validateHighSchoolEvaluation,
+} from './domain/highSchoolEvaluation';
 import {
   addTransferTarget,
   applyCommitmentToLatestNewsroom,
@@ -198,6 +204,7 @@ const App = () => {
   const defaultState = DEFAULT_CAREER_STATE;
   const [appState, setAppState] = useState(defaultState);
   const [newGame, setNewGame] = useState({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
+  const [highSchoolEvaluation, setHighSchoolEvaluation] = useState(() => createEmptyHighSchoolEvaluation());
   const [rtgUpdate, setRtgUpdate] = useState(defaultState.rtg);
   const [coachUpdate, setCoachUpdate] = useState(defaultState.coach);
   const [newRumor, setNewRumor] = useState("");
@@ -509,9 +516,23 @@ const App = () => {
 
   // --- DERIVED STATS ---
   const isCoach = ['OC', 'HC', 'Retired'].includes(appState.careerPhase);
+  const isHighSchoolCareer = appState.careerPhase === 'Player' && !appState.player.isCommitted;
+  const highSchoolProfile = appState.playerRecruiting?.highSchool || {};
+  const highSchoolDraftStarted = highSchoolEvaluation.tapeScoreAfter !== ''
+    || Boolean(highSchoolEvaluation.teamImpact)
+    || highSchoolEvaluation.moments.some((moment) => moment.result || moment.objective)
+    || Number(highSchoolEvaluation.recruitStarsAfter || 3) !== Number(highSchoolEvaluation.recruitStarsBefore || 3);
+  const activeHighSchoolEvaluation = editingGameIndex !== null || highSchoolDraftStarted
+    ? highSchoolEvaluation
+    : createEmptyHighSchoolEvaluation({
+        gameNumber: Math.min(5, Math.max(1, Number(highSchoolProfile.gameNumber || 0) + 1)),
+        tapeScoreBefore: highSchoolProfile.tapeScore || 0,
+        recruitStarsBefore: highSchoolProfile.recruitStars || appState.player.stars || 3,
+      });
   const careerStage = deriveCareerStage(appState);
   const appliedCompleteness = appliedScanDraft ? getWeeklyCompleteness(appliedScanDraft) : null;
-  const totals = appState.gameLogs.reduce((acc, game) => {
+  const statisticalGameLogs = appState.gameLogs.filter((game) => game.stage !== 'high-school' && !game.evaluation);
+  const totals = statisticalGameLogs.reduce((acc, game) => {
     acc.passYds += Number(game.passYds || 0);
     acc.passTD += Number(game.passTD || 0);
     acc.rushYds += Number(game.rushYds || 0);
@@ -520,8 +541,8 @@ const App = () => {
     return acc;
   }, { passYds: 0, passTD: 0, rushYds: 0, rushTD: 0, ints: 0 });
   
-  const wins = appState.gameLogs.filter(g => g.result === 'W' && (g.season || 1) === (appState.currentSeason || 1)).length;
-  const losses = appState.gameLogs.filter(g => g.result === 'L' && (g.season || 1) === (appState.currentSeason || 1)).length;
+  const wins = statisticalGameLogs.filter(g => g.result === 'W' && (g.season || 1) === (appState.currentSeason || 1)).length;
+  const losses = statisticalGameLogs.filter(g => g.result === 'L' && (g.season || 1) === (appState.currentSeason || 1)).length;
   const totalOffers = appState.recruiting.filter(s => s.offered).length;
   const activeSchools = appState.recruiting.filter(s => s.interest > 0 && s.level !== 'None');
   
@@ -621,8 +642,9 @@ const App = () => {
   const handleApplyScanDraft = () => {
     if (!scanDraft) return;
     const hasGameFacts = scanDraft.facts.some((entry) => entry.key.startsWith('game.'));
+    const hasHighSchoolFacts = scanDraft.facts.some((entry) => entry.key.startsWith('highSchool.'));
     const hasRecruitingFacts = scanDraft.facts.some((entry) => entry.key.startsWith('recruiting.'));
-    if (!hasGameFacts && hasRecruitingFacts && appState.careerPhase === 'Player' && !appState.player.isCommitted) {
+    if (!hasGameFacts && !hasHighSchoolFacts && hasRecruitingFacts && appState.careerPhase === 'Player' && !appState.player.isCommitted) {
       updateAppState((prev) => createStandaloneRecruitingUpdate({
         state: prev,
         recruitingPatches: scanDraft.recruitingPatches || [],
@@ -642,6 +664,18 @@ const App = () => {
         ...(scanDraft.weekType === WEEK_TYPES.NO_APPEARANCE
           ? { passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' }
           : {}),
+      }));
+    }
+    if (appState.careerPhase === 'Player' && !appState.player.isCommitted) {
+      setHighSchoolEvaluation(normalizeHighSchoolEvaluation({
+        ...activeHighSchoolEvaluation,
+        ...(scanDraft.highSchoolEvaluationPatch || {}),
+        moments: Array.from({ length: 4 }, (_, index) => ({
+          ...(activeHighSchoolEvaluation.moments?.[index] || {}),
+          ...(scanDraft.highSchoolEvaluationPatch?.moments?.[index] || {}),
+        })),
+        tapeScoreAfter: scanDraft.playerRecruitingPatch?.tapeScore ?? activeHighSchoolEvaluation.tapeScoreAfter,
+        recruitStarsAfter: scanDraft.playerRecruitingPatch?.recruitStars ?? activeHighSchoolEvaluation.recruitStarsAfter,
       }));
     }
     setRtgUpdate((current) => ({
@@ -808,6 +842,20 @@ const App = () => {
 
   // --- INTERACTIVE PRESS CONFERENCE AI ---
   const generatePresserQuestions = (game) => {
+    if (game.stage === 'high-school' || game.evaluation) {
+      const evaluation = normalizeHighSchoolEvaluation(game.evaluation || game);
+      const successful = evaluation.moments.filter((moment) => moment.result === 'success').length;
+      const partial = evaluation.moments.filter((moment) => moment.result === 'partial').length;
+      const failed = evaluation.moments.filter((moment) => moment.result === 'failed').length;
+      return {
+        question: `${appState.player.name || 'Quarterback'}, Game ${evaluation.gameNumber} produced ${successful} successful, ${partial} partial, and ${failed} failed moments. What did this tape evaluation show you?`,
+        answers: [
+          { tone: 'Humble', text: `"There were good moments and things I need to clean up. I’m focused on learning from every rep."` },
+          { tone: 'Confident', text: `"I showed I can respond when the moment gets big, and I know there’s another level I can reach."` },
+          { tone: 'Focused', text: `"The Tape Score is feedback. I’m taking the successful moments and the misses into the next evaluation."` },
+        ],
+      };
+    }
     const isWin = game.result === 'W';
     const passYds = Number(game.passYds || 0);
     const rushYds = Number(game.rushYds || 0);
@@ -866,6 +914,45 @@ const handleSaveGameClick = () => {
       setNewRumor("");
     }
     
+    const highSchoolGame = isHighSchoolCareer || newGame.stage === 'high-school' || Boolean(newGame.evaluation);
+    if (highSchoolGame) {
+      const evaluation = normalizeHighSchoolEvaluation(activeHighSchoolEvaluation);
+      const errors = validateHighSchoolEvaluation(evaluation);
+      if (errors.length) {
+        setMessageModal({ isOpen: true, text: errors[0], type: 'error' });
+        return;
+      }
+      const evaluationGame = { stage: 'high-school', evaluation };
+      if (editingGameIndex !== null) {
+        updateAppState((prev) => {
+          const corrected = correctPublishedWeek({ state: prev, gameIndex: editingGameIndex, game: evaluationGame });
+          return { ...corrected, rumors: updatedRumors };
+        }, 'High-school evaluation corrected across the Ledger, Chronicle, Newsroom, and podcast status!');
+        const laterHighSchoolGame = [...appState.gameLogs.slice(editingGameIndex + 1)].reverse().find((entry) => (
+          entry.stage === 'high-school' || entry.evaluation
+        ));
+        const nextProfile = laterHighSchoolGame?.evaluation
+          ? normalizeHighSchoolEvaluation(laterHighSchoolGame.evaluation)
+          : evaluation;
+        setHighSchoolEvaluation(createEmptyHighSchoolEvaluation({
+          gameNumber: Math.min(5, nextProfile.gameNumber + 1),
+          tapeScoreBefore: nextProfile.tapeScoreAfter,
+          recruitStarsBefore: nextProfile.recruitStarsAfter,
+        }));
+        setEditingGameIndex(null);
+        setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      const target = getPublicationTarget();
+      if (findPublishedWeekConflict(appState, target)) {
+        setMessageModal({ isOpen: true, text: 'That high-school evaluation game has already been published.', type: 'error' });
+        return;
+      }
+      setPressConference({ game: evaluationGame, rumors: updatedRumors, presserData: generatePresserQuestions(evaluationGame), target });
+      return;
+    }
+
     // Check if we are logging a valid new game
     if (newGame.opponent && newGame.opponent.trim() !== "" && editingGameIndex === null && (!appliedScanDraft || appliedScanDraft.weekType === WEEK_TYPES.GAME)) {
         const target = getPublicationTarget();
@@ -935,6 +1022,14 @@ const handleSaveGameClick = () => {
         return { ...publishedState, rumors };
       }, "Week published to stats, Fact Ledger, and Career Chronicle!", { clearDraftAfterSave: true });
       
+      if (game.stage === 'high-school' || game.evaluation) {
+        const completed = normalizeHighSchoolEvaluation(game.evaluation || game);
+        setHighSchoolEvaluation(createEmptyHighSchoolEvaluation({
+          gameNumber: Math.min(5, completed.gameNumber + 1),
+          tapeScoreBefore: completed.tapeScoreAfter,
+          recruitStarsBefore: completed.recruitStarsAfter,
+        }));
+      }
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
       if (!userState || !db) setAppliedScanDraft(null);
       setPressConference(null);
@@ -942,7 +1037,11 @@ const handleSaveGameClick = () => {
   };
 
   const handleEditGame = (index) => {
-    setNewGame(appState.gameLogs[index]);
+    const selectedGame = appState.gameLogs[index];
+    setNewGame(selectedGame);
+    if (selectedGame.stage === 'high-school' || selectedGame.evaluation) {
+      setHighSchoolEvaluation(normalizeHighSchoolEvaluation(selectedGame.evaluation || selectedGame));
+    }
     setEditingGameIndex(index);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -962,6 +1061,13 @@ const handleSaveGameClick = () => {
   };
 
   const cancelEdit = () => {
+    if (newGame.stage === 'high-school' || newGame.evaluation) {
+      setHighSchoolEvaluation(createEmptyHighSchoolEvaluation({
+        gameNumber: Math.min(5, Math.max(1, Number(highSchoolProfile.gameNumber || 0) + 1)),
+        tapeScoreBefore: highSchoolProfile.tapeScore || 0,
+        recruitStarsBefore: highSchoolProfile.recruitStars || appState.player.stars || 3,
+      }));
+    }
     setEditingGameIndex(null);
     setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
   };
@@ -2108,17 +2214,20 @@ const handleSaveGameClick = () => {
               </thead>
               <tbody className="text-slate-200 divide-y divide-slate-700/50">
                 {appState.gameLogs.length === 0 && (<tr><td colSpan="7" className="py-4 text-center text-slate-500 italic">No games logged yet. Play Week 1!</td></tr>)}
-                {appState.gameLogs.map((game, i) => (
-                  <tr key={i} className="hover:bg-slate-800/30 transition-colors">
+                {appState.gameLogs.map((game, i) => {
+                  const isEvaluation = game.stage === 'high-school' || game.evaluation;
+                  const evaluation = isEvaluation ? normalizeHighSchoolEvaluation(game.evaluation || game) : null;
+                  const momentCounts = evaluation ? evaluation.moments.reduce((counts, moment) => ({ ...counts, [moment.result]: (counts[moment.result] || 0) + 1 }), {}) : {};
+                  return <tr key={i} className="hover:bg-slate-800/30 transition-colors">
                     <td className="py-3 font-mono text-slate-400 border-r border-slate-700/30 pr-2">S{game.season || 1}</td>
                     <td className="py-3 font-mono text-slate-400 pl-2">{game.week}</td>
-                    <td className="py-3 font-bold">{game.opponent}</td>
-                    <td className={`py-3 font-black ${game.result === 'W' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]' : 'text-red-400'}`}>{game.result}</td>
-                    <td className="py-3 font-mono text-slate-300">{game.homeScore}-{game.awayScore}</td>
-                    <td className="py-3 font-medium text-slate-300">{game.passYds}/{game.passTD}</td>
-                    <td className="py-3 text-amber-400 font-bold">{game.rushYds}/{game.rushTD}</td>
+                    <td className="py-3 font-bold">{isEvaluation ? `Tape Game ${evaluation.gameNumber}` : game.opponent}</td>
+                    <td className={`py-3 font-black ${isEvaluation ? 'text-blue-400' : game.result === 'W' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]' : 'text-red-400'}`}>{isEvaluation ? 'EVAL' : game.result}</td>
+                    <td className="py-3 font-mono text-slate-300">{isEvaluation ? Number(evaluation.tapeScoreAfter || 0).toLocaleString() : `${game.homeScore}-${game.awayScore}`}</td>
+                    <td className="py-3 font-medium text-slate-300">{isEvaluation ? `${momentCounts.success || 0}S/${momentCounts.partial || 0}P` : `${game.passYds}/${game.passTD}`}</td>
+                    <td className="py-3 text-amber-400 font-bold">{isEvaluation ? `${momentCounts.failed || 0}F · ${evaluation.recruitStarsAfter}★` : `${game.rushYds}/${game.rushTD}`}</td>
                   </tr>
-                ))}
+                })}
               </tbody>
             </table>
           </div>
@@ -3151,7 +3260,7 @@ const handleSaveGameClick = () => {
       
       <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl mb-6 text-center">
         <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>
-        <p className="text-slate-300 text-sm font-bold drop-shadow">Upload your Box Score, Player Hub, and Recruiting Board screenshots together. Nothing changes until you review and publish.</p>
+        <p className="text-slate-300 text-sm font-bold drop-shadow">{isHighSchoolCareer ? 'Upload High-School Moments, Tape Score, recruiting, and ranking screenshots together. Nothing changes until you review and publish.' : 'Upload your Box Score, Player Hub, and Recruiting Board screenshots together. Nothing changes until you review and publish.'}</p>
         
         <div className="mt-6 p-8 border-2 border-dashed border-amber-500/50 rounded-xl bg-slate-950/60 hover:bg-slate-900/80 transition-colors shadow-inner relative overflow-hidden group">
           {isScanning ? (
@@ -3166,7 +3275,7 @@ const handleSaveGameClick = () => {
             <label className="cursor-pointer flex flex-col items-center gap-2 text-slate-300 hover:text-white relative z-10">
               <UploadCloud className="w-10 h-10 text-amber-500 mb-1 drop-shadow-md group-hover:scale-110 transition-transform" />
               <span className="text-sm font-bold uppercase tracking-wider text-amber-400">Choose Weekly Screenshots</span>
-              <span className="text-[11px] font-medium text-slate-400">Select one or several: Box Scores, RTG Mechanics, Target Boards</span>
+              <span className="text-[11px] font-medium text-slate-400">{isHighSchoolCareer ? 'Select one or several: Moment Objectives, Tape Score, Top Schools, Offers' : 'Select one or several: Box Scores, RTG Mechanics, Target Boards'}</span>
               <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleUniversalScan} />
             </label>
           )}
@@ -3190,7 +3299,9 @@ const handleSaveGameClick = () => {
             <div>
               <p className="text-sm font-black uppercase text-emerald-200">Verified draft ready</p>
               <p className="text-xs text-slate-400">
-                {appliedScanDraft.weekType === WEEK_TYPES.BYE
+                {isHighSchoolCareer
+                  ? `High-school Game ${activeHighSchoolEvaluation.gameNumber} evaluation`
+                  : appliedScanDraft.weekType === WEEK_TYPES.BYE
                   ? 'Bye week'
                   : (appliedScanDraft.weekType === WEEK_TYPES.NO_APPEARANCE ? 'Team game · no appearance' : 'Game week')} · {
                   appliedCompleteness.missingRequired
@@ -3210,9 +3321,12 @@ const handleSaveGameClick = () => {
         <div className={`bg-slate-900/85 backdrop-blur-md rounded-xl border ${editingGameIndex !== null ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-slate-700/50 shadow-2xl'} p-6 space-y-6 flex flex-col transition-all`}>
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className={`font-bold uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow ${editingGameIndex !== null ? 'text-amber-400' : 'text-white'}`}>
-              <Trophy size={16} className="text-amber-500"/> 1. {editingGameIndex !== null ? `Edit Box Score (Week ${appState.gameLogs[editingGameIndex].week})` : 'Game Box Score'}
+              <Trophy size={16} className="text-amber-500"/> 1. {(isHighSchoolCareer || newGame.stage === 'high-school' || newGame.evaluation) ? (editingGameIndex !== null ? `Edit Tape Evaluation (Game ${activeHighSchoolEvaluation.gameNumber})` : 'High-School Tape Evaluation') : (editingGameIndex !== null ? `Edit Box Score (Week ${appState.gameLogs[editingGameIndex].week})` : 'Game Box Score')}
             </h3>
           </div>
+          {(isHighSchoolCareer || newGame.stage === 'high-school' || newGame.evaluation) ? (
+            <HighSchoolEvaluationEditor value={activeHighSchoolEvaluation} onChange={setHighSchoolEvaluation} />
+          ) : (<>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Opponent Name</label>
@@ -3258,19 +3372,34 @@ const handleSaveGameClick = () => {
               <input type="number" value={valOrEmpty(newGame.rushTD)} onChange={e => setNewGame({...newGame, rushTD: e.target.value})} className="w-full bg-slate-950/50 border border-amber-600/50 rounded p-2 text-amber-400 text-sm" />
             </div>
           </div>
+          </>)}
         </div>
 
         <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-6 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
-            <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Settings size={16} className="text-emerald-500"/> {isCoach ? '2. Coach Dashboard Updates' : '2. RTG Mechanics & NIL'}</h3>
+            <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Settings size={16} className="text-emerald-500"/> {isCoach ? '2. Coach Dashboard Updates' : isHighSchoolCareer ? '2. Recruiting Evaluation' : '2. RTG Mechanics & NIL'}</h3>
           </div>
-          {!isCoach && (
+          {!isCoach && !isHighSchoolCareer && (
             <p className="rounded-lg border border-blue-500/20 bg-blue-950/20 p-3 text-[10px] font-bold leading-relaxed text-blue-200">
               Publishing the week locks these values beside the game stats, calculates changes from last week, updates the Chronicle and newsroom, and preserves the progression through your full player career.
             </p>
           )}
           
-          {!isCoach ? (
+          {isHighSchoolCareer ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-amber-300">Tape, not a box score</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">High school does not publish passing, rushing, GPA, Coach Trust, NIL, or wear-and-tear fields. Each edition follows the four moment outcomes, verified Tape Score movement, star rating, rankings, Top Schools, and scholarship offers.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4"><p className="text-[9px] font-black uppercase text-slate-500">Current Tape Score</p><p className="mt-1 font-mono text-xl font-black text-blue-400">{Number(appState.playerRecruiting?.highSchool?.tapeScore || 0).toLocaleString()}</p></div>
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4"><p className="text-[9px] font-black uppercase text-slate-500">Current Rating</p><p className="mt-1 text-xl font-black text-amber-400">{appState.playerRecruiting?.highSchool?.recruitStars || appState.player.stars || 3}-star</p></div>
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4"><p className="text-[9px] font-black uppercase text-slate-500">Game</p><p className="mt-1 text-xl font-black text-white">{activeHighSchoolEvaluation.gameNumber}/5</p></div>
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4"><p className="text-[9px] font-black uppercase text-slate-500">Verified Offers</p><p className="mt-1 text-xl font-black text-emerald-400">{totalOffers}</p></div>
+              </div>
+              <p className="text-[10px] leading-relaxed text-slate-500">Upload the postgame recruiting screen when Tape Score, rating, rankings, Top Schools, or offers change. You can also enter Tape Score and rating manually in the evaluation panel.</p>
+            </div>
+          ) : !isCoach ? (
               <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -3529,21 +3658,24 @@ const handleSaveGameClick = () => {
             </thead>
             <tbody className="text-slate-200 divide-y divide-slate-700/50">
               {appState.gameLogs.length === 0 && (<tr><td colSpan="8" className="py-4 text-center text-slate-500 italic">No games logged yet.</td></tr>)}
-              {appState.gameLogs.map((game, i) => (
-                <tr key={i} className={`transition-colors ${editingGameIndex === i ? 'bg-amber-900/20' : 'hover:bg-slate-800/30'}`}>
+              {appState.gameLogs.map((game, i) => {
+                const isEvaluation = game.stage === 'high-school' || game.evaluation;
+                const evaluation = isEvaluation ? normalizeHighSchoolEvaluation(game.evaluation || game) : null;
+                const momentCounts = evaluation ? evaluation.moments.reduce((counts, moment) => ({ ...counts, [moment.result]: (counts[moment.result] || 0) + 1 }), {}) : {};
+                return <tr key={i} className={`transition-colors ${editingGameIndex === i ? 'bg-amber-900/20' : 'hover:bg-slate-800/30'}`}>
                   <td className="py-3 font-mono text-slate-400 border-r border-slate-700/30 pr-2">S{game.season || 1}</td>
                   <td className="py-3 font-mono text-slate-400 pl-2">{game.week}</td>
-                  <td className="py-3 font-bold">{game.opponent}</td>
-                  <td className={`py-3 font-black ${game.result === 'W' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]' : 'text-red-400'}`}>{game.result}</td>
-                  <td className="py-3 font-mono text-slate-300">{game.homeScore}-{game.awayScore}</td>
-                  <td className="py-3 font-medium text-slate-300">{game.passYds}/{game.passTD}</td>
-                  <td className="py-3 text-amber-400 font-bold">{game.rushYds}/{game.rushTD}</td>
+                  <td className="py-3 font-bold">{isEvaluation ? `Tape Game ${evaluation.gameNumber}` : game.opponent}</td>
+                  <td className={`py-3 font-black ${isEvaluation ? 'text-blue-400' : game.result === 'W' ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]' : 'text-red-400'}`}>{isEvaluation ? 'EVAL' : game.result}</td>
+                  <td className="py-3 font-mono text-slate-300">{isEvaluation ? Number(evaluation.tapeScoreAfter || 0).toLocaleString() : `${game.homeScore}-${game.awayScore}`}</td>
+                  <td className="py-3 font-medium text-slate-300">{isEvaluation ? `${momentCounts.success || 0}S/${momentCounts.partial || 0}P` : `${game.passYds}/${game.passTD}`}</td>
+                  <td className="py-3 text-amber-400 font-bold">{isEvaluation ? `${momentCounts.failed || 0}F · ${evaluation.recruitStarsAfter}★` : `${game.rushYds}/${game.rushTD}`}</td>
                   <td className="py-3 text-right">
                     <button onClick={() => handleEditGame(i)} className="p-1.5 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white rounded transition-colors mr-2 border border-slate-700"><Pencil size={14}/></button>
                     <button onClick={() => requestDeleteGame(i)} className="p-1.5 bg-slate-800 hover:bg-red-600 text-red-400 hover:text-white rounded transition-colors border border-slate-700"><Trash2 size={14}/></button>
                   </td>
                 </tr>
-              ))}
+              })}
             </tbody>
           </table>
         </div>

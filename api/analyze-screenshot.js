@@ -16,6 +16,15 @@ const FACT_KEYS = [
   'game.rushYds',
   'game.rushTD',
   'game.int',
+  'highSchool.moment1.result',
+  'highSchool.moment1.objective',
+  'highSchool.moment2.result',
+  'highSchool.moment2.objective',
+  'highSchool.moment3.result',
+  'highSchool.moment3.objective',
+  'highSchool.moment4.result',
+  'highSchool.moment4.objective',
+  'highSchool.teamImpact',
   'rtg.gpa',
   'rtg.energy',
   'rtg.coachTrust',
@@ -95,6 +104,7 @@ const FACT_KEYS = [
 
 const SCREEN_TYPES = [
   'box_score',
+  'high_school_moments',
   'player_mechanics',
   'rtg_recruiting',
   'coach_recruiting',
@@ -171,6 +181,7 @@ Rules:
 - If text is cropped, obscured, or ambiguous, omit the fact instead of guessing.
 - Use the supplied tracked player and school only to identify which row belongs to the user's career. Do not treat supplied context as screenshot evidence.
 - game.homeScore means the tracked player's TEAM score and game.awayScore means the OPPONENT score, regardless of the real venue.
+- High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. For each plainly visible numbered moment, use highSchool.moment1 through moment4. Normalize a completed/passed objective to success, partial credit to partial, and an incomplete/failed objective to failed. Preserve a concise visible objective description. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay.
 - For game.result, use W or L only when a final score and the tracked team are clear.
 - For RTG recruiting facts, schoolName must exactly match a clearly visible school. For coach recruiting facts, schoolName must contain the exact visible prospect name, including a new target not yet present in the supplied entries. Use an empty schoolName for non-recruiting facts.
 - For the player's RTG recruiting profile, use recruiting.recruitStars, tapeScore, nationalRank, stateRank, positionRank, gameNumber, and topSchoolsSelected with an empty schoolName.

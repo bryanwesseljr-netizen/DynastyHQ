@@ -1,5 +1,6 @@
 const SCREEN_TYPE_LABELS = {
   box_score: 'Box Score',
+  high_school_moments: 'High-School Moments',
   player_mechanics: 'Player Mechanics',
   rtg_recruiting: 'RTG Recruiting',
   coach_recruiting: 'Coach Recruiting',
@@ -24,6 +25,14 @@ const GAME_KEYS = new Set([
   'game.rushYds',
   'game.rushTD',
   'game.int',
+]);
+
+const HIGH_SCHOOL_KEYS = new Set([
+  'highSchool.moment1.result', 'highSchool.moment1.objective',
+  'highSchool.moment2.result', 'highSchool.moment2.objective',
+  'highSchool.moment3.result', 'highSchool.moment3.objective',
+  'highSchool.moment4.result', 'highSchool.moment4.objective',
+  'highSchool.teamImpact',
 ]);
 
 const RTG_NUMERIC_KEYS = new Set([
@@ -162,6 +171,12 @@ const normalizeValue = (key, value) => {
     const result = cleaned.toUpperCase();
     return result === 'W' || result === 'L' ? result : '';
   }
+  if (/^highSchool\.moment[1-4]\.result$/.test(key)) {
+    if (/partial/i.test(cleaned)) return 'partial';
+    if (/success|complete|passed?/i.test(cleaned)) return 'success';
+    if (/fail|incomplete|missed?/i.test(cleaned)) return 'failed';
+    return '';
+  }
   if (WEAR_KEYS.has(key)) {
     const status = cleaned.toLowerCase();
     return ['green', 'yellow', 'red'].includes(status)
@@ -219,6 +234,7 @@ export const normalizeScreenshotAnalysis = ({
   const recruitingById = new Map();
   const retentionById = new Map();
   const playerRecruitingPatch = { rankings: {} };
+  const highSchoolEvaluationPatch = { moments: [] };
 
   (analysis?.facts || []).forEach((rawFact, index) => {
     const key = cleanString(rawFact.key);
@@ -244,6 +260,18 @@ export const normalizeScreenshotAnalysis = ({
 
     if (GAME_KEYS.has(key)) {
       gamePatch[key.slice('game.'.length)] = value;
+    } else if (HIGH_SCHOOL_KEYS.has(key)) {
+      const match = key.match(/^highSchool\.moment([1-4])\.(result|objective)$/);
+      if (match) {
+        const momentIndex = Number(match[1]) - 1;
+        highSchoolEvaluationPatch.moments[momentIndex] = {
+          ...(highSchoolEvaluationPatch.moments[momentIndex] || { id: momentIndex + 1 }),
+          [match[2]]: value,
+        };
+        ledgerKey = `highSchool.moment.${match[1]}.${match[2]}`;
+      } else if (key === 'highSchool.teamImpact') {
+        highSchoolEvaluationPatch.teamImpact = value;
+      }
     } else if (RTG_KEYS.has(key)) {
       rtgPatch[key.slice('rtg.'.length)] = value;
     } else if (WEAR_KEYS.has(key)) {
@@ -353,6 +381,7 @@ export const normalizeScreenshotAnalysis = ({
       ...playerRecruitingPatch,
       ...(Object.keys(playerRecruitingPatch.rankings).length ? {} : { rankings: undefined }),
     },
+    highSchoolEvaluationPatch,
     retentionPatches: [...retentionById.values()],
   };
 };
@@ -373,5 +402,6 @@ export const createFailedScreenshotResult = ({ sourceId, fileName, previewUrl = 
   coachPatch: {},
   recruitingPatches: [],
   playerRecruitingPatch: {},
+  highSchoolEvaluationPatch: {},
   retentionPatches: [],
 });

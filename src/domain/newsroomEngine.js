@@ -1,4 +1,5 @@
 import { createCollegeOutletSet } from './collegeNewsroom.js';
+import { normalizeHighSchoolEvaluation, summarizeHighSchoolMoments } from './highSchoolEvaluation.js';
 
 const OUTLETS = [
   { id: 'bolt', name: 'The Bolt', desk: 'School Desk', theme: 'broadsheet' },
@@ -122,6 +123,171 @@ const article = ({ outlet, headline, dek, paragraphs, citedFactKeys }) => ({
   citedFactKeys: [...new Set(citedFactKeys)],
 });
 
+const signedMovement = (value, suffix = '') => {
+  if (value === null || value === 0) return value === 0 ? `no change${suffix}` : 'change not available';
+  return `${value > 0 ? '+' : '−'}${Math.abs(value).toLocaleString()}${suffix}`;
+};
+
+export const createHighSchoolEvaluationIssue = ({
+  publicationId,
+  season,
+  week,
+  careerPhase,
+  player,
+  game,
+  recruiting = [],
+  previousRecruiting = [],
+  playerRecruiting = {},
+  availableFactKeys = [],
+  currentFactKeys = availableFactKeys,
+  publishedAt,
+}) => {
+  const evaluation = normalizeHighSchoolEvaluation(game?.evaluation || {}, {
+    gameNumber: week,
+    tapeScoreBefore: playerRecruiting?.highSchool?.tapeScore || 0,
+    recruitStarsBefore: player?.stars || 3,
+  });
+  const summary = summarizeHighSchoolMoments(evaluation);
+  const playerName = player?.name || 'The quarterback';
+  const allowedKeys = new Set(availableFactKeys);
+  const currentKeys = new Set(currentFactKeys);
+  const evaluationKeys = [...allowedKeys].filter((key) => key.startsWith('highSchool.') || key.startsWith('recruiting.profile.'));
+  const momentKeys = evaluationKeys.filter((key) => key.startsWith('highSchool.moment.'));
+  const schools = recruiting
+    .filter((entry) => entry?.name)
+    .sort((a, b) => numeric(a.preferenceRank || a.customOrder || 999) - numeric(b.preferenceRank || b.customOrder || 999));
+  const previousSchools = new Map(previousRecruiting.map((entry) => [String(entry.id), entry]));
+  const newOffers = schools.filter((entry) => entry.offered
+    && currentKeys.has(`recruiting.${entry.id}.offer`)
+    && !previousSchools.get(String(entry.id))?.offered);
+  const recruitingKeys = schools.flatMap((entry) => [
+    `recruiting.${entry.id}.preferenceRank`,
+    `recruiting.${entry.id}.progressStage`,
+    `recruiting.${entry.id}.offer`,
+    `recruiting.${entry.id}.schemeFit`,
+  ]).filter((key) => allowedKeys.has(key));
+  const ratingAfter = evaluation.recruitStarsAfter || playerRecruiting?.highSchool?.recruitStars || player?.stars || 3;
+  const tapeAfter = evaluation.tapeScoreAfter;
+  const outcomeText = `${summary.success} successful, ${summary.partial} partial, and ${summary.failed} failed`;
+  const objectiveDetails = evaluation.moments
+    .filter((moment) => moment.objective)
+    .map((moment) => `Moment ${moment.id} (${moment.result}): ${moment.objective}`);
+  const ratingMovement = summary.starDelta === 0
+    ? `remained at ${ratingAfter} stars`
+    : summary.starDelta === null
+      ? `is recorded at ${ratingAfter} stars`
+      : `moved ${summary.starDelta > 0 ? 'up' : 'down'} from ${evaluation.recruitStarsBefore} to ${ratingAfter} stars`;
+  const tapeMovement = summary.tapeScoreDelta === null
+    ? `finished at ${Number(tapeAfter || 0).toLocaleString()}`
+    : `moved from ${Number(evaluation.tapeScoreBefore || 0).toLocaleString()} to ${Number(tapeAfter || 0).toLocaleString()} (${signedMovement(summary.tapeScoreDelta)})`;
+  const baseKeys = ['profile.player.name', 'profile.player.school', ...evaluationKeys].filter((key) => allowedKeys.has(key));
+
+  const articles = [
+    article({
+      outlet: OUTLETS[0],
+      headline: `${playerName} completes Game ${evaluation.gameNumber} of the five-game tape evaluation`,
+      dek: `Four playable moments produced ${outcomeText} outcomes; the verified Tape Score ${tapeMovement}.`,
+      paragraphs: [
+        `${playerName}'s high-school recruiting journey advanced through Game ${evaluation.gameNumber}, with all four playable moments now preserved in the weekly record. The results were ${outcomeText}.`,
+        objectiveDetails.length
+          ? `The recorded objectives were ${objectiveDetails.join('; ')}.`
+          : `The outcome of each moment is verified, while objective descriptions were left blank rather than reconstructed from memory.`,
+        `The game-displayed Tape Score ${tapeMovement}. DynastyHQ records that verified before-and-after movement without assigning an invented point value to any individual moment.`,
+        `The recruiting rating ${ratingMovement}. That movement affects the recruiting story, not the player's prebuilt attribute profile.`,
+      ],
+      citedFactKeys: baseKeys,
+    }),
+    article({
+      outlet: OUTLETS[1],
+      headline: `${playerName}'s local recruiting profile ${ratingMovement}`,
+      dek: `Dearborn's quarterback has completed ${evaluation.gameNumber} of five high-school evaluation games.`,
+      paragraphs: [
+        `The local recruiting record now contains ${evaluation.gameNumber} completed evaluation game${evaluation.gameNumber === 1 ? '' : 's'} for ${playerName}. Unlike a traditional box score, this phase is measured through four objective moments and the Tape Score shown afterward.`,
+        `Game ${evaluation.gameNumber} closed with ${summary.success} successful moment${summary.success === 1 ? '' : 's'}, ${summary.partial} partial result${summary.partial === 1 ? '' : 's'}, and ${summary.failed} failed moment${summary.failed === 1 ? '' : 's'}.`,
+        `The Tape Score ${tapeMovement}, while the recruiting rating ${ratingMovement}. Those are the verified markers used to describe week-to-week momentum.`,
+        evaluation.teamImpact
+          ? `The verified Team Impact note reads: ${evaluation.teamImpact}`
+          : `No separate Team Impact play was entered, so the local desk will not invent a highlight, final score, or statistical line.`,
+      ],
+      citedFactKeys: baseKeys,
+    }),
+    article({
+      outlet: OUTLETS[2],
+      headline: newOffers.length
+        ? `${newOffers[0].name} adds an offer after Game ${evaluation.gameNumber}`
+        : `${playerName}'s Tape Score reaches ${Number(tapeAfter || 0).toLocaleString()} after Game ${evaluation.gameNumber}`,
+      dek: newOffers.length
+        ? `${newOffers.length} newly verified scholarship ${newOffers.length === 1 ? 'offer changes' : 'offers change'} the board.`
+        : `The latest game-supplied recruiting snapshot is preserved without interest percentages or projections.`,
+      paragraphs: [
+        `Recruiting evaluation remains tied to the film record: the Tape Score ${tapeMovement}, and the player rating ${ratingMovement}.`,
+        newOffers.length
+          ? `${newOffers.map((entry) => entry.name).join(', ')} ${newOffers.length === 1 ? 'has' : 'have'} joined the verified scholarship offer list.`
+          : `No new scholarship offer was verified in this edition, so the board remains unchanged unless a separate game screen supplies an update.`,
+        schools.length
+          ? `The saved personal preference order begins ${schools.slice(0, 3).map((entry, index) => `${entry.preferenceRank || entry.customOrder || index + 1}. ${entry.name}`).join(', ')}.`
+          : `No ordered Top Schools list is attached to this edition.`,
+        `Scholarship thresholds differ by school. DynastyHQ will compare the verified Tape Score with visible requirements, but it will not convert moment outcomes into a predicted offer or commitment.`,
+      ],
+      citedFactKeys: [...baseKeys, ...recruitingKeys],
+    }),
+    article({
+      outlet: OUTLETS[3],
+      headline: `Tape review: ${outcomeText} moments in Game ${evaluation.gameNumber}`,
+      dek: `Objective outcomes and verified Team Impact replace unsupported high-school box-score analysis.`,
+      paragraphs: [
+        `The Film Room begins with four playable moments, not passing yards or touchdowns: ${outcomeText} results were recorded.`,
+        objectiveDetails.length
+          ? `The objective ledger allows a moment-by-moment review: ${objectiveDetails.join('; ')}.`
+          : `No objective text was saved, so the review is limited to each moment's successful, partial, or failed result.`,
+        evaluation.teamImpact
+          ? `The additional verified Team Impact entry is ${evaluation.teamImpact}. It is presented as entered and is not assigned an invented Tape Score value.`
+          : `No additional Team Impact entry was verified for this game.`,
+        `Because CFB 27 can award different amounts for objectives, partial completion, and impactful plays, the only numeric evaluation reported here is the game-displayed Tape Score: ${Number(tapeAfter || 0).toLocaleString()}.`,
+      ],
+      citedFactKeys: [...baseKeys, ...momentKeys],
+    }),
+    article({
+      outlet: OUTLETS[4],
+      headline: `${playerName}'s national recruiting résumé advances to Game ${evaluation.gameNumber}`,
+      dek: `${ratingAfter}-star rating · ${Number(tapeAfter || 0).toLocaleString()} Tape Score · ${5 - evaluation.gameNumber} evaluation game${5 - evaluation.gameNumber === 1 ? '' : 's'} remaining.`,
+      paragraphs: [
+        `The national snapshot after Game ${evaluation.gameNumber} lists ${playerName} at ${ratingAfter} stars with a Tape Score of ${Number(tapeAfter || 0).toLocaleString()}.`,
+        `That profile follows a four-moment performance containing ${outcomeText} outcomes. It is a recruiting evaluation record, not a traditional statistical résumé.`,
+        playerRecruiting?.highSchool?.rankings?.national
+          ? `The verified ranking snapshot places ${playerName} No. ${playerRecruiting.highSchool.rankings.national} nationally, No. ${playerRecruiting.highSchool.rankings.state || '—'} in the state, and No. ${playerRecruiting.highSchool.rankings.position || '—'} at the position.`
+          : `No complete national, state, and position ranking snapshot was verified for this edition.`,
+        `The national desk will not invent final scores, passing statistics, awards, or scouting claims. Future movement will come from the remaining game moments and game-supplied recruiting screens.`,
+      ],
+      citedFactKeys: baseKeys,
+    }),
+  ];
+
+  const groundedArticles = articles.map((entry) => ({
+    ...entry,
+    citedFactKeys: [...new Set(entry.citedFactKeys)].filter((key) => allowedKeys.has(key)),
+    groundingStatus: entry.citedFactKeys.every((key) => allowedKeys.has(key)) ? 'verified' : 'partial',
+  }));
+  return {
+    id: publicationId,
+    publicationId,
+    season,
+    week,
+    label: `High-school Game ${evaluation.gameNumber}`,
+    editionType: 'high-school-evaluation',
+    careerPhase,
+    publishedAt,
+    status: 'published',
+    outletProfile: null,
+    articles: groundedArticles,
+    podcastBrief: {
+      title: `${playerName}'s Game ${evaluation.gameNumber} tape review`,
+      summary: `${outcomeText} moments. Tape Score ${tapeMovement}. Recruiting rating ${ratingMovement}.${newOffers.length ? ` New verified offer: ${newOffers.map((entry) => entry.name).join(', ')}.` : ''}`,
+      citedFactKeys: [...new Set([...baseKeys, ...recruitingKeys])].filter((key) => allowedKeys.has(key)),
+    },
+  };
+};
+
 export const createNewsroomIssue = ({
   publicationId,
   season,
@@ -142,6 +308,12 @@ export const createNewsroomIssue = ({
   currentFactKeys = availableFactKeys,
   publishedAt,
 }) => {
+  if (game?.stage === 'high-school' || game?.evaluation) {
+    return createHighSchoolEvaluationIssue({
+      publicationId, season, week, careerPhase, player, game, recruiting, previousRecruiting,
+      playerRecruiting, availableFactKeys, currentFactKeys, publishedAt,
+    });
+  }
   const playerName = player?.name || 'The quarterback';
   const school = player?.school || 'the program';
   const currentCollege = player?.college || school;

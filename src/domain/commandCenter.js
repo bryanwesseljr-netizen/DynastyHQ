@@ -208,10 +208,16 @@ export const buildCommandCenter = (state = {}) => {
   let panels;
 
   if (stage === CAREER_STAGES.HIGH_SCHOOL) {
+    const evaluationGames = seasonGames.filter((game) => game.stage === 'high-school' || game.evaluation);
+    const latestEvaluation = evaluationGames.at(-1)?.evaluation || {};
+    const momentTotals = evaluationGames.flatMap((game) => game.evaluation?.moments || []).reduce((counts, moment) => {
+      if (moment.result) counts[moment.result] = (counts[moment.result] || 0) + 1;
+      return counts;
+    }, { success: 0, partial: 0, failed: 0 });
     metrics = [
-      { label: 'Season record', value: `${seasonRecord.wins}-${seasonRecord.losses}`, tone: 'default' },
+      { label: 'Games completed', value: `${evaluationGames.length}/5`, tone: 'default' },
+      { label: 'Tape Score', value: numberOrZero(highSchoolRecruiting.tapeScore).toLocaleString(), tone: 'gold' },
       { label: 'Verified offers', value: String(offers.length), tone: 'gold' },
-      { label: 'Season total TD', value: String(totalTouchdowns), tone: 'gold' },
       { label: 'National rank', value: highSchoolRecruiting.rankings?.national ? `#${highSchoolRecruiting.rankings.national}` : '—', tone: 'default' },
     ];
     panels = [
@@ -225,10 +231,11 @@ export const buildCommandCenter = (state = {}) => {
         row('Tape Score', numberOrZero(highSchoolRecruiting.tapeScore).toLocaleString()),
         row('State / position rank', `${highSchoolRecruiting.rankings?.state ? `#${highSchoolRecruiting.rankings.state}` : '—'} / ${highSchoolRecruiting.rankings?.position ? `#${highSchoolRecruiting.rankings.position}` : '—'}`),
       ]),
-      panel('availability', 'Friday Night Status', 'health', [
-        row('Availability', healthStatus, healthStatus === 'Active' ? 'success' : 'warning'),
-        row('Week', numberOrZero(state.currentWeek) || 1),
-        row('Latest verified update', state.weeklyUpdates?.length ? 'Published' : 'Awaiting first upload'),
+      panel('moments', 'Moment Results', 'target', [
+        row('Successful moments', momentTotals.success, 'success'),
+        row('Partial moments', momentTotals.partial, 'gold'),
+        row('Failed moments', momentTotals.failed, momentTotals.failed ? 'warning' : 'default'),
+        row('Latest game', latestEvaluation.gameNumber ? `Game ${latestEvaluation.gameNumber} of 5` : 'Awaiting Game 1'),
       ]),
     ];
   } else if (stage === CAREER_STAGES.COLLEGE) {

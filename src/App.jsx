@@ -6,7 +6,7 @@ import {
   Search, Award, User, UploadCloud, Loader2,
   Headphones, Mic, Radio, GraduationCap, Battery,
   HeartPulse, Briefcase, DollarSign, Users, AlertTriangle,
-  Camera, CheckCircle, Plus, Trash2, Medal, X,
+  Camera, CheckCircle, Plus, Trash2, Medal,
   Calendar, Megaphone, TrendingUp, GripVertical, FileText, CheckCircle2, Pencil, ScanLine,
   Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen, Menu
 } from 'lucide-react';
@@ -144,6 +144,7 @@ const CareerCommandCenter = lazy(() => import('./components/CareerCommandCenter'
 const PersonnelCfoWorkspace = lazy(() => import('./components/PersonnelCfoWorkspace'));
 const OffseasonPlanner = lazy(() => import('./components/OffseasonPlanner'));
 const PodcastStudio = lazy(() => import('./components/PodcastStudio'));
+const CareerHandbookModal = lazy(() => import('./components/CareerHandbookModal'));
 
 const publicationLocks = new Set();
 const SAVE_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'dynastyhq-device';
@@ -3944,67 +3945,9 @@ const handleSaveGameClick = () => {
        )}
 
        {isHouseRulesModalOpen && (
-           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
-               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-                   <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                       <div>
-                           <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2"><FileText className="text-blue-400"/> Immersive House Rules</h2>
-                           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Difficulty constraints for realism</p>
-                       </div>
-                       <button onClick={() => setIsHouseRulesModalOpen(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-                   </div>
-                   <div className="p-6 overflow-y-auto flex-1 space-y-8 bg-slate-900/50">
-                       <div className="text-slate-300 font-medium space-y-8 text-sm">
-                           
-                           <div className="space-y-3">
-                               <h3 className="text-amber-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Map size={18}/> 1. Recruiting & Pipeline Restrictions</h3>
-                               <ul className="list-disc pl-5 space-y-2">
-                                   <li><strong>Geographic Limits:</strong> At 1–2★ Prestige, you can only recruit players within your home state and primary pipeline states. At 3–4★, you can expand to secondary pipelines. 5–6★ opens national recruiting.</li>
-                                   <li><strong>Star Ceilings:</strong> You cannot target 5-star recruits until your program reaches at least 4-star prestige (unless the player has your school in their native Top 3).</li>
-                                   <li><strong>Scouting Fog-of-War:</strong> Limit scouting to 50% per recruit prior to extending an offer. Commit scholarships based on raw potential rather than knowing every attribute.</li>
-                               </ul>
-                           </div>
-
-                           <div className="space-y-3">
-                               <h3 className="text-emerald-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Users size={18}/> 2. Transfer Portal Limitations</h3>
-                               <ul className="list-disc pl-5 space-y-2">
-                                   <li><strong>1-2★ Programs:</strong> Maximum 2 transfers per season.</li>
-                                   <li><strong>3-4★ Programs:</strong> Maximum 4 transfers per season.</li>
-                                   <li>Transfers must be fit/need-based (e.g., replacing a drafted junior or filling a catastrophic injury gap, not just hoarding depth).</li>
-                               </ul>
-                           </div>
-
-                           <div className="space-y-3">
-                               <h3 className="text-blue-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Briefcase size={18}/> 3. Coaching Progression</h3>
-                               <ul className="list-disc pl-5 space-y-2">
-                                   <li>You must create a custom Offensive Coordinator in Dynasty Mode matching your RTG player's name and hometown.</li>
-                                   <li>You must replace the current OC at your graduating alma mater (Start as an OC, not an HC).</li>
-                                   <li>Your starting Coach Level is determined by your RTG finish.</li>
-                                   <li>You cannot accept a Head Coaching job until winning a conference championship or National Title as an OC.</li>
-                               </ul>
-                           </div>
-
-                           <div className="space-y-3">
-                               <h3 className="text-red-500 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><Activity size={18}/> 4. Scheme Inheritance</h3>
-                               <ul className="list-disc pl-5 space-y-2">
-                                   <li>When you transition to OC, you must adopt the offensive playbook of the coach you played under.</li>
-                                   <li>You cannot drastically overhaul the scheme (e.g., changing from Pro Style to a Spread Air Raid) until you become a Head Coach.</li>
-                                   <li>Learn to recruit players that specifically fit the playbook you inherited.</li>
-                               </ul>
-                           </div>
-
-                           <div className="space-y-3">
-                               <h3 className="text-slate-200 font-black text-lg uppercase border-b border-slate-700 pb-2 flex items-center gap-2"><ShieldCheck size={18}/> 5. Gameplay & Narrative Acceptance</h3>
-                               <ul className="list-disc pl-5 space-y-2">
-                                   <li><strong>Difficulty:</strong> Heisman Difficulty, default sliders.</li>
-                                   <li><strong>Narrative Acceptance:</strong> If you have a 4-interception game that costs your team a bowl bid, accept it. It becomes part of your backstory. Do not reboot games.</li>
-                               </ul>
-                           </div>
-
-                       </div>
-                   </div>
-               </div>
-           </div>
+         <Suspense fallback={<div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85"><Loader2 className="h-10 w-10 animate-spin text-blue-400" /></div>}>
+           <CareerHandbookModal onClose={() => setIsHouseRulesModalOpen(false)} />
+         </Suspense>
        )}
     </div>
   );

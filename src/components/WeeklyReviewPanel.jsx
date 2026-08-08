@@ -100,9 +100,12 @@ const WeeklyReviewPanel = ({
 
   const uncertainCount = draft.facts.filter((entry) => entry.confidence < 0.9 && !entry.userVerified).length;
   const invalidCount = draft.facts.filter((entry) => validateScanFact(entry)).length;
+  const conflictCount = (draft.conflicts || []).length;
   const detectedTypes = [...new Set(draft.sources.flatMap((source) => source.detectedTypes))];
   const completeness = getWeeklyCompleteness(draft);
   const isHighSchool = draft.careerPhase === 'Player' && !draft.isCommitted;
+  const sourceById = new Map(draft.sources.map((source) => [source.id, source]));
+  const conflictByKey = new Map((draft.conflicts || []).map((conflict) => [conflict.key, conflict]));
 
   return (
     <section className="mb-6 overflow-hidden rounded-2xl border border-blue-500/40 bg-slate-900/95 shadow-2xl">
@@ -115,14 +118,16 @@ const WeeklyReviewPanel = ({
           </p>
           {draft.recoveredAt && <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-blue-300">Recovered after refresh · screenshot previews are no longer attached</p>}
         </div>
-        {invalidCount > 0 || uncertainCount > 0 || completeness.missingRequired > 0 ? (
+        {invalidCount > 0 || conflictCount > 0 || uncertainCount > 0 || completeness.missingRequired > 0 ? (
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200">
             <AlertTriangle size={15} />
             {invalidCount > 0
               ? `${invalidCount} invalid value${invalidCount === 1 ? '' : 's'}`
+              : (conflictCount > 0
+                ? `${conflictCount} conflicting value${conflictCount === 1 ? '' : 's'}`
               : (uncertainCount > 0
                 ? `${uncertainCount} value${uncertainCount === 1 ? '' : 's'} need attention`
-                : `${completeness.missingRequired} essential item${completeness.missingRequired === 1 ? '' : 's'} missing`)}
+                : `${completeness.missingRequired} essential item${completeness.missingRequired === 1 ? '' : 's'} missing`))}
           </div>
         ) : (
           <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200">
@@ -141,10 +146,11 @@ const WeeklyReviewPanel = ({
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {draft.facts.map((entry) => {
                 const confidence = confidenceStyle(entry.confidence);
-                const source = draft.sources.find((item) => item.id === entry.sourceId);
+                const source = sourceById.get(entry.sourceId);
                 const validationError = validateScanFact(entry);
+                const conflict = conflictByKey.get(entry.key);
                 return (
-                  <div key={entry.key} className="rounded-xl border border-slate-700/70 bg-slate-950/60 p-3">
+                  <div key={entry.key} className={`rounded-xl border bg-slate-950/60 p-3 ${conflict ? 'border-amber-500/60' : 'border-slate-700/70'}`}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{entry.label}</span>
                       <div className="flex items-center gap-1">
@@ -154,6 +160,22 @@ const WeeklyReviewPanel = ({
                     </div>
                     <FactEditor entry={entry} onChange={(value) => onChangeFact(entry.key, value)} />
                     {validationError && <p className="mt-1 text-[10px] font-bold text-red-300">{validationError}</p>}
+                    {conflict && (
+                      <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
+                        <p className="text-[9px] font-black uppercase tracking-wide text-amber-300">Screenshots disagree</p>
+                        <div className="mt-1 space-y-1">
+                          {conflict.candidates.map((candidate, index) => {
+                            const candidateSource = sourceById.get(candidate.sourceId);
+                            return (
+                              <p key={`${candidate.sourceId}:${String(candidate.value)}:${index}`} className="text-[10px] text-amber-100">
+                                <span className="font-black">{String(candidate.value)}</span> · {candidateSource?.uploadContext?.label || candidateSource?.fileName || 'Uploaded source'}
+                              </p>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-1 text-[9px] leading-relaxed text-amber-200/80">Edit the field or confirm the selected value to resolve this conflict.</p>
+                      </div>
+                    )}
                     {entry.evidence && <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-500">Seen: {entry.evidence}</p>}
                     {source?.previewUrl && (
                       <a href={source.previewUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-[9px] font-bold uppercase tracking-wide text-blue-400 hover:text-blue-300">
@@ -161,8 +183,8 @@ const WeeklyReviewPanel = ({
                       </a>
                     )}
                     <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-2">
-                      {entry.confidence < 0.9 && !entry.userVerified ? (
-                        <button type="button" onClick={() => onVerifyFact(entry.key)} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-blue-400 hover:text-blue-300"><Check size={12} /> Confirm as shown</button>
+                      {(entry.confidence < 0.9 || conflict) && !entry.userVerified ? (
+                        <button type="button" onClick={() => onVerifyFact(entry.key)} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-blue-400 hover:text-blue-300"><Check size={12} /> {conflict ? 'Use selected value' : 'Confirm as shown'}</button>
                       ) : <span className="text-[9px] uppercase tracking-wide text-slate-600">{entry.userVerified ? 'User reviewed' : 'High confidence'}</span>}
                       <button type="button" onClick={() => onRemoveFact(entry.key)} title="Ignore this extracted fact" className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-slate-500 hover:text-red-300"><X size={12} /> Ignore</button>
                     </div>
@@ -231,6 +253,7 @@ const WeeklyReviewPanel = ({
                   )}
                   <div className="p-3">
                     <p className="truncate text-xs font-bold text-white">{source.fileName}</p>
+                    {source.uploadContext?.label && <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-amber-300">{source.uploadContext.label}</p>}
                     <p className={`mt-1 text-[10px] ${source.error ? 'text-red-300' : 'text-slate-500'}`}>
                       {source.error || source.detectedTypes.join(', ') || 'No screen type detected'}
                     </p>
@@ -241,13 +264,13 @@ const WeeklyReviewPanel = ({
             <div className="space-y-2">
               <button
                 type="button"
-                disabled={!draft.facts.length || uncertainCount > 0 || invalidCount > 0}
+                disabled={!draft.facts.length || uncertainCount > 0 || invalidCount > 0 || conflictCount > 0}
                 onClick={onApply}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Check size={16} /> {completeness.missingRequired > 0 ? 'Apply partial update' : 'Apply for review'}
               </button>
-              {(uncertainCount > 0 || invalidCount > 0) && (
+              {(uncertainCount > 0 || invalidCount > 0 || conflictCount > 0) && (
                 <p className="text-center text-[10px] leading-relaxed text-amber-300">Resolve every flagged value before applying this draft.</p>
               )}
               <button

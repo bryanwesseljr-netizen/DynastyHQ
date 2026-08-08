@@ -15,6 +15,77 @@ const SCREEN_TYPE_LABELS = {
   unknown: 'Unclassified',
 };
 
+export const HIGH_SCHOOL_UPLOAD_SLOT_TYPES = Object.freeze({
+  MOMENT: 'high_school_moment',
+  POSTGAME: 'high_school_postgame',
+});
+
+export const HIGH_SCHOOL_UPLOAD_SLOTS = Object.freeze([
+  ...Array.from({ length: 4 }, (_, index) => ({
+    id: `moment-${index + 1}`,
+    kind: HIGH_SCHOOL_UPLOAD_SLOT_TYPES.MOMENT,
+    momentNumber: index + 1,
+    label: `Moment ${index + 1}`,
+    description: 'Objective screen showing each Passed or Failed result.',
+    multiple: false,
+  })),
+  {
+    id: 'postgame-summary',
+    kind: HIGH_SCHOOL_UPLOAD_SLOT_TYPES.POSTGAME,
+    label: 'Postgame Tape Score / Recruiting Summary',
+    description: 'Tape Score, star rating, rankings, Top Schools, or official offer screens.',
+    multiple: true,
+  },
+]);
+
+export const normalizeHighSchoolUploadContext = (value = {}) => {
+  if (value?.kind === HIGH_SCHOOL_UPLOAD_SLOT_TYPES.MOMENT) {
+    const momentNumber = Number(value.momentNumber);
+    if (momentNumber >= 1 && momentNumber <= 4) {
+      return {
+        id: `moment-${momentNumber}`,
+        kind: HIGH_SCHOOL_UPLOAD_SLOT_TYPES.MOMENT,
+        momentNumber,
+        label: `Moment ${momentNumber}`,
+      };
+    }
+  }
+  if (value?.kind === HIGH_SCHOOL_UPLOAD_SLOT_TYPES.POSTGAME) {
+    return {
+      id: 'postgame-summary',
+      kind: HIGH_SCHOOL_UPLOAD_SLOT_TYPES.POSTGAME,
+      label: 'Postgame Tape Score / Recruiting Summary',
+    };
+  }
+  return null;
+};
+
+export const scopeAnalysisToHighSchoolUpload = (analysis = {}, uploadContext = null) => {
+  const context = normalizeHighSchoolUploadContext(uploadContext);
+  if (!context) return analysis;
+
+  if (context.kind === HIGH_SCHOOL_UPLOAD_SLOT_TYPES.MOMENT) {
+    const targetPrefix = `highSchool.moment${context.momentNumber}`;
+    const facts = (analysis.facts || []).flatMap((fact) => {
+      if (fact.key === 'highSchool.teamImpact') return [fact];
+      if (!/^highSchool\.moment[1-4]\./.test(String(fact.key || ''))) return [];
+      return [{ ...fact, key: String(fact.key).replace(/^highSchool\.moment[1-4]/, targetPrefix) }];
+    });
+    return {
+      ...analysis,
+      screenTypes: facts.length ? ['high_school_moments'] : (analysis.screenTypes || []),
+      facts,
+    };
+  }
+
+  const facts = (analysis.facts || []).filter((fact) => String(fact.key || '').startsWith('recruiting.'));
+  return {
+    ...analysis,
+    screenTypes: facts.length ? ['rtg_recruiting'] : (analysis.screenTypes || []),
+    facts,
+  };
+};
+
 const GAME_KEYS = new Set([
   'game.opponent',
   'game.result',
@@ -235,10 +306,13 @@ export const normalizeScreenshotAnalysis = ({
   sourceId,
   fileName,
   previewUrl = '',
+  uploadContext = null,
   recruiting = [],
   retentionBoard = [],
   careerPhase = 'Player',
 }) => {
+  const scopedAnalysis = scopeAnalysisToHighSchoolUpload(analysis, uploadContext);
+  const normalizedUploadContext = normalizeHighSchoolUploadContext(uploadContext);
   const facts = [];
   const gamePatch = {};
   const rtgPatch = {};
@@ -249,7 +323,7 @@ export const normalizeScreenshotAnalysis = ({
   const playerRecruitingPatch = { rankings: {} };
   const highSchoolEvaluationPatch = { moments: [] };
 
-  (analysis?.facts || []).forEach((rawFact, index) => {
+  (scopedAnalysis?.facts || []).forEach((rawFact, index) => {
     const key = cleanString(rawFact.key);
     const value = normalizeValue(key, rawFact.value);
     if (!key || value === '') return;
@@ -385,7 +459,7 @@ export const normalizeScreenshotAnalysis = ({
 
   if (Object.keys(wearPatch).length) rtgPatch.wear = wearPatch;
 
-  const detectedTypes = (analysis?.screenTypes || [])
+  const detectedTypes = (scopedAnalysis?.screenTypes || [])
     .map((type) => SCREEN_TYPE_LABELS[type])
     .filter(Boolean);
 
@@ -395,10 +469,11 @@ export const normalizeScreenshotAnalysis = ({
       fileName,
       detectedTypes: [...new Set(detectedTypes)],
       capturedAt: new Date().toISOString(),
-      screenTitle: cleanString(analysis?.screenTitle),
-      summary: cleanString(analysis?.summary),
+      screenTitle: cleanString(scopedAnalysis?.screenTitle),
+      summary: cleanString(scopedAnalysis?.summary),
       previewUrl,
       analyzer: 'Secure AI',
+      ...(normalizedUploadContext ? { uploadContext: normalizedUploadContext } : {}),
     },
     facts,
     gamePatch,
@@ -414,7 +489,7 @@ export const normalizeScreenshotAnalysis = ({
   };
 };
 
-export const createFailedScreenshotResult = ({ sourceId, fileName, previewUrl = '', message }) => ({
+export const createFailedScreenshotResult = ({ sourceId, fileName, previewUrl = '', message, uploadContext = null }) => ({
   source: {
     id: sourceId,
     fileName,
@@ -423,6 +498,9 @@ export const createFailedScreenshotResult = ({ sourceId, fileName, previewUrl = 
     previewUrl,
     analyzer: 'Secure AI',
     error: cleanString(message) || 'Analysis failed',
+    ...(normalizeHighSchoolUploadContext(uploadContext)
+      ? { uploadContext: normalizeHighSchoolUploadContext(uploadContext) }
+      : {}),
   },
   facts: [],
   gamePatch: {},

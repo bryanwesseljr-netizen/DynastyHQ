@@ -1,12 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createFailedScreenshotResult, normalizeScreenshotAnalysis } from './screenshotAnalysis.js';
+import {
+  createFailedScreenshotResult,
+  HIGH_SCHOOL_UPLOAD_SLOTS,
+  normalizeScreenshotAnalysis,
+  scopeAnalysisToHighSchoolUpload,
+} from './screenshotAnalysis.js';
 
 const recruiting = [
   { id: 1, name: 'Test College A', interest: 0, level: 'None', offered: false },
   { id: 2, name: 'Test University', interest: 0, level: 'None', offered: false },
 ];
+
+test('defines four numbered moment slots and one postgame summary slot', () => {
+  assert.deepEqual(HIGH_SCHOOL_UPLOAD_SLOTS.map((slot) => slot.id), [
+    'moment-1', 'moment-2', 'moment-3', 'moment-4', 'postgame-summary',
+  ]);
+  assert.equal(HIGH_SCHOOL_UPLOAD_SLOTS.filter((slot) => slot.kind === 'high_school_moment').length, 4);
+  assert.equal(HIGH_SCHOOL_UPLOAD_SLOTS.at(-1).multiple, true);
+});
 
 test('normalizes supported AI facts into the weekly draft contract', () => {
   const result = normalizeScreenshotAnalysis({
@@ -109,6 +122,49 @@ test('normalizes standard and scholarship high-school moments with the correct o
   assert.equal(result.highSchoolEvaluationPatch.moments[3].type, 'scholarship');
   assert.equal(result.highSchoolEvaluationPatch.moments[3].scholarshipSchool, 'Toledo');
   assert.equal(result.facts[0].key, 'highSchool.moment.1.type');
+});
+
+test('routes an unnumbered moment screenshot into the user-selected Moment slot', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'moment-two',
+    fileName: 'moment.png',
+    recruiting: [],
+    uploadContext: { kind: 'high_school_moment', momentNumber: 2 },
+    analysis: {
+      screenTypes: ['high_school_moments'],
+      screenTitle: 'Highlight Moment',
+      summary: 'The screen does not visibly number the moment.',
+      facts: [
+        { key: 'highSchool.moment1.type', label: 'Moment type', value: 'Standard', confidence: 0.98, evidence: 'Highlight Moment' },
+        { key: 'highSchool.moment1.objective1', label: 'Objective 1', value: 'Complete the pass', confidence: 0.97, evidence: 'Complete the pass' },
+        { key: 'highSchool.moment1.objective1Result', label: 'Objective 1 result', value: 'Passed', confidence: 0.98, evidence: 'Passed' },
+        { key: 'highSchool.moment1.objective2', label: 'Objective 2', value: 'Gain 15 yards', confidence: 0.97, evidence: 'Gain 15 yards' },
+        { key: 'highSchool.moment1.objective2Result', label: 'Objective 2 result', value: 'Failed', confidence: 0.98, evidence: 'Failed' },
+      ],
+    },
+  });
+
+  assert.equal(result.highSchoolEvaluationPatch.moments[0], undefined);
+  assert.equal(result.highSchoolEvaluationPatch.moments[1].objectives[0].result, 'passed');
+  assert.equal(result.highSchoolEvaluationPatch.moments[1].objectives[1].result, 'failed');
+  assert.equal(result.facts.every((entry) => entry.key.startsWith('highSchool.moment.2.')), true);
+  assert.equal(result.source.uploadContext.id, 'moment-2');
+});
+
+test('keeps the postgame slot limited to recruiting evaluation facts', () => {
+  const analysis = scopeAnalysisToHighSchoolUpload({
+    screenTypes: ['high_school_moments', 'rtg_recruiting'],
+    facts: [
+      { key: 'highSchool.moment1.result', value: 'Successful' },
+      { key: 'recruiting.tapeScore', value: '1,250' },
+      { key: 'recruiting.recruitStars', value: '4' },
+    ],
+  }, { kind: 'high_school_postgame' });
+
+  assert.deepEqual(analysis.facts.map((entry) => entry.key), [
+    'recruiting.tapeScore',
+    'recruiting.recruitStars',
+  ]);
 });
 
 test('preserves numeric and text RTG progression fields from a player screen', () => {

@@ -156,6 +156,28 @@ const validImageDataUrl = (value) => (
   && value.length <= MAX_DATA_URL_LENGTH
 );
 
+const normalizeUploadContext = (value = {}) => {
+  if (value?.kind === 'high_school_moment') {
+    const momentNumber = Number(value.momentNumber);
+    if (momentNumber >= 1 && momentNumber <= 4) {
+      return { kind: 'high_school_moment', momentNumber };
+    }
+  }
+  if (value?.kind === 'high_school_postgame') return { kind: 'high_school_postgame' };
+  return null;
+};
+
+const uploadGuidance = (value) => {
+  const context = normalizeUploadContext(value);
+  if (context?.kind === 'high_school_moment') {
+    return `The user intentionally placed this screenshot in the Moment ${context.momentNumber} slot. Extract only visible high-school moment facts and map them to highSchool.moment${context.momentNumber}, even if the screenshot itself does not show a moment number. Do not output recruiting profile, ranking, or offer facts from this slot.`;
+  }
+  if (context?.kind === 'high_school_postgame') {
+    return 'The user intentionally placed this screenshot in the Postgame Tape Score / Recruiting Summary slot. Extract only visible recruiting profile, ranking, Top Schools, school, or official-offer facts. Do not output highSchool.moment fields from this slot.';
+  }
+  return 'No guided upload slot was selected. Use only the visible screen content to classify and map facts.';
+};
+
 const buildContext = ({ careerPhase, player, recruitingSchools, rosterPlayers }) => JSON.stringify({
   careerPhase: String(careerPhase || 'Player').slice(0, 40),
   trackedPlayer: {
@@ -181,7 +203,7 @@ Rules:
 - If text is cropped, obscured, or ambiguous, omit the fact instead of guessing.
 - Use the supplied tracked player and school only to identify which row belongs to the user's career. Do not treat supplied context as screenshot evidence.
 - game.homeScore means the tracked player's TEAM score and game.awayScore means the OPPONENT score, regardless of the real venue.
-- High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. A standard moment has two objectives: use objective1/objective2 and objective1Result/objective2Result, with Passed or Failed values. Its overall moment result is success when both pass, partial when one passes, and failed when neither passes. A scholarship challenge has one major objective: set type=scholarship, preserve the plainly visible school in scholarshipSchool, use objective1/objective1Result, omit objective2 fields, and use only success or failed for the overall result. Use type=standard for a plainly identified standard moment. Never treat a passed scholarship challenge as a verified offer; recruiting.offer=true requires a separate official offer screen. Preserve concise visible objective descriptions. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay.
+- High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. A standard moment has two objectives: use objective1/objective2 and objective1Result/objective2Result, with Passed or Failed values. Its overall moment result is success when both pass, partial when one passes, and failed when neither passes. A scholarship challenge has one major objective: set type=scholarship, preserve the plainly visible school in scholarshipSchool, use objective1/objective1Result, omit objective2 fields, and use only success or failed for the overall result. Use type=standard for a plainly identified standard moment. Never treat a passed scholarship challenge as a verified offer; recruiting.offer=true requires a separate official offer screen. Preserve concise visible objective descriptions. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay. A user-selected guided upload slot is trusted routing metadata for the destination Moment number, but it is never evidence that an objective passed, failed, or existed.
 - For game.result, use W or L only when a final score and the tracked team are clear.
 - For RTG recruiting facts, schoolName must exactly match a clearly visible school. For coach recruiting facts, schoolName must contain the exact visible prospect name, including a new target not yet present in the supplied entries. Use an empty schoolName for non-recruiting facts.
 - For the player's RTG recruiting profile, use recruiting.recruitStars, tapeScore, nationalRank, stateRank, positionRank, gameNumber, and topSchoolsSelected with an empty schoolName.
@@ -217,7 +239,7 @@ export default async function handler(req, res) {
   }
   if (!user) return json(res, 401, { error: 'Sign in before analyzing screenshots.' });
 
-  const { imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers } = req.body || {};
+  const { imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers, uploadContext } = req.body || {};
   if (!validImageDataUrl(imageDataUrl)) {
     return json(res, 400, { error: 'Upload a PNG, JPEG, or WebP screenshot under the size limit.' });
   }
@@ -235,7 +257,7 @@ export default async function handler(req, res) {
         content: [
           {
             type: 'input_text',
-            text: `Analyze screenshot ${String(fileName || 'upload').slice(0, 160)}. Career context: ${buildContext({ careerPhase, player, recruitingSchools, rosterPlayers })}`,
+            text: `Analyze screenshot ${String(fileName || 'upload').slice(0, 160)}. Guided upload routing: ${uploadGuidance(uploadContext)} Career context: ${buildContext({ careerPhase, player, recruitingSchools, rosterPlayers })}`,
           },
           { type: 'input_image', image_url: imageDataUrl, detail: 'original' },
         ],

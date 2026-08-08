@@ -69,6 +69,31 @@ test('merges several screenshots into one review draft without changing career s
   assert.equal(merged.status, 'review');
 });
 
+test('blocks silently overwritten screenshot facts until a conflict is resolved', () => {
+  const base = createEmptyScanDraft({ season: 1, week: 2 });
+  const first = {
+    source: { id: 'moment-1-a', fileName: 'moment-a.png', detectedTypes: ['High-School Moments'] },
+    facts: [{ id: 'a', key: 'highSchool.moment.1.objective.1.result', label: 'Moment 1 objective 1 result', value: 'passed', confidence: 0.98, sourceId: 'moment-1-a' }],
+    gamePatch: {}, rtgPatch: {}, coachPatch: {}, recruitingPatches: [], retentionPatches: [], playerRecruitingPatch: {}, highSchoolEvaluationPatch: {},
+  };
+  const second = {
+    source: { id: 'moment-1-b', fileName: 'moment-b.png', detectedTypes: ['High-School Moments'] },
+    facts: [{ id: 'b', key: 'highSchool.moment.1.objective.1.result', label: 'Moment 1 objective 1 result', value: 'failed', confidence: 0.97, sourceId: 'moment-1-b' }],
+    gamePatch: {}, rtgPatch: {}, coachPatch: {}, recruitingPatches: [], retentionPatches: [], playerRecruitingPatch: {}, highSchoolEvaluationPatch: {},
+  };
+  const conflicted = mergeScanResult(mergeScanResult(base, first), second);
+
+  assert.equal(conflicted.conflicts.length, 1);
+  assert.equal(conflicted.facts[0].value, 'failed');
+  assert.equal(conflicted.facts[0].conflict, true);
+  assert.equal(getWeeklyCompleteness(conflicted).checks.find((check) => check.id === 'review').status, 'missing');
+
+  const resolved = verifyScanDraftFact(conflicted, conflicted.facts[0].key);
+  assert.equal(resolved.conflicts.length, 0);
+  assert.equal(resolved.facts[0].userVerified, true);
+  assert.equal(resolved.facts[0].conflict, false);
+});
+
 test('corrects extracted values and rebuilds game and recruiting patches before apply', () => {
   const base = createEmptyScanDraft({ season: 1, week: 2 });
   const parsed = parseScreenshotText({

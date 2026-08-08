@@ -98,6 +98,7 @@ import { generateNewsroomImage } from './services/newsroomImageClient';
 import { deleteNewsroomMedia, uploadNewsroomMedia } from './services/newsroomMediaStorage';
 import PlayerRecruitingWorkspace from './components/PlayerRecruitingWorkspace';
 import HighSchoolEvaluationEditor from './components/HighSchoolEvaluationEditor';
+import HighSchoolScreenshotUploader from './components/HighSchoolScreenshotUploader';
 import {
   createEmptyHighSchoolEvaluation,
   normalizeHighSchoolEvaluation,
@@ -174,7 +175,6 @@ const App = () => {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanDraft, setScanDraft] = useState(null);
   const [appliedScanDraft, setAppliedScanDraft] = useState(null);
-  const fileInputRef = useRef(null);
   const audioLoadedRef = useRef(false);
   const draftRecoveryOwnerRef = useRef(null);
   const autoImageAttemptsRef = useRef(new Set());
@@ -568,21 +568,21 @@ const App = () => {
   };
 
   // --- SECURE SCREENSHOT ANALYSIS ENGINE ---
-  const handleUniversalScan = async (e) => {
-    const targetInput = e.target;
-    const files = [...targetInput.files];
+  const analyzeScreenshotFiles = async ({ files, uploadContext = null, appendToDraft = false }) => {
     if (!files.length) return;
     setIsScanning(true);
     setScanProgress(0);
     try {
       if (!userState) throw new Error('Sign in before analyzing screenshots.');
       const idToken = await userState.getIdToken();
-      let nextDraft = createEmptyScanDraft({
-        season: appState.currentSeason,
-        week: appState.currentWeek,
-        careerPhase: appState.careerPhase,
-        isCommitted: appState.player.isCommitted,
-      });
+      let nextDraft = appendToDraft && scanDraft
+        ? scanDraft
+        : createEmptyScanDraft({
+            season: appState.currentSeason,
+            week: appState.currentWeek,
+            careerPhase: appState.careerPhase,
+            isCommitted: appState.player.isCommitted,
+          });
 
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
@@ -599,12 +599,14 @@ const App = () => {
             player: appState.player,
             recruitingSchools: appState.recruiting.map(({ name }) => ({ name })),
             rosterPlayers: (appState.retentionBoard || []).map(({ name }) => ({ name })),
+            uploadContext,
           });
           const result = normalizeScreenshotAnalysis({
             analysis,
             sourceId,
             fileName: file.name,
             previewUrl: compressedImage,
+            uploadContext,
             recruiting: appState.recruiting,
             retentionBoard: appState.retentionBoard || [],
             careerPhase: appState.careerPhase,
@@ -616,6 +618,7 @@ const App = () => {
             fileName: file.name,
             previewUrl: compressedImage,
             message: error.message,
+            uploadContext,
           }));
         }
         setScanProgress(Math.round(((index + 1) / files.length) * 100));
@@ -638,8 +641,25 @@ const App = () => {
     } finally {
       setIsScanning(false);
       setScanProgress(0);
-      targetInput.value = '';
     }
+  };
+
+  const handleUniversalScan = async (event) => {
+    const targetInput = event.target;
+    const files = [...targetInput.files];
+    await analyzeScreenshotFiles({ files });
+    targetInput.value = '';
+  };
+
+  const handleHighSchoolSlotScan = async (event, slot) => {
+    const targetInput = event.target;
+    const files = [...targetInput.files];
+    await analyzeScreenshotFiles({
+      files,
+      uploadContext: slot,
+      appendToDraft: true,
+    });
+    targetInput.value = '';
   };
 
   const handleApplyScanDraft = () => {
@@ -3265,29 +3285,39 @@ const handleSaveGameClick = () => {
   const renderDataEntry = () => (
     <div className="max-w-7xl mx-auto animate-in fade-in pb-20 relative z-10">
       
-      <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl mb-6 text-center">
-        <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>
-        <p className="text-slate-300 text-sm font-bold drop-shadow">{isHighSchoolCareer ? 'Upload High-School Moments, Tape Score, recruiting, and ranking screenshots together. Nothing changes until you review and publish.' : 'Upload your Box Score, Player Hub, and Recruiting Board screenshots together. Nothing changes until you review and publish.'}</p>
-        
-        <div className="mt-6 p-8 border-2 border-dashed border-amber-500/50 rounded-xl bg-slate-950/60 hover:bg-slate-900/80 transition-colors shadow-inner relative overflow-hidden group">
-          {isScanning ? (
-            <div className="flex flex-col items-center gap-3 text-amber-500 py-4 relative z-10">
-              <ScanLine className="w-10 h-10 animate-bounce" />
-              <span className="text-sm font-bold animate-pulse uppercase tracking-wider">Secure AI Analysis: {scanProgress}%</span>
-              <div className="w-64 bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
-                <div className="bg-amber-500 h-full transition-all duration-300" style={{width: `${scanProgress}%`}}></div>
-              </div>
-            </div>
-          ) : (
-            <label className="cursor-pointer flex flex-col items-center gap-2 text-slate-300 hover:text-white relative z-10">
-              <UploadCloud className="w-10 h-10 text-amber-500 mb-1 drop-shadow-md group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-bold uppercase tracking-wider text-amber-400">Choose Weekly Screenshots</span>
-              <span className="text-[11px] font-medium text-slate-400">{isHighSchoolCareer ? 'Select one or several: Moment Objectives, Tape Score, Top Schools, Offers' : 'Select one or several: Box Scores, RTG Mechanics, Target Boards'}</span>
-              <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleUniversalScan} />
-            </label>
-          )}
+      {isHighSchoolCareer ? (
+        <div className="mb-6">
+          <HighSchoolScreenshotUploader
+            draft={scanDraft}
+            isScanning={isScanning}
+            scanProgress={scanProgress}
+            onUpload={handleHighSchoolSlotScan}
+          />
         </div>
-      </div>
+      ) : (
+        <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl mb-6 text-center">
+          <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>
+          <p className="text-slate-300 text-sm font-bold drop-shadow">Upload your Box Score, Player Hub, and Recruiting Board screenshots together. Nothing changes until you review and publish.</p>
+          <div className="mt-6 p-8 border-2 border-dashed border-amber-500/50 rounded-xl bg-slate-950/60 hover:bg-slate-900/80 transition-colors shadow-inner relative overflow-hidden group">
+            {isScanning ? (
+              <div className="flex flex-col items-center gap-3 text-amber-500 py-4 relative z-10">
+                <ScanLine className="w-10 h-10 animate-bounce" />
+                <span className="text-sm font-bold animate-pulse uppercase tracking-wider">Secure AI Analysis: {scanProgress}%</span>
+                <div className="w-64 bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
+                  <div className="bg-amber-500 h-full transition-all duration-300" style={{width: `${scanProgress}%`}}></div>
+                </div>
+              </div>
+            ) : (
+              <label className="cursor-pointer flex flex-col items-center gap-2 text-slate-300 hover:text-white relative z-10">
+                <UploadCloud className="w-10 h-10 text-amber-500 mb-1 drop-shadow-md group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-bold uppercase tracking-wider text-amber-400">Choose Weekly Screenshots</span>
+                <span className="text-[11px] font-medium text-slate-400">Select one or several: Box Scores, RTG Mechanics, Target Boards</span>
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleUniversalScan} />
+              </label>
+            )}
+          </div>
+        </div>
+      )}
 
       <WeeklyReviewPanel
         draft={scanDraft}

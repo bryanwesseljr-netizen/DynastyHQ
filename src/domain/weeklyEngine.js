@@ -683,23 +683,27 @@ export const updateScanDraftFact = (draft, factKey, value) => {
       originalValue,
       userVerified: true,
       corrected: String(nextValue) !== String(originalValue),
+      conflict: false,
     };
   });
-  return { ...draft, ...rebuildDraftPatches(draft, facts), facts };
+  const conflicts = (draft.conflicts || []).filter((entry) => entry.key !== factKey);
+  return { ...draft, ...rebuildDraftPatches(draft, facts), facts, conflicts };
 };
 
 export const verifyScanDraftFact = (draft, factKey) => {
   if (!draft) return draft;
   const facts = draft.facts.map((entry) => entry.key === factKey
-    ? { ...entry, userVerified: true, corrected: Boolean(entry.corrected) }
+    ? { ...entry, userVerified: true, corrected: Boolean(entry.corrected), conflict: false }
     : entry);
-  return { ...draft, facts };
+  const conflicts = (draft.conflicts || []).filter((entry) => entry.key !== factKey);
+  return { ...draft, facts, conflicts };
 };
 
 export const removeScanDraftFact = (draft, factKey) => {
   if (!draft) return draft;
   const facts = draft.facts.filter((entry) => entry.key !== factKey);
-  return { ...draft, ...rebuildDraftPatches(draft, facts), facts };
+  const conflicts = (draft.conflicts || []).filter((entry) => entry.key !== factKey);
+  return { ...draft, ...rebuildDraftPatches(draft, facts), facts, conflicts };
 };
 
 export const createEmptyScanDraft = ({
@@ -720,6 +724,7 @@ export const createEmptyScanDraft = ({
   createdAt: new Date().toISOString(),
   sources: [],
   facts: [],
+  conflicts: [],
   gamePatch: {},
   rtgPatch: {},
   coachPatch: {},
@@ -747,6 +752,12 @@ export const getWeeklyCompleteness = (draft) => {
   const successfulSources = (draft.sources || []).filter((source) => !source.error);
   const unresolvedFacts = (draft.facts || []).filter((entry) => entry.confidence < 0.9 && !entry.userVerified);
   const invalidFacts = (draft.facts || []).filter((entry) => validateScanFact(entry));
+  const conflicts = draft.conflicts || [];
+  const reviewIssueCount = new Set([
+    ...unresolvedFacts.map((entry) => entry.key),
+    ...invalidFacts.map((entry) => entry.key),
+    ...conflicts.map((entry) => entry.key),
+  ]).size;
   const isPlayer = draft.careerPhase === 'Player';
   const isHighSchool = isPlayer && !draft.isCommitted;
   const isBye = draft.weekType === WEEK_TYPES.BYE;
@@ -778,10 +789,10 @@ export const getWeeklyCompleteness = (draft) => {
   addCheck(
     'review',
     'Extraction review resolved',
-    unresolvedFacts.length || invalidFacts.length
-      ? `${unresolvedFacts.length + invalidFacts.length} value${unresolvedFacts.length + invalidFacts.length === 1 ? '' : 's'} still need attention.`
+    reviewIssueCount
+      ? `${reviewIssueCount} value${reviewIssueCount === 1 ? '' : 's'} still need attention.`
       : 'No unresolved or invalid extracted values.',
-    unresolvedFacts.length || invalidFacts.length ? 'missing' : 'complete',
+    unresolvedFacts.length || invalidFacts.length || conflicts.length ? 'missing' : 'complete',
     'required',
   );
 
@@ -995,7 +1006,32 @@ export const parseScreenshotText = ({ text, sourceId, fileName = 'Screenshot', r
 
 export const mergeScanResult = (draft, result) => {
   const factsByKey = new Map(draft.facts.map((entry) => [entry.key, entry]));
-  result.facts.forEach((entry) => factsByKey.set(entry.key, entry));
+  const conflictsByKey = new Map((draft.conflicts || []).map((entry) => [entry.key, entry]));
+  result.facts.forEach((entry) => {
+    const existing = factsByKey.get(entry.key);
+    if (existing && String(existing.value) !== String(entry.value)) {
+      const priorConflict = conflictsByKey.get(entry.key);
+      const candidates = [
+        ...(priorConflict?.candidates || [{ value: existing.value, sourceId: existing.sourceId }]),
+        { value: entry.value, sourceId: entry.sourceId },
+      ].filter((candidate, index, all) => all.findIndex((item) => (
+        String(item.value) === String(candidate.value) && item.sourceId === candidate.sourceId
+      )) === index);
+      conflictsByKey.set(entry.key, {
+        key: entry.key,
+        label: entry.label || existing.label || entry.key,
+        candidates,
+      });
+      factsByKey.set(entry.key, {
+        ...entry,
+        confidence: Math.min(Number(entry.confidence) || 0, 0.89),
+        userVerified: false,
+        conflict: true,
+      });
+      return;
+    }
+    factsByKey.set(entry.key, entry);
+  });
 
   const schoolsById = new Map(draft.recruitingPatches.map((school) => [school.id, school]));
   result.recruitingPatches.forEach((school) => schoolsById.set(school.id, school));
@@ -1007,6 +1043,7 @@ export const mergeScanResult = (draft, result) => {
     status: 'review',
     sources: [...draft.sources, result.source],
     facts: [...factsByKey.values()],
+    conflicts: [...conflictsByKey.values()],
     gamePatch: { ...draft.gamePatch, ...result.gamePatch },
     rtgPatch: {
       ...draft.rtgPatch,

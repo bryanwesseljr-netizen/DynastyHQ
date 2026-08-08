@@ -6,6 +6,7 @@ export const analyzeScreenshot = async ({
   player,
   recruitingSchools,
   rosterPlayers,
+  uploadContext,
 }) => {
   const response = await fetch('/api/analyze-screenshot', {
     method: 'POST',
@@ -13,7 +14,7 @@ export const analyzeScreenshot = async ({
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers }),
+    body: JSON.stringify({ imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers, uploadContext }),
   });
 
   let body = {};

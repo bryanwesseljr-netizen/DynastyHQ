@@ -1,12 +1,17 @@
 import { CheckCircle2, MinusCircle, Star, Target, XCircle } from 'lucide-react';
-import { HIGH_SCHOOL_MOMENT_RESULTS, normalizeHighSchoolEvaluation, summarizeHighSchoolMoments } from '../domain/highSchoolEvaluation';
+import {
+  HIGH_SCHOOL_MOMENT_TYPES,
+  HIGH_SCHOOL_OBJECTIVE_RESULTS,
+  normalizeHighSchoolEvaluation,
+  summarizeHighSchoolMoments,
+} from '../domain/highSchoolEvaluation';
 
-const resultOptions = [
-  { value: '', label: 'Choose result', icon: Target },
-  { value: HIGH_SCHOOL_MOMENT_RESULTS.SUCCESS, label: 'Successful', icon: CheckCircle2 },
-  { value: HIGH_SCHOOL_MOMENT_RESULTS.PARTIAL, label: 'Partial', icon: MinusCircle },
-  { value: HIGH_SCHOOL_MOMENT_RESULTS.FAILED, label: 'Failed', icon: XCircle },
-];
+const resultPresentation = {
+  success: { label: 'Successful', icon: CheckCircle2, className: 'text-emerald-400' },
+  partial: { label: 'Partial', icon: MinusCircle, className: 'text-amber-400' },
+  failed: { label: 'Failed', icon: XCircle, className: 'text-red-400' },
+  '': { label: 'Awaiting results', icon: Target, className: 'text-slate-600' },
+};
 
 const HighSchoolEvaluationEditor = ({ value, onChange }) => {
   const evaluation = normalizeHighSchoolEvaluation(value);
@@ -15,29 +20,56 @@ const HighSchoolEvaluationEditor = ({ value, onChange }) => {
   const updateMoment = (index, patch) => update({
     moments: evaluation.moments.map((moment, momentIndex) => momentIndex === index ? { ...moment, ...patch } : moment),
   });
+  const updateObjective = (momentIndex, objectiveIndex, patch) => updateMoment(momentIndex, {
+    objectives: evaluation.moments[momentIndex].objectives.map((objective, index) => (
+      index === objectiveIndex ? { ...objective, ...patch } : objective
+    )),
+  });
 
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-blue-500/30 bg-blue-950/20 p-4">
         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">High-school Game {evaluation.gameNumber} of 5</p>
-        <p className="mt-2 text-xs leading-relaxed text-slate-300">Record the four playable moments. Use Partial when a Highlight Moment awarded credit for only some visible objectives. Tape Score comes from the game after the evaluation; DynastyHQ does not estimate points.</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-300">Each standard moment has two objectives: passing both is Successful, passing one is Partial, and failing both is Failed. When a school presents a Scholarship Challenge, record its one major objective instead. Tape Score comes from the game; DynastyHQ never estimates points.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {evaluation.moments.map((moment, index) => {
-          const selected = resultOptions.find((option) => option.value === moment.result);
-          const Icon = selected?.icon || Target;
+          const presentation = resultPresentation[moment.result] || resultPresentation[''];
+          const Icon = presentation.icon;
+          const isScholarship = moment.type === HIGH_SCHOOL_MOMENT_TYPES.SCHOLARSHIP;
+          const activeObjectives = moment.objectives.slice(0, isScholarship ? 1 : 2);
           return (
             <div key={moment.id} className="rounded-xl border border-slate-700 bg-slate-950/55 p-3">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-300">Moment {moment.id}</p>
-                <Icon size={15} className={moment.result === 'success' ? 'text-emerald-400' : moment.result === 'partial' ? 'text-amber-400' : moment.result === 'failed' ? 'text-red-400' : 'text-slate-600'} />
+                <span className={`flex items-center gap-1 text-[9px] font-black uppercase ${presentation.className}`}><Icon size={15} /> {presentation.label}</span>
               </div>
-              <select aria-label={`Moment ${moment.id} result`} value={moment.result} onChange={(event) => updateMoment(index, { result: event.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-black text-white outline-none focus:border-blue-400">
-                {resultOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              <label className="block text-[9px] font-black uppercase tracking-wider text-slate-500">Moment format</label>
+              <select aria-label={`Moment ${moment.id} format`} value={moment.type} onChange={(event) => updateMoment(index, { type: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-black text-white outline-none focus:border-blue-400">
+                <option value={HIGH_SCHOOL_MOMENT_TYPES.STANDARD}>Standard moment · 2 objectives</option>
+                <option value={HIGH_SCHOOL_MOMENT_TYPES.SCHOLARSHIP}>Scholarship Challenge · 1 major objective</option>
               </select>
-              <label className="mt-3 block text-[9px] font-black uppercase tracking-wider text-slate-500">Visible objective (optional)</label>
-              <input aria-label={`Moment ${moment.id} visible objective`} value={moment.objective} onChange={(event) => updateMoment(index, { objective: event.target.value })} maxLength={240} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-white outline-none focus:border-blue-400" placeholder="e.g. Complete a pass on the run" />
+              {isScholarship && (
+                <div className="mt-3">
+                  <label className="block text-[9px] font-black uppercase tracking-wider text-amber-400">School presenting the challenge</label>
+                  <input aria-label={`Moment ${moment.id} scholarship school`} value={moment.scholarshipSchool} onChange={(event) => updateMoment(index, { scholarshipSchool: event.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-amber-500/40 bg-slate-900 p-2 text-xs text-white outline-none focus:border-amber-300" placeholder="e.g. Toledo" />
+                </div>
+              )}
+              <div className="mt-3 space-y-3">
+                {activeObjectives.map((objective, objectiveIndex) => (
+                  <div key={objective.id} className={`rounded-lg border p-2 ${isScholarship ? 'border-amber-500/30 bg-amber-950/10' : 'border-slate-800 bg-slate-900/60'}`}>
+                    <label className={`block text-[9px] font-black uppercase tracking-wider ${isScholarship ? 'text-amber-400' : 'text-slate-500'}`}>{isScholarship ? 'Major objective' : `Objective ${objective.id}`}</label>
+                    <input aria-label={`Moment ${moment.id} objective ${objective.id}`} value={objective.text} onChange={(event) => updateObjective(index, objectiveIndex, { text: event.target.value })} maxLength={240} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs text-white outline-none focus:border-blue-400" placeholder={isScholarship ? 'What did the school need to see?' : 'Enter the visible objective'} />
+                    <select aria-label={`Moment ${moment.id} objective ${objective.id} result`} value={objective.result} onChange={(event) => updateObjective(index, objectiveIndex, { result: event.target.value })} className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs font-black text-white outline-none focus:border-blue-400">
+                      <option value="">Choose objective result</option>
+                      <option value={HIGH_SCHOOL_OBJECTIVE_RESULTS.PASSED}>Passed</option>
+                      <option value={HIGH_SCHOOL_OBJECTIVE_RESULTS.FAILED}>Failed</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+              {isScholarship && <p className="mt-2 text-[9px] leading-relaxed text-slate-500">Passing this challenge does not mark an official offer by itself. Verify the offer separately from the recruiting screen.</p>}
             </div>
           );
         })}

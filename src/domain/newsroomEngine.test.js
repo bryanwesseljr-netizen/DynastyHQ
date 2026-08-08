@@ -213,6 +213,39 @@ test('builds high-school coverage and podcast brief from moment outcomes and Tap
   assert.equal(issue.articles.length, 5);
   assert.equal(issue.editionType, 'high-school-evaluation');
   assert.match(issue.podcastBrief.summary, /2 successful, 1 partial, and 1 failed/i);
-  assert.match(issue.articles.find((entry) => entry.outletId === 'filmroom').paragraphs.join(' '), /four playable moments/i);
+  assert.match(issue.articles.find((entry) => entry.outletId === 'filmroom').paragraphs.join(' '), /four standard two-objective moments/i);
   assert.doesNotMatch(JSON.stringify(issue), /\d+ passing yards|\d+ rushing yards|game\.homeScore/i);
+});
+
+test('reports a one-objective Scholarship Challenge without inventing an official offer', () => {
+  const highSchoolKeys = [
+    'profile.player.name', 'profile.player.school', 'highSchool.gameNumber',
+    'highSchool.tapeScoreBefore', 'recruiting.profile.tapeScore',
+    'highSchool.recruitStarsBefore', 'recruiting.profile.recruitStars',
+    ...Array.from({ length: 4 }, (_, index) => `highSchool.moment.${index + 1}.result`),
+    'highSchool.moment.1.type', 'highSchool.moment.1.scholarshipSchool',
+    'highSchool.moment.1.objective.1.text', 'highSchool.moment.1.objective.1.result',
+  ];
+  const issue = createNewsroomIssue({
+    publicationId: 'season-1-week-2', season: 1, week: 2, careerPhase: 'Player',
+    player: { name: 'Test Player', school: 'Test High School', stars: 3 },
+    game: { stage: 'high-school', evaluation: {
+      gameNumber: 2, tapeScoreBefore: 700, tapeScoreAfter: 980,
+      recruitStarsBefore: 3, recruitStarsAfter: 3,
+      moments: [
+        { type: 'scholarship', scholarshipSchool: 'Toledo', objectives: [{ text: 'Lead a touchdown drive', result: 'passed' }] },
+        ...Array.from({ length: 3 }, () => ({ result: 'success' })),
+      ],
+    } },
+    recruiting: [{ id: 7, name: 'Toledo', offered: false }],
+    previousRecruiting: [{ id: 7, name: 'Toledo', offered: false }],
+    playerRecruiting: { highSchool: { tapeScore: 980, recruitStars: 3, rankings: {} } },
+    availableFactKeys: highSchoolKeys,
+    currentFactKeys: highSchoolKeys,
+    publishedAt: '2026-08-08T12:00:00.000Z',
+  });
+  const filmRoomCopy = issue.articles.find((entry) => entry.outletId === 'filmroom').paragraphs.join(' ');
+  assert.match(filmRoomCopy, /Scholarship Challenge for Toledo/i);
+  assert.match(filmRoomCopy, /Lead a touchdown drive.*passed/i);
+  assert.doesNotMatch(JSON.stringify(issue), /official offer|Toledo adds an offer/i);
 });

@@ -28,10 +28,13 @@ const GAME_KEYS = new Set([
 ]);
 
 const HIGH_SCHOOL_KEYS = new Set([
-  'highSchool.moment1.result', 'highSchool.moment1.objective',
-  'highSchool.moment2.result', 'highSchool.moment2.objective',
-  'highSchool.moment3.result', 'highSchool.moment3.objective',
-  'highSchool.moment4.result', 'highSchool.moment4.objective',
+  ...Array.from({ length: 4 }, (_, index) => {
+    const prefix = `highSchool.moment${index + 1}`;
+    return [
+      `${prefix}.result`, `${prefix}.type`, `${prefix}.scholarshipSchool`, `${prefix}.objective`,
+      `${prefix}.objective1`, `${prefix}.objective1Result`, `${prefix}.objective2`, `${prefix}.objective2Result`,
+    ];
+  }).flat(),
   'highSchool.teamImpact',
 ]);
 
@@ -177,6 +180,16 @@ const normalizeValue = (key, value) => {
     if (/fail|incomplete|missed?/i.test(cleaned)) return 'failed';
     return '';
   }
+  if (/^highSchool\.moment[1-4]\.type$/.test(key)) {
+    if (/scholarship|offer/i.test(cleaned)) return 'scholarship';
+    if (/standard|highlight|normal/i.test(cleaned)) return 'standard';
+    return '';
+  }
+  if (/^highSchool\.moment[1-4]\.objective[12]Result$/.test(key)) {
+    if (/pass|success|complete/i.test(cleaned)) return 'passed';
+    if (/fail|incomplete|miss/i.test(cleaned)) return 'failed';
+    return '';
+  }
   if (WEAR_KEYS.has(key)) {
     const status = cleaned.toLowerCase();
     return ['green', 'yellow', 'red'].includes(status)
@@ -261,14 +274,29 @@ export const normalizeScreenshotAnalysis = ({
     if (GAME_KEYS.has(key)) {
       gamePatch[key.slice('game.'.length)] = value;
     } else if (HIGH_SCHOOL_KEYS.has(key)) {
-      const match = key.match(/^highSchool\.moment([1-4])\.(result|objective)$/);
-      if (match) {
-        const momentIndex = Number(match[1]) - 1;
+      const objectiveMatch = key.match(/^highSchool\.moment([1-4])\.objective([12])(Result)?$/);
+      const legacyObjectiveMatch = key.match(/^highSchool\.moment([1-4])\.objective$/);
+      const momentMatch = key.match(/^highSchool\.moment([1-4])\.(result|type|scholarshipSchool)$/);
+      if (objectiveMatch || legacyObjectiveMatch) {
+        const momentNumber = Number((objectiveMatch || legacyObjectiveMatch)[1]);
+        const momentIndex = momentNumber - 1;
+        const objectiveNumber = objectiveMatch ? Number(objectiveMatch[2]) : 1;
+        const objectiveIndex = objectiveNumber - 1;
+        const field = objectiveMatch?.[3] ? 'result' : 'text';
+        const currentMoment = highSchoolEvaluationPatch.moments[momentIndex] || { id: momentNumber, objectives: [] };
+        const objectives = Array.from({ length: 2 }, (_, index) => ({
+          ...(currentMoment.objectives?.[index] || { id: index + 1 }),
+          ...(index === objectiveIndex ? { [field]: value } : {}),
+        }));
+        highSchoolEvaluationPatch.moments[momentIndex] = { ...currentMoment, objectives };
+        ledgerKey = `highSchool.moment.${momentNumber}.objective.${objectiveNumber}.${field}`;
+      } else if (momentMatch) {
+        const momentIndex = Number(momentMatch[1]) - 1;
         highSchoolEvaluationPatch.moments[momentIndex] = {
           ...(highSchoolEvaluationPatch.moments[momentIndex] || { id: momentIndex + 1 }),
-          [match[2]]: value,
+          [momentMatch[2]]: value,
         };
-        ledgerKey = `highSchool.moment.${match[1]}.${match[2]}`;
+        ledgerKey = `highSchool.moment.${momentMatch[1]}.${momentMatch[2]}`;
       } else if (key === 'highSchool.teamImpact') {
         highSchoolEvaluationPatch.teamImpact = value;
       }

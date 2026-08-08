@@ -279,10 +279,10 @@ test('publishes high school from four moment outcomes and verified Tape Score in
     gameNumber: 1, tapeScoreBefore: 0, tapeScoreAfter: 720,
     recruitStarsBefore: 3, recruitStarsAfter: 3,
     moments: [
-      { result: 'success', objective: 'Complete a pass on the run' },
-      { result: 'partial', objective: 'Complete two highlight objectives' },
-      { result: 'failed', objective: 'Protect the football' },
-      { result: 'success', objective: 'Lead the scoring drive' },
+      { objectives: [{ text: 'Complete a pass on the run', result: 'passed' }, { text: 'Gain 15 yards', result: 'passed' }] },
+      { objectives: [{ text: 'Complete the pass', result: 'passed' }, { text: 'Score a touchdown', result: 'failed' }] },
+      { objectives: [{ text: 'Protect the football', result: 'failed' }, { text: 'Convert third down', result: 'failed' }] },
+      { type: 'scholarship', scholarshipSchool: 'Toledo', objectives: [{ text: 'Lead the scoring drive', result: 'passed' }] },
     ],
   };
   const next = createPublishedWeek({ state, game: { stage: 'high-school', evaluation } });
@@ -291,7 +291,9 @@ test('publishes high school from four moment outcomes and verified Tape Score in
   assert.equal(next.playerRecruiting.highSchool.tapeScore, 720);
   assert.equal(next.playerRecruiting.highSchool.gameNumber, 1);
   assert.equal(next.factLedger.some((entry) => entry.key === 'game.passYds'), false);
-  assert.equal(next.factLedger.filter((entry) => entry.key.includes('highSchool.moment.') && entry.key.endsWith('.result')).length, 4);
+  assert.equal(next.factLedger.filter((entry) => /^highSchool\.moment\.\d\.result$/.test(entry.key)).length, 4);
+  assert.equal(next.factLedger.some((entry) => entry.key === 'highSchool.moment.4.scholarshipSchool' && entry.value === 'Toledo'), true);
+  assert.equal(next.factLedger.some((entry) => entry.key === 'highSchool.moment.1.objective.2.result' && entry.value === 'passed'), true);
   assert.equal(next.careerChronicle[0].type, 'high-school-evaluation');
   assert.equal(next.newsroomIssues[0].editionType, 'high-school-evaluation');
   assert.doesNotMatch(JSON.stringify(next.newsroomIssues[0]), /\d+ passing yards|game\.passYds/i);

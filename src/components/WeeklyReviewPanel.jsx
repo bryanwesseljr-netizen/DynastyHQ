@@ -39,6 +39,22 @@ const FactEditor = ({ entry, onChange }) => {
       </select>
     );
   }
+  if (/^highSchool\.moment\.\d\.type$/.test(entry.key)) {
+    return (
+      <select value={entry.value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-blue-400">
+        <option value="standard">Standard moment · 2 objectives</option>
+        <option value="scholarship">Scholarship Challenge · 1 major objective</option>
+      </select>
+    );
+  }
+  if (/^highSchool\.moment\.\d\.objective\.\d\.result$/.test(entry.key)) {
+    return (
+      <select value={entry.value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-blue-400">
+        <option value="passed">Passed</option>
+        <option value="failed">Failed</option>
+      </select>
+    );
+  }
   if (/^highSchool\.moment\.\d\.result$/.test(entry.key)) {
     return (
       <select value={entry.value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-blue-400">

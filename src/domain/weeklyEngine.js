@@ -536,6 +536,8 @@ export const validateScanFact = (factEntry) => {
 
   if (key === 'game.result' && !['W', 'L'].includes(String(value).toUpperCase())) return 'Choose a win or loss.';
   if (/^highSchool\.moment\.\d\.result$/.test(key) && !['success', 'partial', 'failed'].includes(String(value))) return 'Choose Successful, Partial, or Failed.';
+  if (/^highSchool\.moment\.\d\.type$/.test(key) && !['standard', 'scholarship'].includes(String(value))) return 'Choose Standard moment or Scholarship Challenge.';
+  if (/^highSchool\.moment\.\d\.objective\.\d\.result$/.test(key) && !['passed', 'failed'].includes(String(value))) return 'Choose Passed or Failed.';
   if (key.startsWith('rtg.wear.') && !['Green', 'Yellow', 'Red'].includes(value)) return 'Choose Green, Yellow, or Red.';
   if (['offer', 'schemeFit'].includes(recruitingParts?.field) && typeof value !== 'boolean') return 'Choose Yes or No.';
   return '';
@@ -559,13 +561,34 @@ const rebuildDraftPatches = (draft, facts) => {
       gamePatch[entry.key.slice('game.'.length)] = entry.value;
       return;
     }
-    const highSchoolMoment = entry.key.match(/^highSchool\.moment\.?(\d)\.(result|objective)$/)
-      || entry.key.match(/^highSchool\.moment(\d)\.(result|objective)$/);
+    const highSchoolObjective = entry.key.match(/^highSchool\.moment\.?(\d)\.objective\.?(\d)\.(text|result)$/);
+    if (highSchoolObjective) {
+      const momentIndex = Number(highSchoolObjective[1]) - 1;
+      const objectiveIndex = Number(highSchoolObjective[2]) - 1;
+      const currentMoment = highSchoolEvaluationPatch.moments[momentIndex] || { id: momentIndex + 1, objectives: [] };
+      const objectives = Array.from({ length: 2 }, (_, index) => ({
+        ...(currentMoment.objectives?.[index] || { id: index + 1 }),
+        ...(index === objectiveIndex ? { [highSchoolObjective[3]]: entry.value } : {}),
+      }));
+      highSchoolEvaluationPatch.moments[momentIndex] = { ...currentMoment, objectives };
+      return;
+    }
+    const highSchoolMoment = entry.key.match(/^highSchool\.moment\.?(\d)\.(result|type|scholarshipSchool|objective)$/)
+      || entry.key.match(/^highSchool\.moment(\d)\.(result|type|scholarshipSchool|objective)$/);
     if (highSchoolMoment) {
       const index = Number(highSchoolMoment[1]) - 1;
+      const field = highSchoolMoment[2];
+      const currentMoment = highSchoolEvaluationPatch.moments[index] || { id: index + 1 };
       highSchoolEvaluationPatch.moments[index] = {
-        ...(highSchoolEvaluationPatch.moments[index] || { id: index + 1 }),
-        [highSchoolMoment[2]]: entry.value,
+        ...currentMoment,
+        ...(field === 'objective'
+          ? {
+              objectives: Array.from({ length: 2 }, (_, objectiveIndex) => ({
+                ...(currentMoment.objectives?.[objectiveIndex] || { id: objectiveIndex + 1 }),
+                ...(objectiveIndex === 0 ? { text: entry.value } : {}),
+              })),
+            }
+          : { [field]: entry.value }),
       };
       return;
     }
@@ -772,14 +795,16 @@ export const getWeeklyCompleteness = (draft) => {
     );
   } else if (isHighSchool) {
     const momentResultKeys = Array.from({ length: 4 }, (_, index) => `highSchool.moment.${index + 1}.result`);
-    const hasFourMoments = hasEveryFact(momentResultKeys, availableKeys);
+    const normalizedEvaluationPatch = normalizeHighSchoolEvaluation(draft.highSchoolEvaluationPatch || {});
+    const hasFourMoments = hasEveryFact(momentResultKeys, availableKeys)
+      || normalizedEvaluationPatch.moments.every((moment) => Boolean(moment.result));
     const hasEvaluationSnapshot = hasEveryFact([
       'recruiting.profile.tapeScore', 'recruiting.profile.recruitStars',
     ], availableKeys);
     addCheck(
       'high-school-moments',
       'Four playable moments',
-      hasFourMoments ? 'All four moment outcomes were extracted.' : 'Review or enter Successful, Partial, or Failed for all four moments below.',
+      hasFourMoments ? 'All four moment outcomes were extracted.' : 'Review both objectives for each standard moment, or the one major objective for a Scholarship Challenge.',
       hasFourMoments ? 'complete' : 'missing',
       'required',
     );
@@ -1005,6 +1030,10 @@ export const mergeScanResult = (draft, result) => {
       moments: Array.from({ length: 4 }, (_, index) => ({
         ...(draft.highSchoolEvaluationPatch?.moments?.[index] || {}),
         ...(result.highSchoolEvaluationPatch?.moments?.[index] || {}),
+        objectives: Array.from({ length: 2 }, (_, objectiveIndex) => ({
+          ...(draft.highSchoolEvaluationPatch?.moments?.[index]?.objectives?.[objectiveIndex] || {}),
+          ...(result.highSchoolEvaluationPatch?.moments?.[index]?.objectives?.[objectiveIndex] || {}),
+        })),
       })),
     },
   };

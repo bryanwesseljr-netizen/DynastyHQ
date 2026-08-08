@@ -16,14 +16,14 @@ const FACT_KEYS = [
   'game.rushYds',
   'game.rushTD',
   'game.int',
-  'highSchool.moment1.result',
-  'highSchool.moment1.objective',
-  'highSchool.moment2.result',
-  'highSchool.moment2.objective',
-  'highSchool.moment3.result',
-  'highSchool.moment3.objective',
-  'highSchool.moment4.result',
-  'highSchool.moment4.objective',
+  ...Array.from({ length: 4 }, (_, index) => {
+    const prefix = `highSchool.moment${index + 1}`;
+    return [
+      `${prefix}.result`, `${prefix}.type`, `${prefix}.scholarshipSchool`,
+      `${prefix}.objective1`, `${prefix}.objective1Result`,
+      `${prefix}.objective2`, `${prefix}.objective2Result`,
+    ];
+  }).flat(),
   'highSchool.teamImpact',
   'rtg.gpa',
   'rtg.energy',
@@ -181,7 +181,7 @@ Rules:
 - If text is cropped, obscured, or ambiguous, omit the fact instead of guessing.
 - Use the supplied tracked player and school only to identify which row belongs to the user's career. Do not treat supplied context as screenshot evidence.
 - game.homeScore means the tracked player's TEAM score and game.awayScore means the OPPONENT score, regardless of the real venue.
-- High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. For each plainly visible numbered moment, use highSchool.moment1 through moment4. Normalize a completed/passed objective to success, partial credit to partial, and an incomplete/failed objective to failed. Preserve a concise visible objective description. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay.
+- High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. A standard moment has two objectives: use objective1/objective2 and objective1Result/objective2Result, with Passed or Failed values. Its overall moment result is success when both pass, partial when one passes, and failed when neither passes. A scholarship challenge has one major objective: set type=scholarship, preserve the plainly visible school in scholarshipSchool, use objective1/objective1Result, omit objective2 fields, and use only success or failed for the overall result. Use type=standard for a plainly identified standard moment. Never treat a passed scholarship challenge as a verified offer; recruiting.offer=true requires a separate official offer screen. Preserve concise visible objective descriptions. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay.
 - For game.result, use W or L only when a final score and the tracked team are clear.
 - For RTG recruiting facts, schoolName must exactly match a clearly visible school. For coach recruiting facts, schoolName must contain the exact visible prospect name, including a new target not yet present in the supplied entries. Use an empty schoolName for non-recruiting facts.
 - For the player's RTG recruiting profile, use recruiting.recruitStars, tapeScore, nationalRank, stateRank, positionRank, gameNumber, and topSchoolsSelected with an empty schoolName.

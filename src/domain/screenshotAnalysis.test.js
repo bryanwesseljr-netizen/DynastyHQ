@@ -78,25 +78,37 @@ test('captures the verified CFB 27 high-school recruiting profile and school ove
   assert.equal(result.facts.some((entry) => entry.key === 'recruiting.profile.tapeScore'), true);
 });
 
-test('normalizes a high-school moment screen into four objective outcomes', () => {
+test('normalizes standard and scholarship high-school moments with the correct objective counts', () => {
   const result = normalizeScreenshotAnalysis({
     sourceId: 'moments', fileName: 'moments.png', recruiting: [],
     analysis: {
       screenTypes: ['high_school_moments'], screenTitle: 'Build Your Tape', summary: 'Four moments.',
       facts: [
-        { key: 'highSchool.moment1.result', label: 'Moment 1', value: 'Passed', confidence: 0.97, evidence: 'Complete' },
-        { key: 'highSchool.moment1.objective', label: 'Objective 1', value: 'Complete a pass on the run', confidence: 0.95, evidence: 'Complete a pass on the run' },
+        { key: 'highSchool.moment1.type', label: 'Moment 1 type', value: 'Standard', confidence: 0.97, evidence: 'Highlight Moment' },
+        { key: 'highSchool.moment1.objective1', label: 'Objective 1', value: 'Complete a pass on the run', confidence: 0.95, evidence: 'Complete a pass on the run' },
+        { key: 'highSchool.moment1.objective1Result', label: 'Objective 1 result', value: 'Passed', confidence: 0.97, evidence: 'Complete' },
+        { key: 'highSchool.moment1.objective2', label: 'Objective 2', value: 'Gain 15 yards', confidence: 0.95, evidence: 'Gain 15 yards' },
+        { key: 'highSchool.moment1.objective2Result', label: 'Objective 2 result', value: 'Failed', confidence: 0.97, evidence: 'Failed' },
+        { key: 'highSchool.moment1.result', label: 'Moment 1', value: 'Partial', confidence: 0.97, evidence: '1 of 2' },
         { key: 'highSchool.moment2.result', label: 'Moment 2', value: 'Partial', confidence: 0.93, evidence: '1 of 2' },
         { key: 'highSchool.moment3.result', label: 'Moment 3', value: 'Failed', confidence: 0.96, evidence: 'Failed' },
+        { key: 'highSchool.moment4.type', label: 'Moment 4 type', value: 'Scholarship Challenge', confidence: 0.98, evidence: 'Scholarship Opportunity' },
+        { key: 'highSchool.moment4.scholarshipSchool', label: 'Evaluating school', value: 'Toledo', confidence: 0.98, evidence: 'Toledo' },
+        { key: 'highSchool.moment4.objective1', label: 'Major objective', value: 'Lead a touchdown drive', confidence: 0.96, evidence: 'Lead a touchdown drive' },
+        { key: 'highSchool.moment4.objective1Result', label: 'Major objective result', value: 'Passed', confidence: 0.96, evidence: 'Passed' },
         { key: 'highSchool.moment4.result', label: 'Moment 4', value: 'Successful', confidence: 0.96, evidence: 'Successful' },
       ],
     },
   });
   assert.deepEqual(result.source.detectedTypes, ['High-School Moments']);
-  assert.equal(result.highSchoolEvaluationPatch.moments[0].result, 'success');
+  assert.equal(result.highSchoolEvaluationPatch.moments[0].result, 'partial');
+  assert.equal(result.highSchoolEvaluationPatch.moments[0].objectives[0].result, 'passed');
+  assert.equal(result.highSchoolEvaluationPatch.moments[0].objectives[1].result, 'failed');
   assert.equal(result.highSchoolEvaluationPatch.moments[1].result, 'partial');
   assert.equal(result.highSchoolEvaluationPatch.moments[2].result, 'failed');
-  assert.equal(result.facts[0].key, 'highSchool.moment.1.result');
+  assert.equal(result.highSchoolEvaluationPatch.moments[3].type, 'scholarship');
+  assert.equal(result.highSchoolEvaluationPatch.moments[3].scholarshipSchool, 'Toledo');
+  assert.equal(result.facts[0].key, 'highSchool.moment.1.type');
 });
 
 test('preserves numeric and text RTG progression fields from a player screen', () => {

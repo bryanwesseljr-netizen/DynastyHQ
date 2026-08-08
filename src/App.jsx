@@ -521,7 +521,9 @@ const App = () => {
   const highSchoolProfile = appState.playerRecruiting?.highSchool || {};
   const highSchoolDraftStarted = highSchoolEvaluation.tapeScoreAfter !== ''
     || Boolean(highSchoolEvaluation.teamImpact)
-    || highSchoolEvaluation.moments.some((moment) => moment.result || moment.objective)
+    || highSchoolEvaluation.moments.some((moment) => moment.result
+      || moment.scholarshipSchool
+      || moment.objectives?.some((objective) => objective.text || objective.result))
     || Number(highSchoolEvaluation.recruitStarsAfter || 3) !== Number(highSchoolEvaluation.recruitStarsBefore || 3);
   const activeHighSchoolEvaluation = editingGameIndex !== null || highSchoolDraftStarted
     ? highSchoolEvaluation
@@ -674,6 +676,10 @@ const App = () => {
         moments: Array.from({ length: 4 }, (_, index) => ({
           ...(activeHighSchoolEvaluation.moments?.[index] || {}),
           ...(scanDraft.highSchoolEvaluationPatch?.moments?.[index] || {}),
+          objectives: Array.from({ length: 2 }, (_, objectiveIndex) => ({
+            ...(activeHighSchoolEvaluation.moments?.[index]?.objectives?.[objectiveIndex] || {}),
+            ...(scanDraft.highSchoolEvaluationPatch?.moments?.[index]?.objectives?.[objectiveIndex] || {}),
+          })),
         })),
         tapeScoreAfter: scanDraft.playerRecruitingPatch?.tapeScore ?? activeHighSchoolEvaluation.tapeScoreAfter,
         recruitStarsAfter: scanDraft.playerRecruitingPatch?.recruitStars ?? activeHighSchoolEvaluation.recruitStarsAfter,
@@ -3390,7 +3396,7 @@ const handleSaveGameClick = () => {
             <div className="space-y-4">
               <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
                 <p className="text-xs font-black uppercase tracking-wider text-amber-300">Tape, not a box score</p>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">High school does not publish passing, rushing, GPA, Coach Trust, NIL, or wear-and-tear fields. Each edition follows the four moment outcomes, verified Tape Score movement, star rating, rankings, Top Schools, and scholarship offers.</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">High school does not publish passing, rushing, GPA, Coach Trust, NIL, or wear-and-tear fields. Each edition follows two-objective standard moments, one-objective Scholarship Challenges, verified Tape Score movement, star rating, rankings, Top Schools, and separately verified scholarship offers.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4"><p className="text-[9px] font-black uppercase text-slate-500">Current Tape Score</p><p className="mt-1 font-mono text-xl font-black text-blue-400">{Number(appState.playerRecruiting?.highSchool?.tapeScore || 0).toLocaleString()}</p></div>

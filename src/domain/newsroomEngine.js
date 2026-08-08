@@ -1,5 +1,5 @@
 import { createCollegeOutletSet } from './collegeNewsroom.js';
-import { normalizeHighSchoolEvaluation, summarizeHighSchoolMoments } from './highSchoolEvaluation.js';
+import { HIGH_SCHOOL_MOMENT_TYPES, normalizeHighSchoolEvaluation, summarizeHighSchoolMoments } from './highSchoolEvaluation.js';
 
 const OUTLETS = [
   { id: 'bolt', name: 'The Bolt', desk: 'School Desk', theme: 'broadsheet' },
@@ -169,9 +169,19 @@ export const createHighSchoolEvaluationIssue = ({
   const ratingAfter = evaluation.recruitStarsAfter || playerRecruiting?.highSchool?.recruitStars || player?.stars || 3;
   const tapeAfter = evaluation.tapeScoreAfter;
   const outcomeText = `${summary.success} successful, ${summary.partial} partial, and ${summary.failed} failed`;
-  const objectiveDetails = evaluation.moments
-    .filter((moment) => moment.objective)
-    .map((moment) => `Moment ${moment.id} (${moment.result}): ${moment.objective}`);
+  const scholarshipChallenges = evaluation.moments.filter((moment) => moment.type === HIGH_SCHOOL_MOMENT_TYPES.SCHOLARSHIP);
+  const objectiveDetails = evaluation.moments.flatMap((moment) => {
+    const isScholarship = moment.type === HIGH_SCHOOL_MOMENT_TYPES.SCHOLARSHIP;
+    const momentLabel = isScholarship
+      ? `Moment ${moment.id} Scholarship Challenge${moment.scholarshipSchool ? ` for ${moment.scholarshipSchool}` : ''}`
+      : `Moment ${moment.id}`;
+    return moment.objectives.slice(0, isScholarship ? 1 : 2)
+      .filter((objective) => objective.text || objective.result)
+      .map((objective) => `${momentLabel}, ${isScholarship ? 'major objective' : `objective ${objective.id}`}${objective.text ? ` “${objective.text}”` : ''}: ${objective.result || 'result not entered'}`);
+  });
+  const momentFormatText = scholarshipChallenges.length
+    ? `${4 - scholarshipChallenges.length} standard two-objective moment${4 - scholarshipChallenges.length === 1 ? '' : 's'} and ${scholarshipChallenges.length} one-objective Scholarship Challenge${scholarshipChallenges.length === 1 ? '' : 's'}`
+    : 'four standard two-objective moments';
   const ratingMovement = summary.starDelta === 0
     ? `remained at ${ratingAfter} stars`
     : summary.starDelta === null
@@ -188,7 +198,7 @@ export const createHighSchoolEvaluationIssue = ({
       headline: `${playerName} completes Game ${evaluation.gameNumber} of the five-game tape evaluation`,
       dek: `Four playable moments produced ${outcomeText} outcomes; the verified Tape Score ${tapeMovement}.`,
       paragraphs: [
-        `${playerName}'s high-school recruiting journey advanced through Game ${evaluation.gameNumber}, with all four playable moments now preserved in the weekly record. The results were ${outcomeText}.`,
+        `${playerName}'s high-school recruiting journey advanced through Game ${evaluation.gameNumber}, with ${momentFormatText} preserved in the weekly record. The overall results were ${outcomeText}.`,
         objectiveDetails.length
           ? `The recorded objectives were ${objectiveDetails.join('; ')}.`
           : `The outcome of each moment is verified, while objective descriptions were left blank rather than reconstructed from memory.`,
@@ -202,7 +212,7 @@ export const createHighSchoolEvaluationIssue = ({
       headline: `${playerName}'s local recruiting profile ${ratingMovement}`,
       dek: `Dearborn's quarterback has completed ${evaluation.gameNumber} of five high-school evaluation games.`,
       paragraphs: [
-        `The local recruiting record now contains ${evaluation.gameNumber} completed evaluation game${evaluation.gameNumber === 1 ? '' : 's'} for ${playerName}. Unlike a traditional box score, this phase is measured through four objective moments and the Tape Score shown afterward.`,
+        `The local recruiting record now contains ${evaluation.gameNumber} completed evaluation game${evaluation.gameNumber === 1 ? '' : 's'} for ${playerName}. Unlike a traditional box score, this phase is measured through ${momentFormatText} and the Tape Score shown afterward.`,
         `Game ${evaluation.gameNumber} closed with ${summary.success} successful moment${summary.success === 1 ? '' : 's'}, ${summary.partial} partial result${summary.partial === 1 ? '' : 's'}, and ${summary.failed} failed moment${summary.failed === 1 ? '' : 's'}.`,
         `The Tape Score ${tapeMovement}, while the recruiting rating ${ratingMovement}. Those are the verified markers used to describe week-to-week momentum.`,
         evaluation.teamImpact
@@ -236,14 +246,14 @@ export const createHighSchoolEvaluationIssue = ({
       headline: `Tape review: ${outcomeText} moments in Game ${evaluation.gameNumber}`,
       dek: `Objective outcomes and verified Team Impact replace unsupported high-school box-score analysis.`,
       paragraphs: [
-        `The Film Room begins with four playable moments, not passing yards or touchdowns: ${outcomeText} results were recorded.`,
+        `The Film Room begins with ${momentFormatText}, not passing yards or touchdowns: ${outcomeText} overall results were recorded.`,
         objectiveDetails.length
           ? `The objective ledger allows a moment-by-moment review: ${objectiveDetails.join('; ')}.`
           : `No objective text was saved, so the review is limited to each moment's successful, partial, or failed result.`,
         evaluation.teamImpact
           ? `The additional verified Team Impact entry is ${evaluation.teamImpact}. It is presented as entered and is not assigned an invented Tape Score value.`
           : `No additional Team Impact entry was verified for this game.`,
-        `Because CFB 27 can award different amounts for objectives, partial completion, and impactful plays, the only numeric evaluation reported here is the game-displayed Tape Score: ${Number(tapeAfter || 0).toLocaleString()}.`,
+        `Standard moments resolve from two objective results, while a Scholarship Challenge uses one major pass-or-fail objective. The only numeric evaluation reported here is the game-displayed Tape Score: ${Number(tapeAfter || 0).toLocaleString()}.`,
       ],
       citedFactKeys: [...baseKeys, ...momentKeys],
     }),
@@ -253,7 +263,7 @@ export const createHighSchoolEvaluationIssue = ({
       dek: `${ratingAfter}-star rating · ${Number(tapeAfter || 0).toLocaleString()} Tape Score · ${5 - evaluation.gameNumber} evaluation game${5 - evaluation.gameNumber === 1 ? '' : 's'} remaining.`,
       paragraphs: [
         `The national snapshot after Game ${evaluation.gameNumber} lists ${playerName} at ${ratingAfter} stars with a Tape Score of ${Number(tapeAfter || 0).toLocaleString()}.`,
-        `That profile follows a four-moment performance containing ${outcomeText} outcomes. It is a recruiting evaluation record, not a traditional statistical résumé.`,
+        `That profile follows a four-moment performance containing ${outcomeText} outcomes across ${momentFormatText}. It is a recruiting evaluation record, not a traditional statistical résumé.`,
         playerRecruiting?.highSchool?.rankings?.national
           ? `The verified ranking snapshot places ${playerName} No. ${playerRecruiting.highSchool.rankings.national} nationally, No. ${playerRecruiting.highSchool.rankings.state || '—'} in the state, and No. ${playerRecruiting.highSchool.rankings.position || '—'} at the position.`
           : `No complete national, state, and position ranking snapshot was verified for this edition.`,

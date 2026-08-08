@@ -53,7 +53,7 @@ textarea {
 }
 
 #recruit-command-center {
-  margin: 12px 20px 0;
+  scroll-margin-top: 72px;
 }
 
 .dhq-dashboard-grid {
@@ -62,12 +62,12 @@ textarea {
     linear-gradient(90deg, rgba(255, 255, 255, 0.011) 1px, transparent 1px),
     #03090d;
   background-size: 44px 44px;
-  gap: 12px;
+  gap: 8px;
 }
 
 .dhq-dashboard-card {
   border: 1px solid rgba(123, 150, 165, 0.3);
-  border-radius: 7px;
+  border-radius: 6px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 30%),
     rgba(5, 14, 19, 0.96);
@@ -98,13 +98,8 @@ textarea {
     max-width: 315px;
   }
 
-  #recruit-command-center {
-    margin-right: 30px;
-    margin-left: 30px;
-  }
-
   .dhq-dashboard-grid {
-    padding: 0 30px 24px;
+    padding: 10px;
   }
 }
 

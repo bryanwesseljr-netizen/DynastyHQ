@@ -59,17 +59,16 @@ test('the app opens on the command-center homepage with one responsive top navig
   assert.doesNotMatch(appSource, /fixed inset-y-0 left-0/);
 });
 
-test('the homepage exposes every major DynastyHQ workspace without player artwork', async () => {
+test('the homepage uses the compact dashboard grid without duplicate destinations', async () => {
   const source = await readFile(commandCenterSourceUrl, 'utf8');
 
   for (const title of [
-    'Dynasty HQ Command Center',
-    'Journey overview',
     'Current Phase',
     'Season Snapshot',
-    'My Profile',
+    'Your Profile',
     'Road to Glory',
     'Career Timeline',
+    'Career Journey',
     'Newsroom',
     'Recruiting Board',
     'Quick Actions',
@@ -77,8 +76,17 @@ test('the homepage exposes every major DynastyHQ workspace without player artwor
   ]) {
     assert.match(source, new RegExp(title));
   }
-  assert.ok(source.indexOf('Quick Actions') < source.indexOf('id="recruit-command-center"'));
+  assert.ok(source.indexOf('Current Phase') < source.indexOf('Season Snapshot'));
+  assert.ok(source.indexOf('Season Snapshot') < source.indexOf('Your Profile'));
+  assert.ok(source.indexOf('Road to Glory') < source.indexOf('Career Timeline'));
+  assert.ok(source.indexOf('Career Timeline') < source.indexOf('Career Journey'));
+  assert.ok(source.indexOf('Newsroom') < source.indexOf('Recruiting Board'));
+  assert.ok(source.indexOf('Recruiting Board') < source.indexOf('Quick Actions'));
+  assert.ok(source.indexOf('Quick Actions') < source.indexOf('Recent Schedule'));
   assert.doesNotMatch(source, /Dynasty Central/);
+  assert.doesNotMatch(source, /Open Gridiron Grind|Open Gridiron Podcast/);
+  assert.match(source, /\{ label: 'Open Newsroom', tab: 'newsroom', Icon: Newspaper \}/);
+  assert.equal((source.match(/actionLabel="View newsroom"/g) || []).length, 0);
   assert.doesNotMatch(source, /View weekly agenda|View full snapshot|Career profile|View RTG career|View history/);
   assert.doesNotMatch(source, /dynastyhq-player-wessel|Wessel, number 2/);
 });

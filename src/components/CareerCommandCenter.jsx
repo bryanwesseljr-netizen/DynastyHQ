@@ -3,14 +3,10 @@ import {
   Briefcase,
   CalendarDays,
   ChevronRight,
-  ClipboardList,
   Film,
   GraduationCap,
   Headphones,
-  Map,
-  Newspaper,
   ShieldCheck,
-  Target,
   Trophy,
   UserRound,
   Users,
@@ -181,25 +177,25 @@ const CareerCommandCenter = ({
   const phaseSecondary = isCoach ? (coach.currentSchool || model.institution) : (player.school || model.institution);
   const careerTotals = model.careerTotals || {};
   const careerGames = state.gameLogs?.length || 0;
-  const quickActions = [
-    { label: 'Add Game Stats', tab: 'dataEntry', Icon: Activity },
-    { label: isCoach ? 'Update Roster' : 'Update Progress', tab: isCoach ? 'frontOffice' : 'dataEntry', Icon: UserRound },
-    { label: 'Log Recruiting', tab: 'recruiting', Icon: ClipboardList },
-    { label: 'Write in Newsroom', tab: 'newsroom', Icon: Newspaper },
-  ];
-  const centralLinks = isCoach
+  const quickActions = (model.stage === CAREER_STAGES.RETIRED
     ? [
-        { label: 'Personnel & NIL Office', description: 'Review roster, staff, and resources', tab: 'frontOffice', Icon: Users },
-        { label: 'Offseason War Room', description: 'Plan retention, portal, and needs', tab: 'offseason', Icon: ShieldCheck },
-        { label: 'Team Recruiting', description: 'Manage the current prospect board', tab: 'recruiting', Icon: Target },
-        { label: 'Legacy Goals', description: 'Review milestones and trophies', tab: 'trophies', Icon: Trophy },
+        { label: 'Open Gridiron Grind', tab: 'podcast', Icon: Headphones },
+        { label: 'Review Legacy', tab: 'trophies', Icon: Trophy },
+        { label: 'Edit Settings', tab: 'settings', Icon: UserRound, ownerOnly: true },
       ]
-    : [
-        { label: 'Weekly Agenda', description: 'Upload, review, and publish the week', tab: 'dataEntry', Icon: CalendarDays },
-        { label: 'Recruiting Board', description: 'Review schools, targets, and offers', tab: 'recruiting', Icon: Map },
-        { label: 'Legacy Trophy Case', description: 'Review awards and career achievements', tab: 'trophies', Icon: Trophy },
-        { label: 'Gridiron Grind', description: 'Hear the latest weekly episode', tab: 'podcast', Icon: Headphones },
-      ];
+    : isCoach
+      ? [
+          { label: model.primaryAction.label, tab: 'dataEntry', Icon: Activity, ownerOnly: true },
+          { label: 'Personnel & NIL', tab: 'frontOffice', Icon: Users },
+          { label: 'Offseason War Room', tab: 'offseason', Icon: ShieldCheck },
+          { label: 'Open Gridiron Grind', tab: 'podcast', Icon: Headphones },
+        ]
+      : [
+          { label: model.primaryAction.label, tab: 'dataEntry', Icon: CalendarDays, ownerOnly: true },
+          { label: 'Open Gridiron Grind', tab: 'podcast', Icon: Headphones },
+          { label: 'Review Legacy', tab: 'trophies', Icon: Trophy },
+          { label: 'Edit Settings', tab: 'settings', Icon: UserRound, ownerOnly: true },
+        ]).filter((action) => !readOnly || !action.ownerOnly);
 
   return (
     <div className="relative z-10 mx-auto max-w-[1500px] pb-10 animate-in fade-in">
@@ -219,16 +215,20 @@ const CareerCommandCenter = ({
 
           <div className="mt-7"><JourneyStrip stage={model.stage} /></div>
 
-          <div className="dhq-hero-actions mt-7 flex flex-wrap gap-3 lg:absolute lg:bottom-7 lg:right-10 lg:mt-0">
-            {!readOnly && <button type="button" onClick={() => onNavigate('dataEntry')} className="flex items-center gap-3 rounded-md bg-amber-500 px-5 py-3 text-[9px] font-black uppercase tracking-[0.08em] text-slate-950 shadow-lg shadow-amber-500/20 transition-colors hover:bg-amber-400"><CalendarDays size={15} /> {model.primaryAction.label}</button>}
-            <button type="button" onClick={() => onNavigate('recruiting')} className="flex items-center gap-3 rounded-md border border-slate-400/50 bg-slate-950/55 px-5 py-3 text-[9px] font-black uppercase tracking-[0.08em] text-white transition-colors hover:border-amber-400 hover:text-amber-300"><ClipboardList size={15} /> Open recruiting board</button>
-          </div>
-
-          <blockquote className="dhq-hero-quote mt-7 w-full max-w-[330px] self-end rounded-lg border border-white/20 bg-[#071017]/82 px-6 py-4 shadow-2xl backdrop-blur-md lg:absolute lg:mt-0 lg:w-[24%]">
-            <div className="text-3xl font-black leading-none text-slate-400">“</div>
-            <p className="-mt-1 text-[14px] font-black uppercase leading-[1.35] tracking-[0.06em] text-slate-100">{quote}</p>
-            <div className="mt-3 text-right font-[cursive] text-xl italic text-amber-400">DHQ</div>
-          </blockquote>
+          <aside className="dhq-hero-quick-actions mt-7 w-full rounded-lg border border-white/15 bg-[#071017]/88 p-4 shadow-2xl backdrop-blur-md lg:absolute lg:right-10 lg:top-7 lg:mt-0 lg:w-[360px]" aria-label="Quick Actions">
+            <div className="flex items-end justify-between gap-4 border-b border-white/[0.08] pb-3">
+              <div><div className="text-[10px] font-black uppercase tracking-[0.14em] text-white">Quick Actions</div><div className="mt-1 text-[8px] text-slate-500">Frequent tasks, one shortcut each.</div></div>
+              <div className="max-w-[125px] truncate text-right text-[8px] italic text-amber-300">“{quote}”</div>
+            </div>
+            <div className={`mt-3 grid gap-2 ${quickActions.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              {quickActions.map((action) => (
+                <button key={action.label} type="button" onClick={() => onNavigate(action.tab)} className="flex min-h-[54px] items-center gap-2 rounded border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-left text-[7px] font-black uppercase tracking-[0.05em] text-slate-300 transition-colors hover:border-amber-400/45 hover:bg-amber-500/[0.07] hover:text-white">
+                  <action.Icon size={15} className="shrink-0 text-amber-300" />
+                  <span>{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -261,11 +261,10 @@ const CareerCommandCenter = ({
               <div className="text-[8px] font-black uppercase tracking-wider text-slate-500">Latest verified result</div>
               <div className="mt-1 flex items-end justify-between gap-4"><div><div className="text-sm font-black text-white">{latestGame ? `${latestGame.result || '—'} vs ${latestGame.opponent || 'Opponent'}` : 'No result published yet'}</div><div className="mt-1 text-[9px] text-slate-500">{latestGame ? `Week ${latestGame.week || model.week}${latestGame.homeScore !== '' && latestGame.homeScore != null ? ` · ${latestGame.homeScore}-${latestGame.awayScore}` : ''}` : 'Use the Weekly Agenda to add the first update.'}</div></div><div className="text-2xl font-black text-white">{model.record.wins}-{model.record.losses}</div></div>
             </div>
-            {!readOnly && <button type="button" onClick={() => onNavigate('dataEntry')} className="relative mt-4 flex w-full items-center justify-between rounded border border-white/10 bg-white/[0.035] px-3 py-2.5 text-[8px] font-black uppercase tracking-wider text-white hover:border-white/25">View weekly agenda <ChevronRight size={13} /></button>}
           </div>
         </DashboardCard>
 
-        <DashboardCard title="Season Snapshot" actionLabel="View full snapshot" onAction={() => onNavigate('dataEntry')} className="lg:col-span-5">
+        <DashboardCard title="Season Snapshot" className="lg:col-span-5">
           <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3">
             {snapshotMetrics.slice(0, 6).map((metric) => (
               <div key={metric.label} className="flex min-h-[76px] flex-col items-center justify-center rounded border border-white/[0.06] bg-black/20 px-2 py-3 text-center">
@@ -284,7 +283,6 @@ const CareerCommandCenter = ({
               <div className="flex justify-between gap-4"><span className="font-black uppercase text-slate-500">Career record</span><span className="font-black text-white">{model.careerRecord?.wins || 0}-{model.careerRecord?.losses || 0}</span></div>
               <div className="flex justify-between gap-4"><span className="font-black uppercase text-slate-500">Career goals</span><span className="text-right text-slate-300">Build. Recruit. Win.</span></div>
             </div>
-            <button type="button" onClick={() => onNavigate('chronicle')} className="mt-4 flex w-full items-center justify-between rounded border border-white/10 bg-white/[0.035] px-3 py-2.5 text-[8px] font-black uppercase tracking-wider text-white hover:border-white/25">Career profile <ChevronRight size={13} /></button>
           </div>
         </DashboardCard>
 
@@ -298,7 +296,6 @@ const CareerCommandCenter = ({
               <div className="relative flex h-20 w-20 items-center justify-center rounded-full border-[6px] border-emerald-400/70 border-r-slate-800 text-center"><div><div className="text-2xl font-black text-white">{player.overall || '—'}</div><div className="text-[7px] font-black uppercase text-slate-500">OVR</div></div></div>
               <div className="space-y-2 text-[8px] uppercase"><div className="flex justify-between"><span className="text-slate-500">Games played</span><strong className="text-white">{careerGames}</strong></div><div className="flex justify-between"><span className="text-slate-500">Pass yards</span><strong className="text-white">{numberValue(careerTotals.passYds).toLocaleString()}</strong></div><div className="flex justify-between"><span className="text-slate-500">Rush yards</span><strong className="text-white">{numberValue(careerTotals.rushYds).toLocaleString()}</strong></div><div className="flex justify-between"><span className="text-slate-500">Total TD</span><strong className="text-white">{numberValue(careerTotals.passTD) + numberValue(careerTotals.rushTD)}</strong></div><div className="flex justify-between"><span className="text-slate-500">Recruit rank</span><strong className="tracking-wider text-amber-300">{'★'.repeat(stars)}<span className="text-slate-700">{'☆'.repeat(5 - stars)}</span></strong></div></div>
             </div>
-            <button type="button" onClick={() => onNavigate('chronicle')} className="mt-5 flex w-full items-center justify-between rounded border border-white/10 bg-white/[0.035] px-3 py-2.5 text-[8px] font-black uppercase tracking-wider text-white">View RTG career <ChevronRight size={13} /></button>
           </div>
         </DashboardCard>
 
@@ -317,34 +314,27 @@ const CareerCommandCenter = ({
           </div>
         </DashboardCard>
 
-        <DashboardCard title="Dynasty Central" actionLabel="Open hub" onAction={() => onNavigate(isCoach ? 'frontOffice' : 'dataEntry')} className="lg:col-span-3">
-          <div id="dynasty-central-snapshot" className="min-h-[210px] divide-y divide-white/[0.06] px-4 py-1">
-            {centralLinks.map((item) => (
-              <button key={item.label} type="button" onClick={() => onNavigate(item.tab)} className="group flex w-full items-center gap-3 py-2.5 text-left">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-white/10 bg-white/[0.04] text-slate-300 group-hover:text-emerald-300"><item.Icon size={15} /></span>
-                <span className="min-w-0 flex-1"><span className="block text-[9px] font-black text-white">{item.label}</span><span className="mt-0.5 block truncate text-[8px] text-slate-500">{item.description}</span></span>
-              </button>
-            ))}
-          </div>
+        <DashboardCard title="Recent Schedule" className="lg:col-span-3">
+          <div className="min-h-[190px] divide-y divide-white/[0.06] px-3 py-2">{model.recentGames.slice(0, 4).map((game) => <div key={`${game.season}-${game.week}-${game.opponent}`} className="grid grid-cols-[1fr_42px] gap-2 py-3 text-[8px]"><span className="min-w-0"><span className="block truncate font-bold text-slate-200">vs {game.opponent || `Tape Game ${game.evaluation?.gameNumber || game.week}`}</span><span className="mt-1 block text-[7px] text-slate-600">Week {game.week || '—'}</span></span><span className={`text-right font-black ${game.result === 'W' ? 'text-emerald-300' : game.result === 'L' ? 'text-red-300' : 'text-slate-400'}`}>{game.result || 'Logged'}{game.homeScore !== '' && game.homeScore != null ? <span className="mt-1 block text-[7px] text-slate-500">{game.homeScore}-{game.awayScore}</span> : null}</span></div>)}{!model.recentGames.length && <p className="py-12 text-center text-[9px] text-slate-600">No verified games yet.</p>}</div>
         </DashboardCard>
 
-        <DashboardCard title="Newsroom" actionLabel="View newsroom" onAction={() => onNavigate('newsroom')} className="lg:col-span-4">
+        <DashboardCard title="Newsroom" actionLabel="View newsroom" onAction={() => onNavigate('newsroom')} className="lg:col-span-6">
           {leadArticle ? (
             <div className="grid min-h-[190px] gap-3 p-3 sm:grid-cols-[1fr_1.15fr]">
-              <button type="button" onClick={() => onNavigate('newsroom')} className="group relative min-h-40 overflow-hidden rounded border border-white/10 bg-slate-950 text-left">
-                {newsroomImage ? <img src={newsroomImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-75 transition-transform duration-500 group-hover:scale-105" /> : <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.22),transparent_42%),linear-gradient(135deg,#18232a,#071015)]" />}
+              <div className="relative min-h-40 overflow-hidden rounded border border-white/10 bg-slate-950 text-left">
+                {newsroomImage ? <img src={newsroomImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-75" /> : <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.22),transparent_42%),linear-gradient(135deg,#18232a,#071015)]" />}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                 <div className="relative flex h-full min-h-40 flex-col justify-end p-3"><div className="text-[7px] font-black uppercase tracking-wider text-emerald-300">{leadArticle.outletName || 'DynastyHQ Newsroom'}</div><div className="mt-1 text-[11px] font-black leading-tight text-white">{leadArticle.headline}</div><div className="mt-1 text-[7px] text-slate-400">Season {latestIssue.season || model.season} · Week {latestIssue.week || model.week}</div></div>
-              </button>
+              </div>
               <div className="divide-y divide-white/[0.06]">
-                {supportingHeadlines.map((article) => <button key={article.id} type="button" onClick={() => onNavigate('newsroom')} className="block w-full py-3 text-left"><div className="text-[9px] font-black leading-snug text-slate-200 hover:text-emerald-300">{article.headline}</div><div className="mt-1 text-[7px] text-slate-600">{article.outletName || article.desk || 'Latest edition'}</div></button>)}
+                {supportingHeadlines.map((article) => <div key={article.id} className="py-3 text-left"><div className="text-[9px] font-black leading-snug text-slate-200">{article.headline}</div><div className="mt-1 text-[7px] text-slate-600">{article.outletName || article.desk || 'Latest edition'}</div></div>)}
                 {!supportingHeadlines.length && <EmptyBrief>This verified edition is ready to read.</EmptyBrief>}
               </div>
             </div>
           ) : <EmptyBrief>No edition published yet. Your first verified week will create the lead story and recent headlines.</EmptyBrief>}
         </DashboardCard>
 
-        <DashboardCard title="Recruiting Board" actionLabel="View board" onAction={() => onNavigate('recruiting')} className="lg:col-span-4">
+        <DashboardCard title="Recruiting Board" actionLabel="View board" onAction={() => onNavigate('recruiting')} className="lg:col-span-6">
           {targetSchools.length ? (
             <div className="min-h-[190px] p-3">
               <div className="grid grid-cols-[28px_minmax(0,1fr)_72px_100px_55px] gap-2 border-b border-white/[0.07] pb-2 text-[6px] font-black uppercase tracking-wider text-slate-600"><span>Rank</span><span>Target</span><span>Pos</span><span>Status</span><span>Interest</span></div>
@@ -354,14 +344,6 @@ const CareerCommandCenter = ({
               })}
             </div>
           ) : <EmptyBrief>No verified targets are on the board yet. Open Recruiting to add the first school or prospect.</EmptyBrief>}
-        </DashboardCard>
-
-        <DashboardCard title="Quick Actions" className="lg:col-span-2">
-          <div className="grid min-h-[190px] grid-cols-2 gap-2 p-3">{quickActions.map((action) => <button key={action.label} type="button" disabled={readOnly && action.tab === 'dataEntry'} onClick={() => onNavigate(action.tab)} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded border border-white/[0.06] bg-white/[0.025] p-2 text-center text-[7px] font-bold text-slate-300 hover:border-amber-400/40 hover:text-white disabled:opacity-40"><action.Icon size={17} /><span>{action.label}</span></button>)}</div>
-        </DashboardCard>
-
-        <DashboardCard title="Recent Schedule" actionLabel="View history" onAction={() => onNavigate('chronicle')} className="lg:col-span-2">
-          <div className="min-h-[190px] divide-y divide-white/[0.06] px-3 py-2">{model.recentGames.slice(0, 4).map((game) => <div key={`${game.season}-${game.week}-${game.opponent}`} className="grid grid-cols-[1fr_42px] gap-2 py-3 text-[8px]"><span className="min-w-0"><span className="block truncate font-bold text-slate-200">vs {game.opponent || `Tape Game ${game.evaluation?.gameNumber || game.week}`}</span><span className="mt-1 block text-[7px] text-slate-600">Week {game.week || '—'}</span></span><span className={`text-right font-black ${game.result === 'W' ? 'text-emerald-300' : game.result === 'L' ? 'text-red-300' : 'text-slate-400'}`}>{game.result || 'Logged'}{game.homeScore !== '' && game.homeScore != null ? <span className="mt-1 block text-[7px] text-slate-500">{game.homeScore}-{game.awayScore}</span> : null}</span></div>)}{!model.recentGames.length && <p className="py-12 text-center text-[9px] text-slate-600">No verified games yet.</p>}</div>
         </DashboardCard>
 
         <details className="dhq-dashboard-card group lg:col-span-12">

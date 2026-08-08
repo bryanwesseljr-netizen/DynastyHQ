@@ -1901,16 +1901,8 @@ const handleSaveGameClick = () => {
 
   // --- RENDERERS ---
   const renderNav = () => {
-    const commandCenterLabel = careerStage === CAREER_STAGES.HIGH_SCHOOL
-      ? 'Recruit Command Center'
-      : (careerStage === CAREER_STAGES.COLLEGE
-        ? 'Player Command Center'
-        : (careerStage === CAREER_STAGES.OC
-          ? 'Coordinator Office'
-          : (careerStage === CAREER_STAGES.HC ? 'Program Center' : 'Legacy Center')));
     const navItems = [
       { id: 'dashboard', icon: Home, label: 'Dashboard' },
-      { id: 'commandCenter', icon: Activity, label: commandCenterLabel },
       ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office' }] : []),
       ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room' }] : []),
       { id: 'recruiting', icon: Map, label: 'Recruiting Board' },
@@ -1922,7 +1914,7 @@ const handleSaveGameClick = () => {
       ...(!isReadOnly ? [{ id: 'settings', icon: Settings, label: 'Settings' }] : []),
       ...(!isReadOnly ? [{ id: 'rules', icon: FileText, label: 'Career Handbook' }] : []),
     ];
-    const desktopNavItems = navItems.filter((item) => !['frontOffice', 'offseason', 'rules'].includes(item.id));
+    const desktopNavItems = navItems.filter((item) => !['frontOffice', 'offseason', 'settings', 'rules'].includes(item.id));
     const player = appState.player;
     const saveLabel = saveStatus.state === 'saving'
       ? 'Saving…'
@@ -1935,8 +1927,6 @@ const handleSaveGameClick = () => {
     const openNavItem = (item) => {
       if (item.id === 'rules') {
         setIsHouseRulesModalOpen(true);
-      } else if (item.id === 'commandCenter') {
-        setActiveTab('dashboard');
       } else {
         if (item.id === 'newsroom') setNewsroomFocusId('');
         if (item.id === 'podcast') setPodcastFocusId('');
@@ -1947,7 +1937,7 @@ const handleSaveGameClick = () => {
 
     return (
       <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
-        <div className="mx-auto flex h-[56px] max-w-[1660px] items-stretch px-3 sm:px-5">
+        <div className="flex h-[56px] w-full items-stretch px-3 sm:px-5">
           <button type="button" onClick={() => openNavItem({ id: 'dashboard' })} className="flex shrink-0 items-center gap-2.5 pr-5 text-left" aria-label="Open Dynasty HQ dashboard">
             <span className="flex h-8 w-7 items-center justify-center border border-amber-400 bg-amber-500/10 text-amber-400 [clip-path:polygon(50%_0,94%_20%,88%_78%,50%_100%,12%_78%,6%_20%)]">
               <Trophy size={14} />
@@ -1955,9 +1945,13 @@ const handleSaveGameClick = () => {
             <span className="whitespace-nowrap text-[18px] font-black uppercase tracking-[0.08em] text-slate-100">Dynasty <span className="text-amber-400">HQ</span></span>
           </button>
 
-          <nav className="hidden min-w-0 flex-1 items-stretch justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[1120px]:flex" aria-label="Primary navigation">
+          <nav
+            className="hidden min-w-0 flex-1 items-stretch min-[1120px]:grid"
+            style={{ gridTemplateColumns: `repeat(${desktopNavItems.length}, minmax(0, 1fr))` }}
+            aria-label="Primary navigation"
+          >
             {desktopNavItems.map((item) => {
-              const selected = activeTab === item.id || (item.id === 'commandCenter' && activeTab === 'dashboard');
+              const selected = activeTab === item.id;
               return (
                 <button
                   key={item.id}
@@ -1965,9 +1959,9 @@ const handleSaveGameClick = () => {
                   title={item.label}
                   aria-current={selected ? 'page' : undefined}
                   onClick={() => openNavItem(item)}
-                  className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap px-3 font-black uppercase tracking-[0.055em] transition-colors xl:px-4 ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
+                  className={`dhq-primary-nav-item relative flex min-w-0 items-center justify-center whitespace-nowrap px-1 font-black uppercase tracking-[0.04em] transition-colors xl:px-2 ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <span>{item.id === 'podcast' ? 'Podcast' : item.label}</span>
+                  <span>{item.label}</span>
                   {selected ? <span className="absolute inset-x-2 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" /> : null}
                 </button>
               );
@@ -1983,7 +1977,7 @@ const handleSaveGameClick = () => {
             ) : null}
             <button type="button" onClick={() => openNavItem({ id: isReadOnly ? 'dashboard' : 'settings' })} className="hidden items-center gap-2 text-left min-[1120px]:flex" aria-label={isReadOnly ? 'Dynasty HQ profile' : 'Open Dynasty HQ settings'}>
               <span className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-[10px] font-black text-amber-300">{player.number || (player.name?.[0] || 'D')}</span>
-              <span className="max-w-36">
+              <span className="hidden max-w-36 2xl:block">
                 <span className="block truncate text-[8px] font-black uppercase tracking-[0.08em] text-white">Build. Recruit. Win.</span>
                 <span className="block truncate text-[7px] font-bold text-slate-500">{player.name || 'Your legacy starts now.'}</span>
               </span>

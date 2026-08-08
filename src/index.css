@@ -16,7 +16,7 @@ button,
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 
 * {
@@ -25,7 +25,7 @@ textarea {
 }
 
 .dhq-primary-nav-item {
-  font-size: 7.5px;
+  font-size: clamp(6.5px, 0.56vw, 8.5px);
 }
 
 .dhq-command-title {
@@ -100,12 +100,6 @@ textarea {
 
   .dhq-dashboard-grid {
     padding: 0 30px 24px;
-  }
-}
-
-@media (min-width: 1380px) {
-  .dhq-primary-nav-item {
-    font-size: 8.5px;
   }
 }
 

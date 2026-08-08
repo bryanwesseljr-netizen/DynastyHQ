@@ -33,11 +33,11 @@ textarea {
 
 .dhq-command-title {
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
-  font-size: clamp(2.75rem, 4.4vw, 4.25rem);
+  font-size: clamp(2.45rem, 3.55vw, 3.7rem);
   font-stretch: condensed;
   font-weight: 900;
-  letter-spacing: 0.012em;
-  line-height: 0.9;
+  letter-spacing: 0.008em;
+  line-height: 0.88;
 }
 
 .dhq-command-title > span {
@@ -48,8 +48,15 @@ textarea {
   white-space: nowrap;
 }
 
+/* Compact command-center masthead. The dashboard should read first as an
+   information hub, not as a full-screen landing hero. */
 .dhq-command-hero {
-  min-height: 510px;
+  min-height: 300px;
+}
+
+/* Remove the decorative WESSEL player cutout from the command-center header. */
+.dhq-command-hero > img[alt*="Wessel"] {
+  display: none !important;
 }
 
 .dhq-dashboard-grid {
@@ -70,9 +77,75 @@ textarea {
   backdrop-filter: blur(12px);
 }
 
+@media (min-width: 1024px) {
+  .dhq-command-hero > div:last-child {
+    min-height: 300px !important;
+    padding-top: 26px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:first-child {
+    width: 61% !important;
+    max-width: 700px !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:first-child > div:first-child {
+    color: #fbbf24 !important;
+    font-size: 9px !important;
+    letter-spacing: 0.22em !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:first-child p {
+    max-width: 475px !important;
+    margin-top: 10px !important;
+    font-size: 10.5px !important;
+    line-height: 1.55 !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:nth-of-type(2) {
+    margin-top: 17px !important;
+  }
+
+  /* The timeline itself already communicates where the career is headed. */
+  .dhq-command-hero > div:last-child > button {
+    display: none !important;
+  }
+
+  .dhq-command-hero blockquote {
+    top: 47px !important;
+    right: 40px !important;
+    width: 285px !important;
+    max-width: 285px !important;
+    padding: 14px 18px !important;
+    border-color: rgba(148, 163, 184, 0.28) !important;
+    background: rgba(5, 14, 20, 0.84) !important;
+  }
+
+  .dhq-command-hero blockquote > div:first-child {
+    font-size: 1.8rem !important;
+  }
+
+  .dhq-command-hero blockquote p {
+    font-size: 12.5px !important;
+    line-height: 1.25 !important;
+  }
+
+  .dhq-command-hero blockquote > div:last-child {
+    margin-top: 8px !important;
+    padding-top: 7px !important;
+    font-size: 1.2rem !important;
+    color: #f59e0b !important;
+  }
+}
+
 @media (min-width: 1380px) {
   .dhq-primary-nav-item {
     font-size: 8.5px;
+  }
+
+  .dhq-command-hero,
+  .dhq-command-hero > div:last-child {
+    min-height: 285px !important;
   }
 }
 
@@ -84,7 +157,7 @@ textarea {
 
 @media (max-width: 1023px) {
   .dhq-command-hero {
-    min-height: 650px;
+    min-height: 520px;
   }
 }
 

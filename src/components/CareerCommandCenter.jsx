@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { buildCommandCenter, CAREER_STAGES } from '../domain/commandCenter';
 import { formatRtgDelta, formatRtgValue } from '../domain/rtgProgress';
+import wesselPlayerHero from '../assets/dynastyhq-player-wessel-2.png';
 import CareerTransitionPanel from './CareerTransitionPanel';
 
 const panelIcons = {
@@ -315,45 +316,48 @@ const CareerCommandCenter = ({
 
   return (
     <div className="relative z-10 mx-auto max-w-[1540px] space-y-3 pb-20 animate-in fade-in">
-      <section className="relative min-h-[440px] overflow-hidden rounded-lg border border-slate-700/70 bg-[#06111a] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+      <section className="relative min-h-[480px] overflow-hidden rounded-lg border border-slate-700/70 bg-[#06111a] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
         <img src={heroBackground} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-55" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,8,13,.98)_0%,rgba(2,8,13,.76)_38%,rgba(2,8,13,.26)_64%,rgba(2,8,13,.88)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(3,10,16,.98)_0%,transparent_55%,rgba(3,10,16,.28)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,8,13,.98)_0%,rgba(2,8,13,.72)_35%,rgba(2,8,13,.14)_53%,rgba(2,8,13,.75)_76%,rgba(2,8,13,.94)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(3,10,16,.99)_0%,rgba(3,10,16,.52)_22%,transparent_64%,rgba(3,10,16,.2)_100%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.04)_1px,transparent_1px)] [background-size:42px_42px]" />
-        {player.headshot && <img src={player.headshot} alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 left-[48%] hidden max-h-[92%] max-w-[38%] -translate-x-1/2 object-contain opacity-70 drop-shadow-[0_22px_30px_rgba(0,0,0,.8)] [mask-image:linear-gradient(to_bottom,black_70%,transparent_100%)] lg:block" />}
+        <div className="pointer-events-none absolute inset-x-[34%] bottom-0 top-[8%] hidden bg-[radial-gradient(ellipse_at_center,rgba(148,163,184,.22),transparent_65%)] lg:block" />
+        <img src={wesselPlayerHero} alt="Wessel, number 2, facing the stadium field" className="pointer-events-none absolute bottom-0 left-1/2 z-[1] hidden h-[96%] max-w-[46%] -translate-x-1/2 object-contain object-bottom drop-shadow-[0_28px_32px_rgba(0,0,0,.92)] lg:block" />
 
-        <div className="relative flex min-h-[440px] flex-col justify-between p-5 sm:p-8 lg:p-10">
+        <div className="relative z-[2] flex min-h-[480px] flex-col justify-between p-5 sm:p-8 lg:p-10">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(290px,.7fr)]">
-            <div className="max-w-[650px]">
+            <div className="max-w-[610px]">
               <div className="text-[10px] font-black uppercase tracking-[0.36em] text-amber-400">Welcome to your</div>
-              <h2 className="mt-3 font-[Impact,Haettenschweiler,'Arial_Narrow_Bold',sans-serif] text-5xl uppercase leading-[0.9] tracking-[0.025em] text-white drop-shadow-[0_5px_14px_rgba(0,0,0,.9)] sm:text-6xl lg:text-7xl">
+              <h2 className="mt-3 font-[Impact,Haettenschweiler,'Arial_Narrow_Bold',sans-serif] text-5xl uppercase leading-[0.88] tracking-[0.025em] text-white drop-shadow-[0_5px_14px_rgba(0,0,0,.9)] sm:text-6xl lg:text-[4.6rem]">
                 Dynasty HQ<br />Command Center
               </h2>
               <p className="mt-5 max-w-lg text-sm font-medium leading-relaxed text-slate-300">Track every step of your legacy—from high-school recruit to college player, from coordinator to head coach.</p>
               <p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Season {model.season} · Week {model.week} · {model.institution}</p>
             </div>
 
-            <div className="flex flex-col justify-center gap-4 lg:items-end">
+            <div className="flex flex-col justify-start gap-4 lg:items-end">
               <blockquote className="w-full max-w-sm rounded-md border border-slate-500/60 bg-[#06111a]/80 p-5 shadow-2xl backdrop-blur-md">
                 <div className="text-4xl font-black leading-none text-slate-500">“</div>
                 <p className="-mt-2 text-lg font-black uppercase leading-snug tracking-[0.08em] text-slate-200">{quote}</p>
                 <div className="mt-4 h-px w-24 bg-amber-400" />
                 <div className="mt-2 text-right text-xl font-black italic text-amber-400">DHQ</div>
               </blockquote>
-              {!readOnly && (
-                <div className="flex w-full max-w-sm gap-2">
-                  <button type="button" onClick={() => onNavigate(model.primaryAction.tab)} className="flex flex-1 items-center justify-center gap-2 rounded bg-amber-500 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-[0_8px_30px_rgba(245,158,11,.28)] hover:bg-amber-400">
-                    <CalendarDays size={15} /> {model.primaryAction.label}
-                  </button>
-                  <button type="button" onClick={() => onNavigate(model.secondaryAction.tab)} className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-500 bg-slate-950/70 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-white hover:border-amber-400/70">
-                    <Target size={15} /> {model.secondaryAction.label}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          <JourneyStrip stage={model.stage} />
+          <div className="mt-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="w-full lg:max-w-[58%]"><JourneyStrip stage={model.stage} /></div>
+            {!readOnly && (
+              <div className="flex w-full gap-2 lg:max-w-sm">
+                <button type="button" onClick={() => onNavigate(model.primaryAction.tab)} className="flex flex-1 items-center justify-center gap-2 rounded bg-amber-500 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-[0_8px_30px_rgba(245,158,11,.28)] hover:bg-amber-400">
+                  <CalendarDays size={15} /> {model.primaryAction.label}
+                </button>
+                <button type="button" onClick={() => onNavigate(model.secondaryAction.tab)} className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-500 bg-slate-950/70 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-white hover:border-amber-400/70">
+                  <Target size={15} /> {model.secondaryAction.label}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

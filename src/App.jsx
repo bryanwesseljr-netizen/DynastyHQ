@@ -1964,7 +1964,7 @@ const handleSaveGameClick = () => {
             <span className="hidden text-xl font-black uppercase tracking-[0.08em] text-white sm:block">Dynasty <span className="text-amber-400">HQ</span></span>
           </button>
 
-          <nav className="hidden min-w-0 flex-1 items-stretch xl:flex" aria-label="Primary navigation">
+          <nav className="hidden min-w-0 flex-1 items-stretch justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:flex" aria-label="Primary navigation">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -1972,9 +1972,9 @@ const handleSaveGameClick = () => {
                 title={item.label}
                 aria-current={activeTab === item.id && item.id !== 'rules' ? 'page' : undefined}
                 onClick={() => openNavItem(item)}
-                className={`relative flex min-w-0 flex-1 items-center justify-center px-2 text-[9px] font-black uppercase tracking-[0.12em] transition-colors 2xl:px-3 2xl:text-[10px] ${activeTab === item.id && item.id !== 'rules' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
+                className={`relative flex shrink-0 items-center justify-center whitespace-nowrap px-2.5 text-[8px] font-black uppercase tracking-[0.08em] transition-colors 2xl:px-3 2xl:text-[9px] ${activeTab === item.id && item.id !== 'rules' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
               >
-                <span className="truncate">{item.shortLabel || item.label}</span>
+                <span>{item.label}</span>
                 {activeTab === item.id && item.id !== 'rules' && <span className="absolute inset-x-2 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.75)]" />}
               </button>
             ))}
@@ -1987,7 +1987,7 @@ const handleSaveGameClick = () => {
                 <button type="button" onClick={() => handlePublishToPublic()} aria-label="Get share link" title="Get share link" className="hidden h-9 w-9 items-center justify-center rounded border border-slate-700 bg-slate-900 text-slate-400 hover:border-amber-400/50 hover:text-white sm:flex"><Share2 size={15} /></button>
               </>
             )}
-            <div className="hidden items-center gap-3 lg:flex">
+            <div className="hidden items-center gap-3 min-[1740px]:flex">
               <span className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-500/40 bg-slate-900 text-xs font-black text-amber-400">{player.number || (player.name?.[0] || 'D')}</span>
               <div className="max-w-36">
                 <div className="truncate text-[10px] font-black uppercase tracking-wider text-white">{isCoach ? `Coach ${player.name.split(' ')[1] || player.name}` : (player.name || 'Dynasty Builder')}</div>
@@ -2006,7 +2006,7 @@ const handleSaveGameClick = () => {
                 const Icon = item.icon;
                 return (
                   <button key={item.id} type="button" onClick={() => openNavItem(item)} className={`flex items-center gap-2 rounded border px-3 py-3 text-left text-[10px] font-black uppercase tracking-wider ${activeTab === item.id && item.id !== 'rules' ? 'border-amber-400 bg-amber-500 text-slate-950' : 'border-slate-800 bg-slate-950/70 text-slate-300'}`}>
-                    <Icon size={15} /> <span>{item.shortLabel || item.label}</span>
+                    <Icon size={15} /> <span>{item.label}</span>
                   </button>
                 );
               })}

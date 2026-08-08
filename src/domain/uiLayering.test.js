@@ -5,7 +5,6 @@ import test from 'node:test';
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const newsroomSourceUrl = new URL('../components/GroundedNewsroom.jsx', import.meta.url);
 const newsroomEmptyStateSourceUrl = new URL('../components/NewsroomEmptyState.jsx', import.meta.url);
-const commandCenterSourceUrl = new URL('../components/CareerCommandCenter.jsx', import.meta.url);
 
 test('the fixed workspace background cannot intercept newsroom article clicks', async () => {
   const [appSource, newsroomSource] = await Promise.all([
@@ -38,45 +37,8 @@ test('the newsroom keeps podcast controls in the dedicated Gridiron Grind worksp
 
   assert.doesNotMatch(appSource, /setNewsTheme\('podcast'\)/);
   assert.doesNotMatch(newsroomSource, /Podcast Brief|Open Podcast Studio|openStory\('podcast'\)/);
-  assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Podcast', shortLabel: 'Podcast' \}/);
+  assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' \}/);
   assert.match(appSource, /activeTab === 'podcast'/);
-});
-
-test('the app opens on the command-center homepage and uses one top navigation shell', async () => {
-  const appSource = await readFile(appSourceUrl, 'utf8');
-
-  assert.match(appSource, /useState\(frontPageParam \? 'newsroom' : 'dashboard'\)/);
-  assert.match(appSource, /<header className="fixed inset-x-0 top-0/);
-  assert.match(appSource, /aria-label="Primary navigation"/);
-  assert.match(appSource, /<span>\{item\.label\}<\/span>/);
-  assert.match(appSource, /shortLabel: 'Weekly Agenda'/);
-  assert.match(appSource, /shortLabel: 'Handbook'/);
-  assert.doesNotMatch(appSource, /fixed inset-y-0 left-0/);
-});
-
-test('the homepage summarizes every major DynastyHQ workspace', async () => {
-  const source = await readFile(commandCenterSourceUrl, 'utf8');
-
-  for (const title of [
-    'Journey overview',
-    'Current Phase',
-    'Season Snapshot',
-    'My Profile',
-    'Road to Glory',
-    'Career Timeline',
-    'Journey Central',
-    'Dynasty Central',
-    'Newsroom',
-    'Recruiting Board',
-    'Gridiron Grind',
-    'Quick Actions',
-    'Recent Schedule',
-    'Legacy Goals',
-  ]) {
-    assert.match(source, new RegExp(title));
-  }
-  assert.match(source, /dynastyhq-player-wessel-2-transparent\.png/);
-  assert.match(source, /alt="Wessel, number 2, facing the stadium field"/);
 });
 
 test('schema v12 keeps an unpublished newsroom factual and empty', async () => {

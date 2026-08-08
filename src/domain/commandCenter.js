@@ -82,8 +82,7 @@ const gameTotals = (games = []) => games.reduce((totals, game) => ({
   rushTD: totals.rushTD + numberOrZero(game.rushTD),
   interceptions: totals.interceptions + numberOrZero(game.int),
   points: totals.points + numberOrZero(game.homeScore),
-  pointsAgainst: totals.pointsAgainst + numberOrZero(game.awayScore),
-}), { passYds: 0, passTD: 0, rushYds: 0, rushTD: 0, interceptions: 0, points: 0, pointsAgainst: 0 });
+}), { passYds: 0, passTD: 0, rushYds: 0, rushTD: 0, interceptions: 0, points: 0 });
 
 const recordFor = (games = []) => ({
   wins: games.filter((game) => game.result === 'W').length,
@@ -345,10 +344,6 @@ export const buildCommandCenter = (state = {}) => {
     season: numberOrZero(state.currentSeason) || 1,
     week: numberOrZero(state.currentWeek) || 1,
     record: seasonRecord,
-    careerRecord,
-    totals,
-    careerTotals,
-    seasonGames: [...seasonGames].sort((left, right) => numberOrZero(right.week) - numberOrZero(left.week)),
     metrics,
     panels,
     advice: createAdvisor({ state, stage, seasonGames, totals, offers, topSchool, rtgProgress }),

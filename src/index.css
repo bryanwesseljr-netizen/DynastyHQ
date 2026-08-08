@@ -28,52 +28,37 @@ textarea {
 }
 
 .dhq-primary-nav-item {
-  font-size: 8px;
+  font-size: 8.5px;
 }
 
-/* Homepage masthead typography mirrors the supplied Dynasty HQ mockup. */
+/* Homepage masthead: the supplied command-center mockup is the visual source. */
 .dhq-command-title {
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
-  font-size: clamp(2.65rem, 3.95vw, 4.2rem);
+  font-size: clamp(3rem, 4.25vw, 4.65rem);
   font-stretch: condensed;
   font-weight: 900;
-  letter-spacing: 0.01em;
-  line-height: 0.86;
+  letter-spacing: 0.005em;
+  line-height: 0.88;
 }
 
 .dhq-command-title > span {
   display: block;
-  width: 118%;
-  transform: scaleX(0.8);
+  width: 124%;
+  transform: scaleX(0.78);
   transform-origin: left center;
   white-space: nowrap;
-  font-size: 0;
-}
-
-.dhq-command-title > span:first-child::before {
-  content: "DYNASTY HQ";
-  font-size: clamp(2.65rem, 3.95vw, 4.2rem);
-}
-
-.dhq-command-title > span:last-child::before {
-  content: "COMMAND CENTER";
-  font-size: clamp(2.65rem, 3.95vw, 4.2rem);
 }
 
 .dhq-command-hero {
-  min-height: 315px;
+  min-height: 600px;
 }
 
-/* Keep the design direction requested after the mockup: stadium atmosphere,
-   but no oversized football-player cutout occupying the center of the hero. */
-.dhq-command-hero > img[alt*="Wessel"] {
-  display: none !important;
+.dhq-command-hero-inner {
+  min-height: 600px;
 }
 
-/* The transition workflow remains available elsewhere, but the homepage should
-   flow directly from the command-center masthead into the snapshot dashboard. */
 #recruit-command-center {
-  display: none !important;
+  margin: 12px 20px 0;
 }
 
 .dhq-dashboard-grid {
@@ -82,191 +67,89 @@ textarea {
     linear-gradient(90deg, rgba(255, 255, 255, 0.011) 1px, transparent 1px),
     #03090d;
   background-size: 44px 44px;
-  gap: 8px !important;
+  gap: 12px;
 }
 
 .dhq-dashboard-card {
   border: 1px solid rgba(123, 150, 165, 0.26);
-  border-radius: 5px;
+  border-radius: 7px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 30%),
     rgba(5, 14, 19, 0.96);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(9px);
-}
-
-.dhq-dashboard-card > div:first-child {
-  min-height: 34px !important;
-  padding: 9px 14px !important;
-}
-
-.dhq-dashboard-card > div:last-child {
-  min-height: 0 !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
 }
 
 .dhq-dashboard-card h3 {
   font-family: "Arial Narrow", Impact, sans-serif;
-  font-size: 9px !important;
-  letter-spacing: 0.13em !important;
+  letter-spacing: 0.13em;
 }
 
 @media (min-width: 1024px) {
-  .dhq-command-hero {
-    min-height: 315px !important;
+  .dhq-command-hero,
+  .dhq-command-hero-inner {
+    min-height: 425px;
   }
 
-  .dhq-command-hero > div:last-child {
-    min-height: 315px !important;
-    padding-top: 28px !important;
-    padding-bottom: 18px !important;
+  .dhq-command-hero-inner {
+    padding-top: 46px;
+    padding-bottom: 28px;
   }
 
-  .dhq-command-hero > div:last-child > div:first-child {
-    width: 59% !important;
-    max-width: 690px !important;
+  .dhq-hero-copy {
+    max-width: 620px;
   }
 
-  .dhq-command-hero > div:last-child > div:first-child > div:first-child {
-    color: #f6a800 !important;
-    font-size: 9px !important;
-    letter-spacing: 0.25em !important;
+  .dhq-hero-player {
+    bottom: -135%;
+    left: 63%;
+    height: 235%;
+    transform: translateX(-50%);
   }
 
-  .dhq-command-hero > div:last-child > div:first-child p {
-    max-width: 360px !important;
-    margin-top: 8px !important;
-    font-size: 10px !important;
-    line-height: 1.45 !important;
-    color: rgba(226, 232, 240, 0.76) !important;
+  .dhq-hero-quote {
+    top: 126px;
+    right: 40px;
+    width: 250px;
+    max-width: 250px;
   }
 
-  .dhq-command-hero > div:last-child > div:nth-of-type(2) {
-    margin-top: 13px !important;
-    max-width: 500px !important;
-  }
-
-  /* Mockup journey strip is small and understated. */
-  .dhq-command-hero > div:last-child > div:nth-of-type(2) > div > div:first-child {
-    margin-bottom: 6px !important;
-    font-size: 6.5px !important;
-  }
-
-  .dhq-command-hero > div:last-child > button {
-    display: none !important;
-  }
-
-  .dhq-command-hero blockquote {
-    top: 48px !important;
-    right: 42px !important;
-    width: 270px !important;
-    max-width: 270px !important;
-    padding: 14px 17px !important;
-    border-radius: 5px !important;
-    border-color: rgba(123, 150, 165, 0.36) !important;
-    background: rgba(4, 13, 19, 0.88) !important;
-    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35) !important;
-  }
-
-  .dhq-command-hero blockquote > div:first-child {
-    font-size: 1.55rem !important;
-    color: rgba(203, 213, 225, 0.7) !important;
-  }
-
-  .dhq-command-hero blockquote p {
-    font-family: "Arial Narrow", Impact, sans-serif;
-    font-size: 12px !important;
-    line-height: 1.22 !important;
-    letter-spacing: 0.08em !important;
-  }
-
-  .dhq-command-hero blockquote > div:last-child {
-    margin-top: 8px !important;
-    padding-top: 6px !important;
-    font-size: 1.15rem !important;
-    color: #f6a800 !important;
+  #recruit-command-center {
+    margin-right: 30px;
+    margin-left: 30px;
   }
 
   .dhq-dashboard-grid {
-    padding: 8px 30px 22px !important;
-  }
-
-  /* Pull the existing data cards toward the compact dimensions in the mockup. */
-  .dhq-dashboard-card > div:last-child {
-    padding-top: 13px !important;
-    padding-bottom: 13px !important;
-  }
-
-  .dhq-dashboard-card .text-xl {
-    font-size: 1rem !important;
-    line-height: 1.05 !important;
-  }
-
-  .dhq-dashboard-card .text-2xl {
-    font-size: 1.25rem !important;
-  }
-
-  .dhq-dashboard-card .text-4xl {
-    font-size: 2rem !important;
-  }
-
-  .dhq-dashboard-card .text-6xl {
-    font-size: 3rem !important;
-  }
-
-  .dhq-dashboard-card .min-h-\[270px\],
-  .dhq-dashboard-card .min-h-\[260px\] {
-    min-height: 205px !important;
-  }
-
-  .dhq-dashboard-card .min-h-\[94px\] {
-    min-height: 70px !important;
-  }
-
-  .dhq-dashboard-card .p-5 {
-    padding: 14px !important;
-  }
-
-  .dhq-dashboard-card .p-4 {
-    padding: 12px !important;
-  }
-
-  .dhq-dashboard-card .mt-6 {
-    margin-top: 14px !important;
-  }
-
-  .dhq-dashboard-card .mt-5 {
-    margin-top: 12px !important;
-  }
-
-  .dhq-dashboard-card .mt-4 {
-    margin-top: 10px !important;
-  }
-
-  .dhq-dashboard-card .space-y-3 > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 7px !important;
+    padding: 0 30px 22px;
   }
 }
 
 @media (min-width: 1380px) {
   .dhq-primary-nav-item {
-    font-size: 8.5px;
+    font-size: 9.5px;
   }
 
-  .dhq-command-hero,
-  .dhq-command-hero > div:last-child {
-    min-height: 305px !important;
+  .dhq-hero-player {
+    left: 64%;
+    height: 240%;
   }
 }
 
 @media (min-width: 1536px) {
   .dhq-primary-nav-item {
-    font-size: 9px;
+    font-size: 10px;
   }
 }
 
-@media (max-width: 1023px) {
-  .dhq-command-hero {
-    min-height: 500px;
+@media (max-width: 1099px) {
+  .dhq-command-title {
+    font-size: clamp(2.8rem, 6vw, 4.25rem);
+  }
+
+  .dhq-command-title > span {
+    width: 100%;
+    transform: none;
+    white-space: normal;
   }
 }
 

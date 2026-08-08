@@ -157,6 +157,7 @@ const App = () => {
   const viewId = urlParams.get('view');
   const frontPageParam = urlParams.get('frontPage') || '';
   const isReadOnly = !!viewId;
+  const isDesignPreview = import.meta.env.DEV && urlParams.get('designPreview') === '1';
 
   const [activeTab, setActiveTab] = useState(frontPageParam ? 'newsroom' : 'dashboard');
   const [newsTheme, setNewsTheme] = useState('scouting');
@@ -180,9 +181,9 @@ const App = () => {
   const autoImageAttemptsRef = useRef(new Set());
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(isDesignPreview);
   const [loadedOwnerId, setLoadedOwnerId] = useState(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(!isDesignPreview);
   const [loadedCloudSchemaVersion, setLoadedCloudSchemaVersion] = useState(null);
   const [hasMigrationBackup, setHasMigrationBackup] = useState(false);
   const [isMigratingCloudSave, setIsMigratingCloudSave] = useState(false);
@@ -216,6 +217,7 @@ const App = () => {
 
   // --- FIREBASE AUTHENTICATION LOGIC ---
   useEffect(() => {
+    if (isDesignPreview) return undefined;
     const initAuth = async () => {
       // Only auto-login in the AI Sandbox environment
       const initialAuthToken = globalThis.__initial_auth_token;
@@ -231,7 +233,7 @@ const App = () => {
       if (!user) setIsLoaded(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [isDesignPreview]);
 
   // --- AUTHENTICATION HANDLERS ---
   const handleEmailSignUp = async (e) => {
@@ -278,6 +280,7 @@ const App = () => {
 
   // --- FIREBASE CLOUD DATA FETCHING ---
   useEffect(() => {
+    if (isDesignPreview) return undefined;
     if (!db) return;
     
     // --- VIEWER MODE READ-ONLY FETCH (No Auth Required) ---
@@ -374,7 +377,7 @@ const App = () => {
     }, () => { setIsLoaded(true); });
     
     return () => unsubscribe();
-  }, [userState, isReadOnly, viewId, defaultState]);
+  }, [userState, isReadOnly, viewId, defaultState, isDesignPreview]);
 
   // Recover only the signed-in owner's unfinished current-week draft. Screenshot
   // previews are intentionally omitted from local storage to avoid browser quota failures.
@@ -1863,7 +1866,7 @@ const handleSaveGameClick = () => {
   }
 
   // --- SECURE LOGIN / AUTH SCREEN ---
-  if (!userState && !isReadOnly) {
+  if (!userState && !isReadOnly && !isDesignPreview) {
     return (
         <div className="flex h-screen bg-slate-950 items-center justify-center p-4 relative overflow-hidden">
             <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80)'}}></div>
@@ -1944,20 +1947,36 @@ const handleSaveGameClick = () => {
 
     const player = appState.player;
 
+    const scrollDashboardTo = (targetId = '') => {
+      const scroller = document.querySelector('main');
+      if (!scroller) return;
+
+      if (!targetId) {
+        scroller.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+      }
+
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      const top = scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      scroller.scrollTo({ top: Math.max(0, top - 12), behavior: 'auto' });
+    };
+
     const openNavItem = (item) => {
-      if (item.id === 'rules') {
+      if (item.id === 'dashboard') {
+        setActiveTab('dashboard');
+        requestAnimationFrame(() => scrollDashboardTo());
+      } else if (item.id === 'rules') {
         setIsHouseRulesModalOpen(true);
       } else if (['commandCenter', 'roadToGlory', 'dynastyHub'].includes(item.id)) {
         setActiveTab('dashboard');
         requestAnimationFrame(() => {
-          const targetId = item.id === 'roadToGlory'
-            ? 'road-to-glory-snapshot'
-            : (item.id === 'dynastyHub' ? 'dynasty-central-snapshot' : 'recruit-command-center');
-          const target = document.getElementById(targetId);
-          const scroller = document.querySelector('main');
-          if (!target || !scroller) return;
-          const top = scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-          scroller.scrollTo({ top: Math.max(0, top - 12), behavior: 'smooth' });
+          requestAnimationFrame(() => {
+            const targetId = item.id === 'roadToGlory'
+              ? 'road-to-glory-snapshot'
+              : (item.id === 'dynastyHub' ? 'dynasty-central-snapshot' : 'recruit-command-center');
+            scrollDashboardTo(targetId);
+          });
         });
       } else {
         if (item.id === 'newsroom') setNewsroomFocusId('');
@@ -1978,9 +1997,9 @@ const handleSaveGameClick = () => {
     return (
       <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
         <div className="mx-auto flex h-[68px] max-w-[1500px] items-stretch px-3 sm:px-5">
-          <button type="button" onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} className="flex shrink-0 items-center gap-2.5 pr-4 text-left" aria-label="Open College Football 27 Command Center dashboard">
+          <button type="button" onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); requestAnimationFrame(() => scrollDashboardTo()); }} className="flex shrink-0 items-center gap-2.5 pr-4 text-left" aria-label="Open College Football 27 Command Center dashboard">
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300/60 bg-slate-100 text-[8px] font-black leading-none text-slate-950 shadow-inner">
-              CF27
+              <span className="text-center text-[6px] font-black italic leading-[0.82]">EA<br />SPORTS</span>
             </span>
             <span className="hidden sm:block">
               <span className="block text-[18px] font-black uppercase leading-[0.84] tracking-[-0.03em] text-slate-100">College<br />Football <span className="text-[24px]">27</span></span>

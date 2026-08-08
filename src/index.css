@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+  background: #02070b;
+}
+
+html {
+  background: #02070b;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: #02070b;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+* {
+  scrollbar-color: #334155 #071019;
+  scrollbar-width: thin;
+}
+
 @media print {
   @page {
     size: Letter portrait;

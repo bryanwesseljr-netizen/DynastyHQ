@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  @page {
+    size: Letter portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 8.5in;
+    min-height: 11in;
+    margin: 0;
+    background: #f4efe2 !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  [data-postgame-front-page],
+  [data-postgame-front-page] * {
+    visibility: visible !important;
+  }
+
+  [data-postgame-front-page] {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 8.5in !important;
+    min-height: 11in !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

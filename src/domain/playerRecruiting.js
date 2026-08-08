@@ -233,6 +233,10 @@ export const addTransferTarget = (state, name) => {
     projectedRole: '',
     fit: '',
     offered: false,
+    city: '',
+    state: '',
+    localOutletName: '',
+    regionalOutletName: '',
   };
   return {
     ...state,

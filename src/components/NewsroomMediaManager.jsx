@@ -108,7 +108,7 @@ const NewsroomMediaManager = ({
             <input type="checkbox" checked={autoGenerateLead} onChange={(event) => onSetAutoGenerateLead(event.target.checked)} className="mt-0.5 accent-violet-500" />
             <span>
               <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Auto-generate one lead image</span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">When enabled, a new verified weekly edition can generate only The Bolt’s lead image if no photo is assigned. This uses API credits.</span>
+              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">When enabled, a new verified game-week edition can generate its lead image if no photo is assigned. This uses API credits.</span>
             </span>
           </label>
         </div>

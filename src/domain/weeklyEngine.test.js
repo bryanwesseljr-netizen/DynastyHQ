@@ -321,6 +321,7 @@ test('deleting a game also removes every publication artifact derived from that 
     facts: [{ id: 'pass', key: 'game.passYds', label: 'Passing yards', value: 250, confidence: 0.92, sourceId: 'box' }],
   });
   published.podcastEpisodes = [{ id: 'podcast-season-1-week-1', publicationId: 'season-1-week-1' }];
+  published.postgameFrontPages = [{ id: 'front-page-season-1-week-1', publicationId: 'season-1-week-1' }];
 
   const reset = removePublishedGame(published, 0);
 
@@ -331,6 +332,7 @@ test('deleting a game also removes every publication artifact derived from that 
   assert.deepEqual(reset.factLedger, []);
   assert.deepEqual(reset.newsroomIssues, []);
   assert.deepEqual(reset.podcastEpisodes, []);
+  assert.deepEqual(reset.postgameFrontPages, []);
   assert.deepEqual(reset.newsroomMediaLibrary, [{ id: 'reusable-photo' }]);
   assert.deepEqual(reset.careerChronicle, [{ id: 'milestone-1', type: 'milestone', season: 1, week: 1 }]);
 });
@@ -353,6 +355,7 @@ test('corrects a published game across the ledger, Chronicle, Newsroom, and podc
   });
   published.podcastEpisodes = [{ id: 'podcast-season-1-week-1', publicationId: 'season-1-week-1', status: 'published', audioStatus: 'ready', segments: [{ text: 'Old result' }] }];
   published.newsroomIssues[0].articles[0].mediaAssetId = 'photo-1';
+  published.postgameFrontPages = [{ id: 'front-page-season-1-week-1', publicationId: 'season-1-week-1', needsRegeneration: false }];
 
   const corrected = correctPublishedWeek({
     state: published,
@@ -367,6 +370,7 @@ test('corrects a published game across the ledger, Chronicle, Newsroom, and podc
   assert.equal(corrected.newsroomIssues[0].articles[0].mediaAssetId, 'photo-1');
   assert.equal(corrected.podcastEpisodes[0].status, 'needs-regeneration');
   assert.equal(corrected.podcastEpisodes[0].audioStatus, 'stale');
+  assert.equal(corrected.postgameFrontPages[0].needsRegeneration, true);
 });
 
 test('blocks publishing the same season and week more than once', () => {

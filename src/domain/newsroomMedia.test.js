@@ -71,9 +71,14 @@ test('reference toggles and deletion cannot leave dangling assignments', () => {
   const referenced = setNewsroomReferenceStatus([asset], asset.id, true, 'Home uniform');
   assert.equal(referenced[0].referenceLabel, 'Home uniform');
   const assigned = assignNewsroomMedia({ issues: [issue], publicationId: issue.id, articleId: 'bolt', asset });
-  const cleaned = removeNewsroomMediaAsset({ newsroomMediaLibrary: referenced, newsroomIssues: assigned }, asset.id);
+  const cleaned = removeNewsroomMediaAsset({
+    newsroomMediaLibrary: referenced,
+    newsroomIssues: assigned,
+    postgameFrontPages: [{ publicationId: issue.id, gamePhotoAssetId: asset.id, player: {}, teammates: [] }],
+  }, asset.id);
   assert.equal(cleaned.newsroomMediaLibrary.length, 0);
   assert.equal(cleaned.newsroomIssues[0].articles[0].mediaAssetId, '');
+  assert.equal(cleaned.postgameFrontPages[0].gamePhotoAssetId, '');
 });
 
 test('public media projection excludes unassigned reference-locker photos and private storage metadata', () => {
@@ -84,4 +89,14 @@ test('public media projection excludes unassigned reference-locker photos and pr
   assert.equal(publicLibrary[0].id, asset.id);
   assert.equal('storagePath' in publicLibrary[0], false);
   assert.equal('isReference' in publicLibrary[0], false);
+});
+
+test('public media projection includes photos used only by a postgame front page', () => {
+  const publicLibrary = buildPublicNewsroomMediaLibrary({
+    issues: [],
+    frontPages: [{ publicationId: issue.id, gamePhotoAssetId: asset.id, player: {}, teammates: [] }],
+    mediaLibrary: [asset],
+  });
+  assert.equal(publicLibrary.length, 1);
+  assert.equal(publicLibrary[0].id, asset.id);
 });

@@ -1,3 +1,5 @@
+import { getFrontPageMediaAssetIds, removeFrontPageMediaAsset } from './postgameFrontPage.js';
+
 const cleanText = (value, maxLength = 180) => String(value || '').trim().slice(0, maxLength);
 
 export const NEWSROOM_MEDIA_ORIGINS = Object.freeze({
@@ -79,6 +81,7 @@ export const removeNewsroomMediaAsset = (state, assetId) => ({
       mediaDisclosure: '',
     }),
   })),
+  postgameFrontPages: removeFrontPageMediaAsset(state.postgameFrontPages || [], assetId),
 });
 
 export const setNewsroomReferenceStatus = (library = [], assetId, isReference, referenceLabel = '') => (
@@ -132,9 +135,12 @@ export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] })
   };
 };
 
-export const buildPublicNewsroomMediaLibrary = ({ issues = [], mediaLibrary = [] }) => {
+export const buildPublicNewsroomMediaLibrary = ({ issues = [], frontPages = [], mediaLibrary = [] }) => {
   const assignedIds = new Set(
-    issues.flatMap((issue) => (issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean)),
+    [
+      ...issues.flatMap((issue) => (issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean)),
+      ...getFrontPageMediaAssetIds(frontPages),
+    ],
   );
   return mediaLibrary
     .filter((asset) => assignedIds.has(asset.id))

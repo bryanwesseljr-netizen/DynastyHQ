@@ -39,6 +39,7 @@ import {
   isGraduationReady,
   updateGraduationChecklist,
 } from './domain/careerTransitions';
+import { addCollegeNewsroomStop } from './domain/collegeNewsroom';
 import {
   CAREER_SCHEMA_VERSION,
   createEmptyScanDraft,
@@ -117,6 +118,11 @@ import {
   setNewsroomReferenceStatus,
 } from './domain/newsroomMedia';
 import {
+  buildPostgameFrontPage,
+  updatePostgameFrontPage,
+  upsertPostgameFrontPage,
+} from './domain/postgameFrontPage';
+import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
   loadLegacyPodcastAudioLocal,
@@ -141,11 +147,12 @@ const createMediaAssetId = () => globalThis.crypto?.randomUUID?.()
 const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const viewId = urlParams.get('view');
+  const frontPageParam = urlParams.get('frontPage') || '';
   const isReadOnly = !!viewId;
 
-  const [activeTab, setActiveTab] = useState(isReadOnly ? 'dashboard' : 'dataEntry');
+  const [activeTab, setActiveTab] = useState(frontPageParam ? 'newsroom' : (isReadOnly ? 'dashboard' : 'dataEntry'));
   const [newsTheme, setNewsTheme] = useState('scouting');
-  const [newsroomFocusId, setNewsroomFocusId] = useState('');
+  const [newsroomFocusId, setNewsroomFocusId] = useState(frontPageParam);
   const [podcastFocusId, setPodcastFocusId] = useState('');
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isHouseRulesModalOpen, setIsHouseRulesModalOpen] = useState(false);
@@ -714,8 +721,10 @@ const App = () => {
     }
   };
 
-  const handlePublishToPublic = async () => {
+  const handlePublishToPublic = async (frontPagePublicationId = '') => {
+    const publicWindow = frontPagePublicationId ? window.open('', '_blank') : null;
     if (!userState || !db) {
+        if (publicWindow) publicWindow.close();
         setMessageModal({ isOpen: true, text: "Cloud Database Not Connected! Add your Firebase config to App.jsx to enable public sharing.", type: 'error' });
         setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
         return;
@@ -723,6 +732,7 @@ const App = () => {
     setMessageModal({ isOpen: true, text: "Generating share link...", type: 'success' });
     try {
         if (window.location.href.includes('usercontent.goog')) {
+             if (publicWindow) publicWindow.close();
              setMessageModal({ isOpen: true, text: "Cannot generate link in sandbox. Please push to Vercel first!", type: 'error' });
              setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'error' }), 6000);
              return;
@@ -732,6 +742,7 @@ const App = () => {
         const safeState = { ...appState };
         safeState.newsroomMediaLibrary = buildPublicNewsroomMediaLibrary({
           issues: appState.newsroomIssues || [],
+          frontPages: appState.postgameFrontPages || [],
           mediaLibrary: appState.newsroomMediaLibrary || [],
         });
         safeState.newsroomMediaSettings = { autoGenerateLead: false };
@@ -764,9 +775,16 @@ const App = () => {
         }
 
         const baseUrl = window.location.href.split('?')[0];
-        setShareLinkModal({ isOpen: true, url: `${baseUrl}?view=${userState.uid}` });
+        const publicUrl = `${baseUrl}?view=${userState.uid}`;
+        if (frontPagePublicationId) {
+          const frontPageUrl = `${publicUrl}&frontPage=${encodeURIComponent(frontPagePublicationId)}`;
+          if (publicWindow) publicWindow.location.href = frontPageUrl;
+          else window.open(frontPageUrl, '_blank', 'noopener,noreferrer');
+        } else {
+          setShareLinkModal({ isOpen: true, url: publicUrl });
+        }
         setMessageModal({ isOpen: false, text: '', type: 'success' });
-    } catch { setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
+    } catch { if (publicWindow) publicWindow.close(); setMessageModal({ isOpen: true, text: "Error generating link.", type: 'error' }); }
   };
 
   const handleRevokePublicLink = async () => {
@@ -988,8 +1006,8 @@ const handleSaveGameClick = () => {
     setActiveTab('chronicle');
   };
 
-  const handleBeginCollegeCareer = () => {
-    updateAppState((prev) => beginCollegeCareer(prev), `College career started at ${appState.player.college}!`);
+  const handleBeginCollegeCareer = (outletProfile) => {
+    updateAppState((prev) => beginCollegeCareer(prev, outletProfile), `College career started at ${appState.player.college}!`);
     setActiveTab('dashboard');
   };
 
@@ -1083,7 +1101,7 @@ const handleSaveGameClick = () => {
     updateAppState(prev => {
       const previousInstitution = prev.player.college || prev.player.school || '';
       const decisionState = closeTransferRecruiting(prev, 'transfer', target.name);
-      return createCareerMilestone({
+      const milestoneState = createCareerMilestone({
         state: decisionState,
         draft: {
           type: MILESTONE_TYPES.TRANSFER,
@@ -1096,6 +1114,21 @@ const handleSaveGameClick = () => {
           confirmed: true,
         },
       });
+      return {
+        ...milestoneState,
+        collegeNewsroom: addCollegeNewsroomStop({
+          collegeNewsroom: milestoneState.collegeNewsroom,
+          school: target.name,
+          profile: {
+            city: target.city,
+            state: target.state,
+            localOutletName: target.localOutletName,
+            regionalOutletName: target.regionalOutletName,
+          },
+          season: prev.currentSeason || 1,
+          week: prev.currentWeek || 1,
+        }),
+      };
     }, `Transfer to ${target.name} verified and added to the Career Chronicle.`);
     setActiveTab('chronicle');
   };
@@ -1268,6 +1301,59 @@ const handleSaveGameClick = () => {
     }
   };
 
+  const handleCreateFrontPage = (publicationId) => {
+    updateAppState((prev) => upsertPostgameFrontPage(prev, buildPostgameFrontPage({ state: prev, publicationId })), 'Postgame front page generated!');
+  };
+
+  const handleUpdateFrontPage = (publicationId, patch) => {
+    updateAppState((prev) => updatePostgameFrontPage(prev, publicationId, patch));
+  };
+
+  const handleRegenerateFrontPage = (publicationId) => {
+    updateAppState((prev) => upsertPostgameFrontPage(prev, buildPostgameFrontPage({ state: prev, publicationId })), 'Front page story regenerated from the latest verified facts.');
+  };
+
+  const handleUploadFrontPagePhoto = async (file, { publicationId, target, teammateIndex = 0 }) => {
+    if (!userState || isReadOnly) throw new Error('Sign in as the owner before uploading front-page photos.');
+    if (!file?.type?.match(/^image\/(png|jpe?g|webp)$/i)) {
+      setMessageModal({ isOpen: true, text: 'Choose a PNG, JPEG, or WebP image.', type: 'error' });
+      return;
+    }
+    if (file.size > 12_000_000) {
+      setMessageModal({ isOpen: true, text: 'That photo is larger than 12 MB. Choose a smaller image.', type: 'error' });
+      return;
+    }
+    setNewsroomMediaBusy(true);
+    try {
+      const assetId = createMediaAssetId();
+      const imageDataUrl = await compressImage(file, 2000);
+      const uploaded = await uploadNewsroomMedia({
+        firebaseApp, appId, userId: userState.uid, assetId, imageDataUrl, fileName: file.name,
+        origin: NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+      });
+      const asset = createNewsroomMediaAsset({ id: assetId, ...uploaded, fileName: file.name, origin: NEWSROOM_MEDIA_ORIGINS.UPLOAD });
+      updateAppState((prev) => {
+        const page = (prev.postgameFrontPages || []).find((entry) => entry.publicationId === publicationId);
+        if (!page) return prev;
+        let patch = { gamePhotoAssetId: asset.id };
+        if (target === 'playerHeadshot') patch = { player: { headshotAssetId: asset.id } };
+        if (target === 'teammateHeadshot') {
+          patch = { teammates: (page.teammates || []).map((entry, index) => index === teammateIndex ? { ...entry, headshotAssetId: asset.id } : entry) };
+        }
+        return updatePostgameFrontPage({
+          ...prev,
+          newsroomMediaLibrary: [...(prev.newsroomMediaLibrary || []), asset],
+        }, publicationId, patch);
+      }, 'Front-page photo uploaded and assigned!');
+    } catch (error) {
+      setMessageModal({ isOpen: true, text: error?.message || 'The front-page photo could not be uploaded.', type: 'error' });
+    } finally {
+      setNewsroomMediaBusy(false);
+    }
+  };
+
+  const handleFrontPageNotice = (text, type = 'success') => setMessageModal({ isOpen: true, text, type });
+
   const handleAssignNewsroomMedia = ({ issue, article, asset }) => {
     updateAppState((prev) => ({
       ...prev,
@@ -1383,8 +1469,8 @@ const handleSaveGameClick = () => {
   useEffect(() => {
     if (isReadOnly || !userState || newsroomMediaBusy || !appState.newsroomMediaSettings?.autoGenerateLead) return;
     const latestIssue = appState.newsroomIssues?.[appState.newsroomIssues.length - 1];
-    const leadArticle = latestIssue?.articles?.find((entry) => entry.id === 'bolt');
-    const attemptKey = `${latestIssue?.publicationId || latestIssue?.id}:bolt`;
+    const leadArticle = latestIssue?.editionType === 'recruiting' ? null : latestIssue?.articles?.[0];
+    const attemptKey = `${latestIssue?.publicationId || latestIssue?.id}:${leadArticle?.id || 'lead'}`;
     if (!latestIssue || !leadArticle || leadArticle.mediaAssetId || autoImageAttemptsRef.current.has(attemptKey)) return;
     autoImageAttemptsRef.current.add(attemptKey);
     handleGenerateNewsroomMedia({ issue: latestIssue, article: leadArticle, quiet: true }).catch(() => {});
@@ -1778,7 +1864,7 @@ const handleSaveGameClick = () => {
             <div className="p-4 border-t border-slate-800/50 space-y-2">
                 <div className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${saveStatus.state === 'error' || saveStatus.state === 'conflict' ? 'border-red-500/40 bg-red-950/30 text-red-300' : saveStatus.state === 'saving' || saveStatus.state === 'retrying' ? 'border-blue-500/40 bg-blue-950/30 text-blue-300' : 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300'}`}>{saveStatus.state === 'saving' ? 'Saving…' : saveStatus.state === 'retrying' ? 'Retrying save…' : saveStatus.state === 'conflict' ? 'Reload required' : saveStatus.state === 'error' ? 'Retry needed' : saveStatus.lastSavedAt ? `Saved ${new Date(saveStatus.lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Automatic cloud save ready'}</div>
                 {(saveStatus.state === 'error' || saveStatus.state === 'conflict') && <button type="button" onClick={saveStatus.state === 'conflict' ? () => window.location.reload() : retryCloudSave} className="w-full rounded-lg border border-red-500/40 bg-red-950/20 px-3 py-2 text-[10px] font-black uppercase text-red-300">{saveStatus.state === 'conflict' ? 'Reload latest save' : 'Retry cloud save'}</button>}
-                <button onClick={handlePublishToPublic} className="w-full bg-slate-900 hover:bg-blue-600 text-slate-400 hover:text-white px-4 py-3 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-slate-800 hover:border-blue-500 shadow-md">
+                <button onClick={() => handlePublishToPublic()} className="w-full bg-slate-900 hover:bg-blue-600 text-slate-400 hover:text-white px-4 py-3 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-slate-800 hover:border-blue-500 shadow-md">
                     <Share2 size={14} /> Get Share Link
                 </button>
             </div>
@@ -2451,6 +2537,14 @@ const handleSaveGameClick = () => {
           onToggleReference={handleToggleNewsroomReference}
           onDeleteMedia={handleDeleteNewsroomMedia}
           onSetAutoGenerateLead={handleSetAutoGenerateLead}
+          frontPages={appState.postgameFrontPages || []}
+          initialFrontPageId={frontPageParam}
+          onCreateFrontPage={handleCreateFrontPage}
+          onUpdateFrontPage={handleUpdateFrontPage}
+          onRegenerateFrontPage={handleRegenerateFrontPage}
+          onUploadFrontPagePhoto={handleUploadFrontPagePhoto}
+          onOpenFrontPagePublic={(publicationId) => handlePublishToPublic(publicationId)}
+          onNotify={handleFrontPageNotice}
         />
       );
     }

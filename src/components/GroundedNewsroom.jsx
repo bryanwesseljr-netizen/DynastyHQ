@@ -1,17 +1,24 @@
 import { useMemo, useState } from 'react';
 import {
-  Activity, ArrowRight, BookOpen, ChevronLeft, Newspaper, Quote, ShieldCheck, Star, Zap,
+  Activity, ArrowRight, BookOpen, ChevronLeft, FileImage, Newspaper, Quote, ShieldCheck, Star, Zap,
 } from 'lucide-react';
 import NewsroomMediaManager from './NewsroomMediaManager';
+import PostgameFrontPage from './PostgameFrontPage';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 
-const tabs = [
-  { theme: 'broadsheet', outletId: 'bolt', label: 'The Bolt', icon: Zap },
-  { theme: 'local', outletId: 'local', label: 'Dearborn Chronicle', icon: Newspaper },
-  { theme: 'on3', outletId: 'recruiting', label: 'Recruiting Wire', icon: Star },
-  { theme: 'filmroom', outletId: 'filmroom', label: 'Film Room', icon: Activity },
-  { theme: 'national', outletId: 'national', label: 'Saturday National', icon: BookOpen },
-];
+const iconForOutlet = (outletId) => ({
+  bolt: Zap,
+  recruiting: Star,
+  filmroom: Activity,
+  national: BookOpen,
+}[outletId] || Newspaper);
+
+const tabsForIssue = (issue) => (issue?.articles || []).map((story) => ({
+  theme: story.theme || story.outletId,
+  outletId: story.outletId,
+  label: story.outletName,
+  icon: iconForOutlet(story.outletId),
+}));
 
 const themeStyles = {
   broadsheet: { shell: 'bg-[#f5f1e8] text-slate-950 border-amber-900/30', accent: 'text-amber-800', rule: 'border-slate-900' },
@@ -19,6 +26,8 @@ const themeStyles = {
   on3: { shell: 'bg-zinc-950 text-zinc-100 border-amber-500/40', accent: 'text-amber-400', rule: 'border-amber-500' },
   filmroom: { shell: 'bg-[#081528] text-slate-100 border-emerald-500/40', accent: 'text-emerald-400', rule: 'border-emerald-500' },
   national: { shell: 'bg-slate-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
+  regional: { shell: 'bg-[#f0eee8] text-slate-950 border-red-900/30', accent: 'text-red-800', rule: 'border-red-800' },
+  network: { shell: 'bg-[#101010] text-white border-red-600/50', accent: 'text-red-500', rule: 'border-red-600' },
 };
 
 const GroundedNewsroom = ({
@@ -38,18 +47,28 @@ const GroundedNewsroom = ({
   onToggleReference,
   onDeleteMedia,
   onSetAutoGenerateLead,
+  frontPages = [],
+  initialFrontPageId = '',
+  onCreateFrontPage,
+  onUpdateFrontPage,
+  onRegenerateFrontPage,
+  onUploadFrontPagePhoto,
+  onOpenFrontPagePublic,
+  onNotify,
 }) => {
   const latestIssue = issues[issues.length - 1];
   const [selectedIssueId, setSelectedIssueId] = useState(
     issues.some((issue) => issue.id === initialIssueId) ? initialIssueId : latestIssue.id,
   );
   const [isReaderOpen, setIsReaderOpen] = useState(false);
+  const [frontPageIssueId, setFrontPageIssueId] = useState(initialFrontPageId);
 
   const selectedIssue = useMemo(
     () => issues.find((issue) => issue.id === selectedIssueId) || latestIssue,
     [issues, latestIssue, selectedIssueId],
   );
-  const activeTheme = tabs.some((tab) => tab.theme === newsTheme) ? newsTheme : tabs[0].theme;
+  const tabs = useMemo(() => tabsForIssue(selectedIssue), [selectedIssue]);
+  const activeTheme = tabs.some((tab) => tab.theme === newsTheme) ? newsTheme : tabs[0]?.theme;
   const selectedTab = tabs.find((tab) => tab.theme === activeTheme) || tabs[0];
   const style = themeStyles[selectedTab.theme] || themeStyles.broadsheet;
   const story = selectedIssue.articles.find((entry) => entry.outletId === selectedTab.outletId);
@@ -60,15 +79,19 @@ const GroundedNewsroom = ({
     fallbackUrl: outletImages?.[imageKey] || outletImages?.broadsheet,
   });
   const featureImage = currentMedia.url;
+  const frontPage = frontPages.find((entry) => entry.publicationId === (selectedIssue.publicationId || selectedIssue.id));
+  const isFrontPageOpen = Boolean(frontPage && frontPageIssueId === (selectedIssue.publicationId || selectedIssue.id));
 
   const openStory = (theme) => {
     setNewsTheme(theme);
     setIsReaderOpen(true);
+    setFrontPageIssueId('');
   };
 
   const chooseIssue = (issueId) => {
     setSelectedIssueId(issueId);
     setIsReaderOpen(false);
+    setFrontPageIssueId(initialFrontPageId === issueId ? issueId : '');
   };
 
   return (
@@ -95,7 +118,7 @@ const GroundedNewsroom = ({
         </div>
       </div>
 
-      {!isReaderOpen && (
+      {!isReaderOpen && !isFrontPageOpen && (
         <section className="rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-7" aria-labelledby="weekly-coverage-title">
           <div className="mb-5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{selectedIssue.label || `Season ${selectedIssue.season} · Week ${selectedIssue.week}`}</p>
@@ -124,10 +147,16 @@ const GroundedNewsroom = ({
             })}
 
           </div>
+          {selectedIssue.week > 0 && selectedIssue.editionType !== 'recruiting' && (!readOnly || frontPage) && (
+            <div className="mt-5 flex flex-col gap-4 rounded-xl border border-amber-400/30 bg-amber-950/15 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300"><FileImage size={15} /> Postgame keepsake</p><h3 className="mt-1 text-xl font-black uppercase text-white">{frontPage ? 'Printable front page ready' : 'Create a one-page newspaper front page'}</h3><p className="mt-1 text-xs leading-relaxed text-slate-400">Uses this week&rsquo;s verified score, player line, dynamic story, game photo, and optional teammate cards.</p></div>
+              <button type="button" onClick={() => { if (!frontPage) onCreateFrontPage(selectedIssue.publicationId || selectedIssue.id); setFrontPageIssueId(selectedIssue.publicationId || selectedIssue.id); }} className="shrink-0 rounded-xl bg-amber-500 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-950">{frontPage ? 'Open front page' : 'Generate front page'}</button>
+            </div>
+          )}
         </section>
       )}
 
-      {isReaderOpen && (
+      {isReaderOpen && !isFrontPageOpen && (
         <>
           <button
             type="button"
@@ -153,7 +182,21 @@ const GroundedNewsroom = ({
         </>
       )}
 
-      {isReaderOpen && story ? (
+      {isFrontPageOpen && frontPage ? (
+        <PostgameFrontPage
+          page={frontPage}
+          mediaLibrary={mediaLibrary}
+          readOnly={readOnly}
+          onUpdate={(patch) => onUpdateFrontPage(frontPage.publicationId, patch)}
+          onRegenerate={() => onRegenerateFrontPage(frontPage.publicationId)}
+          onUploadPhoto={(file, target) => onUploadFrontPagePhoto(file, { ...target, publicationId: frontPage.publicationId })}
+          onOpenPublic={() => onOpenFrontPagePublic(frontPage.publicationId)}
+          onNotify={onNotify}
+          onClose={() => setFrontPageIssueId('')}
+        />
+      ) : null}
+
+      {isReaderOpen && !isFrontPageOpen && story ? (
         <article className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
           <header className="border-b border-current/20 p-6 md:p-9">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">

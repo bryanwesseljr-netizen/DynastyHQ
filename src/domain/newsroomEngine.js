@@ -1,9 +1,11 @@
+import { createCollegeOutletSet } from './collegeNewsroom.js';
+
 const OUTLETS = [
-  { id: 'bolt', name: 'The Bolt', desk: 'School Desk' },
-  { id: 'local', name: 'Dearborn Chronicle', desk: 'Local Sports' },
-  { id: 'recruiting', name: 'The Recruiting Wire', desk: 'Recruiting Desk' },
-  { id: 'filmroom', name: "The Film Room", desk: 'Numbers & Tactics' },
-  { id: 'national', name: 'Saturday National', desk: 'National Desk' },
+  { id: 'bolt', name: 'The Bolt', desk: 'School Desk', theme: 'broadsheet' },
+  { id: 'local', name: 'Dearborn Chronicle', desk: 'Local Sports', theme: 'local' },
+  { id: 'recruiting', name: 'The Recruiting Wire', desk: 'Recruiting Desk', theme: 'on3' },
+  { id: 'filmroom', name: "The Film Room", desk: 'Numbers & Tactics', theme: 'filmroom' },
+  { id: 'national', name: 'Saturday National', desk: 'National Desk', theme: 'national' },
 ];
 
 const numeric = (value) => {
@@ -113,6 +115,7 @@ const article = ({ outlet, headline, dek, paragraphs, citedFactKeys }) => ({
   outletId: outlet.id,
   outletName: outlet.name,
   desk: outlet.desk,
+  theme: outlet.theme || outlet.id,
   headline,
   dek,
   paragraphs,
@@ -133,6 +136,8 @@ export const createNewsroomIssue = ({
   rtg = {},
   previousRtg = {},
   playerRecruiting = {},
+  collegeNewsroom = {},
+  coverageStage = '',
   availableFactKeys = [],
   currentFactKeys = availableFactKeys,
   publishedAt,
@@ -140,7 +145,14 @@ export const createNewsroomIssue = ({
   const playerName = player?.name || 'The quarterback';
   const school = player?.school || 'the program';
   const currentCollege = player?.college || school;
-  const isCollegePlayer = Boolean(player?.isCommitted && (Number(season) > 1 || String(player?.school || '').toLowerCase() === String(player?.college || '').toLowerCase()));
+  const isCollegePlayer = coverageStage
+    ? coverageStage === 'college'
+    : Boolean(player?.isCommitted && (Number(season) > 1 || String(player?.school || '').toLowerCase() === String(player?.college || '').toLowerCase()));
+  const collegeOutlets = createCollegeOutletSet(collegeNewsroom, school);
+  const primaryOutlet = isCollegePlayer ? collegeOutlets[0] : OUTLETS[0];
+  const secondaryOutlet = isCollegePlayer ? collegeOutlets[1] : OUTLETS[1];
+  const filmRoomOutlet = isCollegePlayer ? collegeOutlets[2] : OUTLETS[3];
+  const nationalOutlet = isCollegePlayer ? collegeOutlets[3] : OUTLETS[4];
   const opponent = game?.opponent || 'the opponent';
   const score = scoreText(game);
   const outcome = resultWord(game?.result);
@@ -202,7 +214,7 @@ export const createNewsroomIssue = ({
       : `The result now supplies a firm Week ${week} benchmark for the next edition.`;
   const articles = [
     article({
-      outlet: OUTLETS[0],
+      outlet: primaryOutlet,
       headline: resultHeadline,
       dek: `${playerName} finishes with ${totalYardsPhrase} and ${totalTouchdownPhrase}.`,
       paragraphs: [
@@ -211,16 +223,20 @@ export const createNewsroomIssue = ({
         `${seasonContext} ${resultPerspective}`,
         quote
           ? `The final word belongs to the player. In the verified postgame note, ${playerName} said, “${quote}” The statement is preserved alongside the box score as the voice of this week.`
-          : `No postgame quote was verified for this edition, so The Bolt will not manufacture locker-room reaction. The story closes with the result, the individual production, and a clean statistical baseline for Week ${week + 1}.`,
+          : `No postgame quote was verified for this edition, so ${primaryOutlet.name} will not manufacture locker-room reaction. The story closes with the result, the individual production, and a clean statistical baseline for Week ${week + 1}.`,
       ],
       citedFactKeys: gameKeys,
     }),
     article({
-      outlet: OUTLETS[1],
+      outlet: secondaryOutlet,
       headline: `${playerName}'s latest line: ${totalYardsPhrase}`,
-      dek: `The Dearborn quarterback's verified Week ${week} numbers against ${opponent}.`,
+      dek: isCollegePlayer
+        ? `${school}'s verified Week ${week} performance in the regional college-football picture.`
+        : `The Dearborn quarterback's verified Week ${week} numbers against ${opponent}.`,
       paragraphs: [
-        `For the hometown record, Week ${week} belongs to a ${outcome} against ${opponent}${score ? `, recorded at ${score}` : ''}. ${playerName}'s performance gives Dearborn readers another concrete entry in a career that will be tracked one verified week at a time.`,
+        isCollegePlayer
+          ? `For the regional record, Week ${week} belongs to a ${outcome} against ${opponent}${score ? `, recorded at ${score}` : ''}. ${playerName}'s performance gives ${secondaryOutlet.name} another concrete entry in a college career tracked one verified week at a time.`
+          : `For the hometown record, Week ${week} belongs to a ${outcome} against ${opponent}${score ? `, recorded at ${score}` : ''}. ${playerName}'s performance gives Dearborn readers another concrete entry in a career that will be tracked one verified week at a time.`,
         `The individual line lists ${statLine(game || {})}. ${totalTD == null ? 'A complete touchdown total cannot be calculated from the fields on file.' : `That works out to ${totalTD} combined ${totalTD === 1 ? 'touchdown' : 'touchdowns'} through the air and on the ground.`}`,
         `${comparisonContext} The comparison is drawn only from appearances already preserved in the game log.`,
         rtgContext?.paragraph
@@ -228,7 +244,7 @@ export const createNewsroomIssue = ({
       ],
       citedFactKeys: [...gameKeys, ...(rtgContext?.keys || [])],
     }),
-    article({
+    !isCollegePlayer ? article({
       outlet: OUTLETS[2],
       headline: isCollegePlayer
         ? `${playerName}'s transfer desk remains quiet at ${currentCollege}`
@@ -284,9 +300,9 @@ export const createNewsroomIssue = ({
         : topSchools.length
         ? ['profile.player.name', ...recruitingKeys, ...(currentKeys.has(tapeScoreKey) ? [tapeScoreKey] : [])]
         : ['profile.player.name'],
-    }),
+    }) : null,
     article({
-      outlet: OUTLETS[3],
+      outlet: filmRoomOutlet,
       headline: `By the numbers: ${totalYardsPhrase}, ${totalTouchdownPhrase}`,
       dek: `A film-room briefing limited to the Week ${week} statistics on record.`,
       paragraphs: [
@@ -300,7 +316,7 @@ export const createNewsroomIssue = ({
       citedFactKeys: gameKeys,
     }),
     article({
-      outlet: OUTLETS[4],
+      outlet: nationalOutlet,
       headline: `${playerName}'s Week ${week} performance enters the career record`,
       dek: `${school}'s ${outcome} against ${opponent} is now part of the permanent Chronicle.`,
       paragraphs: [
@@ -311,7 +327,7 @@ export const createNewsroomIssue = ({
       ],
       citedFactKeys: gameKeys,
     }),
-  ];
+  ].filter(Boolean);
 
   const groundedArticles = articles.map((entry) => ({
     ...entry,
@@ -327,6 +343,12 @@ export const createNewsroomIssue = ({
     careerPhase,
     publishedAt,
     status: 'published',
+    outletProfile: isCollegePlayer ? {
+      school,
+      localOutletName: primaryOutlet.name,
+      regionalOutletName: secondaryOutlet.name,
+      nationalOutletName: nationalOutlet.name,
+    } : null,
     articles: groundedArticles,
     podcastBrief: {
       title: `${school} vs. ${opponent}: the verified Week ${week} briefing`,

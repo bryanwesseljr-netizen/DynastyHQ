@@ -1,3 +1,5 @@
+import { addCollegeNewsroomStop } from './collegeNewsroom.js';
+
 export const DEFAULT_CAREER_TRANSITIONS = Object.freeze({
   collegeStartedAt: '',
   graduationChecklist: {
@@ -19,18 +21,27 @@ export const normalizeCareerTransitions = (value = {}) => ({
   },
 });
 
-export const beginCollegeCareer = (state, occurredAt = new Date().toISOString()) => {
+export const beginCollegeCareer = (state, outletProfile, occurredAt = new Date().toISOString()) => {
   if (!state.player?.isCommitted || !state.player?.college) {
     throw new Error('A verified college commitment is required before the college career can begin.');
   }
   const transitions = normalizeCareerTransitions(state.careerTransitions);
   const nextSeason = (Number(state.currentSeason) || 1) + 1;
+  const collegeNewsroom = addCollegeNewsroomStop({
+    collegeNewsroom: state.collegeNewsroom,
+    school: state.player.college,
+    profile: outletProfile,
+    season: nextSeason,
+    week: 1,
+    startedAt: occurredAt,
+  });
   return {
     ...state,
     currentSeason: nextSeason,
     currentWeek: 1,
     careerStage: 'College',
     player: { ...state.player, school: state.player.college, careerStage: 'College' },
+    collegeNewsroom,
     careerTransitions: { ...transitions, collegeStartedAt: occurredAt },
     careerChronicle: [...(state.careerChronicle || []), {
       id: `college-career-${nextSeason}`,

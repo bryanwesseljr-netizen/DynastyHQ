@@ -1,6 +1,8 @@
 import { createNewsroomIssue, createRecruitingNewsroomIssue } from './newsroomEngine.js';
 import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress.js';
 import { normalizeCareerTransitions } from './careerTransitions.js';
+import { normalizeCollegeNewsroom } from './collegeNewsroom.js';
+import { markPostgameFrontPageStale, normalizePostgameFrontPage } from './postgameFrontPage.js';
 import {
   applyPlayerRecruitingPatch,
   normalizePlayerRecruiting,
@@ -121,6 +123,9 @@ export const removePublishedGame = (state, gameIndex) => {
     newsroomIssues: (state.newsroomIssues || []).filter(
       (entry) => !matchesPublication(entry, publicationId, season, week),
     ),
+    postgameFrontPages: (state.postgameFrontPages || []).filter(
+      (entry) => entry.publicationId !== publicationId,
+    ),
     podcastEpisodes: (state.podcastEpisodes || []).filter(
       (entry) => entry.publicationId !== publicationId && entry.id !== `podcast-${publicationId}`,
     ),
@@ -170,12 +175,30 @@ export const correctPublishedWeek = ({ state, gameIndex, game }) => {
     .reverse()
     .find((entry) => entry.recruitingSnapshot)?.recruitingSnapshot || [];
   const previousGames = state.gameLogs.filter((_, index) => index !== gameIndex && Number(_.season || 1) === season && Number(_.week || 0) < week);
+  const oldIssue = (state.newsroomIssues || []).find((entry) => matchesPublication(entry, publicationId, season, week));
+  const coverageStage = oldIssue?.articles?.some((entry) => entry.outletId === 'college-local') ? 'college' : 'high-school';
+  const correctionCollegeNewsroom = coverageStage === 'college' && oldIssue?.outletProfile ? {
+    activeStopId: 'correction-archive',
+    stops: [{
+      id: 'correction-archive',
+      school: oldIssue.outletProfile.school,
+      localOutletName: oldIssue.outletProfile.localOutletName,
+      regionalOutletName: oldIssue.outletProfile.regionalOutletName,
+      nationalOutletName: oldIssue.outletProfile.nationalOutletName,
+      startedSeason: season,
+      startedWeek: week,
+    }],
+  } : state.collegeNewsroom;
+  const correctionPlayer = {
+    ...state.player,
+    school: oldIssue?.outletProfile?.school || factMap.get('profile.player.school')?.value || state.player?.school,
+  };
   const rebuiltIssue = createNewsroomIssue({
     publicationId,
     season,
     week,
     careerPhase: previousUpdate.careerPhase || state.careerPhase,
-    player: state.player,
+    player: correctionPlayer,
     game: correctedGame,
     recruiting: previousUpdate.recruitingSnapshot || state.recruiting || [],
     previousRecruiting,
@@ -184,20 +207,28 @@ export const correctPublishedWeek = ({ state, gameIndex, game }) => {
     rtg: previousUpdate.rtgSnapshot || {},
     previousRtg: [...weeklyUpdates].slice(0, updateIndex).reverse().find((entry) => hasRtgSnapshot(entry.rtgSnapshot))?.rtgSnapshot || {},
     playerRecruiting: { highSchool: previousUpdate.playerRecruitingSnapshot || {} },
+    collegeNewsroom: correctionCollegeNewsroom,
+    coverageStage,
     availableFactKeys: factLedger.map((entry) => entry.key),
     currentFactKeys: correctedFacts.map((entry) => entry.key),
     publishedAt: previousUpdate.publishedAt,
   });
-  const oldIssue = (state.newsroomIssues || []).find((entry) => matchesPublication(entry, publicationId, season, week));
   if (oldIssue) {
+    rebuiltIssue.outletProfile = oldIssue.outletProfile || rebuiltIssue.outletProfile;
     rebuiltIssue.articles = rebuiltIssue.articles.map((articleEntry) => {
       const priorArticle = oldIssue.articles?.find((entry) => entry.outletId === articleEntry.outletId);
-      return priorArticle?.mediaAssetId ? {
+      if (!priorArticle) return articleEntry;
+      return {
         ...articleEntry,
-        mediaAssetId: priorArticle.mediaAssetId,
-        mediaSource: priorArticle.mediaSource,
-        mediaDisclosure: priorArticle.mediaDisclosure,
-      } : articleEntry;
+        outletName: priorArticle.outletName,
+        desk: priorArticle.desk,
+        theme: priorArticle.theme,
+        ...(priorArticle.mediaAssetId ? {
+          mediaAssetId: priorArticle.mediaAssetId,
+          mediaSource: priorArticle.mediaSource,
+          mediaDisclosure: priorArticle.mediaDisclosure,
+        } : {}),
+      };
     });
   }
   weeklyUpdates[updateIndex] = {
@@ -225,6 +256,7 @@ export const correctPublishedWeek = ({ state, gameIndex, game }) => {
       correctedAt: new Date().toISOString(),
     } : entry),
     newsroomIssues: (state.newsroomIssues || []).map((entry) => matchesPublication(entry, publicationId, season, week) ? rebuiltIssue : entry),
+    postgameFrontPages: markPostgameFrontPageStale(state.postgameFrontPages || [], publicationId),
     podcastEpisodes: (state.podcastEpisodes || []).map((entry) => entry.publicationId === publicationId || entry.id === `podcast-${publicationId}` ? {
       ...entry,
       status: 'needs-regeneration',
@@ -1068,6 +1100,7 @@ export const createPublishedWeek = ({
     rtg: rtgSnapshot,
     previousRtg: previousRtgSnapshot,
     playerRecruiting: stateWithRecruitingProfile.playerRecruiting,
+    collegeNewsroom: stateWithRecruitingProfile.collegeNewsroom,
     availableFactKeys: [...(state.factLedger || []), ...finalLedgerFacts].map((entry) => entry.key),
     currentFactKeys: finalLedgerFacts.map((entry) => entry.key),
     publishedAt,
@@ -1107,6 +1140,7 @@ export const migrateCareerState = (state, defaults) => ({
   })),
   playerRecruiting: normalizePlayerRecruiting(state?.playerRecruiting || defaults.playerRecruiting),
   careerTransitions: normalizeCareerTransitions(state?.careerTransitions || defaults.careerTransitions),
+  collegeNewsroom: normalizeCollegeNewsroom(state?.collegeNewsroom || defaults.collegeNewsroom),
   schemaVersion: CAREER_SCHEMA_VERSION,
   weeklyUpdates: (state?.weeklyUpdates || []).map((entry) => ({
     ...entry,
@@ -1116,6 +1150,7 @@ export const migrateCareerState = (state, defaults) => ({
   careerMilestones: state?.careerMilestones || [],
   careerChronicle: state?.careerChronicle || [],
   newsroomIssues: state?.newsroomIssues || [],
+  postgameFrontPages: (state?.postgameFrontPages || []).map(normalizePostgameFrontPage),
   newsroomMediaLibrary: state?.newsroomMediaLibrary || [],
   newsroomMediaSettings: {
     ...defaults.newsroomMediaSettings,

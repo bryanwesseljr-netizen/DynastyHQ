@@ -1,6 +1,7 @@
 import { CAREER_SCHEMA_VERSION } from './weeklyEngine';
 import { DEFAULT_PLAYER_RECRUITING } from './playerRecruiting';
 import { DEFAULT_CAREER_TRANSITIONS } from './careerTransitions';
+import { DEFAULT_COLLEGE_NEWSROOM } from './collegeNewsroom';
 
 export const DEFAULT_CAREER_STATE = {
   schemaVersion: CAREER_SCHEMA_VERSION,
@@ -46,6 +47,7 @@ export const DEFAULT_CAREER_STATE = {
   recruiting: [],
   playerRecruiting: DEFAULT_PLAYER_RECRUITING,
   careerTransitions: DEFAULT_CAREER_TRANSITIONS,
+  collegeNewsroom: DEFAULT_COLLEGE_NEWSROOM,
   rtg: {
     gpa: '',
     energy: '',
@@ -75,6 +77,7 @@ export const DEFAULT_CAREER_STATE = {
   careerMilestones: [],
   careerChronicle: [],
   newsroomIssues: [],
+  postgameFrontPages: [],
   newsroomMediaLibrary: [],
   newsroomMediaSettings: {
     autoGenerateLead: false,

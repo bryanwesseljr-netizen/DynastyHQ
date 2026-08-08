@@ -154,15 +154,22 @@ test('college coverage does not reuse archived high-school interest as current r
     player: { name: 'Test Player', school: 'Test University A', college: 'Test University A', isCommitted: true },
     game: { opponent: 'Test Opponent B', result: 'W', passYds: 220, passTD: 2, rushYds: 45, rushTD: 1, int: 0 },
     recruiting: [{ id: 1, name: 'Old High School Leader', interest: 99 }],
+    collegeNewsroom: {
+      activeStopId: 'college-stop-1',
+      stops: [{ id: 'college-stop-1', school: 'Test University A', city: 'Test City', state: 'Michigan', localOutletName: 'Test City Herald', regionalOutletName: 'Great Lakes Sports' }],
+    },
     availableFactKeys: [...baseFacts, 'profile.player.college'],
     currentFactKeys: [...baseFacts, 'profile.player.college'],
     publishedAt: '2026-09-01T12:00:00.000Z',
   });
 
-  const recruitingStory = issue.articles.find((entry) => entry.outletId === 'recruiting');
-  assert.match(recruitingStory.headline, /transfer desk remains quiet/i);
-  assert.doesNotMatch(JSON.stringify(recruitingStory), /Old High School Leader|99%/);
-  assert.equal(recruitingStory.groundingStatus, 'verified');
+  assert.equal(issue.articles.length, 4);
+  assert.equal(issue.articles[0].outletName, 'Test City Herald');
+  assert.equal(issue.articles[1].outletName, 'Great Lakes Sports');
+  assert.equal(issue.articles[3].outletName, 'College Football Central');
+  assert.equal(issue.articles.some((entry) => entry.outletId === 'recruiting'), false);
+  assert.doesNotMatch(JSON.stringify(issue.articles), /Old High School Leader|99%/);
+  assert.ok(issue.articles.every((entry) => entry.groundingStatus === 'verified'));
 });
 
 test('blank statistics remain unreported instead of becoming invented zeroes', () => {

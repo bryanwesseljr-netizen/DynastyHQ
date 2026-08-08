@@ -17,13 +17,19 @@ test('begins college only after commitment and preserves the high-school archive
     playerRecruiting: { highSchoolArchive: { schools: [{ name: 'Test University' }] } },
     careerChronicle: [],
   };
-  const next = beginCollegeCareer(state, '2026-09-01T12:00:00.000Z');
+  const next = beginCollegeCareer(state, {
+    city: 'Test City',
+    state: 'Michigan',
+    localOutletName: 'Test City Herald',
+    regionalOutletName: 'Great Lakes Sports',
+  }, '2026-09-01T12:00:00.000Z');
   assert.equal(next.currentSeason, 2);
   assert.equal(next.currentWeek, 1);
   assert.equal(next.player.school, 'Test University');
   assert.equal(next.careerStage, 'College');
   assert.equal(next.playerRecruiting.highSchoolArchive.schools.length, 1);
   assert.equal(next.careerChronicle.at(-1).type, 'college-enrollment');
+  assert.equal(next.collegeNewsroom.stops[0].localOutletName, 'Test City Herald');
 });
 
 test('requires the complete graduation checklist before the RTG archive can close', () => {

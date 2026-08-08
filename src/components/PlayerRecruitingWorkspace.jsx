@@ -9,6 +9,7 @@ import {
   sortedRecruitingSchools,
   TRANSFER_STATUSES,
 } from '../domain/playerRecruiting';
+import { suggestCollegeOutlets } from '../domain/collegeNewsroom';
 
 const PlayerRecruitingWorkspace = ({
   state,
@@ -100,11 +101,25 @@ const PlayerRecruitingWorkspace = ({
             {!readOnly && <form onSubmit={addTransfer} className="mt-5 flex gap-2"><input value={transferInput} onChange={(event) => setTransferInput(event.target.value)} placeholder="Add a transfer option shown in CFB 27" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white" /><button className="rounded-lg bg-blue-600 px-4 text-white"><Plus size={17} /></button></form>}
             <div className="mt-5 space-y-3">
               {transfer.targets.map((target) => (
-                <div key={target.id} className="grid gap-3 rounded-xl border border-slate-700 bg-slate-950/70 p-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center">
-                  <input value={target.name} disabled={readOnly} onChange={(event) => onUpdateTransferTarget(target.id, 'name', event.target.value)} className="bg-transparent font-black text-white outline-none" />
-                  <input value={target.projectedRole || ''} disabled={readOnly} onChange={(event) => onUpdateTransferTarget(target.id, 'projectedRole', event.target.value)} placeholder="Projected role" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
-                  <input value={target.fit || ''} disabled={readOnly} onChange={(event) => onUpdateTransferTarget(target.id, 'fit', event.target.value)} placeholder="Why it fits" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
-                  {!readOnly && <div className="flex gap-2"><button type="button" onClick={() => onTransfer(target)} className="rounded bg-amber-500 px-3 py-2 text-[10px] font-black uppercase text-slate-950">Transfer</button><button type="button" onClick={() => onDeleteTransferTarget(target.id)} className="rounded border border-slate-700 p-2 text-slate-500 hover:text-red-400"><Trash2 size={14} /></button></div>}
+                <div key={target.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-4">
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center">
+                    <input value={target.name} disabled={readOnly} onChange={(event) => onUpdateTransferTarget(target.id, 'name', event.target.value)} className="bg-transparent font-black text-white outline-none" />
+                    <input value={target.projectedRole || ''} disabled={readOnly} onChange={(event) => onUpdateTransferTarget(target.id, 'projectedRole', event.target.value)} placeholder="Projected role" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
+                    <input value={target.fit || ''} disabled={readOnly} onChange={(event) => onUpdateTransferTarget(target.id, 'fit', event.target.value)} placeholder="Why it fits" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
+                    {!readOnly && <button type="button" onClick={() => onDeleteTransferTarget(target.id)} className="rounded border border-slate-700 p-2 text-slate-500 hover:text-red-400"><Trash2 size={14} /></button>}
+                  </div>
+                  {!readOnly && (
+                    <div className="mt-4 border-t border-slate-800 pt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[9px] font-black uppercase tracking-widest text-blue-400">New college Newsroom</p><button type="button" disabled={!target.city?.trim() || !target.state?.trim()} onClick={() => { const names = suggestCollegeOutlets({ school: target.name, city: target.city, state: target.state }); onUpdateTransferTarget(target.id, 'localOutletName', names.localOutletName); onUpdateTransferTarget(target.id, 'regionalOutletName', names.regionalOutletName); }} className="text-[9px] font-black uppercase tracking-wider text-amber-300 disabled:opacity-40">Suggest names</button></div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <input value={target.city || ''} onChange={(event) => onUpdateTransferTarget(target.id, 'city', event.target.value)} placeholder="College city" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
+                        <input value={target.state || ''} onChange={(event) => onUpdateTransferTarget(target.id, 'state', event.target.value)} placeholder="State" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
+                        <input value={target.localOutletName || ''} onChange={(event) => onUpdateTransferTarget(target.id, 'localOutletName', event.target.value)} placeholder="Local newspaper" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
+                        <input value={target.regionalOutletName || ''} onChange={(event) => onUpdateTransferTarget(target.id, 'regionalOutletName', event.target.value)} placeholder="Regional outlet" className="rounded border border-slate-800 bg-slate-900 px-2 py-2 text-xs text-white" />
+                      </div>
+                      <button type="button" disabled={!target.city?.trim() || !target.state?.trim() || !target.localOutletName?.trim() || !target.regionalOutletName?.trim()} onClick={() => onTransfer(target)} className="mt-3 rounded bg-amber-500 px-4 py-2 text-[10px] font-black uppercase text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">Confirm transfer and switch outlets</button>
+                    </div>
+                  )}
                 </div>
               ))}
               {!transfer.targets.length && <p className="rounded-xl border-2 border-dashed border-slate-800 p-8 text-center text-sm text-slate-500">No transfer schools added. If you stay, close the window above and nothing else changes.</p>}

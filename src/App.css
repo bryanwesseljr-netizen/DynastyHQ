@@ -1,3 +1,2 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Component-specific styling lives in index.css so the dashboard shell and
+   route workspaces share one predictable Tailwind cascade. */

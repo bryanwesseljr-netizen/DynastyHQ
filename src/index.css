@@ -1,6 +1,119 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  background: #02070b;
+}
+
+html,
+body {
+  min-width: 320px;
+  margin: 0;
+  background: #02070b;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+* {
+  scrollbar-color: #334155 #071019;
+  scrollbar-width: thin;
+}
+
+.dhq-primary-nav-item {
+  font-size: 7.5px;
+}
+
+.dhq-command-title {
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-size: clamp(2.45rem, 3.1vw, 3.55rem);
+  font-stretch: condensed;
+  font-weight: 900;
+  letter-spacing: 0.018em;
+  line-height: 0.92;
+}
+
+.dhq-command-title > span {
+  display: block;
+  white-space: nowrap;
+}
+
+.dhq-command-hero,
+.dhq-command-hero-inner {
+  min-height: 390px;
+}
+
+#recruit-command-center {
+  margin: 12px 20px 0;
+}
+
+.dhq-dashboard-grid {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.011) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.011) 1px, transparent 1px),
+    #03090d;
+  background-size: 44px 44px;
+  gap: 12px;
+}
+
+.dhq-dashboard-card {
+  border: 1px solid rgba(123, 150, 165, 0.3);
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 30%),
+    rgba(5, 14, 19, 0.96);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.dhq-dashboard-card h3 {
+  font-family: "Arial Narrow", Impact, sans-serif;
+  letter-spacing: 0.13em;
+}
+
+@media (min-width: 1024px) {
+  .dhq-command-hero,
+  .dhq-command-hero-inner {
+    min-height: 268px;
+  }
+
+  .dhq-command-hero-inner {
+    padding-top: 44px;
+    padding-bottom: 24px;
+  }
+
+  .dhq-hero-quote {
+    top: 28px;
+    right: 40px;
+    width: 315px;
+    max-width: 315px;
+  }
+
+  #recruit-command-center {
+    margin-right: 30px;
+    margin-left: 30px;
+  }
+
+  .dhq-dashboard-grid {
+    padding: 0 30px 24px;
+  }
+}
+
+@media (min-width: 1380px) {
+  .dhq-primary-nav-item {
+    font-size: 8.5px;
+  }
+}
+
+@media (max-width: 1119px) {
+  .dhq-command-title > span {
+    white-space: normal;
+  }
+}
 
 @media print {
   @page {

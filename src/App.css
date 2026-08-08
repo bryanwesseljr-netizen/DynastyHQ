@@ -1,3 +1,74 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Dynasty HQ dashboard hero refinement
+   Keep the stadium atmosphere from the reference, but remove the oversized
+   player cutout and compress the hero so the command-center cards begin much
+   higher on desktop screens. */
+
+.dhq-command-hero > img[alt*="Wessel"] {
+  display: none !important;
+}
+
+@media (min-width: 1024px) {
+  .dhq-command-hero > div:last-child {
+    min-height: 320px !important;
+    padding-top: 28px !important;
+    padding-bottom: 22px !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:first-child {
+    width: 58% !important;
+    max-width: 680px !important;
+  }
+
+  .dhq-command-title {
+    font-size: clamp(2.7rem, 4.1vw, 4.7rem) !important;
+    line-height: 0.88 !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:nth-of-type(2) {
+    margin-top: 18px !important;
+  }
+
+  /* The journey strip already provides the timeline affordance in the hero.
+     Removing the duplicate CTA keeps the header compact like the reference. */
+  .dhq-command-hero > div:last-child > button {
+    display: none !important;
+  }
+
+  .dhq-command-hero blockquote {
+    top: 54px !important;
+    right: 40px !important;
+    width: 300px !important;
+    max-width: 300px !important;
+    padding: 16px 20px !important;
+  }
+
+  .dhq-command-hero blockquote > div:first-child {
+    font-size: 2rem !important;
+  }
+
+  .dhq-command-hero blockquote p {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+  }
+
+  .dhq-command-hero blockquote > div:last-child {
+    margin-top: 10px !important;
+    padding-top: 8px !important;
+    font-size: 1.25rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dhq-command-hero > div:last-child {
+    min-height: 305px !important;
+  }
+
+  .dhq-command-hero > div:last-child > div:first-child {
+    width: 60% !important;
+  }
+}

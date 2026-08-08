@@ -8,7 +8,7 @@ import {
   HeartPulse, Briefcase, DollarSign, Users, AlertTriangle,
   Camera, CheckCircle, Plus, Trash2, Medal,
   Calendar, Megaphone, TrendingUp, GripVertical, FileText, CheckCircle2, Pencil, ScanLine,
-  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen, Menu
+  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen, Menu, ChevronDown
 } from 'lucide-react';
 
 // --- FIREBASE CLOUD DATABASE IMPORTS ---
@@ -1909,35 +1909,45 @@ const handleSaveGameClick = () => {
           ? 'Coordinator Office'
           : (careerStage === CAREER_STAGES.HC ? 'Program Center' : 'Legacy Center')));
     const navItems = isReadOnly ? [
-      { id: 'dashboard', icon: Home, label: commandCenterLabel, shortLabel: 'Dashboard' },
+      { id: 'dashboard', icon: Home, label: 'Dashboard', shortLabel: 'Dashboard' },
+      { id: 'commandCenter', icon: Activity, label: commandCenterLabel, shortLabel: 'Command Center' },
       ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office', shortLabel: 'Personnel' }] : []),
       ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room', shortLabel: 'Offseason' }] : []),
       { id: 'recruiting', icon: Map, label: isCoach ? "Coach's Prospect Board" : 'Recruiting Board', shortLabel: 'Recruiting' },
       { id: 'newsroom', icon: Newspaper, label: 'The Newsroom', shortLabel: 'Newsroom' },
-      { id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast', shortLabel: 'Podcast' },
-      { id: 'chronicle', icon: BookOpen, label: 'Career Chronicle', shortLabel: 'Chronicle' },
-      { id: 'trophies', icon: Trophy, label: 'Legacy Trophy Case', shortLabel: 'Legacy' }
+      { id: 'podcast', icon: Radio, label: 'Podcast', shortLabel: 'Podcast' },
+      { id: 'chronicle', icon: BookOpen, label: 'Chronicle', shortLabel: 'Chronicle' },
+      { id: 'trophies', icon: Trophy, label: 'Legacy', shortLabel: 'Legacy' }
     ] : [
-      { id: 'dashboard', icon: Home, label: commandCenterLabel, shortLabel: 'Dashboard' },
+      { id: 'dashboard', icon: Home, label: 'Dashboard', shortLabel: 'Dashboard' },
+      { id: 'commandCenter', icon: Activity, label: commandCenterLabel, shortLabel: 'Command Center' },
       ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office', shortLabel: 'Personnel' }] : []),
       ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room', shortLabel: 'Offseason' }] : []),
       { id: 'recruiting', icon: Map, label: isCoach ? "Coach's Prospect Board" : 'Recruiting Board', shortLabel: 'Recruiting' },
       { id: 'newsroom', icon: Newspaper, label: 'The Newsroom', shortLabel: 'Newsroom' },
-      { id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast', shortLabel: 'Podcast' },
-      { id: 'chronicle', icon: BookOpen, label: 'Career Chronicle', shortLabel: 'Chronicle' },
-      { id: 'trophies', icon: Trophy, label: 'Legacy Trophy Case', shortLabel: 'Legacy' },
-      { id: 'dataEntry', icon: Activity, label: 'Log Weekly Agenda', shortLabel: 'Weekly Agenda' },
-      { id: 'settings', icon: Settings, label: 'Hub Settings', shortLabel: 'Settings' },
-      { id: 'rules', icon: FileText, label: 'House Rules', shortLabel: 'Handbook' }
+      { id: 'podcast', icon: Radio, label: 'Podcast', shortLabel: 'Podcast' },
+      { id: 'chronicle', icon: BookOpen, label: 'Chronicle', shortLabel: 'Chronicle' },
+      { id: 'trophies', icon: Trophy, label: 'Legacy', shortLabel: 'Legacy' },
+      { id: 'dataEntry', icon: Activity, label: 'Weekly Agenda', shortLabel: 'Weekly Agenda' },
+      { id: 'settings', icon: Settings, label: 'Settings', shortLabel: 'Settings' },
+      { id: 'rules', icon: FileText, label: 'Career Handbook', shortLabel: 'Handbook' }
     ];
+    const desktopNavItems = navItems.filter((item) => item.id !== 'rules');
 
     const player = appState.player;
-    const stars = Number(player.stars) || 3;
-    const starString = '★'.repeat(stars) + '☆'.repeat(5 - stars);
 
     const openNavItem = (item) => {
       if (item.id === 'rules') {
         setIsHouseRulesModalOpen(true);
+      } else if (item.id === 'commandCenter') {
+        setActiveTab('dashboard');
+        requestAnimationFrame(() => {
+          const target = document.getElementById('recruit-command-center');
+          const scroller = document.querySelector('main');
+          if (!target || !scroller) return;
+          const top = scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+          scroller.scrollTo({ top: Math.max(0, top - 12), behavior: 'smooth' });
+        });
       } else {
         if (item.id === 'newsroom') setNewsroomFocusId('');
         if (item.id === 'podcast') setPodcastFocusId('');
@@ -1955,24 +1965,24 @@ const handleSaveGameClick = () => {
           : (saveStatus.state === 'error' ? 'Retry needed' : 'Cloud save ready')));
 
     return (
-      <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-700/70 bg-[#050a0f]/95 shadow-2xl shadow-black/40 backdrop-blur-xl no-print">
-        <div className="mx-auto flex h-[72px] max-w-[1800px] items-stretch px-3 sm:px-5">
-          <button type="button" onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} className="flex shrink-0 items-center gap-3 pr-4 text-left sm:pr-6" aria-label="Open Dynasty HQ dashboard">
-            <span className="flex h-10 w-10 items-center justify-center border border-amber-400/70 bg-amber-500/10 text-amber-400 shadow-inner shadow-amber-500/20 [clip-path:polygon(50%_0,92%_20%,92%_72%,50%_100%,8%_72%,8%_20%)]">
-              <Trophy size={19} />
+      <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#03080c]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
+        <div className="mx-auto flex h-[44px] max-w-[1800px] items-stretch px-3 sm:px-4">
+          <button type="button" onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }} className="flex shrink-0 items-center gap-2 pr-2.5 text-left 2xl:pr-4" aria-label="Open Dynasty HQ dashboard">
+            <span className="flex h-7 w-7 items-center justify-center border border-amber-400/80 bg-amber-500/10 text-amber-400 shadow-inner shadow-amber-500/20 [clip-path:polygon(50%_0,92%_20%,92%_72%,50%_100%,8%_72%,8%_20%)]">
+              <Trophy size={13} />
             </span>
-            <span className="hidden text-xl font-black uppercase tracking-[0.08em] text-white sm:block">Dynasty <span className="text-amber-400">HQ</span></span>
+            <span className="hidden text-[15px] font-black uppercase tracking-[0.075em] text-slate-100 sm:block">Dynasty <span className="text-amber-400">HQ</span></span>
           </button>
 
-          <nav className="hidden min-w-0 flex-1 items-stretch justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:flex" aria-label="Primary navigation">
-            {navItems.map((item) => (
+          <nav className="hidden min-w-0 flex-1 items-stretch justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[1180px]:flex" aria-label="Primary navigation">
+            {desktopNavItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 title={item.label}
                 aria-current={activeTab === item.id && item.id !== 'rules' ? 'page' : undefined}
                 onClick={() => openNavItem(item)}
-                className={`relative flex shrink-0 items-center justify-center whitespace-nowrap px-2.5 text-[8px] font-black uppercase tracking-[0.08em] transition-colors 2xl:px-3 2xl:text-[9px] ${activeTab === item.id && item.id !== 'rules' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
+                className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap px-1.5 font-black uppercase tracking-[0.07em] transition-colors min-[1380px]:px-2 2xl:px-2.5 ${activeTab === item.id && item.id !== 'rules' ? 'text-white' : 'text-slate-500 hover:text-white'}`}
               >
                 <span>{item.label}</span>
                 {activeTab === item.id && item.id !== 'rules' && <span className="absolute inset-x-2 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.75)]" />}
@@ -1980,27 +1990,30 @@ const handleSaveGameClick = () => {
             ))}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-slate-800 pl-3 sm:pl-5">
+          <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-slate-800 pl-3">
             {!isReadOnly && (
               <>
                 <span className={`hidden rounded border px-2 py-1 text-[8px] font-black uppercase tracking-wider 2xl:block ${saveStatus.state === 'error' || saveStatus.state === 'conflict' ? 'border-red-500/40 bg-red-950/30 text-red-300' : saveStatus.state === 'saving' || saveStatus.state === 'retrying' ? 'border-blue-500/40 bg-blue-950/30 text-blue-300' : 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300'}`}>{saveLabel}</span>
-                <button type="button" onClick={() => handlePublishToPublic()} aria-label="Get share link" title="Get share link" className="hidden h-9 w-9 items-center justify-center rounded border border-slate-700 bg-slate-900 text-slate-400 hover:border-amber-400/50 hover:text-white sm:flex"><Share2 size={15} /></button>
+                <button type="button" onClick={() => handlePublishToPublic()} aria-label="Get share link" title="Get share link" className="hidden h-8 w-8 items-center justify-center rounded border border-slate-800 bg-slate-950 text-slate-500 hover:border-amber-400/50 hover:text-white sm:flex"><Share2 size={13} /></button>
               </>
             )}
-            <div className="hidden items-center gap-3 min-[1740px]:flex">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-500/40 bg-slate-900 text-xs font-black text-amber-400">{player.number || (player.name?.[0] || 'D')}</span>
-              <div className="max-w-36">
-                <div className="truncate text-[10px] font-black uppercase tracking-wider text-white">{isCoach ? `Coach ${player.name.split(' ')[1] || player.name}` : (player.name || 'Dynasty Builder')}</div>
-                <div className="truncate text-[8px] font-bold uppercase tracking-widest text-slate-500">S{appState.currentSeason || 1} · W{appState.currentWeek} · {isCoach ? appState.careerPhase : starString}</div>
-              </div>
+            <div className="hidden items-center gap-2 min-[1540px]:flex">
+              <button type="button" onClick={() => setActiveTab('settings')} className="flex items-center gap-2 text-left" aria-label="Open Dynasty HQ settings">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-500/40 bg-slate-900 text-[10px] font-black text-amber-400">{player.number || (player.name?.[0] || 'D')}</span>
+                <span className="max-w-36">
+                  <span className="block truncate text-[8px] font-black uppercase tracking-[0.08em] text-white">Build. Recruit. Win.</span>
+                  <span className="block truncate text-[7px] font-bold text-slate-500">Your Legacy Starts Now.</span>
+                </span>
+              </button>
+              <button type="button" onClick={() => setIsHouseRulesModalOpen(true)} className="flex h-8 w-6 items-center justify-center text-slate-500 hover:text-amber-400" aria-label="Open career handbook" title="Career Handbook"><ChevronDown size={13} /></button>
               {isReadOnly && <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-black tracking-widest text-white">VIEWER</span>}
             </div>
-            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-10 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white xl:hidden"><Menu size={17} /> Menu</button>
+            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1180px]:hidden"><Menu size={16} /> Menu</button>
           </div>
         </div>
 
         {mobileNavOpen && (
-          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl xl:hidden">
+          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1180px]:hidden">
             <nav className="mx-auto grid max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Mobile primary navigation">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -3867,7 +3880,7 @@ const handleSaveGameClick = () => {
        {renderNav()}
        
        {/* Main Content Area */}
-       <main className="relative h-full overflow-y-auto px-3 pb-8 pt-[88px] sm:px-5 lg:px-8">
+       <main className="relative h-full overflow-y-auto px-3 pb-8 pt-[52px] sm:px-5 lg:px-8">
          {/* Background Image */}
          <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true">
             <img src={getBgImage()} className="w-full h-full object-cover opacity-20 mix-blend-luminosity" alt="Background" />

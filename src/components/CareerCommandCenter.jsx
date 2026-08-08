@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { buildCommandCenter, CAREER_STAGES } from '../domain/commandCenter';
 import { formatRtgDelta, formatRtgValue } from '../domain/rtgProgress';
-import wesselPlayerHero from '../assets/dynastyhq-player-wessel-2.png';
+import wesselPlayerHero from '../assets/dynastyhq-player-wessel-2-transparent.png';
 import CareerTransitionPanel from './CareerTransitionPanel';
 
 const panelIcons = {
@@ -253,22 +253,27 @@ const JourneyStrip = ({ stage }) => {
     : Math.max(0, stageOrder.findIndex((item) => item.id === stage));
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-2 text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">Journey overview</div>
-      <div className="grid grid-cols-4 gap-1 sm:gap-3">
+    <div className="w-full max-w-[500px]">
+      <div className="mb-1.5 text-[7px] font-black uppercase tracking-[0.2em] text-slate-400">Journey overview</div>
+      <div className="flex items-start">
         {stageOrder.map((item, index) => {
           const reached = index <= activeIndex;
           const active = index === activeIndex;
           return (
-            <div key={item.id} className="relative flex min-w-0 items-center gap-2 sm:gap-3">
-              <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-10 sm:w-10 ${active ? 'border-amber-300 bg-amber-500 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.5)]' : reached ? 'border-slate-300 bg-slate-200 text-slate-900' : 'border-slate-700 bg-slate-900/80 text-slate-600'}`}>
-                <item.Icon size={active ? 18 : 16} />
+            <div key={item.id} className="contents">
+              <div className="flex w-[82px] shrink-0 flex-col items-center text-center sm:w-[96px]">
+                <div className={`relative z-10 flex h-8 w-8 items-center justify-center border sm:h-9 sm:w-9 ${active ? 'border-amber-300 bg-amber-500/20 text-amber-300 shadow-[0_0_18px_rgba(245,158,11,0.42)] [clip-path:polygon(50%_0,92%_20%,92%_72%,50%_100%,8%_72%,8%_20%)]' : reached ? 'border-slate-300/80 bg-slate-100/10 text-slate-100' : 'border-slate-700 bg-slate-950/70 text-slate-600'}`}>
+                  <item.Icon size={active ? 17 : 15} />
+                </div>
+                <div className={`mt-1.5 whitespace-nowrap text-[7px] font-black uppercase tracking-[0.06em] sm:text-[8px] ${reached ? 'text-slate-100' : 'text-slate-600'}`}>{item.label}</div>
+                <div className="mt-0.5 text-[6px] text-slate-500 sm:text-[7px]">{item.caption}</div>
               </div>
-              <div className="min-w-0">
-                <div className={`truncate text-[8px] font-black uppercase tracking-wider sm:text-[10px] ${reached ? 'text-white' : 'text-slate-600'}`}>{item.label}</div>
-                <div className="hidden text-[8px] uppercase tracking-wider text-slate-500 sm:block">{item.caption}</div>
-              </div>
-              {index < stageOrder.length - 1 && <span className={`absolute left-8 right-[-10px] top-4 h-px sm:left-10 sm:top-5 ${index < activeIndex ? 'bg-slate-300' : 'bg-slate-700'}`} />}
+              {index < stageOrder.length - 1 && (
+                <div className={`mt-4 flex min-w-3 flex-1 items-center ${index < activeIndex ? 'text-slate-200' : 'text-slate-600'}`} aria-hidden="true">
+                  <span className={`h-px flex-1 ${index < activeIndex ? 'bg-slate-300/80' : 'bg-slate-700'}`} />
+                  <ChevronRight size={13} strokeWidth={2.5} />
+                </div>
+              )}
             </div>
           );
         })}
@@ -315,62 +320,57 @@ const CareerCommandCenter = ({
   ];
 
   return (
-    <div className="relative z-10 mx-auto max-w-[1540px] space-y-3 pb-20 animate-in fade-in">
-      <section className="relative min-h-[480px] overflow-hidden rounded-lg border border-slate-700/70 bg-[#06111a] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
-        <img src={heroBackground} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-55" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,8,13,.98)_0%,rgba(2,8,13,.72)_35%,rgba(2,8,13,.14)_53%,rgba(2,8,13,.75)_76%,rgba(2,8,13,.94)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(3,10,16,.99)_0%,rgba(3,10,16,.52)_22%,transparent_64%,rgba(3,10,16,.2)_100%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.04)_1px,transparent_1px)] [background-size:42px_42px]" />
-        <div className="pointer-events-none absolute inset-x-[34%] bottom-0 top-[8%] hidden bg-[radial-gradient(ellipse_at_center,rgba(148,163,184,.22),transparent_65%)] lg:block" />
-        <img src={wesselPlayerHero} alt="Wessel, number 2, facing the stadium field" className="pointer-events-none absolute bottom-0 left-1/2 z-[1] hidden h-[96%] max-w-[46%] -translate-x-1/2 object-contain object-bottom drop-shadow-[0_28px_32px_rgba(0,0,0,.92)] lg:block" />
+    <div className="relative z-10 mx-auto max-w-[1700px] space-y-3 pb-20 animate-in fade-in">
+      <section className="relative left-1/2 min-h-[620px] w-screen -translate-x-1/2 overflow-hidden border-y border-slate-700/70 bg-[#041019] shadow-[0_24px_80px_rgba(0,0,0,0.55)] lg:h-[300px] lg:min-h-0">
+        <img src={heroBackground} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center opacity-70 saturate-75" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(1,7,11,.98)_0%,rgba(1,7,11,.78)_27%,rgba(1,7,11,.12)_50%,rgba(1,7,11,.62)_73%,rgba(1,7,11,.94)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(2,9,14,.98)_0%,rgba(2,9,14,.30)_31%,transparent_70%,rgba(2,9,14,.18)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-15 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:36px_36px]" />
+        <div className="pointer-events-none absolute inset-x-[35%] bottom-0 top-0 hidden bg-[radial-gradient(ellipse_at_50%_28%,rgba(226,232,240,.25),transparent_63%)] lg:block" />
+        <img src={wesselPlayerHero} alt="Wessel, number 2, facing the stadium field" className="pointer-events-none absolute left-1/2 top-[-8%] z-[1] hidden h-[210%] -translate-x-1/2 object-contain drop-shadow-[0_24px_26px_rgba(0,0,0,.95)] lg:block" />
+        <img src={wesselPlayerHero} alt="" aria-hidden="true" className="pointer-events-none absolute right-[-20%] top-[16%] z-[1] h-[58%] opacity-25 sm:right-[-5%] lg:hidden" />
 
-        <div className="relative z-[2] flex min-h-[480px] flex-col justify-between p-5 sm:p-8 lg:p-10">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(290px,.7fr)]">
-            <div className="max-w-[610px]">
-              <div className="text-[10px] font-black uppercase tracking-[0.36em] text-amber-400">Welcome to your</div>
-              <h2 className="mt-3 font-[Impact,Haettenschweiler,'Arial_Narrow_Bold',sans-serif] text-5xl uppercase leading-[0.88] tracking-[0.025em] text-white drop-shadow-[0_5px_14px_rgba(0,0,0,.9)] sm:text-6xl lg:text-[4.6rem]">
-                Dynasty HQ<br />Command Center
-              </h2>
-              <p className="mt-5 max-w-lg text-sm font-medium leading-relaxed text-slate-300">Track every step of your legacy—from high-school recruit to college player, from coordinator to head coach.</p>
-              <p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Season {model.season} · Week {model.week} · {model.institution}</p>
-            </div>
-
-            <div className="flex flex-col justify-start gap-4 lg:items-end">
-              <blockquote className="w-full max-w-sm rounded-md border border-slate-500/60 bg-[#06111a]/80 p-5 shadow-2xl backdrop-blur-md">
-                <div className="text-4xl font-black leading-none text-slate-500">“</div>
-                <p className="-mt-2 text-lg font-black uppercase leading-snug tracking-[0.08em] text-slate-200">{quote}</p>
-                <div className="mt-4 h-px w-24 bg-amber-400" />
-                <div className="mt-2 text-right text-xl font-black italic text-amber-400">DHQ</div>
-              </blockquote>
-            </div>
+        <div className="relative z-[2] mx-auto flex min-h-[620px] max-w-[1800px] flex-col px-5 py-7 sm:px-8 lg:h-full lg:min-h-0 lg:px-9 lg:py-5">
+          <div className="max-w-[420px] lg:w-[34%] lg:max-w-none">
+            <div className="text-[8px] font-black uppercase tracking-[0.34em] text-amber-400">Welcome to your</div>
+            <h2 className="dhq-command-title mt-2 uppercase text-slate-100 drop-shadow-[0_5px_14px_rgba(0,0,0,.95)]">
+              <span>Dynasty HQ</span><span>Command Center</span>
+            </h2>
+            <p className="mt-2.5 max-w-[350px] text-[10px] font-medium leading-[1.4] text-slate-300">Track every step of your legacy. From high-school recruit to college player, from coach to champion—this is where greatness is built.</p>
           </div>
 
-          <div className="mt-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="w-full lg:max-w-[58%]"><JourneyStrip stage={model.stage} /></div>
-            {!readOnly && (
-              <div className="flex w-full gap-2 lg:max-w-sm">
-                <button type="button" onClick={() => onNavigate(model.primaryAction.tab)} className="flex flex-1 items-center justify-center gap-2 rounded bg-amber-500 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-[0_8px_30px_rgba(245,158,11,.28)] hover:bg-amber-400">
-                  <CalendarDays size={15} /> {model.primaryAction.label}
-                </button>
-                <button type="button" onClick={() => onNavigate(model.secondaryAction.tab)} className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-500 bg-slate-950/70 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-white hover:border-amber-400/70">
-                  <Target size={15} /> {model.secondaryAction.label}
-                </button>
-              </div>
-            )}
-          </div>
+          <blockquote className="mt-6 w-full max-w-[305px] self-end border border-slate-500/60 bg-[#06111a]/82 px-4 py-3 shadow-2xl backdrop-blur-md lg:absolute lg:right-9 lg:top-[38px] lg:mt-0 lg:w-[25%]">
+            <div className="text-2xl font-black leading-none text-slate-500">“</div>
+            <p className="-mt-1 text-[12px] font-black uppercase leading-[1.24] tracking-[0.08em] text-slate-200 xl:text-[13px]">{quote}</p>
+            <div className="mt-2 text-right font-[cursive] text-xl italic text-amber-400">DHQ</div>
+          </blockquote>
+
+          <div className="mt-auto w-full lg:absolute lg:bottom-[10px] lg:left-9 lg:w-[41%] lg:max-w-[500px]"><JourneyStrip stage={model.stage} /></div>
+          {!readOnly && (
+            <div className="mt-5 flex w-full gap-2 lg:absolute lg:bottom-[16px] lg:right-9 lg:mt-0 lg:w-[27%] lg:max-w-[390px]">
+              <button type="button" onClick={() => onNavigate(model.primaryAction.tab)} className="flex min-h-9 flex-1 items-center justify-center gap-2 rounded-sm bg-amber-500 px-3 py-2 text-[8px] font-black uppercase tracking-[0.08em] text-slate-950 shadow-[0_8px_30px_rgba(245,158,11,.28)] hover:bg-amber-400 xl:text-[9px]">
+                <CalendarDays size={13} /> {model.stage === CAREER_STAGES.HIGH_SCHOOL ? 'Log Weekly Agenda' : model.primaryAction.label}
+              </button>
+              <button type="button" onClick={() => onNavigate(model.secondaryAction.tab)} className="flex min-h-9 flex-1 items-center justify-center gap-2 rounded-sm border border-slate-500 bg-slate-950/70 px-3 py-2 text-[8px] font-black uppercase tracking-[0.08em] text-white hover:border-amber-400/70 xl:text-[9px]">
+                <Target size={13} /> {model.stage === CAREER_STAGES.HIGH_SCHOOL ? 'Open Recruiting Board' : model.secondaryAction.label}
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
-      <CareerTransitionPanel
-        state={state}
-        stage={model.stage}
-        readOnly={readOnly}
-        onBeginCollege={onBeginCollege}
-        onChecklistChange={onChecklistChange}
-        onGraduate={onGraduate}
-        onCreateCoachingUniverse={onCreateCoachingUniverse}
-        onBeginOcCareer={onBeginOcCareer}
-      />
+      <div id="recruit-command-center" className="scroll-mt-16">
+        <CareerTransitionPanel
+          state={state}
+          stage={model.stage}
+          readOnly={readOnly}
+          onBeginCollege={onBeginCollege}
+          onChecklistChange={onChecklistChange}
+          onGraduate={onGraduate}
+          onCreateCoachingUniverse={onCreateCoachingUniverse}
+          onBeginOcCareer={onBeginOcCareer}
+        />
+      </div>
 
       <div className="grid gap-3 xl:grid-cols-12">
         <DashboardCard title="Current Phase" actionLabel="View profile" onAction={() => onNavigate('chronicle')} className="xl:col-span-4">

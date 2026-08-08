@@ -38,7 +38,7 @@ test('the newsroom keeps podcast controls in the dedicated Gridiron Grind worksp
 
   assert.doesNotMatch(appSource, /setNewsTheme\('podcast'\)/);
   assert.doesNotMatch(newsroomSource, /Podcast Brief|Open Podcast Studio|openStory\('podcast'\)/);
-  assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast', shortLabel: 'Podcast' \}/);
+  assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Podcast', shortLabel: 'Podcast' \}/);
   assert.match(appSource, /activeTab === 'podcast'/);
 });
 
@@ -72,7 +72,7 @@ test('the homepage summarizes every major DynastyHQ workspace', async () => {
   ]) {
     assert.match(source, new RegExp(title));
   }
-  assert.match(source, /dynastyhq-player-wessel-2\.png/);
+  assert.match(source, /dynastyhq-player-wessel-2-transparent\.png/);
   assert.match(source, /alt="Wessel, number 2, facing the stadium field"/);
 });
 

@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   color-scheme: dark;
@@ -27,6 +25,39 @@ textarea {
 * {
   scrollbar-color: #334155 #071019;
   scrollbar-width: thin;
+}
+
+.dhq-primary-nav-item {
+  font-size: 6.5px;
+}
+
+.dhq-command-title {
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-size: clamp(2.45rem, 3.35vw, 3.2rem);
+  font-stretch: condensed;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  line-height: 0.88;
+}
+
+.dhq-command-title > span {
+  display: block;
+  width: 130%;
+  transform: scaleX(0.76);
+  transform-origin: left center;
+  white-space: nowrap;
+}
+
+@media (min-width: 1380px) {
+  .dhq-primary-nav-item {
+    font-size: 7px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .dhq-primary-nav-item {
+    font-size: 7.5px;
+  }
 }
 
 @media print {

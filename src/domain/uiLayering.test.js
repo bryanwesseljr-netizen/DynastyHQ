@@ -49,8 +49,13 @@ test('the app opens on the command-center homepage with one responsive top navig
   assert.match(appSource, /<header className="fixed inset-x-0 top-0/);
   assert.match(appSource, /aria-label="Primary navigation"/);
   assert.match(appSource, /Dynasty <span className="text-amber-400">HQ<\/span>/);
-  assert.match(appSource, /gridTemplateColumns: `repeat\(\$\{desktopNavItems\.length\}, minmax\(0, 1fr\)\)`/);
-  assert.doesNotMatch(appSource, /\{ id: 'commandCenter'/);
+  assert.match(appSource, /\{ id: 'commandCenter', icon: Activity, label: commandCenterLabel \}/);
+  assert.match(appSource, /item\.id === 'podcast' \? 'Podcast' : item\.label/);
+  assert.match(appSource, /dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden/);
+  assert.doesNotMatch(appSource, /gridTemplateColumns/);
+  assert.match(appSource, /dhq-settings-share-button/);
+  assert.match(appSource, /getElementById\('recruit-command-center'\)/);
+  assert.match(appSource, /getElementById\('dynastyhq-command-center'\)/);
   assert.doesNotMatch(appSource, /fixed inset-y-0 left-0/);
 });
 

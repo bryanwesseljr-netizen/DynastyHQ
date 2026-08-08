@@ -24,8 +24,13 @@ textarea {
   scrollbar-width: thin;
 }
 
+.dhq-primary-nav {
+  gap: clamp(12px, 1.25vw, 24px);
+}
+
 .dhq-primary-nav-item {
-  font-size: clamp(6.5px, 0.56vw, 8.5px);
+  font-size: clamp(7px, 0.52vw, 8px);
+  letter-spacing: 0.11em;
 }
 
 .dhq-command-title {

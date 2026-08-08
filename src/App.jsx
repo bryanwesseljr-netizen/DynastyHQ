@@ -1901,8 +1901,16 @@ const handleSaveGameClick = () => {
 
   // --- RENDERERS ---
   const renderNav = () => {
+    const commandCenterLabel = careerStage === CAREER_STAGES.HIGH_SCHOOL
+      ? 'Recruit Command Center'
+      : (careerStage === CAREER_STAGES.COLLEGE
+        ? 'Player Command Center'
+        : (careerStage === CAREER_STAGES.OC
+          ? 'Coordinator Office'
+          : (careerStage === CAREER_STAGES.HC ? 'Program Center' : 'Legacy Center')));
     const navItems = [
       { id: 'dashboard', icon: Home, label: 'Dashboard' },
+      { id: 'commandCenter', icon: Activity, label: commandCenterLabel },
       ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office' }] : []),
       ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room' }] : []),
       { id: 'recruiting', icon: Map, label: 'Recruiting Board' },
@@ -1914,8 +1922,7 @@ const handleSaveGameClick = () => {
       ...(!isReadOnly ? [{ id: 'settings', icon: Settings, label: 'Settings' }] : []),
       ...(!isReadOnly ? [{ id: 'rules', icon: FileText, label: 'Career Handbook' }] : []),
     ];
-    const desktopNavItems = navItems.filter((item) => !['frontOffice', 'offseason', 'settings', 'rules'].includes(item.id));
-    const player = appState.player;
+    const desktopNavItems = navItems.filter((item) => !['frontOffice', 'offseason', 'rules'].includes(item.id));
     const saveLabel = saveStatus.state === 'saving'
       ? 'Saving…'
       : (saveStatus.state === 'retrying'
@@ -1927,6 +1934,16 @@ const handleSaveGameClick = () => {
     const openNavItem = (item) => {
       if (item.id === 'rules') {
         setIsHouseRulesModalOpen(true);
+      } else if (item.id === 'commandCenter') {
+        setActiveTab('dashboard');
+        window.setTimeout(() => {
+          document.getElementById('recruit-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
+      } else if (item.id === 'dashboard') {
+        setActiveTab('dashboard');
+        window.setTimeout(() => {
+          document.getElementById('dynastyhq-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
       } else {
         if (item.id === 'newsroom') setNewsroomFocusId('');
         if (item.id === 'podcast') setPodcastFocusId('');
@@ -1937,19 +1954,15 @@ const handleSaveGameClick = () => {
 
     return (
       <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
-        <div className="flex h-[56px] w-full items-stretch px-3 sm:px-5">
-          <button type="button" onClick={() => openNavItem({ id: 'dashboard' })} className="flex shrink-0 items-center gap-2.5 pr-5 text-left" aria-label="Open Dynasty HQ dashboard">
+        <div className="flex h-[56px] w-full items-stretch px-4 2xl:px-6">
+          <button type="button" onClick={() => openNavItem({ id: 'dashboard' })} className="flex shrink-0 items-center gap-2.5 pr-7 text-left 2xl:pr-9" aria-label="Open Dynasty HQ dashboard">
             <span className="flex h-8 w-7 items-center justify-center border border-amber-400 bg-amber-500/10 text-amber-400 [clip-path:polygon(50%_0,94%_20%,88%_78%,50%_100%,12%_78%,6%_20%)]">
               <Trophy size={14} />
             </span>
             <span className="whitespace-nowrap text-[18px] font-black uppercase tracking-[0.08em] text-slate-100">Dynasty <span className="text-amber-400">HQ</span></span>
           </button>
 
-          <nav
-            className="hidden min-w-0 flex-1 items-stretch min-[1120px]:grid"
-            style={{ gridTemplateColumns: `repeat(${desktopNavItems.length}, minmax(0, 1fr))` }}
-            aria-label="Primary navigation"
-          >
+          <nav className="dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden min-[1120px]:flex" aria-label="Primary navigation">
             {desktopNavItems.map((item) => {
               const selected = activeTab === item.id;
               return (
@@ -1959,29 +1972,16 @@ const handleSaveGameClick = () => {
                   title={item.label}
                   aria-current={selected ? 'page' : undefined}
                   onClick={() => openNavItem(item)}
-                  className={`dhq-primary-nav-item relative flex min-w-0 items-center justify-center whitespace-nowrap px-1 font-black uppercase tracking-[0.04em] transition-colors xl:px-2 ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
+                  className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap font-black uppercase transition-colors ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <span>{item.label}</span>
-                  {selected ? <span className="absolute inset-x-2 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" /> : null}
+                  <span>{item.id === 'podcast' ? 'Podcast' : item.label}</span>
+                  {selected ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" /> : null}
                 </button>
               );
             })}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-slate-800 pl-3">
-            {!isReadOnly ? (
-              <>
-                <span className={`hidden rounded border px-2 py-1 text-[7px] font-black uppercase tracking-wider 2xl:block ${saveStatus.state === 'error' || saveStatus.state === 'conflict' ? 'border-red-500/40 bg-red-950/30 text-red-300' : saveStatus.state === 'saving' || saveStatus.state === 'retrying' ? 'border-blue-500/40 bg-blue-950/30 text-blue-300' : 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300'}`}>{saveLabel}</span>
-                <button type="button" onClick={() => handlePublishToPublic()} aria-label="Get share link" title="Get share link" className="hidden h-8 w-8 items-center justify-center rounded border border-slate-800 bg-slate-950 text-slate-500 hover:border-amber-400/50 hover:text-white sm:flex"><Share2 size={13} /></button>
-              </>
-            ) : null}
-            <button type="button" onClick={() => openNavItem({ id: isReadOnly ? 'dashboard' : 'settings' })} className="hidden items-center gap-2 text-left min-[1120px]:flex" aria-label={isReadOnly ? 'Dynasty HQ profile' : 'Open Dynasty HQ settings'}>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-[10px] font-black text-amber-300">{player.number || (player.name?.[0] || 'D')}</span>
-              <span className="hidden max-w-36 2xl:block">
-                <span className="block truncate text-[8px] font-black uppercase tracking-[0.08em] text-white">Build. Recruit. Win.</span>
-                <span className="block truncate text-[7px] font-bold text-slate-500">{player.name || 'Your legacy starts now.'}</span>
-              </span>
-            </button>
+          <div className="ml-auto flex shrink-0 items-center min-[1120px]:hidden">
             <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1120px]:hidden"><Menu size={16} /> Menu</button>
           </div>
         </div>
@@ -3726,14 +3726,17 @@ const handleSaveGameClick = () => {
 
   const renderSettings = () => (
     <div className="max-w-4xl mx-auto space-y-8 relative z-10">
-      <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl mb-6 flex justify-between items-center">
+      <div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl mb-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-3xl font-black text-white uppercase drop-shadow-md">Hub Settings & Profile</h2>
       <p className="text-slate-300 text-sm font-bold mt-1 drop-shadow">Manage your RTG data and custom imagery.</p>
     </div>
-    <div className="text-right">
-      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Era</div>
-      <div className="text-2xl font-black text-amber-500 drop-shadow-md">Season {appState.currentSeason || 1}</div>
+    <div className="flex items-center gap-4 sm:justify-end">
+      <button type="button" onClick={() => handlePublishToPublic()} className="dhq-settings-share-button flex items-center gap-2 rounded-lg border border-amber-400/35 bg-amber-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-amber-300 transition-colors hover:bg-amber-500/20"><Share2 size={14} /> Get Share Link</button>
+      <div className="text-right">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Era</div>
+        <div className="text-2xl font-black text-amber-500 drop-shadow-md">Season {appState.currentSeason || 1}</div>
+      </div>
     </div>
   </div>
 

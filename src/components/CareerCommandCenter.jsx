@@ -199,7 +199,7 @@ const CareerCommandCenter = ({
 
   return (
     <div className="relative z-10 mx-auto max-w-[1500px] pb-10 animate-in fade-in">
-      <section className="dhq-command-hero relative left-1/2 w-screen -translate-x-1/2 overflow-hidden border-b border-white/10 bg-[#03090d]">
+      <section id="dynastyhq-command-center" className="dhq-command-hero relative left-1/2 w-screen -translate-x-1/2 scroll-mt-14 overflow-hidden border-b border-white/10 bg-[#03090d]">
         <img src={heroBackground} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center opacity-45 saturate-50" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(1,6,9,.97)_0%,rgba(1,6,9,.78)_45%,rgba(1,6,9,.76)_72%,rgba(1,6,9,.95)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(2,8,12,.98)_0%,rgba(2,8,12,.18)_58%,rgba(2,8,12,.48)_100%)]" />

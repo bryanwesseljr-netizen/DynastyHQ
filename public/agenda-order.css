@@ -1,0 +1,22 @@
+.dhq-weekly-agenda-workspace {
+  display: flex;
+  flex-direction: column;
+}
+
+.dhq-weekly-agenda-workspace > .dhq-weekly-agenda-grid {
+  order: 10;
+}
+
+.dhq-weekly-agenda-workspace > .dhq-agenda-game-log-drawer {
+  order: 20;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.dhq-weekly-agenda-workspace > .dhq-weekly-agenda-milestone {
+  order: 30;
+}
+
+.dhq-weekly-agenda-workspace > .dhq-weekly-agenda-milestone + .relative {
+  order: 40;
+}

@@ -69,6 +69,53 @@ export const clearNewsroomMediaAssignment = ({ issues = [], publicationId, artic
   })
 );
 
+const stableHash = (value) => {
+  let hash = 2166136261;
+  for (const character of String(value || '')) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
+  const candidates = mediaLibrary
+    .filter((asset) => (
+      asset?.origin === NEWSROOM_MEDIA_ORIGINS.UPLOAD
+      && !asset.isReference
+      && asset.id
+      && asset.downloadUrl
+    ))
+    .sort((left, right) => (
+      stableHash(`${publicationId}:${left.id}`) - stableHash(`${publicationId}:${right.id}`)
+      || left.id.localeCompare(right.id)
+    ));
+
+  if (!candidates.length) return issues;
+
+  return issues.map((issue) => {
+    if (issue.publicationId !== publicationId && issue.id !== publicationId) return issue;
+    const alreadyUsed = new Set((issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean));
+    const unusedCandidates = candidates.filter((asset) => !alreadyUsed.has(asset.id));
+    const assignmentPool = unusedCandidates.length ? unusedCandidates : candidates;
+    let nextCandidate = 0;
+    return {
+      ...issue,
+      articles: (issue.articles || []).map((article) => {
+        if (article.mediaAssetId) return article;
+        const asset = assignmentPool[nextCandidate % assignmentPool.length];
+        nextCandidate += 1;
+        return {
+          ...article,
+          mediaAssetId: asset.id,
+          mediaSource: asset.origin,
+          mediaDisclosure: '',
+        };
+      }),
+    };
+  });
+};
+
 export const removeNewsroomMediaAsset = (state, assetId) => ({
   ...state,
   newsroomMediaLibrary: (state.newsroomMediaLibrary || []).filter((asset) => asset.id !== assetId),

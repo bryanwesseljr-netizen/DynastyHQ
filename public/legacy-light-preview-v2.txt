@@ -1,0 +1,2 @@
+DynastyHQ Legacy-style light theme preview v2
+Includes workspace consistency and podcast layer fix.

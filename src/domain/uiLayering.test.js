@@ -178,6 +178,12 @@ test('the homepage mirrors the compact command-center dashboard without duplicat
   assert.match(source, /type="file"/);
   assert.match(source, /accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(source, /onProfileHeadshotUpload/);
+  assert.match(source, /Edit Profile/);
+  assert.match(source, /Edit Player Profile/);
+  assert.match(source, /onProfileSave/);
+  assert.match(source, /role="dialog"/);
+  assert.match(source, /aria-modal="true"/);
+  assert.match(source, /Save Profile/);
   assert.match(source, /Change .* headshot/);
   assert.match(source, /Remove .* headshot/);
   assert.match(source, /group-hover\/headshot:opacity-100/);

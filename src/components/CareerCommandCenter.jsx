@@ -8,13 +8,16 @@ import {
   GraduationCap,
   Headphones,
   Newspaper,
+  Pencil,
   ShieldCheck,
   Trophy,
   UserRound,
   Users,
+  X,
 } from 'lucide-react';
 import { buildCommandCenter, CAREER_STAGES } from '../domain/commandCenter';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
+import { normalizePlayerProfile, validatePlayerProfile } from '../domain/playerProfile';
 import CareerTransitionPanel from './CareerTransitionPanel';
 
 const toneClasses = {
@@ -203,6 +206,114 @@ const ProfileHeadshotUploader = ({
   );
 };
 
+const profileFields = [
+  { id: 'name', label: 'Player name', placeholder: 'Bryan Wessel Jr.', className: 'sm:col-span-2' },
+  { id: 'school', label: 'School', placeholder: 'Edsel Ford Thunderbirds', className: 'sm:col-span-2' },
+  { id: 'number', label: 'Jersey number', placeholder: '2', inputMode: 'numeric' },
+  { id: 'pos', label: 'Position', placeholder: 'QB' },
+  { id: 'height', label: 'Height', placeholder: `6'1"` },
+  { id: 'weight', label: 'Weight', placeholder: '205 lbs' },
+  { id: 'archetype', label: 'Archetype', placeholder: 'Dual-Threat', className: 'sm:col-span-2' },
+];
+
+const ProfileEditorModal = ({ player, recruitStars, onClose, onSave }) => {
+  const [draft, setDraft] = useState(() => ({
+    name: player.name || '',
+    school: player.school || '',
+    number: player.number || '',
+    pos: player.pos || '',
+    height: player.height || '',
+    weight: player.weight || '',
+    archetype: player.archetype || '',
+    stars: recruitStars || player.stars || 3,
+    overall: player.overall || 70,
+  }));
+  const [errors, setErrors] = useState({});
+
+  const updateField = (field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
+  const submit = (event) => {
+    event.preventDefault();
+    const nextErrors = validatePlayerProfile(draft);
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+    onSave(normalizePlayerProfile(draft));
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm animate-in fade-in sm:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-editor-title"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onClose();
+      }}
+    >
+      <form onSubmit={submit} className="max-h-[calc(100vh-24px)] w-full max-w-2xl overflow-y-auto rounded-xl border border-slate-600/80 bg-[#081522] shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-[#081522]/95 px-5 py-4 backdrop-blur">
+          <div>
+            <div className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-300">Career identity</div>
+            <h2 id="profile-editor-title" className="mt-1 text-xl font-black text-white">Edit Player Profile</h2>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Keep these values matched to your current Road to Glory player.</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300" aria-label="Close profile editor">
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="grid gap-4 p-5 sm:grid-cols-2">
+          {profileFields.map((field, index) => (
+            <label key={field.id} className={field.className || ''}>
+              <span className="text-[8px] font-black uppercase tracking-[0.08em] text-slate-400">{field.label}</span>
+              <input
+                autoFocus={index === 0}
+                type="text"
+                inputMode={field.inputMode}
+                value={draft[field.id]}
+                onChange={(event) => updateField(field.id, event.target.value)}
+                placeholder={field.placeholder}
+                aria-invalid={Boolean(errors[field.id])}
+                aria-describedby={errors[field.id] ? `profile-${field.id}-error` : undefined}
+                className={`mt-1.5 w-full rounded-lg border bg-slate-950/80 px-3 py-2.5 text-sm font-bold text-white outline-none transition-colors placeholder:text-slate-700 focus:border-amber-300 ${errors[field.id] ? 'border-red-400' : 'border-slate-700'}`}
+              />
+              {errors[field.id] ? <span id={`profile-${field.id}-error`} className="mt-1 block text-[9px] font-bold text-red-300">{errors[field.id]}</span> : null}
+            </label>
+          ))}
+
+          <label>
+            <span className="text-[8px] font-black uppercase tracking-[0.08em] text-slate-400">Recruit rating</span>
+            <select value={draft.stars} onChange={(event) => updateField('stars', event.target.value)} className={`mt-1.5 w-full rounded-lg border bg-slate-950/80 px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-300 ${errors.stars ? 'border-red-400' : 'border-slate-700'}`} aria-invalid={Boolean(errors.stars)} aria-describedby={errors.stars ? 'profile-stars-error' : undefined}>
+              {[1, 2, 3, 4, 5].map((stars) => <option key={stars} value={stars}>{stars}-star</option>)}
+            </select>
+            {errors.stars ? <span id="profile-stars-error" className="mt-1 block text-[9px] font-bold text-red-300">{errors.stars}</span> : null}
+          </label>
+
+          <label>
+            <span className="text-[8px] font-black uppercase tracking-[0.08em] text-slate-400">Overall rating</span>
+            <input type="number" min="1" max="99" inputMode="numeric" value={draft.overall} onChange={(event) => updateField('overall', event.target.value)} className={`mt-1.5 w-full rounded-lg border bg-slate-950/80 px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-300 ${errors.overall ? 'border-red-400' : 'border-slate-700'}`} aria-invalid={Boolean(errors.overall)} aria-describedby={errors.overall ? 'profile-overall-error' : undefined} />
+            {errors.overall ? <span id="profile-overall-error" className="mt-1 block text-[9px] font-bold text-red-300">{errors.overall}</span> : null}
+          </label>
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-white/10 bg-black/15 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[9px] leading-relaxed text-slate-500">Saving updates your private career record and Command Center.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="min-h-10 rounded border border-slate-700 px-4 text-[8px] font-black uppercase tracking-wider text-slate-300 hover:border-slate-500 hover:text-white">Cancel</button>
+            <button type="submit" className="min-h-10 rounded border border-amber-300/70 bg-amber-400 px-5 text-[8px] font-black uppercase tracking-wider text-slate-950 hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Save Profile</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 const numberValue = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -256,11 +367,13 @@ const CareerCommandCenter = ({
   onGraduate,
   onCreateCoachingUniverse,
   onBeginOcCareer,
+  onProfileSave,
   onProfileHeadshotUpload,
   onProfileHeadshotRemove,
   profileHeadshotBusy = false,
 }) => {
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const model = buildCommandCenter(state);
   const player = state.player || {};
   const coach = state.coach || {};
@@ -345,7 +458,7 @@ const CareerCommandCenter = ({
           </div>
         </DashboardCard>
 
-        <DashboardCard title="Your Profile" className="lg:col-span-3 lg:min-h-[184px]">
+        <DashboardCard title="Your Profile" headerAside={!readOnly ? <button type="button" onClick={() => setShowProfileEditor(true)} className="flex min-h-7 items-center gap-1.5 rounded border border-slate-700 bg-slate-950/70 px-2.5 text-[7px] font-black uppercase tracking-wider text-slate-300 transition-colors hover:border-amber-400/60 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"><Pencil size={10} /> Edit Profile</button> : null} className="lg:col-span-3 lg:min-h-[184px]">
           <div className="flex h-full flex-col p-3.5">
             <div className="flex min-h-0 items-start justify-between gap-3"><div className="min-w-0"><div className="text-[7px] font-black uppercase tracking-wider text-slate-500">Dynasty Leader</div><div className="mt-1 truncate text-[15px] font-black text-white">{playerName}</div><div className="mt-1 text-[8px] leading-relaxed text-slate-400">{profileRole}<br />{model.institution || 'Institution not recorded'}<br />Record: {model.careerRecord?.wins || 0}-{model.careerRecord?.losses || 0}</div></div><ProfileHeadshotUploader src={player.headshot} playerName={playerName} readOnly={readOnly} busy={profileHeadshotBusy} onUpload={onProfileHeadshotUpload} onRemove={onProfileHeadshotRemove} /></div>
             <div className="mt-auto grid grid-cols-3 divide-x divide-white/[0.07] border-t border-white/[0.07] pt-2.5 text-center">
@@ -433,6 +546,15 @@ const CareerCommandCenter = ({
           onBeginOcCareer={onBeginOcCareer}
         />
       </div>
+
+      {showProfileEditor ? (
+        <ProfileEditorModal
+          player={player}
+          recruitStars={highSchool.recruitStars}
+          onClose={() => setShowProfileEditor(false)}
+          onSave={onProfileSave}
+        />
+      ) : null}
 
     </div>
   );

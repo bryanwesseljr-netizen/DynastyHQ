@@ -34,6 +34,7 @@ import {
   getMigrationBackupDocumentId,
 } from './domain/migrationProtection';
 import { CAREER_STAGES, deriveCareerStage } from './domain/commandCenter';
+import { applyPlayerProfile } from './domain/playerProfile';
 import {
   beginCollegeCareer,
   createCoachingUniverse,
@@ -1519,6 +1520,11 @@ const handleSaveGameClick = () => {
     }), 'Profile headshot removed.');
   };
 
+  const handleProfileSave = (profile) => {
+    if (isReadOnly) return;
+    updateAppState((prev) => applyPlayerProfile(prev, profile), 'Player profile updated!');
+  };
+
   const handleFrontPageNotice = (text, type = 'success') => setMessageModal({ isOpen: true, text, type });
 
   const handleAssignNewsroomMedia = ({ issue, article, asset }) => {
@@ -2058,6 +2064,7 @@ const handleSaveGameClick = () => {
           onGraduate={handleGraduatePlayer}
           onCreateCoachingUniverse={handleCreateCoachingUniverse}
           onBeginOcCareer={handleBeginOcCareer}
+          onProfileSave={handleProfileSave}
           onProfileHeadshotUpload={handleProfileHeadshotUpload}
           onProfileHeadshotRemove={handleProfileHeadshotRemove}
           profileHeadshotBusy={profileHeadshotBusy}

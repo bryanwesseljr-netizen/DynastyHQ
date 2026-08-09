@@ -91,9 +91,19 @@ test('reader keeps internal source keys out of the public article layout', async
   assert.match(source, /Rewrite edition/);
   assert.match(source, /Manage this article/);
   assert.match(reader, /data-editorial-layout/);
+  assert.match(reader, /data-headline-size/);
   assert.match(reader, /Why it matters/);
   assert.match(reader, /Article context/);
   assert.match(styles, /data-editorial-layout="insider"/);
   assert.match(styles, /data-editorial-layout="analysis"/);
   assert.match(styles, /data-editorial-layout="network"/);
+  assert.match(styles, /data-headline-size="long"/);
+  assert.doesNotMatch(styles, /dhq-news-intro h1[\s\S]{0,400}text-transform: uppercase/);
+});
+
+test('newsroom writer requires concise digital headlines', async () => {
+  const source = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(source, /headline of 5 to 10 words/i);
+  assert.match(source, /no more than 75 characters/i);
+  assert.match(source, /headline: \{ type: 'string', maxLength: 90 \}/);
 });

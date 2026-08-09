@@ -58,7 +58,7 @@ const schemaFor = (payload) => ({
         properties: {
           outletId: { type: 'string', enum: payload.articleBriefs.map((brief) => brief.outletId) },
           kicker: { type: 'string' },
-          headline: { type: 'string' },
+          headline: { type: 'string', maxLength: 90 },
           dek: { type: 'string' },
           dateline: { type: 'string' },
           paragraphs: {
@@ -111,6 +111,7 @@ Non-negotiable reporting rules:
 - Make the opening paragraph a genuine lede with a clear news angle. Build a narrative arc: development or tension, context, interpretation, stakes, and a forward-looking close.
 - Vary sentence length and paragraph rhythm. Avoid repetitive summaries, sterile inventories, and four-paragraph templates.
 - Write 350 to 650 words per article in 5 to 8 paragraphs. Keep it family-friendly and believable as modern digital sports journalism.
+- Write a concise headline of 5 to 10 words and no more than 75 characters. Lead with one clear angle in active, natural language. Do not pack the dek, secondary facts, or the full article summary into the headline. Prefer a compact headline such as “Wessel’s Top 10 Starts Close to Home” over a long explanatory sentence.
 - The kicker should be a short editorial label, not the outlet name. The dek should add stakes rather than repeat the headline.
 - Supply two or three specific section headings that match the article's narrative arc. Avoid generic headings such as “Overview” or “Conclusion.”
 - Supply one concise pullQuote as an unattributed editorial takeaway, not a fabricated quotation. Do not put quotation marks around it.

@@ -3452,6 +3452,7 @@ const handleSaveGameClick = () => {
           </>)}
         </div>
 
+        <div className="dhq-weekly-agenda-side-stack flex flex-col gap-6">
         <div data-agenda-card="2" className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-6 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Settings size={16} className="text-emerald-500"/> {isCoach ? '2. Coach Dashboard Updates' : isHighSchoolCareer ? '2. Recruiting Evaluation' : '2. RTG Mechanics & NIL'}</h3>
@@ -3675,6 +3676,7 @@ const handleSaveGameClick = () => {
             institution={appState.player.college || (isCoach ? appState.player.school : '')}
             onPublish={handlePublishMilestone}
           />
+        </div>
         </div>
 
       </div>

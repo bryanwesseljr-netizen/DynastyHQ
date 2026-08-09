@@ -288,6 +288,17 @@ textarea {
     align-self: start;
   }
 
+  .dhq-weekly-agenda-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .dhq-weekly-agenda-side-stack > * {
+    width: 100%;
+    margin: 0 !important;
+  }
+
   .dhq-weekly-agenda-workspace .dhq-agenda-game-log-drawer {
     margin-top: 0 !important;
   }

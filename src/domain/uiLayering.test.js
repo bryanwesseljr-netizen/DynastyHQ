@@ -104,8 +104,15 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   assert.match(appSource, /dhq-agenda-game-log-drawer/);
   assert.match(globalStyles, /\.dhq-weekly-agenda-grid/);
   assert.match(globalStyles, /\.dhq-weekly-agenda-grid \{[\s\S]*?display: grid !important;[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(appSource, /className="dhq-weekly-agenda-side-stack flex flex-col gap-6"/);
+  assert.match(globalStyles, /\.dhq-weekly-agenda-side-stack \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?gap: 14px;/);
   const agendaCardOrder = [...appSource.matchAll(/data-agenda-card="([1-4])"/g)].map((match) => match[1]);
   assert.deepEqual(agendaCardOrder, ['1', '2', '3', '4']);
+  const agendaSideStackIndex = appSource.indexOf('className="dhq-weekly-agenda-side-stack flex flex-col gap-6"');
+  assert.ok(appSource.indexOf('data-agenda-card="1"') < agendaSideStackIndex);
+  for (const cardNumber of ['2', '3', '4']) {
+    assert.ok(appSource.indexOf(`data-agenda-card="${cardNumber}"`) > agendaSideStackIndex);
+  }
   assert.match(playerRecruitingSource, /dhq-five-game-timeline/);
   assert.match(playerRecruitingSource, /dhq-five-game-grid/);
   assert.match(globalStyles, /grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);

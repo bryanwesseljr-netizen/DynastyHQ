@@ -194,9 +194,12 @@ const PlayerRecruitingWorkspace = ({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-6">
-        <h3 className="text-xl font-black uppercase text-white">Five-Game Timeline</h3>
-        <div className="mt-5 grid gap-3 md:grid-cols-5">{timeline.map((entry, index) => <div key={entry.id} className={`rounded-xl border p-4 ${entry.game ? 'border-blue-500/35 bg-blue-950/20' : 'border-slate-800 bg-slate-900/60'}`}><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Game {index + 1}</p><p className="mt-2 font-black text-white">{entry.game ? `vs. ${entry.game.opponent}` : 'Pending'}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">{entry.changes.length ? `${entry.changes.length} verified recruiting update${entry.changes.length === 1 ? '' : 's'}` : entry.game ? 'Baseline saved' : 'Publish after playing'}</p></div>)}</div>
+      <section className="dhq-five-game-timeline rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">Recruiting journey</p><h3 className="mt-1 text-xl font-black uppercase text-white">Five-Game Timeline</h3></div>
+          <p className="max-w-xl text-[10px] leading-relaxed text-slate-500 sm:text-right">Each completed game preserves the recruiting movement verified from its postgame screens.</p>
+        </div>
+        <div className="dhq-five-game-grid mt-4">{timeline.map((entry, index) => <div key={entry.id} className={`dhq-five-game-card rounded-xl border ${entry.game ? 'border-blue-500/35 bg-blue-950/20' : 'border-slate-800 bg-slate-900/60'}`}><div className="flex items-center justify-between gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-950/70 font-mono text-xs font-black text-blue-300">{index + 1}</span><span className={`rounded px-2 py-1 text-[8px] font-black uppercase tracking-wider ${entry.game ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>{entry.game ? 'Complete' : 'Pending'}</span></div><p className="mt-3 truncate text-sm font-black text-white" title={entry.game ? `vs. ${entry.game.opponent}` : 'Awaiting game'}>{entry.game ? `vs. ${entry.game.opponent}` : `Game ${index + 1} awaiting result`}</p><p className="mt-1 text-[10px] leading-relaxed text-slate-500">{entry.changes.length ? `${entry.changes.length} verified recruiting update${entry.changes.length === 1 ? '' : 's'}` : entry.game ? 'Baseline saved' : 'Publish after playing'}</p></div>)}</div>
       </section>
 
       <section className={`rounded-2xl border p-6 shadow-2xl ${canCommit ? 'border-amber-400/45 bg-amber-950/20' : 'border-slate-800 bg-slate-900/80'}`}>

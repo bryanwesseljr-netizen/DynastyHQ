@@ -100,6 +100,12 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   assert.match(globalStyles, /data-active-tab="trophies"/);
   assert.match(playerRecruitingSource, /dhq-player-recruiting-workspace/);
   assert.match(globalStyles, /\.dhq-player-recruiting-workspace/);
+  assert.match(appSource, /dhq-weekly-agenda-workspace/);
+  assert.match(appSource, /dhq-agenda-game-log-drawer/);
+  assert.match(globalStyles, /\.dhq-weekly-agenda-grid/);
+  assert.match(playerRecruitingSource, /dhq-five-game-timeline/);
+  assert.match(playerRecruitingSource, /dhq-five-game-grid/);
+  assert.match(globalStyles, /grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
 });
 
 test('the homepage mirrors the compact command-center dashboard without duplicate briefs', async () => {

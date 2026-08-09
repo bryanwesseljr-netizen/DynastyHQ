@@ -3274,7 +3274,7 @@ const handleSaveGameClick = () => {
   };
 
   const renderDataEntry = () => (
-    <div className="max-w-7xl mx-auto animate-in fade-in pb-20 relative z-10">
+    <div className="dhq-weekly-agenda-workspace max-w-7xl mx-auto animate-in fade-in pb-20 relative z-10">
       
       {isHighSchoolCareer ? (
         <div className="mb-6">
@@ -3344,7 +3344,7 @@ const handleSaveGameClick = () => {
         </div>
       )}
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="dhq-weekly-agenda-grid grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
         <div className={`bg-slate-900/85 backdrop-blur-md rounded-xl border ${editingGameIndex !== null ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-slate-700/50 shadow-2xl'} p-6 space-y-6 flex flex-col transition-all`}>
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
@@ -3677,9 +3677,12 @@ const handleSaveGameClick = () => {
           </div>
       )}
 
-      <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 shadow-2xl relative z-10 mt-8">
-        <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow mb-4"><Settings size={16} className="text-blue-400"/> Manage Past Game Logs</h3>
-        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+      <details className="dhq-agenda-game-log-drawer group bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 shadow-2xl relative z-10 mt-8">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+          <span className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Settings size={16} className="text-blue-400"/> Manage Past Game Logs</span>
+          <span className="rounded-lg border border-slate-700 bg-slate-950/55 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400 group-open:border-blue-500/40 group-open:text-blue-300">{appState.gameLogs.length} saved · <span className="group-open:hidden">Expand</span><span className="hidden group-open:inline">Collapse</span></span>
+        </summary>
+        <div className="mt-4 overflow-x-auto max-h-[300px] overflow-y-auto border-t border-slate-700/50 pt-4">
           <table className="w-full text-left text-sm relative">
             <thead className="text-slate-400 border-b border-slate-700 sticky top-0 bg-slate-900">
               <tr><th className="pb-2">Season</th><th className="pb-2">Wk</th><th className="pb-2">Opponent</th><th className="pb-2">Res</th><th className="pb-2">Score</th><th className="pb-2">Pass</th><th className="pb-2">Rush</th><th className="pb-2 text-right">Actions</th></tr>
@@ -3707,7 +3710,7 @@ const handleSaveGameClick = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </details>
     </div>
   );
 

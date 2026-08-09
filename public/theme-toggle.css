@@ -1,5 +1,6 @@
 /* DynastyHQ light/dark appearance test.
  * Presentation only: no Firebase or career-state writes.
+ * Light mode intentionally preserves the dark-theme stadium + header atmosphere.
  */
 
 html[data-dhq-theme="dark"] {
@@ -8,52 +9,52 @@ html[data-dhq-theme="dark"] {
 
 html[data-dhq-theme="light"] {
   color-scheme: light;
-  background: #e8edf3;
+  background: #02070b;
 }
 
+/* Preserve the existing dark shell so the football backdrop stays exactly as designed. */
 html[data-dhq-theme="light"] body,
-html[data-dhq-theme="light"] #root {
-  background: #e8edf3;
-  color: #0f172a;
+html[data-dhq-theme="light"] #root,
+html[data-dhq-theme="light"] #root > div.flex.h-screen {
+  background-color: #02070b !important;
 }
 
-/* Header shell */
+/*
+ * IMPORTANT: do not override [data-background-sport="football"].
+ * The image opacity and dark gradient remain exactly the same as dark mode.
+ */
+
+/* Keep the tab header dark in both themes. */
 html[data-dhq-theme="light"] header.no-print {
-  background: rgba(248, 250, 252, 0.97) !important;
-  border-color: rgba(148, 163, 184, 0.55) !important;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12) !important;
+  background: rgba(2, 7, 10, 0.98) !important;
+  border-color: rgba(30, 41, 59, 0.90) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.50) !important;
 }
 
 html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item {
-  color: #475569 !important;
+  color: #94a3b8 !important;
 }
 
+html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item:hover,
 html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item[aria-current="page"] {
-  color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+html[data-dhq-theme="light"] header.no-print [class~="text-slate-100"] {
+  color: #f1f5f9 !important;
 }
 
 html[data-dhq-theme="light"] #mobile-primary-navigation {
-  background: rgba(248, 250, 252, 0.99) !important;
-  border-color: #cbd5e1 !important;
+  background: #071019 !important;
+  border-color: #1e293b !important;
+  color-scheme: dark;
 }
 
-/* Keep the football backdrop, but turn it into a light editorial wash. */
-html[data-dhq-theme="light"] [data-background-sport="football"] > img {
-  opacity: 0.22 !important;
-  filter: saturate(0.72) brightness(1.12) contrast(0.86);
-}
-
-html[data-dhq-theme="light"] [data-background-sport="football"] > div {
-  background: linear-gradient(
-    to bottom,
-    rgba(248, 250, 252, 0.72),
-    rgba(241, 245, 249, 0.86),
-    rgba(226, 232, 240, 0.95)
-  ) !important;
-}
-
-/* Convert the common dark DynastyHQ surfaces into light glass/paper surfaces. */
-html[data-dhq-theme="light"] :is(
+/*
+ * Light mode is a card treatment, not a page wash.
+ * Only common content surfaces inside the page workspace become light.
+ */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-slate-950"],
   [class~="bg-slate-950/50"],
   [class~="bg-slate-950/55"],
@@ -68,20 +69,44 @@ html[data-dhq-theme="light"] :is(
   [class~="bg-slate-900/90"],
   [class~="bg-slate-900/95"]
 ) {
-  background-color: rgba(248, 250, 252, 0.92) !important;
+  background-color: rgba(250, 252, 255, 0.96) !important;
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.72) !important;
+  backdrop-filter: blur(12px);
 }
 
-html[data-dhq-theme="light"] :is(
+/* Secondary / inset panels get a slightly darker paper tone for visual hierarchy. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-slate-800"],
   [class~="bg-slate-800/30"],
   [class~="bg-slate-800/50"],
   [class~="bg-slate-800/80"]
 ) {
-  background-color: rgba(226, 232, 240, 0.92) !important;
+  background-color: rgba(226, 232, 240, 0.96) !important;
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.72) !important;
 }
 
-/* Text hierarchy */
-html[data-dhq-theme="light"] :is(
+/* Dark text only inside surfaces that were converted to light. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) :is(
   [class~="text-white"],
   [class~="text-slate-100"],
   [class~="text-slate-200"]
@@ -89,20 +114,83 @@ html[data-dhq-theme="light"] :is(
   color: #0f172a !important;
 }
 
-html[data-dhq-theme="light"] [class~="text-slate-300"] {
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) [class~="text-slate-300"] {
   color: #334155 !important;
 }
 
-html[data-dhq-theme="light"] [class~="text-slate-400"] {
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) [class~="text-slate-400"] {
   color: #475569 !important;
 }
 
-html[data-dhq-theme="light"] [class~="text-slate-500"] {
-  color: #64748b !important;
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) [class~="text-slate-500"] {
+  color: #5b6b80 !important;
 }
 
-/* Preserve legible white type on strong action colors. */
-html[data-dhq-theme="light"] :is(
+/* Elements that are themselves neutral slate buttons/panels also need dark text. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-800"]
+):is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: #172033 !important;
+}
+
+/* Preserve white lettering on strong action/status colors. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-blue-600"],
   [class~="bg-blue-500"],
   [class~="bg-emerald-600"],
@@ -110,7 +198,7 @@ html[data-dhq-theme="light"] :is(
   [class~="bg-red-600"],
   [class~="bg-red-500"]
 ),
-html[data-dhq-theme="light"] :is(
+html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-blue-600"],
   [class~="bg-blue-500"],
   [class~="bg-emerald-600"],
@@ -121,8 +209,8 @@ html[data-dhq-theme="light"] :is(
   color: #ffffff !important;
 }
 
-/* Borders, rules, inputs, and tables */
-html[data-dhq-theme="light"] :is(
+/* Borders, dividers, controls, and tables inside light cards. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="border-slate-600"],
   [class~="border-slate-700"],
   [class~="border-slate-700/30"],
@@ -131,27 +219,27 @@ html[data-dhq-theme="light"] :is(
   [class~="border-slate-800/50"],
   [class~="border-slate-800/90"]
 ) {
-  border-color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.72) !important;
 }
 
-html[data-dhq-theme="light"] [class~="divide-slate-700/50"] > :not([hidden]) ~ :not([hidden]) {
-  border-color: #d7dee8 !important;
+html[data-dhq-theme="light"] main.dhq-page-main [class~="divide-slate-700/50"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(148, 163, 184, 0.52) !important;
 }
 
-html[data-dhq-theme="light"] input,
-html[data-dhq-theme="light"] select,
-html[data-dhq-theme="light"] textarea {
+html[data-dhq-theme="light"] main.dhq-page-main input,
+html[data-dhq-theme="light"] main.dhq-page-main select,
+html[data-dhq-theme="light"] main.dhq-page-main textarea {
   color: #0f172a;
 }
 
-html[data-dhq-theme="light"] input::placeholder,
-html[data-dhq-theme="light"] textarea::placeholder {
+html[data-dhq-theme="light"] main.dhq-page-main input::placeholder,
+html[data-dhq-theme="light"] main.dhq-page-main textarea::placeholder {
   color: #64748b;
 }
 
-/* Light cards need a softer shadow than the dark theme. */
-html[data-dhq-theme="light"] :is([class~="shadow-xl"], [class~="shadow-2xl"]) {
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.10) !important;
+/* Make light cards distinct from the unchanged stadium behind them. */
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="shadow-xl"], [class~="shadow-2xl"]) {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24) !important;
 }
 
 /* Small appearance control that visually lives in the tab header. */
@@ -197,11 +285,12 @@ html[data-dhq-theme="light"] :is([class~="shadow-xl"], [class~="shadow-2xl"]) {
   pointer-events: none;
 }
 
+/* Keep the toggle itself dark so it remains visually integrated with the header. */
 html[data-dhq-theme="light"] #dhq-theme-toggle {
-  background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(148, 163, 184, 0.85);
-  color: #334155;
-  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(100, 116, 139, 0.72);
+  color: #e2e8f0;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
 }
 
 /* Reserve only one compact control-width on desktop so it never covers a tab. */

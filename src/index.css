@@ -59,16 +59,17 @@ textarea {
 .dhq-home-banner {
   min-height: 118px;
   background:
-    radial-gradient(circle at 56% 120%, rgba(34, 197, 94, 0.19), transparent 33%),
-    linear-gradient(90deg, rgba(1, 7, 12, 0.93) 0%, rgba(3, 13, 22, 0.7) 54%, rgba(2, 8, 14, 0.93) 100%);
+    radial-gradient(circle at 56% 120%, rgba(34, 197, 94, 0.15), transparent 33%),
+    linear-gradient(90deg, rgba(1, 7, 12, 0.7) 0%, rgba(3, 13, 22, 0.4) 54%, rgba(2, 8, 14, 0.7) 100%);
   box-shadow: inset 0 -18px 38px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(5px) saturate(118%);
 }
 
 .dhq-dashboard-grid {
   background:
     linear-gradient(rgba(255, 255, 255, 0.011) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.011) 1px, transparent 1px),
-    rgba(3, 9, 13, 0.48);
+    rgba(3, 9, 13, 0.2);
   background-size: 44px 44px;
   gap: 6px;
   backdrop-filter: blur(3px) saturate(112%);
@@ -79,9 +80,9 @@ textarea {
   border-radius: 6px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 34%),
-    rgba(5, 14, 19, 0.74);
+    rgba(5, 14, 19, 0.46);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(12px) saturate(115%);
+  backdrop-filter: blur(8px) saturate(120%);
 }
 
 /* Keep the football setting visible through route workspaces while retaining
@@ -94,8 +95,8 @@ textarea {
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/70"],
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/60"],
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900"] {
-  background-color: rgba(9, 20, 31, 0.72) !important;
-  backdrop-filter: blur(12px) saturate(112%);
+  background-color: rgba(9, 20, 31, 0.5) !important;
+  backdrop-filter: blur(8px) saturate(118%);
 }
 
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/90"],
@@ -105,8 +106,8 @@ textarea {
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/50"],
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/40"],
 .dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950"] {
-  background-color: rgba(2, 8, 15, 0.64) !important;
-  backdrop-filter: blur(10px) saturate(110%);
+  background-color: rgba(2, 8, 15, 0.42) !important;
+  backdrop-filter: blur(7px) saturate(116%);
 }
 
 .dhq-page-main :where(h1, h2, h3, h4, p, label, th, td) {

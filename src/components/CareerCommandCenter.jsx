@@ -301,7 +301,7 @@ const CareerCommandCenter = ({
 
         <details open className="dhq-dashboard-card group lg:col-span-12">
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-[8px] font-black uppercase tracking-[0.12em] text-amber-300 hover:text-white"><span>Verified Career Detail</span><ChevronRight size={12} className="transition-transform group-open:rotate-90" /></summary>
-          <div className="grid gap-px border-t border-white/[0.07] bg-white/[0.06] md:grid-cols-3">{model.panels.map((panel) => <div key={panel.id} className="bg-[#061019] px-5 py-3"><div className="mb-1 text-[8px] font-black uppercase tracking-wider text-emerald-300">{panel.title}</div>{panel.rows.map((row) => <div key={row.label} className="flex justify-between gap-3 py-1 text-[7px]"><span className="uppercase text-slate-500">{row.label}</span><strong className={toneClasses[row.tone] || toneClasses.default}>{row.value}</strong></div>)}</div>)}</div>
+          <div className="grid gap-px border-t border-white/[0.07] bg-white/[0.06] md:grid-cols-3">{model.panels.map((panel) => <div key={panel.id} className="bg-black/20 px-5 py-3"><div className="mb-1 text-[8px] font-black uppercase tracking-wider text-emerald-300">{panel.title}</div>{panel.rows.map((row) => <div key={row.label} className="flex justify-between gap-3 py-1 text-[7px]"><span className="uppercase text-slate-500">{row.label}</span><strong className={toneClasses[row.tone] || toneClasses.default}>{row.value}</strong></div>)}</div>)}</div>
         </details>
       </div>
 

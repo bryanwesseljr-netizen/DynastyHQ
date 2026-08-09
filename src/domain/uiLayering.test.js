@@ -72,10 +72,11 @@ test('every workspace uses the same football-only presentation background', asyn
   assert.match(appSource, /const getBgImage = \(\) => footballStadiumBg;/);
   assert.match(appSource, /data-background-sport="football"/);
   assert.match(appSource, /dhq-page-main relative w-full flex-1 overflow-y-auto/);
-  assert.match(appSource, /object-cover opacity-\[0\.56\]/);
-  assert.match(globalStyles, /rgba\(5, 14, 19, 0\.74\)/);
-  assert.match(globalStyles, /rgba\(9, 20, 31, 0\.72\)/);
-  assert.match(globalStyles, /rgba\(2, 8, 15, 0\.64\)/);
+  assert.match(appSource, /object-cover opacity-\[0\.72\]/);
+  assert.match(appSource, /from-slate-950\/28 via-slate-950\/38 to-slate-950\/64/);
+  assert.match(globalStyles, /rgba\(5, 14, 19, 0\.46\)/);
+  assert.match(globalStyles, /rgba\(9, 20, 31, 0\.5\)/);
+  assert.match(globalStyles, /rgba\(2, 8, 15, 0\.42\)/);
   assert.doesNotMatch(appSource, /case 'newsroom': return/);
   assert.doesNotMatch(appSource, /case 'podcast': return/);
 });

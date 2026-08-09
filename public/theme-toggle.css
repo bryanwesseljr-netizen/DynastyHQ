@@ -1,6 +1,6 @@
 /* DynastyHQ light/dark appearance test.
  * Presentation only: no Firebase or career-state writes.
- * Light mode intentionally preserves the dark-theme stadium + header atmosphere.
+ * Light mode is a soft paper/frosted treatment over the same football setting.
  */
 
 html[data-dhq-theme="dark"] {
@@ -9,51 +9,64 @@ html[data-dhq-theme="dark"] {
 
 html[data-dhq-theme="light"] {
   color-scheme: light;
-  background: #02070b;
+  background: #f4f5f7;
 }
 
-/* Preserve the existing dark shell so the football backdrop stays exactly as designed. */
 html[data-dhq-theme="light"] body,
 html[data-dhq-theme="light"] #root,
 html[data-dhq-theme="light"] #root > div.flex.h-screen {
-  background-color: #02070b !important;
+  background-color: #f4f5f7 !important;
+  color: #111827;
 }
 
-/*
- * IMPORTANT: do not override [data-background-sport="football"].
- * The image opacity and dark gradient remain exactly the same as dark mode.
- */
+/* White daytime wash while keeping the football stadium clearly present. */
+html[data-dhq-theme="light"] [data-background-sport="football"] > img {
+  opacity: 0.34 !important;
+  filter: saturate(0.62) brightness(1.08) contrast(0.78) !important;
+}
 
-/* Keep the tab header dark in both themes. */
+html[data-dhq-theme="light"] [data-background-sport="football"] > div {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.64),
+    rgba(248, 250, 252, 0.72),
+    rgba(244, 245, 247, 0.84)
+  ) !important;
+}
+
+/* A quiet frosted header instead of a second dark visual system. */
 html[data-dhq-theme="light"] header.no-print {
-  background: rgba(2, 7, 10, 0.98) !important;
-  border-color: rgba(30, 41, 59, 0.90) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.50) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(203, 213, 225, 0.92) !important;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(18px) saturate(0.9);
 }
 
 html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item {
-  color: #94a3b8 !important;
+  color: #4b5563 !important;
 }
 
 html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item:hover,
 html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item[aria-current="page"] {
-  color: #ffffff !important;
+  color: #111827 !important;
 }
 
-html[data-dhq-theme="light"] header.no-print [class~="text-slate-100"] {
-  color: #f1f5f9 !important;
+html[data-dhq-theme="light"] header.no-print [class~="text-slate-100"],
+html[data-dhq-theme="light"] header.no-print [class~="text-white"] {
+  color: #111827 !important;
+}
+
+html[data-dhq-theme="light"] header.no-print [class~="text-amber-400"] {
+  color: #9a6a12 !important;
 }
 
 html[data-dhq-theme="light"] #mobile-primary-navigation {
-  background: #071019 !important;
-  border-color: #1e293b !important;
-  color-scheme: dark;
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-color: #d5dbe4 !important;
+  color-scheme: light;
 }
 
-/*
- * Light mode is a card treatment, not a page wash.
- * Only common content surfaces inside the page workspace become light.
- */
+/* Main cards: translucent white, not stark white blocks. */
 html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-slate-950"],
   [class~="bg-slate-950/50"],
@@ -69,25 +82,25 @@ html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-slate-900/90"],
   [class~="bg-slate-900/95"]
 ) {
-  background-color: rgba(250, 252, 255, 0.96) !important;
-  color: #0f172a;
-  border-color: rgba(148, 163, 184, 0.72) !important;
-  backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  color: #111827;
+  border-color: rgba(203, 213, 225, 0.92) !important;
+  backdrop-filter: blur(14px) saturate(0.88);
 }
 
-/* Secondary / inset panels get a slightly darker paper tone for visual hierarchy. */
+/* Secondary/inset surfaces stay only one shade darker for a calm hierarchy. */
 html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-slate-800"],
   [class~="bg-slate-800/30"],
   [class~="bg-slate-800/50"],
   [class~="bg-slate-800/80"]
 ) {
-  background-color: rgba(226, 232, 240, 0.96) !important;
-  color: #0f172a;
-  border-color: rgba(148, 163, 184, 0.72) !important;
+  background-color: rgba(241, 244, 247, 0.88) !important;
+  color: #111827;
+  border-color: rgba(203, 213, 225, 0.90) !important;
 }
 
-/* Dark text only inside surfaces that were converted to light. */
+/* Convert the normal light-on-dark text hierarchy to charcoal/black inside paper surfaces. */
 html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="bg-slate-950"],
   [class~="bg-slate-950/50"],
@@ -111,105 +124,93 @@ html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="text-slate-100"],
   [class~="text-slate-200"]
 ) {
-  color: #0f172a !important;
+  color: #111827 !important;
 }
 
 html[data-dhq-theme="light"] main.dhq-page-main :is(
-  [class~="bg-slate-950"],
-  [class~="bg-slate-950/50"],
-  [class~="bg-slate-950/55"],
-  [class~="bg-slate-950/60"],
-  [class~="bg-slate-950/70"],
-  [class~="bg-slate-950/80"],
-  [class~="bg-slate-900"],
-  [class~="bg-slate-900/50"],
-  [class~="bg-slate-900/70"],
-  [class~="bg-slate-900/80"],
-  [class~="bg-slate-900/85"],
-  [class~="bg-slate-900/90"],
-  [class~="bg-slate-900/95"],
-  [class~="bg-slate-800"],
-  [class~="bg-slate-800/30"],
-  [class~="bg-slate-800/50"],
-  [class~="bg-slate-800/80"]
+  [class~="bg-slate-950"], [class~="bg-slate-950/50"], [class~="bg-slate-950/55"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"], [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/50"], [class~="bg-slate-900/70"], [class~="bg-slate-900/80"], [class~="bg-slate-900/85"], [class~="bg-slate-900/90"], [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"], [class~="bg-slate-800/30"], [class~="bg-slate-800/50"], [class~="bg-slate-800/80"]
 ) [class~="text-slate-300"] {
-  color: #334155 !important;
+  color: #293241 !important;
 }
 
 html[data-dhq-theme="light"] main.dhq-page-main :is(
-  [class~="bg-slate-950"],
-  [class~="bg-slate-950/50"],
-  [class~="bg-slate-950/55"],
-  [class~="bg-slate-950/60"],
-  [class~="bg-slate-950/70"],
-  [class~="bg-slate-950/80"],
-  [class~="bg-slate-900"],
-  [class~="bg-slate-900/50"],
-  [class~="bg-slate-900/70"],
-  [class~="bg-slate-900/80"],
-  [class~="bg-slate-900/85"],
-  [class~="bg-slate-900/90"],
-  [class~="bg-slate-900/95"],
-  [class~="bg-slate-800"],
-  [class~="bg-slate-800/30"],
-  [class~="bg-slate-800/50"],
-  [class~="bg-slate-800/80"]
+  [class~="bg-slate-950"], [class~="bg-slate-950/50"], [class~="bg-slate-950/55"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"], [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/50"], [class~="bg-slate-900/70"], [class~="bg-slate-900/80"], [class~="bg-slate-900/85"], [class~="bg-slate-900/90"], [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"], [class~="bg-slate-800/30"], [class~="bg-slate-800/50"], [class~="bg-slate-800/80"]
 ) [class~="text-slate-400"] {
-  color: #475569 !important;
+  color: #4b5563 !important;
 }
 
 html[data-dhq-theme="light"] main.dhq-page-main :is(
-  [class~="bg-slate-950"],
-  [class~="bg-slate-950/50"],
-  [class~="bg-slate-950/55"],
-  [class~="bg-slate-950/60"],
-  [class~="bg-slate-950/70"],
-  [class~="bg-slate-950/80"],
-  [class~="bg-slate-900"],
-  [class~="bg-slate-900/50"],
-  [class~="bg-slate-900/70"],
-  [class~="bg-slate-900/80"],
-  [class~="bg-slate-900/85"],
-  [class~="bg-slate-900/90"],
-  [class~="bg-slate-900/95"],
-  [class~="bg-slate-800"],
-  [class~="bg-slate-800/30"],
-  [class~="bg-slate-800/50"],
-  [class~="bg-slate-800/80"]
+  [class~="bg-slate-950"], [class~="bg-slate-950/50"], [class~="bg-slate-950/55"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"], [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/50"], [class~="bg-slate-900/70"], [class~="bg-slate-900/80"], [class~="bg-slate-900/85"], [class~="bg-slate-900/90"], [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"], [class~="bg-slate-800/30"], [class~="bg-slate-800/50"], [class~="bg-slate-800/80"]
 ) [class~="text-slate-500"] {
-  color: #5b6b80 !important;
+  color: #667085 !important;
 }
 
-/* Elements that are themselves neutral slate buttons/panels also need dark text. */
-html[data-dhq-theme="light"] main.dhq-page-main :is(
-  [class~="bg-slate-950"],
-  [class~="bg-slate-900"],
-  [class~="bg-slate-800"]
-):is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
-  color: #172033 !important;
+/* Soft, restrained accent text instead of neon-on-white. */
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-blue-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-blue-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-blue-500"] {
+  color: #365f83 !important;
 }
 
-/* Preserve white lettering on strong action/status colors. */
-html[data-dhq-theme="light"] main.dhq-page-main :is(
-  [class~="bg-blue-600"],
-  [class~="bg-blue-500"],
-  [class~="bg-emerald-600"],
-  [class~="bg-emerald-500"],
-  [class~="bg-red-600"],
-  [class~="bg-red-500"]
-),
-html[data-dhq-theme="light"] main.dhq-page-main :is(
-  [class~="bg-blue-600"],
-  [class~="bg-blue-500"],
-  [class~="bg-emerald-600"],
-  [class~="bg-emerald-500"],
-  [class~="bg-red-600"],
-  [class~="bg-red-500"]
-) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"]) {
-  color: #ffffff !important;
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-amber-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-amber-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-amber-500"] {
+  color: #8a6417 !important;
 }
 
-/* Borders, dividers, controls, and tables inside light cards. */
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-emerald-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-emerald-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-emerald-500"] {
+  color: #376c58 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-red-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-red-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-red-500"] {
+  color: #984f55 !important;
+}
+
+/* Turn saturated action blocks into soft editorial tints with dark lettering. */
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-blue-600"], [class~="bg-blue-500"]) {
+  background-color: #dceaf5 !important;
+  color: #18364d !important;
+  border-color: #b8cfdf !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-emerald-600"], [class~="bg-emerald-500"]) {
+  background-color: #dfeee7 !important;
+  color: #214a3d !important;
+  border-color: #bdd8cc !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-amber-600"], [class~="bg-amber-500"]) {
+  background-color: #f4ead2 !important;
+  color: #5e4717 !important;
+  border-color: #decda5 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-red-600"], [class~="bg-red-500"]) {
+  background-color: #f3e1e3 !important;
+  color: #6f3439 !important;
+  border-color: #dfbec2 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-blue-600"], [class~="bg-blue-500"],
+  [class~="bg-emerald-600"], [class~="bg-emerald-500"],
+  [class~="bg-amber-600"], [class~="bg-amber-500"],
+  [class~="bg-red-600"], [class~="bg-red-500"]
+) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-900"]) {
+  color: inherit !important;
+}
+
+/* Borders, dividers, form controls and tables. */
 html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="border-slate-600"],
   [class~="border-slate-700"],
@@ -219,30 +220,32 @@ html[data-dhq-theme="light"] main.dhq-page-main :is(
   [class~="border-slate-800/50"],
   [class~="border-slate-800/90"]
 ) {
-  border-color: rgba(148, 163, 184, 0.72) !important;
+  border-color: rgba(203, 213, 225, 0.92) !important;
 }
 
 html[data-dhq-theme="light"] main.dhq-page-main [class~="divide-slate-700/50"] > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgba(148, 163, 184, 0.52) !important;
+  border-color: rgba(203, 213, 225, 0.78) !important;
 }
 
 html[data-dhq-theme="light"] main.dhq-page-main input,
 html[data-dhq-theme="light"] main.dhq-page-main select,
 html[data-dhq-theme="light"] main.dhq-page-main textarea {
-  color: #0f172a;
+  color: #111827 !important;
+  background-color: rgba(255, 255, 255, 0.76) !important;
+  border-color: #cbd5e1 !important;
 }
 
 html[data-dhq-theme="light"] main.dhq-page-main input::placeholder,
 html[data-dhq-theme="light"] main.dhq-page-main textarea::placeholder {
-  color: #64748b;
+  color: #7b8492 !important;
 }
 
-/* Make light cards distinct from the unchanged stadium behind them. */
+/* Softer depth: distinguish cards without creating hard high-contrast islands. */
 html[data-dhq-theme="light"] main.dhq-page-main :is([class~="shadow-xl"], [class~="shadow-2xl"]) {
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.10) !important;
 }
 
-/* Small appearance control that visually lives in the tab header. */
+/* Appearance control in the tab header. */
 #dhq-theme-toggle-host {
   position: fixed;
   top: 14px;
@@ -271,11 +274,11 @@ html[data-dhq-theme="light"] main.dhq-page-main :is([class~="shadow-xl"], [class
 
 #dhq-theme-toggle:hover {
   transform: translateY(-1px);
-  border-color: rgba(251, 191, 36, 0.75);
+  border-color: rgba(154, 106, 18, 0.55);
 }
 
 #dhq-theme-toggle:focus-visible {
-  outline: 2px solid #fbbf24;
+  outline: 2px solid #b78522;
   outline-offset: 2px;
 }
 
@@ -285,22 +288,19 @@ html[data-dhq-theme="light"] main.dhq-page-main :is([class~="shadow-xl"], [class
   pointer-events: none;
 }
 
-/* Keep the toggle itself dark so it remains visually integrated with the header. */
 html[data-dhq-theme="light"] #dhq-theme-toggle {
-  background: rgba(15, 23, 42, 0.92);
-  border-color: rgba(100, 116, 139, 0.72);
-  color: #e2e8f0;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+  background: rgba(246, 247, 249, 0.94);
+  border-color: #cbd5e1;
+  color: #344054;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
-/* Reserve only one compact control-width on desktop so it never covers a tab. */
 @media (min-width: 1200px) {
   header.no-print > div:first-child {
     padding-right: 60px !important;
   }
 }
 
-/* On smaller screens, sit just to the left of the existing Menu button. */
 @media (max-width: 1199px) {
   #dhq-theme-toggle-host {
     right: 94px;

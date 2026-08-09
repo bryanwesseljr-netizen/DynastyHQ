@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Briefcase,
   CalendarDays,
+  Camera,
   ChevronRight,
   Film,
   GraduationCap,
@@ -90,6 +91,105 @@ const CareerJourney = ({ stage }) => {
 
 const EmptyBrief = ({ children }) => <p className="px-5 py-5 text-center text-[9px] leading-relaxed text-slate-500">{children}</p>;
 
+const ProfileHeadshotUploader = ({
+  src,
+  playerName,
+  readOnly,
+  busy,
+  onUpload,
+  onRemove,
+}) => {
+  const inputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const receiveFile = (file) => {
+    if (!readOnly && !busy && file) onUpload(file);
+  };
+
+  const openFilePicker = () => {
+    if (!readOnly && !busy) inputRef.current?.click();
+  };
+
+  return (
+    <div
+      className={`relative h-[84px] w-[78px] shrink-0 overflow-hidden rounded border bg-gradient-to-b from-slate-800 to-[#07111b] transition-all ${isDragging ? 'border-amber-300 bg-amber-500/15 shadow-[0_0_18px_rgba(251,191,36,.22)]' : 'border-slate-500/70'}`}
+      onDragEnter={(event) => {
+        if (readOnly || busy) return;
+        event.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragOver={(event) => {
+        if (readOnly || busy) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsDragging(false);
+      }}
+      onDrop={(event) => {
+        if (readOnly || busy) return;
+        event.preventDefault();
+        setIsDragging(false);
+        receiveFile(event.dataTransfer.files?.[0]);
+      }}
+    >
+      {readOnly ? (
+        src
+          ? <img src={src} alt={`${playerName} headshot`} className="h-full w-full object-cover object-top" />
+          : <div className="flex h-full w-full items-end justify-center"><UserRound size={64} strokeWidth={1.1} className="translate-y-2 text-slate-600" aria-label="Player headshot placeholder" /></div>
+      ) : (
+        <button
+          type="button"
+          onClick={openFilePicker}
+          disabled={busy}
+          className="group relative flex h-full w-full items-center justify-center overflow-hidden text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-300 disabled:cursor-wait"
+          aria-label={src ? `Replace ${playerName} headshot` : `Upload ${playerName} headshot`}
+        >
+          {src ? (
+            <>
+              <img src={src} alt={`${playerName} headshot`} className="h-full w-full object-cover object-top" />
+              <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/75 px-1 py-1 text-[5px] font-black uppercase tracking-wider text-white opacity-90 transition-opacity group-hover:opacity-100">
+                <Camera size={8} /> {busy ? 'Saving…' : 'Replace'}
+              </span>
+            </>
+          ) : (
+            <span className="flex h-full w-full flex-col items-center justify-center px-1.5 text-slate-400 transition-colors group-hover:text-amber-300">
+              <Camera size={22} strokeWidth={1.5} />
+              <span className="mt-1 text-[5px] font-black uppercase leading-tight tracking-wider">Drop photo<br />or upload</span>
+            </span>
+          )}
+        </button>
+      )}
+
+      {!readOnly && src && !busy ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          className="absolute right-1 top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-white/30 bg-black/80 text-[9px] font-black leading-none text-white transition-colors hover:border-red-300 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+          aria-label={`Remove ${playerName} headshot`}
+          title="Remove headshot"
+        >
+          ×
+        </button>
+      ) : null}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          receiveFile(event.target.files?.[0]);
+          event.target.value = '';
+        }}
+      />
+    </div>
+  );
+};
+
 const numberValue = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -143,6 +243,9 @@ const CareerCommandCenter = ({
   onGraduate,
   onCreateCoachingUniverse,
   onBeginOcCareer,
+  onProfileHeadshotUpload,
+  onProfileHeadshotRemove,
+  profileHeadshotBusy = false,
 }) => {
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const model = buildCommandCenter(state);
@@ -231,7 +334,7 @@ const CareerCommandCenter = ({
 
         <DashboardCard title="Your Profile" className="lg:col-span-3 lg:min-h-[184px]">
           <div className="flex h-full flex-col p-3.5">
-            <div className="flex min-h-0 items-start justify-between gap-3"><div className="min-w-0"><div className="text-[7px] font-black uppercase tracking-wider text-slate-500">Dynasty Leader</div><div className="mt-1 truncate text-[15px] font-black text-white">{playerName}</div><div className="mt-1 text-[8px] leading-relaxed text-slate-400">{profileRole}<br />{model.institution || 'Institution not recorded'}<br />Record: {model.careerRecord?.wins || 0}-{model.careerRecord?.losses || 0}</div></div><div className="relative flex h-[84px] w-[78px] shrink-0 items-end justify-center overflow-hidden rounded border border-slate-500/70 bg-gradient-to-b from-slate-800 to-[#07111b]">{player.headshot ? <img src={player.headshot} alt={`${playerName} headshot`} className="h-full w-full object-cover" /> : <UserRound size={64} strokeWidth={1.1} className="translate-y-2 text-slate-600" aria-label="Player headshot placeholder" />}</div></div>
+            <div className="flex min-h-0 items-start justify-between gap-3"><div className="min-w-0"><div className="text-[7px] font-black uppercase tracking-wider text-slate-500">Dynasty Leader</div><div className="mt-1 truncate text-[15px] font-black text-white">{playerName}</div><div className="mt-1 text-[8px] leading-relaxed text-slate-400">{profileRole}<br />{model.institution || 'Institution not recorded'}<br />Record: {model.careerRecord?.wins || 0}-{model.careerRecord?.losses || 0}</div></div><ProfileHeadshotUploader src={player.headshot} playerName={playerName} readOnly={readOnly} busy={profileHeadshotBusy} onUpload={onProfileHeadshotUpload} onRemove={onProfileHeadshotRemove} /></div>
             <div className="mt-auto grid grid-cols-3 divide-x divide-white/[0.07] border-t border-white/[0.07] pt-2.5 text-center">
               <div><Trophy size={13} className="mx-auto text-slate-400" /><div className="mt-1 text-[6px] uppercase text-slate-600">Titles</div><strong className="text-[10px] text-white">{championshipCount}</strong></div>
               <div><ShieldCheck size={13} className="mx-auto text-slate-400" /><div className="mt-1 text-[6px] uppercase text-slate-600">Awards</div><strong className="text-[10px] text-white">{awardCount}</strong></div>

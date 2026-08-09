@@ -188,6 +188,7 @@ const App = () => {
   const [hasMigrationBackup, setHasMigrationBackup] = useState(false);
   const [isMigratingCloudSave, setIsMigratingCloudSave] = useState(false);
   const [newsroomMediaBusy, setNewsroomMediaBusy] = useState(false);
+  const [profileHeadshotBusy, setProfileHeadshotBusy] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState({ state: 'idle', lastSavedAt: null, message: '' });
   const cloudRevisionRef = useRef(0);
@@ -1473,6 +1474,51 @@ const handleSaveGameClick = () => {
     }
   };
 
+  const handleProfileHeadshotUpload = async (file) => {
+    if (!userState || isReadOnly) {
+      setMessageModal({ isOpen: true, text: 'Sign in as the owner before uploading a profile photo.', type: 'error' });
+      return;
+    }
+    if (!file?.type?.match(/^image\/(png|jpe?g|webp)$/i)) {
+      setMessageModal({ isOpen: true, text: 'Choose a PNG, JPEG, or WebP image.', type: 'error' });
+      return;
+    }
+    if (file.size > 12_000_000) {
+      setMessageModal({ isOpen: true, text: 'That photo is larger than 12 MB. Choose a smaller image.', type: 'error' });
+      return;
+    }
+
+    setProfileHeadshotBusy(true);
+    try {
+      const imageDataUrl = await compressImage(file, 800);
+      const uploaded = await uploadNewsroomMedia({
+        firebaseApp,
+        appId,
+        userId: userState.uid,
+        assetId: 'profile-headshot',
+        imageDataUrl,
+        fileName: file.name,
+        origin: 'profile-headshot',
+      });
+      updateAppState((prev) => ({
+        ...prev,
+        player: { ...prev.player, headshot: uploaded.downloadUrl },
+      }), 'Profile headshot updated!');
+    } catch (error) {
+      setMessageModal({ isOpen: true, text: error?.message || 'The profile photo could not be uploaded.', type: 'error' });
+    } finally {
+      setProfileHeadshotBusy(false);
+    }
+  };
+
+  const handleProfileHeadshotRemove = () => {
+    if (isReadOnly) return;
+    updateAppState((prev) => ({
+      ...prev,
+      player: { ...prev.player, headshot: '' },
+    }), 'Profile headshot removed.');
+  };
+
   const handleFrontPageNotice = (text, type = 'success') => setMessageModal({ isOpen: true, text, type });
 
   const handleAssignNewsroomMedia = ({ issue, article, asset }) => {
@@ -2012,6 +2058,9 @@ const handleSaveGameClick = () => {
           onGraduate={handleGraduatePlayer}
           onCreateCoachingUniverse={handleCreateCoachingUniverse}
           onBeginOcCareer={handleBeginOcCareer}
+          onProfileHeadshotUpload={handleProfileHeadshotUpload}
+          onProfileHeadshotRemove={handleProfileHeadshotRemove}
+          profileHeadshotBusy={profileHeadshotBusy}
         />
       );
     }

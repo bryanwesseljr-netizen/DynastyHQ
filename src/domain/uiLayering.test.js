@@ -143,6 +143,11 @@ test('the homepage mirrors the compact command-center dashboard without duplicat
   assert.equal((source.match(/actionLabel="Open Recruit Command Center"/g) || []).length, 1);
   assert.match(source, /actionLabel=\{showFullSchedule \? 'Show Compact Schedule' : 'View Schedule'\}/);
   assert.match(source, /Player headshot placeholder/);
+  assert.match(source, /Drop photo/);
+  assert.match(source, /type="file"/);
+  assert.match(source, /accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(source, /onProfileHeadshotUpload/);
+  assert.match(source, /Remove .* headshot/);
   assert.match(source, /<details open/);
   assert.doesNotMatch(source, /View full snapshot|Career profile|View RTG career|View history/);
   assert.doesNotMatch(source, /dynastyhq-player-wessel|Wessel, number 2/);

@@ -2029,11 +2029,16 @@ const handleSaveGameClick = () => {
       { id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' },
       { id: 'chronicle', icon: BookOpen, label: 'Chronicle' },
       { id: 'trophies', icon: Trophy, label: 'Legacy' },
-      ...(!isReadOnly ? [{ id: 'dataEntry', icon: Calendar, label: 'Weekly Agenda' }] : []),
+      ...(!isReadOnly ? [{ id: 'dataEntry', icon: Calendar, label: 'Weekly Agenda', mobileLabel: 'Log Weekly Agenda' }] : []),
       ...(!isReadOnly ? [{ id: 'settings', icon: Settings, label: 'Settings' }] : []),
       ...(!isReadOnly ? [{ id: 'rules', icon: FileText, label: 'Career Handbook' }] : []),
     ];
     const desktopNavItems = navItems.filter((item) => !['frontOffice', 'offseason', 'rules'].includes(item.id));
+    const mobileNavItems = [
+      ...navItems.filter((item) => item.id === 'dashboard'),
+      ...navItems.filter((item) => item.id === 'dataEntry'),
+      ...navItems.filter((item) => !['dashboard', 'dataEntry'].includes(item.id)),
+    ];
     const saveLabel = saveStatus.state === 'saving'
       ? 'Saving…'
       : (saveStatus.state === 'retrying'
@@ -2098,13 +2103,13 @@ const handleSaveGameClick = () => {
         </div>
 
         {mobileNavOpen ? (
-          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1200px]:hidden">
+          <div id="mobile-primary-navigation" className="max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1200px]:hidden">
             <nav className="mx-auto grid max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Mobile primary navigation">
-              {navItems.map((item) => {
+              {mobileNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <button key={item.id} type="button" onClick={() => openNavItem(item)} className={`flex items-center gap-2 rounded border px-3 py-3 text-left text-[9px] font-black uppercase tracking-wider ${activeTab === item.id && item.id !== 'rules' ? 'border-amber-400 bg-amber-500 text-slate-950' : 'border-slate-800 bg-slate-950/70 text-slate-300'}`}>
-                    <Icon size={15} /> <span>{item.label}</span>
+                    <Icon size={15} /> <span>{item.mobileLabel || item.label}</span>
                   </button>
                 );
               })}

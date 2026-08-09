@@ -65,6 +65,10 @@ import {
   inspectWeeklyDraftRecovery,
 } from './domain/weeklyDraftRecovery';
 import {
+  createWeeklyAgendaProgress,
+  getRecoverableWeeklyAgendaProgress,
+} from './domain/weeklyAgendaProgress';
+import {
   createFailedScreenshotResult,
   normalizeScreenshotAnalysis,
 } from './domain/screenshotAnalysis';
@@ -179,6 +183,7 @@ const App = () => {
   const [appliedScanDraft, setAppliedScanDraft] = useState(null);
   const audioLoadedRef = useRef(false);
   const draftRecoveryOwnerRef = useRef(null);
+  const agendaProgressRecoveryRef = useRef(null);
   const autoImageAttemptsRef = useRef(new Set());
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
@@ -277,6 +282,7 @@ const App = () => {
     setAppliedScanDraft(null);
     setLoadedOwnerId(null);
     draftRecoveryOwnerRef.current = null;
+    agendaProgressRecoveryRef.current = null;
   };
 
   // --- FIREBASE CLOUD DATA FETCHING ---
@@ -361,9 +367,19 @@ const App = () => {
             if (cloudData.podcastAudio && cloudData.podcastAudio.startsWith('http')) audioToKeep = cloudData.podcastAudio;
             return { ...cloudData, podcastAudio: audioToKeep };
         });
-        
-        setRtgUpdate(cloudData.rtg || defaultState.rtg);
-        setCoachUpdate(cloudData.coach || defaultState.coach);
+
+        const agendaProgress = getRecoverableWeeklyAgendaProgress(cloudData.weeklyAgendaDraft, cloudData);
+        if (agendaProgress && agendaProgressRecoveryRef.current !== agendaProgress.savedAt) {
+          agendaProgressRecoveryRef.current = agendaProgress.savedAt;
+          setHighSchoolEvaluation(agendaProgress.highSchoolEvaluation);
+          setNewGame((current) => ({ ...current, ...agendaProgress.newGame }));
+          setRtgUpdate({ ...defaultState.rtg, ...agendaProgress.rtgUpdate, wear: { ...defaultState.rtg.wear, ...(agendaProgress.rtgUpdate.wear || {}) } });
+          setCoachUpdate({ ...defaultState.coach, ...agendaProgress.coachUpdate });
+          setNewRumor(agendaProgress.newRumor);
+        } else {
+          setRtgUpdate(cloudData.rtg || defaultState.rtg);
+          setCoachUpdate(cloudData.coach || defaultState.coach);
+        }
       } else {
         const localAudio = await loadLegacyPodcastAudioLocal();
         const freshState = { ...defaultState, podcastAudio: localAudio || '' };
@@ -791,6 +807,7 @@ const App = () => {
 
         const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', userState.uid);
         const safeState = { ...appState };
+        delete safeState.weeklyAgendaDraft;
         safeState.newsroomMediaLibrary = buildPublicNewsroomMediaLibrary({
           issues: appState.newsroomIssues || [],
           frontPages: appState.postgameFrontPages || [],
@@ -1018,6 +1035,24 @@ const handleSaveGameClick = () => {
     }
   };
 
+  const handleSaveAgendaProgress = () => {
+    const weeklyAgendaDraft = createWeeklyAgendaProgress({
+      state: appState,
+      highSchoolEvaluation: activeHighSchoolEvaluation,
+      newGame,
+      rtgUpdate,
+      coachUpdate,
+      newRumor,
+    });
+    agendaProgressRecoveryRef.current = weeklyAgendaDraft.savedAt;
+    updateAppState((prev) => ({
+      ...prev,
+      rtg: rtgUpdate,
+      coach: coachUpdate,
+      weeklyAgendaDraft,
+    }), 'Progress saved. No Playable Moment data was required, and no game week was published.');
+  };
+
   const finalizeGameSaveWithQuote = (selectedQuote) => {
       const { game, rumors, target = getPublicationTarget() } = pressConference;
       if (!reservePublication(target)) return;
@@ -1036,7 +1071,7 @@ const handleSaveGameClick = () => {
           weekType: appliedScanDraft?.weekType,
           ...target,
         });
-        return { ...publishedState, rumors };
+        return { ...publishedState, rumors, weeklyAgendaDraft: null };
       }, "Week published to stats, Fact Ledger, and Career Chronicle!", { clearDraftAfterSave: true });
       
       if (game.stage === 'high-school' || game.evaluation) {
@@ -3700,9 +3735,17 @@ const handleSaveGameClick = () => {
           </button>
         </div>
       ) : (
-        <button onClick={handleSaveGameClick} className="w-full mb-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(52,211,153,0.4)] relative z-10">
-          <Save size={18} /> {appliedScanDraft ? 'Publish Verified Week' : 'Save & Process Weekly Agenda'}
-        </button>
+        <div className="relative z-10 mb-8 space-y-2">
+          {isHighSchoolCareer && (
+            <button type="button" onClick={handleSaveAgendaProgress} className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-400/40 bg-blue-950/70 py-3.5 font-black uppercase tracking-wider text-blue-200 transition-all hover:border-blue-300 hover:bg-blue-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
+              <Save size={18} /> Save Progress Only
+            </button>
+          )}
+          <button onClick={handleSaveGameClick} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-4 font-black uppercase tracking-wider text-white shadow-[0_0_20px_rgba(52,211,153,0.4)] transition-all hover:bg-emerald-500">
+            <CheckCircle2 size={18} /> {appliedScanDraft ? 'Publish Verified Week' : (isHighSchoolCareer ? 'Process Completed Game Week' : 'Save & Process Weekly Agenda')}
+          </button>
+          {isHighSchoolCareer && <p className="text-center text-[10px] leading-relaxed text-slate-500">Save Progress keeps an incomplete setup or game draft. Process Completed Game Week publishes results and requires all four Playable Moments.</p>}
+        </div>
       )}
 
       {/* --- PRESS CONFERENCE MODAL --- */}

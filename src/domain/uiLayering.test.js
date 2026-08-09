@@ -212,3 +212,12 @@ test('player data entry presents Top Schools as preferences instead of interest 
   assert.match(appSource, /isCoach \? '3\. Manual Recruiting Updates' : '3\. Top Schools Snapshot'/);
   assert.match(appSource, /school\.preferenceRank \|\| school\.customOrder/);
 });
+
+test('high-school agenda separates saving a draft from publishing a completed week', async () => {
+  const appSource = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(appSource, /Save Progress Only/);
+  assert.match(appSource, /Process Completed Game Week/);
+  assert.match(appSource, /No Playable Moment data was required, and no game week was published/);
+  assert.ok(appSource.indexOf('Save Progress Only') < appSource.indexOf('Process Completed Game Week'));
+});

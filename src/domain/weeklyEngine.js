@@ -1401,6 +1401,7 @@ export const migrateCareerState = (state, defaults) => ({
   careerTransitions: normalizeCareerTransitions(state?.careerTransitions || defaults.careerTransitions),
   collegeNewsroom: normalizeCollegeNewsroom(state?.collegeNewsroom || defaults.collegeNewsroom),
   schemaVersion: CAREER_SCHEMA_VERSION,
+  weeklyAgendaDraft: state?.weeklyAgendaDraft || null,
   weeklyUpdates: (state?.weeklyUpdates || []).map((entry) => ({
     ...entry,
     weekKey: entry.weekKey || createWeekKey(entry.season || 1, entry.week || 1),

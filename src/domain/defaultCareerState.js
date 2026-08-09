@@ -72,6 +72,7 @@ export const DEFAULT_CAREER_STATE = {
   rumors: [],
   podcastAudio: '',
   hasCloudAudio: false,
+  weeklyAgendaDraft: null,
   weeklyUpdates: [],
   factLedger: [],
   careerMilestones: [],

@@ -303,7 +303,7 @@ const ProfileEditorModal = ({ player, recruitStars, onClose, onSave }) => {
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-white/10 bg-black/15 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[9px] leading-relaxed text-slate-500">Saving updates your private career record and Command Center.</p>
+          <p className="text-[9px] leading-relaxed text-slate-500">Saving updates your private career record and Command Center. Weekly Agenda or Playable Moment data is not required.</p>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="min-h-10 rounded border border-slate-700 px-4 text-[8px] font-black uppercase tracking-wider text-slate-300 hover:border-slate-500 hover:text-white">Cancel</button>
             <button type="submit" className="min-h-10 rounded border border-amber-300/70 bg-amber-400 px-5 text-[8px] font-black uppercase tracking-wider text-slate-950 hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Save Profile</button>

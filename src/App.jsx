@@ -3392,6 +3392,16 @@ const handleSaveGameClick = () => {
           <button type="button" onClick={() => setAppliedScanDraft(null)} className="text-xs font-bold uppercase text-slate-400 hover:text-red-300">Remove draft</button>
         </div>
       )}
+
+      <div className="dhq-weekly-agenda-milestone mb-6">
+        <MilestoneRecorder
+          key={`${appState.currentSeason}-${appState.currentWeek}-${appState.careerPhase}`}
+          season={appState.currentSeason}
+          week={appState.currentWeek}
+          institution={appState.player.college || (isCoach ? appState.player.school : '')}
+          onPublish={handlePublishMilestone}
+        />
+      </div>
       
       <div className="dhq-weekly-agenda-grid grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
@@ -3655,7 +3665,7 @@ const handleSaveGameClick = () => {
 
         <div data-agenda-card="4" className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 shadow-2xl space-y-6 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
-            <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Medal size={16} className="text-amber-500"/> 4. Media & Milestones</h3>
+            <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Medal size={16} className="text-amber-500"/> 4. Media & Rumor Mill</h3>
           </div>
           
           <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 shadow-inner">
@@ -3668,14 +3678,6 @@ const handleSaveGameClick = () => {
              <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">Add to Rumor Mill Ticker</h4>
              <input type="text" value={newRumor} onChange={e => setNewRumor(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs italic" placeholder="e.g. Rival coach on the hot seat..." />
           </div>
-          
-          <MilestoneRecorder
-            key={`${appState.currentSeason}-${appState.currentWeek}-${appState.careerPhase}`}
-            season={appState.currentSeason}
-            week={appState.currentWeek}
-            institution={appState.player.college || (isCoach ? appState.player.school : '')}
-            onPublish={handlePublishMilestone}
-          />
         </div>
         </div>
 

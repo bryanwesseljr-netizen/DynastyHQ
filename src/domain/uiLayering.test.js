@@ -118,9 +118,20 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   assert.match(globalStyles, /grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
 });
 
-test('weekly agenda milestone recorder uses a compact horizontal desktop layout', async () => {
-  const milestoneSource = await readFile(new URL('../components/MilestoneRecorder.jsx', import.meta.url), 'utf8');
+test('weekly agenda milestone recorder is a standalone full-width horizontal card', async () => {
+  const [appSource, milestoneSource] = await Promise.all([
+    readFile(appSourceUrl, 'utf8'),
+    readFile(new URL('../components/MilestoneRecorder.jsx', import.meta.url), 'utf8'),
+  ]);
 
+  const milestoneIndex = appSource.indexOf('className="dhq-weekly-agenda-milestone mb-6"');
+  const agendaGridIndex = appSource.indexOf('className="dhq-weekly-agenda-grid');
+  const cardFourIndex = appSource.indexOf('data-agenda-card="4"');
+  assert.ok(milestoneIndex >= 0);
+  assert.ok(milestoneIndex < agendaGridIndex);
+  assert.ok(milestoneIndex < cardFourIndex);
+  assert.equal((appSource.match(/<MilestoneRecorder/g) || []).length, 1);
+  assert.match(appSource, /4\. Media & Rumor Mill/);
   assert.match(milestoneSource, /milestone-recorder-layout/);
   assert.match(milestoneSource, /xl:grid-cols-\[minmax\(140px,0\.42fr\)_minmax\(0,1\.58fr\)\]/);
   assert.match(milestoneSource, /milestone-recorder-fields[^\n]*sm:grid-cols-6/);

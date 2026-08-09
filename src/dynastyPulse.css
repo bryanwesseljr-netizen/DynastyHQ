@@ -1,0 +1,303 @@
+.dhq-pulse-mount {
+  display: none;
+  height: 100%;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: 12px;
+  position: relative;
+  z-index: 4;
+}
+
+.dhq-pulse-host-inner {
+  position: relative;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: 10px;
+}
+
+.dhq-pulse-shell {
+  display: none;
+  height: 36px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(71, 85, 105, 0.72);
+  border-radius: 9px;
+  background:
+    linear-gradient(100deg, rgba(2, 10, 15, 0.94), rgba(7, 25, 28, 0.92)),
+    rgba(2, 6, 12, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 8px 24px rgba(0, 0, 0, 0.28);
+  padding: 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.dhq-pulse-live,
+.dhq-pulse-context,
+.dhq-pulse-metric {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.dhq-pulse-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6ee7b7;
+}
+
+.dhq-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+  animation: dhq-pulse-live-ring 2.4s ease-out infinite;
+}
+
+.dhq-pulse-separator {
+  width: 1px;
+  height: 16px;
+  flex: 0 0 1px;
+  background: rgba(71, 85, 105, 0.62);
+}
+
+.dhq-pulse-context {
+  color: #cbd5e1;
+}
+
+.dhq-pulse-summary {
+  color: #f8fafc;
+}
+
+.dhq-pulse-metric {
+  display: inline-flex;
+  min-width: 122px;
+  max-width: 190px;
+  align-items: baseline;
+  gap: 6px;
+  color: #f8fafc;
+  animation: dhq-pulse-metric-in 340ms ease both;
+}
+
+.dhq-pulse-metric-label {
+  color: #fbbf24;
+  flex: 0 0 auto;
+}
+
+.dhq-pulse-metric strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e2e8f0;
+  font-weight: 900;
+}
+
+.dhq-pulse-avatar-button {
+  display: flex;
+  height: 38px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(71, 85, 105, 0.75);
+  border-radius: 10px;
+  background: rgba(7, 16, 24, 0.88);
+  color: #94a3b8;
+  padding: 3px 6px 3px 3px;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.dhq-pulse-avatar-button:hover {
+  border-color: rgba(251, 191, 36, 0.65);
+  background: rgba(15, 23, 42, 0.98);
+  color: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.dhq-pulse-avatar {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.52);
+  border-radius: 8px;
+  background: linear-gradient(145deg, #182433, #0b121a);
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.dhq-pulse-avatar img,
+.dhq-pulse-menu-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dhq-pulse-avatar-button svg {
+  transition: transform 160ms ease;
+}
+
+.dhq-pulse-chevron-open {
+  transform: rotate(180deg);
+}
+
+.dhq-pulse-menu {
+  position: absolute;
+  top: 54px;
+  right: 0;
+  width: 238px;
+  overflow: hidden;
+  border: 1px solid rgba(71, 85, 105, 0.9);
+  border-radius: 12px;
+  background: rgba(4, 12, 18, 0.985);
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  padding: 8px;
+  backdrop-filter: blur(18px);
+  animation: dhq-pulse-menu-in 150ms ease both;
+}
+
+.dhq-pulse-menu-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 9px;
+}
+
+.dhq-pulse-menu-avatar {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 9px;
+  background: #111827;
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.dhq-pulse-menu-profile div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dhq-pulse-menu-profile strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dhq-pulse-menu-profile span:not(.dhq-pulse-menu-avatar) {
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dhq-pulse-menu-divider {
+  height: 1px;
+  margin: 2px 4px 6px;
+  background: rgba(51, 65, 85, 0.7);
+}
+
+.dhq-pulse-menu > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  border-radius: 8px;
+  color: #cbd5e1;
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.dhq-pulse-menu > button:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: #fff;
+}
+
+.dhq-pulse-menu > button svg {
+  color: #fbbf24;
+}
+
+.dhq-pulse-menu > .dhq-pulse-menu-signout {
+  margin-top: 4px;
+  color: #fca5a5;
+}
+
+.dhq-pulse-menu > .dhq-pulse-menu-signout svg {
+  color: #f87171;
+}
+
+.dhq-pulse-menu > .dhq-pulse-menu-signout:hover {
+  background: rgba(127, 29, 29, 0.25);
+  color: #fecaca;
+}
+
+@media (min-width: 1500px) {
+  .dhq-pulse-mount {
+    display: flex;
+  }
+}
+
+@media (min-width: 1740px) {
+  .dhq-pulse-shell {
+    display: flex;
+  }
+}
+
+@media (min-width: 2060px) {
+  .dhq-pulse-shell {
+    padding-inline: 14px;
+    gap: 11px;
+  }
+
+  .dhq-pulse-metric {
+    min-width: 138px;
+    max-width: 225px;
+  }
+}
+
+@keyframes dhq-pulse-live-ring {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+  65% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+@keyframes dhq-pulse-metric-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dhq-pulse-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dhq-pulse-dot,
+  .dhq-pulse-metric,
+  .dhq-pulse-menu {
+    animation: none !important;
+  }
+}

@@ -1889,16 +1889,8 @@ const handleSaveGameClick = () => {
 
   // --- RENDERERS ---
   const renderNav = () => {
-    const commandCenterLabel = careerStage === CAREER_STAGES.HIGH_SCHOOL
-      ? 'Recruit Command Center'
-      : (careerStage === CAREER_STAGES.COLLEGE
-        ? 'Player Command Center'
-        : (careerStage === CAREER_STAGES.OC
-          ? 'Coordinator Office'
-          : (careerStage === CAREER_STAGES.HC ? 'Program Center' : 'Legacy Center')));
     const navItems = [
       { id: 'dashboard', icon: Home, label: 'Dashboard' },
-      { id: 'commandCenter', icon: Activity, label: commandCenterLabel },
       ...(isCoach ? [{ id: 'frontOffice', icon: Briefcase, label: 'Personnel & NIL Office' }] : []),
       ...(isCoach ? [{ id: 'offseason', icon: Target, label: 'Offseason War Room' }] : []),
       { id: 'recruiting', icon: Map, label: 'Recruiting Board' },

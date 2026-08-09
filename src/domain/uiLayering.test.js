@@ -49,7 +49,8 @@ test('the app opens on the command-center homepage with one responsive top navig
   assert.match(appSource, /<header className="fixed inset-x-0 top-0/);
   assert.match(appSource, /aria-label="Primary navigation"/);
   assert.match(appSource, /Dynasty <span className="text-amber-400">HQ<\/span>/);
-  assert.match(appSource, /\{ id: 'commandCenter', icon: Activity, label: commandCenterLabel \}/);
+  assert.doesNotMatch(appSource, /\{ id: 'commandCenter', icon: Activity/);
+  assert.doesNotMatch(appSource, /const commandCenterLabel =/);
   assert.match(appSource, /item\.id === 'podcast' \? 'Podcast' : item\.label/);
   assert.match(appSource, /dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden/);
   assert.doesNotMatch(appSource, /gridTemplateColumns/);

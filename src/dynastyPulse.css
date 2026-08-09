@@ -1,23 +1,24 @@
 .dhq-pulse-mount {
-  display: none;
-  height: 100%;
-  flex: 0 0 auto;
-  align-items: center;
-  margin-left: 12px;
-  position: relative;
-  z-index: 4;
+  position: fixed;
+  top: 0;
+  right: 18px;
+  z-index: 135;
+  display: block;
+  height: 64px;
+  pointer-events: none;
 }
 
 .dhq-pulse-host-inner {
   position: relative;
   display: flex;
-  height: 100%;
+  height: 64px;
   align-items: center;
   gap: 10px;
+  pointer-events: auto;
 }
 
 .dhq-pulse-shell {
-  display: none;
+  display: flex;
   height: 36px;
   align-items: center;
   gap: 10px;
@@ -103,9 +104,10 @@
   gap: 5px;
   border: 1px solid rgba(71, 85, 105, 0.75);
   border-radius: 10px;
-  background: rgba(7, 16, 24, 0.88);
+  background: rgba(7, 16, 24, 0.94);
   color: #94a3b8;
   padding: 3px 6px 3px 3px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
@@ -254,18 +256,6 @@
   color: #fecaca;
 }
 
-@media (min-width: 1500px) {
-  .dhq-pulse-mount {
-    display: flex;
-  }
-}
-
-@media (min-width: 1740px) {
-  .dhq-pulse-shell {
-    display: flex;
-  }
-}
-
 @media (min-width: 2060px) {
   .dhq-pulse-shell {
     padding-inline: 14px;
@@ -275,6 +265,12 @@
   .dhq-pulse-metric {
     min-width: 138px;
     max-width: 225px;
+  }
+}
+
+@media (max-width: 1199px) {
+  .dhq-pulse-mount {
+    display: none;
   }
 }
 

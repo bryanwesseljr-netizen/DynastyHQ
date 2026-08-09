@@ -54,7 +54,7 @@ const schemaFor = (payload) => ({
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['outletId', 'kicker', 'headline', 'dek', 'dateline', 'paragraphs', 'citedFactIds'],
+        required: ['outletId', 'kicker', 'headline', 'dek', 'dateline', 'paragraphs', 'sectionHeadings', 'pullQuote', 'sidebars', 'citedFactIds'],
         properties: {
           outletId: { type: 'string', enum: payload.articleBriefs.map((brief) => brief.outletId) },
           kicker: { type: 'string' },
@@ -64,6 +64,26 @@ const schemaFor = (payload) => ({
           paragraphs: {
             type: 'array', minItems: 5, maxItems: 8,
             items: { type: 'string' },
+          },
+          sectionHeadings: {
+            type: 'array', minItems: 2, maxItems: 3,
+            items: { type: 'string' },
+          },
+          pullQuote: { type: 'string' },
+          sidebars: {
+            type: 'array', minItems: 2, maxItems: 3,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['title', 'items'],
+              properties: {
+                title: { type: 'string' },
+                items: {
+                  type: 'array', minItems: 2, maxItems: 5,
+                  items: { type: 'string' },
+                },
+              },
+            },
           },
           citedFactIds: {
             type: 'array', minItems: 1,
@@ -92,6 +112,9 @@ Non-negotiable reporting rules:
 - Vary sentence length and paragraph rhythm. Avoid repetitive summaries, sterile inventories, and four-paragraph templates.
 - Write 350 to 650 words per article in 5 to 8 paragraphs. Keep it family-friendly and believable as modern digital sports journalism.
 - The kicker should be a short editorial label, not the outlet name. The dek should add stakes rather than repeat the headline.
+- Supply two or three specific section headings that match the article's narrative arc. Avoid generic headings such as “Overview” or “Conclusion.”
+- Supply one concise pullQuote as an unattributed editorial takeaway, not a fabricated quotation. Do not put quotation marks around it.
+- Supply two or three compact sidebar panels with titles and two to five brief items each. Make them useful for that outlet: recruiting snapshots and watch lists for recruiting, performance notes for film analysis, local stakes for community coverage, or big-picture context for national coverage. Every factual item must come from the supplied facts; clearly frame any interpretation as analysis.
 - Use a dateline only when a location is explicitly supplied; otherwise return an empty string.
 - Every article must cite the supplied fact IDs used for its factual claims. Cite only IDs from the packet. Citations are stored internally and never displayed to readers.
 - Return exactly one article for every article brief and use every requested outletId exactly once.`;
@@ -149,4 +172,3 @@ export default async function handler(req, res) {
     });
   }
 }
-

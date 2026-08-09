@@ -23,7 +23,7 @@ test('the fixed workspace background cannot intercept newsroom article clicks', 
   );
   assert.match(
     newsroomSource,
-    /className="relative z-10 mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in"/,
+    /className="relative z-10 mx-auto max-w-6xl space-y-6 pb-20 animate-in fade-in"/,
   );
 });
 

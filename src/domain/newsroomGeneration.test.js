@@ -56,6 +56,12 @@ test('merges generated editorial copy while preserving article identity and medi
       dek: 'The first list establishes a regional race before the five-game evaluation begins.',
       dateline: '',
       paragraphs: [paragraph, paragraph, paragraph, paragraph, paragraph],
+      sectionHeadings: ['A regional opening', 'The evaluation ahead'],
+      pullQuote: 'The opening list creates a regional race with five evaluation games still able to reshape it.',
+      sidebars: [
+        { title: 'Recruiting snapshot', items: ['Eastern Michigan is first in the personal preference order.', 'Western Michigan is second.'] },
+        { title: 'What comes next', items: ['Five evaluation games remain.', 'Future results can change the conversation.'] },
+      ],
       citedFactIds: payload.articleBriefs[0].focusFactIds,
     }],
   };
@@ -66,15 +72,28 @@ test('merges generated editorial copy while preserving article identity and medi
   assert.equal(story.mediaAssetId, 'photo-1');
   assert.match(story.headline, /Michigan trio/);
   assert.match(story.byline, /Marcus Grant/);
+  assert.equal(story.sectionHeadings.length, 2);
+  assert.equal(story.sidebars[0].title, 'Recruiting snapshot');
+  assert.match(story.pullQuote, /regional race/);
   assert.equal(story.citedFactKeys.includes('recruiting.eastern.preferenceRank'), true);
   assert.equal(story.editorialStatus, 'generated');
 });
 
 test('reader keeps internal source keys out of the public article layout', async () => {
-  const source = await readFile(new URL('../components/GroundedNewsroom.jsx', import.meta.url), 'utf8');
+  const [source, reader, styles] = await Promise.all([
+    readFile(new URL('../components/GroundedNewsroom.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../components/NewsroomArticleReader.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../index.css', import.meta.url), 'utf8'),
+  ]);
   assert.doesNotMatch(source, /Source ledger/i);
   assert.doesNotMatch(source, /citedFactKeys\.map/);
   assert.match(source, /DynastyHQ Press Room/);
   assert.match(source, /Rewrite edition/);
+  assert.match(source, /Manage this article/);
+  assert.match(reader, /data-editorial-layout/);
+  assert.match(reader, /Why it matters/);
+  assert.match(reader, /Article context/);
+  assert.match(styles, /data-editorial-layout="insider"/);
+  assert.match(styles, /data-editorial-layout="analysis"/);
+  assert.match(styles, /data-editorial-layout="network"/);
 });
-

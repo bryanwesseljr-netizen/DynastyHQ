@@ -37,15 +37,14 @@ const stageLabel = (stage) => {
 const latestHeadlineFrom = (state) => {
   const issues = Array.isArray(state?.newsroomIssues) ? state.newsroomIssues : [];
   const issue = issues.at(-1) || issues[0];
-  const candidates = [
+  return [
     issue?.headline,
     issue?.title,
     issue?.hero?.headline,
     issue?.leadStory?.headline,
     issue?.stories?.[0]?.headline,
     issue?.articles?.[0]?.headline,
-  ];
-  return candidates.find((value) => String(value || '').trim()) || '';
+  ].find((value) => String(value || '').trim()) || '';
 };
 
 const buildPulse = (state) => {
@@ -58,10 +57,8 @@ const buildPulse = (state) => {
   const season = numberOrZero(safeState.currentSeason) || 1;
   const week = numberOrZero(safeState.currentWeek) || 1;
   const seasonLogs = logs.filter((game) => (numberOrZero(game?.season) || 1) === season);
-  const record = {
-    wins: seasonLogs.filter((game) => game?.result === 'W').length,
-    losses: seasonLogs.filter((game) => game?.result === 'L').length,
-  };
+  const wins = seasonLogs.filter((game) => game?.result === 'W').length;
+  const losses = seasonLogs.filter((game) => game?.result === 'L').length;
   const totals = seasonLogs.reduce((acc, game) => ({
     passYds: acc.passYds + numberOrZero(game?.passYds),
     passTD: acc.passTD + numberOrZero(game?.passTD),
@@ -74,7 +71,6 @@ const buildPulse = (state) => {
   const stars = Math.max(1, Math.min(5, numberOrZero(player.stars) || 3));
   const overall = numberOrZero(player.overall);
   const position = String(player.pos || 'QB').toUpperCase();
-  const headline = latestHeadlineFrom(safeState);
   const items = [];
   let summary = '';
 
@@ -84,22 +80,21 @@ const buildPulse = (state) => {
       { label: 'TAPE', value: compactNumber(highSchool.tapeScore) },
       { label: 'OFFERS', value: String(offers) },
       { label: 'GAMES', value: `${evaluations.length}/5` },
+      { label: 'NEXT', value: evaluations.length < 5 ? `GAME ${evaluations.length + 1}` : 'TAPE COMPLETE' },
     );
-    if (evaluations.length < 5) items.push({ label: 'NEXT', value: `GAME ${evaluations.length + 1}` });
-    else items.push({ label: 'STATUS', value: 'TAPE COMPLETE' });
   } else if (stage === CAREER_STAGES.COLLEGE) {
     summary = `${position}${overall ? ` · ${overall} OVR` : ''}`;
     items.push(
-      { label: 'RECORD', value: `${record.wins}-${record.losses}` },
+      { label: 'RECORD', value: `${wins}-${losses}` },
       { label: 'PASS YDS', value: compactNumber(totals.passYds) },
       { label: 'TOTAL TD', value: String(totals.passTD + totals.rushTD) },
       { label: 'TRUST', value: compactNumber(safeState.rtg?.coachTrust) },
     );
     if (safeState.rtg?.rank) items.push({ label: 'ROLE', value: String(safeState.rtg.rank).toUpperCase() });
   } else if ([CAREER_STAGES.OC, CAREER_STAGES.HC].includes(stage)) {
-    summary = `${stage === CAREER_STAGES.OC ? 'OC' : 'HC'}${coach.prestige ? ` · ${coach.prestige} PRESTIGE` : ''}`;
+    summary = `${stage === CAREER_STAGES.OC ? 'OC' : 'HC'}${coach.prestige ? ` · ${coach.prestige}` : ''}`;
     items.push(
-      { label: 'RECORD', value: `${record.wins}-${record.losses}` },
+      { label: 'RECORD', value: `${wins}-${losses}` },
       { label: 'SECURITY', value: coach.security === '' || coach.security === undefined ? '—' : `${numberOrZero(coach.security)}%` },
       { label: 'TARGETS', value: String(activeTargets) },
       { label: 'RECRUIT HRS', value: compactNumber(coach.budget) },
@@ -112,6 +107,7 @@ const buildPulse = (state) => {
     );
   }
 
+  const headline = latestHeadlineFrom(safeState);
   if (headline) items.push({ label: 'LATEST', value: headline });
 
   return {
@@ -140,7 +136,7 @@ const openProfile = () => {
       button.click();
       return;
     }
-    if (attempt < 5) window.setTimeout(() => tryOpen(attempt + 1), 180);
+    if (attempt < 6) window.setTimeout(() => tryOpen(attempt + 1), 180);
   };
   window.setTimeout(() => tryOpen(), 120);
 };
@@ -149,17 +145,15 @@ const openHandbook = () => {
   const clickHandbook = () => {
     const handbookButton = [...document.querySelectorAll('#mobile-primary-navigation button')]
       .find((candidate) => candidate.textContent?.includes('Career Handbook'));
-    if (handbookButton) handbookButton.click();
+    handbookButton?.click();
   };
 
   if (document.getElementById('mobile-primary-navigation')) {
     clickHandbook();
     return;
   }
-
-  const menuButton = document.querySelector('button[aria-controls="mobile-primary-navigation"]');
-  menuButton?.click();
-  window.setTimeout(clickHandbook, 80);
+  document.querySelector('button[aria-controls="mobile-primary-navigation"]')?.click();
+  window.setTimeout(clickHandbook, 90);
 };
 
 const useDynastyState = () => {
@@ -180,7 +174,6 @@ const useDynastyState = () => {
       return () => stopSnapshot();
     }
 
-    setReadOnly(false);
     const stopAuth = onAuthStateChanged(auth, (user) => {
       stopSnapshot();
       stopSnapshot = () => {};
@@ -203,56 +196,17 @@ const useDynastyState = () => {
   return { state, readOnly };
 };
 
-const useHeaderRoom = () => {
-  const [room, setRoom] = useState({ avatar: false, pulse: false });
-
-  useEffect(() => {
-    let resizeObserver;
-    const measure = () => {
-      const nav = document.querySelector('.dhq-primary-nav');
-      const buttons = [...(nav?.querySelectorAll('.dhq-primary-nav-item') || [])]
-        .filter((button) => button.getClientRects().length > 0);
-      const lastButton = buttons.at(-1);
-      if (!lastButton || window.innerWidth < 1200) {
-        setRoom({ avatar: false, pulse: false });
-        return;
-      }
-      const freeSpace = window.innerWidth - lastButton.getBoundingClientRect().right - 18;
-      setRoom({
-        avatar: freeSpace >= 72,
-        pulse: freeSpace >= 470,
-      });
-    };
-
-    measure();
-    window.addEventListener('resize', measure);
-    window.setTimeout(measure, 120);
-    window.setTimeout(measure, 600);
-
-    const header = document.querySelector('header.no-print');
-    if (header && globalThis.ResizeObserver) {
-      resizeObserver = new ResizeObserver(measure);
-      resizeObserver.observe(header);
-    }
-
-    return () => {
-      window.removeEventListener('resize', measure);
-      resizeObserver?.disconnect();
-    };
-  }, []);
-
-  return room;
-};
-
 const DynastyPulse = () => {
   const { state, readOnly } = useDynastyState();
-  const room = useHeaderRoom();
   const pulse = useMemo(() => buildPulse(state), [state]);
   const [metricIndex, setMetricIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const player = state?.player || {};
-  const metric = pulse.items[metricIndex % Math.max(1, pulse.items.length)] || { label: 'STATUS', value: state ? 'READY' : 'SYNCING' };
+  const metric = pulse.items[metricIndex % Math.max(1, pulse.items.length)] || {
+    label: 'STATUS',
+    value: state ? 'READY' : 'SYNCING',
+  };
 
   useEffect(() => {
     setMetricIndex(0);
@@ -272,28 +226,17 @@ const DynastyPulse = () => {
     return () => document.removeEventListener('pointerdown', close);
   }, [menuOpen]);
 
-  useEffect(() => {
-    if (!room.avatar) setMenuOpen(false);
-  }, [room.avatar]);
-
-  if (!room.avatar) return null;
-
   return (
     <div className="dhq-pulse-host-inner" ref={menuRef}>
-      {room.pulse ? (
-        <div className="dhq-pulse-shell" aria-label="Dynasty Pulse">
-          <span className="dhq-pulse-live"><span className="dhq-pulse-dot" /> LIVE</span>
-          <span className="dhq-pulse-separator" />
-          <span className="dhq-pulse-context">S{pulse.season} · W{pulse.week}</span>
-          <span className="dhq-pulse-separator" />
-          <span className="dhq-pulse-context dhq-pulse-summary">{pulse.summary || pulse.stageName}</span>
-          <span className="dhq-pulse-separator" />
-          <span key={`${metric.label}-${metric.value}-${metricIndex}`} className="dhq-pulse-metric">
-            <span className="dhq-pulse-metric-label">{metric.label}</span>
-            <strong title={metric.value}>{metric.value}</strong>
-          </span>
-        </div>
-      ) : null}
+      <div className="dhq-pulse-shell" aria-label="Dynasty Pulse">
+        <span className="dhq-pulse-live"><span className="dhq-pulse-dot" /> <span className="dhq-pulse-live-text">LIVE</span></span>
+        <span className="dhq-pulse-context">S{pulse.season} · W{pulse.week}</span>
+        <span className="dhq-pulse-context dhq-pulse-summary">{pulse.summary || pulse.stageName}</span>
+        <span key={`${metric.label}-${metric.value}-${metricIndex}`} className="dhq-pulse-metric">
+          <span className="dhq-pulse-metric-label">{metric.label}</span>
+          <strong title={metric.value}>{metric.value}</strong>
+        </span>
+      </div>
 
       <button
         type="button"
@@ -334,34 +277,20 @@ const DynastyPulse = () => {
 let pulseRoot = null;
 let pulseHost = null;
 
-const teardownPulse = () => {
-  const root = pulseRoot;
-  const host = pulseHost;
-  pulseRoot = null;
-  pulseHost = null;
-  root?.unmount();
-  host?.remove();
-};
-
-const ensurePulseMounted = () => {
+const mountPulse = () => {
   const header = document.querySelector('header.no-print');
-  if (!header) {
-    if (pulseRoot || pulseHost) teardownPulse();
-    return;
-  }
-
-  if (pulseHost && document.contains(pulseHost)) return;
-  if (pulseRoot || pulseHost) teardownPulse();
+  if (!header || pulseHost) return;
 
   pulseHost = document.createElement('div');
   pulseHost.id = 'dynasty-pulse-root';
   pulseHost.className = 'dhq-pulse-mount';
   document.body.appendChild(pulseHost);
-
   pulseRoot = createRoot(pulseHost);
   pulseRoot.render(<DynastyPulse />);
 };
 
-const observer = new MutationObserver(ensurePulseMounted);
+const observer = new MutationObserver(() => {
+  if (!pulseHost && document.querySelector('header.no-print')) mountPulse();
+});
 observer.observe(document.documentElement, { childList: true, subtree: true });
-ensurePulseMounted();
+mountPulse();

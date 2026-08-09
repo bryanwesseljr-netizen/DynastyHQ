@@ -1,65 +1,72 @@
 /* DynastyHQ sitewide readability normalization.
-   Keep the immersive newsroom article typography independent so its
-   headline sizing/layout remains exactly as designed. */
+   Keep immersive newsroom article typography independent so its editorial
+   headline/layout treatment remains exactly as designed. */
 
 html {
   font-size: 16px;
 }
 
 body {
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1.5;
 }
 
-/* The desktop navigation had become unusually small compared with the rest
-   of the interface. Bring it back to a normal compact application-nav size. */
+/* Normal desktop navigation size. */
 .dhq-primary-nav-item {
-  font-size: clamp(11px, 0.74vw, 12.5px) !important;
-  letter-spacing: 0.045em !important;
+  font-size: clamp(12.5px, 0.82vw, 14px) !important;
+  letter-spacing: 0.04em !important;
 }
 
-/* Normalize the intentionally tiny utility labels used throughout Dashboard,
-   Weekly Agenda, Recruiting, Chronicle, Settings, Podcast, etc. Newsroom
-   article content is excluded so its editorial typography remains untouched. */
-.dhq-page-main :where([class~="text-[8px]"], [class~="text-[9px]"]):not(.dhq-news-article *) {
-  font-size: 11px !important;
-  line-height: 1.35 !important;
-}
-
-.dhq-page-main :where([class~="text-[10px]"], [class~="text-[11px]"]):not(.dhq-news-article *) {
+/*
+ * The interface contains many deliberately tiny Tailwind utility sizes.
+ * Normalize them everywhere in the application, including auth/modals/nav,
+ * while leaving the full digital newsroom article renderer untouched.
+ */
+body :where([class~="text-[7px]"], [class~="text-[8px]"], [class~="text-[9px]"]):not(.dhq-news-article *) {
   font-size: 12px !important;
   line-height: 1.4 !important;
 }
 
-.dhq-page-main :where([class~="text-xs"]):not(.dhq-news-article *) {
+body :where([class~="text-[10px]"], [class~="text-[11px]"]):not(.dhq-news-article *) {
   font-size: 13px !important;
   line-height: 1.45 !important;
 }
 
-.dhq-page-main :where([class~="text-sm"]):not(.dhq-news-article *) {
+body :where([class~="text-[12px]"], [class~="text-[13px]"], [class~="text-xs"]):not(.dhq-news-article *) {
   font-size: 14px !important;
   line-height: 1.5 !important;
 }
 
-/* Form controls should never look like micro-copy, even when a component did
-   not explicitly assign a text utility. More specific size utilities above
-   still win when a control intentionally uses a larger size. */
-.dhq-page-main :where(button, input, select, textarea):not(.dhq-news-article *) {
-  font-size: 13px !important;
-  line-height: 1.35 !important;
+body :where([class~="text-sm"]):not(.dhq-news-article *) {
+  font-size: 15px !important;
+  line-height: 1.5 !important;
 }
 
-.dhq-page-main :where(button, input, select, textarea)[class~="text-sm"]:not(.dhq-news-article *) {
+/* Keep standard form text comfortably readable without shrinking controls
+   that intentionally use text-base/text-lg or larger. */
+body :where(input, select, textarea)[class~="text-xs"]:not(.dhq-news-article *) {
   font-size: 14px !important;
 }
 
-/* Preserve compact layouts on phones while keeping labels readable. */
+body :where(input, select, textarea)[class~="text-sm"]:not(.dhq-news-article *) {
+  font-size: 15px !important;
+}
+
+/* Preserve a compact mobile layout, but never return to micro-copy. */
 @media (max-width: 640px) {
-  .dhq-page-main :where([class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"]):not(.dhq-news-article *) {
-    font-size: 11px !important;
+  .dhq-primary-nav-item {
+    font-size: 12px !important;
   }
 
-  .dhq-page-main :where([class~="text-xs"]):not(.dhq-news-article *) {
-    font-size: 12.5px !important;
+  body :where([class~="text-[7px]"], [class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"]):not(.dhq-news-article *) {
+    font-size: 12px !important;
+  }
+
+  body :where([class~="text-[11px]"], [class~="text-[12px]"], [class~="text-[13px]"], [class~="text-xs"]):not(.dhq-news-article *) {
+    font-size: 13.5px !important;
+  }
+
+  body :where([class~="text-sm"]):not(.dhq-news-article *) {
+    font-size: 14.5px !important;
   }
 }

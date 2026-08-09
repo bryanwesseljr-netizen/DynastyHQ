@@ -5,12 +5,12 @@ const NewsroomEmptyState = ({
   readOnly = false,
   mediaLibrary = [],
   mediaBusy = false,
-  autoGenerateLead = false,
+  autoAssignLibrary = true,
   onOpenCommandCenter,
   onUploadMedia,
   onToggleReference,
   onDeleteMedia,
-  onSetAutoGenerateLead,
+  onSetAutoAssignLibrary,
 }) => (
   <div className="relative z-10 mx-auto max-w-5xl space-y-6 pb-20">
     <section className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/90 shadow-2xl">
@@ -30,16 +30,16 @@ const NewsroomEmptyState = ({
 
     {!readOnly && (
       <section className="overflow-hidden rounded-2xl border border-amber-500/25 bg-slate-950/90 shadow-2xl">
-        <div className="p-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">Preseason Media Prep</p><h2 className="mt-1 text-2xl font-black uppercase text-white">Reference Locker</h2><p className="mt-2 text-sm text-slate-400">Prepare your approved player and uniform references now; article photos can be assigned after the first edition exists.</p></div>
+        <div className="p-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">Preseason Media Prep</p><h2 className="mt-1 text-2xl font-black uppercase text-white">Career Photo Library</h2><p className="mt-2 text-sm text-slate-400">Upload reusable game, action, recruiting, and portrait photos now. The Newsroom can automatically choose from them when it writes future editions.</p></div>
         <NewsroomMediaManager
           lockerOnly
           mediaLibrary={mediaLibrary}
           busy={mediaBusy}
-          autoGenerateLead={autoGenerateLead}
+          autoAssignLibrary={autoAssignLibrary}
           onUpload={onUploadMedia}
           onToggleReference={onToggleReference}
           onDelete={onDeleteMedia}
-          onSetAutoGenerateLead={onSetAutoGenerateLead}
+          onSetAutoAssignLibrary={onSetAutoAssignLibrary}
         />
       </section>
     )}

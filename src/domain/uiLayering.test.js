@@ -5,6 +5,8 @@ import test from 'node:test';
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const newsroomSourceUrl = new URL('../components/GroundedNewsroom.jsx', import.meta.url);
 const newsroomEmptyStateSourceUrl = new URL('../components/NewsroomEmptyState.jsx', import.meta.url);
+const newsroomMediaSourceUrl = new URL('../components/NewsroomMediaManager.jsx', import.meta.url);
+const podcastStudioSourceUrl = new URL('../components/PodcastStudio.jsx', import.meta.url);
 const commandCenterSourceUrl = new URL('../components/CareerCommandCenter.jsx', import.meta.url);
 const playerRecruitingSourceUrl = new URL('../components/PlayerRecruitingWorkspace.jsx', import.meta.url);
 const globalStylesUrl = new URL('../index.css', import.meta.url);
@@ -42,6 +44,32 @@ test('the newsroom keeps podcast controls in the dedicated Gridiron Grind worksp
   assert.doesNotMatch(newsroomSource, /Podcast Brief|Open Podcast Studio|openStory\('podcast'\)/);
   assert.match(appSource, /\{ id: 'podcast', icon: Radio, label: 'Gridiron Grind Podcast' \}/);
   assert.match(appSource, /activeTab === 'podcast'/);
+});
+
+test('the career photo library cannot silently trigger paid AI image generation', async () => {
+  const [appSource, mediaSource, newsroomSource] = await Promise.all([
+    readFile(appSourceUrl, 'utf8'),
+    readFile(newsroomMediaSourceUrl, 'utf8'),
+    readFile(newsroomSourceUrl, 'utf8'),
+  ]);
+
+  assert.match(mediaSource, /Add Photos to Library/);
+  assert.match(mediaSource, /Automatically choose library photos/);
+  assert.match(mediaSource, /never generates an AI image or uses API image credits/);
+  assert.match(newsroomSource, /Reusable Career Media/);
+  assert.match(newsroomSource, /Career Photo Library/);
+  assert.match(appSource, /assignLibraryPhotosToEdition/);
+  assert.doesNotMatch(appSource, /handleGenerateNewsroomMedia\(\{ issue: latestIssue/);
+});
+
+test('the podcast studio recovers from incomplete legacy episode data instead of black-screening', async () => {
+  const podcastSource = await readFile(podcastStudioSourceUrl, 'utf8');
+
+  assert.match(podcastSource, /class PodcastStudioBoundary extends Component/);
+  assert.match(podcastSource, /The studio hit a playback problem/);
+  assert.match(podcastSource, /Array\.isArray\(episode\?\.segments\)/);
+  assert.match(podcastSource, /briefForIssue\(archiveIssue\)\.title/);
+  assert.doesNotMatch(podcastSource, /archiveIssue\.podcastBrief\.title/);
 });
 
 test('the app opens on the command-center homepage with one responsive top navigation', async () => {

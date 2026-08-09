@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   assignNewsroomMedia,
+  assignLibraryPhotosToEdition,
   buildNewsroomImageRequest,
   buildPublicNewsroomMediaLibrary,
   clearNewsroomMediaAssignment,
@@ -44,6 +45,34 @@ test('assigns and clears a media asset on exactly one article', () => {
 
   const cleared = clearNewsroomMediaAssignment({ issues: assigned, publicationId: issue.id, articleId: 'bolt' });
   assert.equal(cleared[0].articles[0].mediaAssetId, '');
+});
+
+test('automatically assigns stable uploaded library photos without spending AI credits', () => {
+  const issueWithThreeStories = {
+    ...issue,
+    articles: [
+      issue.articles[0],
+      { ...issue.articles[0], id: 'local' },
+      { ...issue.articles[0], id: 'filmroom', mediaAssetId: 'manual-photo' },
+    ],
+  };
+  const uploaded = [
+    asset,
+    { ...asset, id: 'asset-2', downloadUrl: 'https://firebasestorage.googleapis.com/test-2.jpg' },
+  ];
+  const ignored = [
+    { ...asset, id: 'reference', isReference: true },
+    { ...asset, id: 'ai-photo', origin: NEWSROOM_MEDIA_ORIGINS.AI },
+  ];
+
+  const first = assignLibraryPhotosToEdition({ issues: [issueWithThreeStories], publicationId: issue.id, mediaLibrary: [...uploaded, ...ignored] });
+  const second = assignLibraryPhotosToEdition({ issues: [issueWithThreeStories], publicationId: issue.id, mediaLibrary: [...uploaded, ...ignored] });
+  const assignedIds = first[0].articles.slice(0, 2).map((article) => article.mediaAssetId);
+
+  assert.deepEqual(first, second);
+  assert.equal(new Set(assignedIds).size, 2);
+  assert.ok(assignedIds.every((id) => uploaded.some((entry) => entry.id === id)));
+  assert.equal(first[0].articles[2].mediaAssetId, 'manual-photo');
 });
 
 test('resolves article media before the legacy fallback and discloses AI images', () => {

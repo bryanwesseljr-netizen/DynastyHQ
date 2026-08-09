@@ -122,6 +122,7 @@ import {
   updateTransferTarget,
 } from './domain/playerRecruiting';
 import {
+  assignLibraryPhotosToEdition,
   assignNewsroomMedia,
   buildPublicNewsroomMediaLibrary,
   buildNewsroomImageRequest,
@@ -190,7 +191,6 @@ const App = () => {
   const audioLoadedRef = useRef(false);
   const draftRecoveryOwnerRef = useRef(null);
   const agendaProgressRecoveryRef = useRef(null);
-  const autoImageAttemptsRef = useRef(new Set());
   const newsroomWritingAttemptsRef = useRef(new Set());
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
@@ -821,7 +821,7 @@ const App = () => {
           frontPages: appState.postgameFrontPages || [],
           mediaLibrary: appState.newsroomMediaLibrary || [],
         });
-        safeState.newsroomMediaSettings = { autoGenerateLead: false };
+        safeState.newsroomMediaSettings = { autoAssignLibrary: false };
         if (safeState.podcastAudio && safeState.podcastAudio.startsWith('data:audio')) {
             safeState.podcastAudio = ''; 
             safeState.hasCloudAudio = true;
@@ -1365,6 +1365,7 @@ const handleSaveGameClick = () => {
     if (!userState) throw new Error('Sign in before generating a podcast episode.');
     const idToken = await userState.getIdToken();
     let episode = findPodcastEpisode(appState, publicationId);
+    if (episode && (!Array.isArray(episode.segments) || !episode.segments.length)) episode = null;
 
     if (!episode) {
       onProgress({ stage: 'Writing grounded script', current: 0, total: 1 });
@@ -1418,7 +1419,7 @@ const handleSaveGameClick = () => {
     return { episode: readyEpisode, audioSegments };
   };
 
-  const handleUploadNewsroomMedia = async (file, { issue, article, asReference = false }) => {
+  const handleUploadNewsroomMedia = async (file, { asReference = false } = {}) => {
     if (!userState || isReadOnly) throw new Error('Sign in as the owner before uploading newsroom photos.');
     if (!file?.type?.match(/^image\/(png|jpe?g|webp)$/i)) {
       setMessageModal({ isOpen: true, text: 'Choose a PNG, JPEG, or WebP image.', type: 'error' });
@@ -1453,13 +1454,7 @@ const handleSaveGameClick = () => {
       updateAppState((prev) => ({
         ...prev,
         newsroomMediaLibrary: [...(prev.newsroomMediaLibrary || []), asset],
-        newsroomIssues: asReference ? prev.newsroomIssues : assignNewsroomMedia({
-          issues: prev.newsroomIssues,
-          publicationId: issue.publicationId || issue.id,
-          articleId: article.id,
-          asset,
-        }),
-      }), asReference ? 'Reference photo saved to the locker!' : 'Photo uploaded and assigned to this article!');
+      }), asReference ? 'AI reference saved to the locker!' : 'Photo added to your Career Photo Library!');
     } catch (error) {
       setMessageModal({ isOpen: true, text: error?.message || 'The newsroom photo could not be uploaded.', type: 'error' });
     } finally {
@@ -1586,7 +1581,18 @@ const handleSaveGameClick = () => {
         model: generated.model,
       });
       updateAppState(
-        (prev) => applyGeneratedNewsroomEdition(prev, publicationId, edition),
+        (prev) => {
+          const generatedState = applyGeneratedNewsroomEdition(prev, publicationId, edition);
+          if (prev.newsroomMediaSettings?.autoAssignLibrary === false) return generatedState;
+          return {
+            ...generatedState,
+            newsroomIssues: assignLibraryPhotosToEdition({
+              issues: generatedState.newsroomIssues,
+              publicationId,
+              mediaLibrary: generatedState.newsroomMediaLibrary || [],
+            }),
+          };
+        },
         automatic ? null : 'A fresh immersive newsroom edition is ready!',
       );
       return true;
@@ -1708,32 +1714,16 @@ const handleSaveGameClick = () => {
     }
   };
 
-  const handleSetAutoGenerateLead = (enabled) => {
+  const handleSetAutoAssignLibrary = (enabled) => {
     updateAppState((prev) => ({
       ...prev,
       newsroomMediaSettings: {
         ...(prev.newsroomMediaSettings || {}),
-        autoGenerateLead: Boolean(enabled),
+        autoAssignLibrary: Boolean(enabled),
+        autoGenerateLead: false,
       },
-    }), enabled ? 'Automatic weekly lead images enabled.' : 'Automatic weekly lead images disabled.');
+    }), enabled ? 'Automatic Career Photo Library selection enabled.' : 'Automatic photo selection disabled.');
   };
-
-  useEffect(() => {
-    if (isReadOnly || !userState || newsroomMediaBusy || !appState.newsroomMediaSettings?.autoGenerateLead) return;
-    const latestIssue = appState.newsroomIssues?.[appState.newsroomIssues.length - 1];
-    const leadArticle = latestIssue?.editionType === 'recruiting' ? null : latestIssue?.articles?.[0];
-    const attemptKey = `${latestIssue?.publicationId || latestIssue?.id}:${leadArticle?.id || 'lead'}`;
-    if (!latestIssue || !leadArticle || leadArticle.mediaAssetId || autoImageAttemptsRef.current.has(attemptKey)) return;
-    autoImageAttemptsRef.current.add(attemptKey);
-    handleGenerateNewsroomMedia({ issue: latestIssue, article: leadArticle, quiet: true }).catch(() => {});
-  }, [
-    appState.newsroomIssues,
-    appState.newsroomMediaSettings?.autoGenerateLead,
-    handleGenerateNewsroomMedia,
-    isReadOnly,
-    newsroomMediaBusy,
-    userState,
-  ]);
 
   const handlePrint = () => {
     try {
@@ -2797,7 +2787,7 @@ const handleSaveGameClick = () => {
           mediaLibrary={appState.newsroomMediaLibrary || []}
           mediaBusy={newsroomMediaBusy}
           writingBusyId={newsroomWritingBusyId}
-          autoGenerateLead={Boolean(appState.newsroomMediaSettings?.autoGenerateLead)}
+          autoAssignLibrary={appState.newsroomMediaSettings?.autoAssignLibrary !== false}
           onGenerateEdition={handleGenerateNewsroomEdition}
           onUploadMedia={handleUploadNewsroomMedia}
           onAssignMedia={handleAssignNewsroomMedia}
@@ -2805,7 +2795,7 @@ const handleSaveGameClick = () => {
           onGenerateMedia={handleGenerateNewsroomMedia}
           onToggleReference={handleToggleNewsroomReference}
           onDeleteMedia={handleDeleteNewsroomMedia}
-          onSetAutoGenerateLead={handleSetAutoGenerateLead}
+          onSetAutoAssignLibrary={handleSetAutoAssignLibrary}
           frontPages={appState.postgameFrontPages || []}
           initialFrontPageId={frontPageParam}
           onCreateFrontPage={handleCreateFrontPage}
@@ -2824,12 +2814,12 @@ const handleSaveGameClick = () => {
           readOnly={isReadOnly}
           mediaLibrary={appState.newsroomMediaLibrary || []}
           mediaBusy={newsroomMediaBusy}
-          autoGenerateLead={Boolean(appState.newsroomMediaSettings?.autoGenerateLead)}
+          autoAssignLibrary={appState.newsroomMediaSettings?.autoAssignLibrary !== false}
           onOpenCommandCenter={() => setActiveTab('dataEntry')}
           onUploadMedia={handleUploadNewsroomMedia}
           onToggleReference={handleToggleNewsroomReference}
           onDeleteMedia={handleDeleteNewsroomMedia}
-          onSetAutoGenerateLead={handleSetAutoGenerateLead}
+          onSetAutoAssignLibrary={handleSetAutoAssignLibrary}
         />
       );
     }
@@ -3752,8 +3742,8 @@ const handleSaveGameClick = () => {
           </div>
           
           <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 shadow-inner">
-             <h4 className="text-[10px] font-bold text-slate-300 uppercase">Newsroom Photos</h4>
-             <p className="mt-2 text-xs leading-relaxed text-slate-500">Upload, reuse, and assign photos directly inside each published Newsroom article. No image link is required.</p>
+             <h4 className="text-[10px] font-bold text-slate-300 uppercase">Career Photo Library</h4>
+             <p className="mt-2 text-xs leading-relaxed text-slate-500">Upload reusable game, action, recruiting, and portrait photos. New Newsroom editions can select from the library automatically without generating AI images.</p>
              <button type="button" onClick={() => setActiveTab('newsroom')} className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500">Open Newsroom Media Manager</button>
           </div>
           

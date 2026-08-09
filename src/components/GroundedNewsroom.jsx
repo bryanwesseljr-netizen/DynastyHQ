@@ -40,7 +40,7 @@ const GroundedNewsroom = ({
   mediaLibrary = [],
   mediaBusy = false,
   writingBusyId = '',
-  autoGenerateLead = false,
+  autoAssignLibrary = true,
   onGenerateEdition,
   onUploadMedia,
   onAssignMedia,
@@ -48,7 +48,7 @@ const GroundedNewsroom = ({
   onGenerateMedia,
   onToggleReference,
   onDeleteMedia,
-  onSetAutoGenerateLead,
+  onSetAutoAssignLibrary,
   frontPages = [],
   initialFrontPageId = '',
   onCreateFrontPage,
@@ -139,6 +139,26 @@ const GroundedNewsroom = ({
           </div>
         </div>
       </div>
+
+      {!readOnly && !isReaderOpen && !isFrontPageOpen && (
+        <section className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/90 shadow-xl">
+          <div className="border-b border-slate-800 p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">Reusable Career Media</p>
+            <h2 className="mt-1 text-2xl font-black uppercase text-white">Career Photo Library</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">Upload once, reuse throughout the journey. New and rewritten articles can automatically choose from your saved game, action, recruiting, and portrait photos.</p>
+          </div>
+          <NewsroomMediaManager
+            lockerOnly
+            mediaLibrary={mediaLibrary}
+            busy={mediaBusy}
+            autoAssignLibrary={autoAssignLibrary}
+            onUpload={onUploadMedia}
+            onToggleReference={onToggleReference}
+            onDelete={onDeleteMedia}
+            onSetAutoAssignLibrary={onSetAutoAssignLibrary}
+          />
+        </section>
+      )}
 
       {!isReaderOpen && !isFrontPageOpen && (
         <section className="rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-7" aria-labelledby="weekly-coverage-title">
@@ -249,14 +269,14 @@ const GroundedNewsroom = ({
               mediaLibrary={mediaLibrary}
               currentMedia={currentMedia}
               busy={mediaBusy}
-              autoGenerateLead={autoGenerateLead}
+              autoAssignLibrary={autoAssignLibrary}
               onUpload={onUploadMedia}
               onAssign={onAssignMedia}
               onClear={onClearMedia}
               onGenerate={onGenerateMedia}
               onToggleReference={onToggleReference}
               onDelete={onDeleteMedia}
-              onSetAutoGenerateLead={onSetAutoGenerateLead}
+              onSetAutoAssignLibrary={onSetAutoAssignLibrary}
             />
           )}
 

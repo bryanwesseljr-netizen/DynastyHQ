@@ -81,7 +81,7 @@ export const DEFAULT_CAREER_STATE = {
   postgameFrontPages: [],
   newsroomMediaLibrary: [],
   newsroomMediaSettings: {
-    autoGenerateLead: false,
+    autoAssignLibrary: true,
   },
   retentionBoard: [],
   podcastEpisodes: [],

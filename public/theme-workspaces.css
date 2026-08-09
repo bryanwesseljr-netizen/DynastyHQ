@@ -1,0 +1,320 @@
+/* DynastyHQ light-mode workspace consistency.
+ * Legacy Trophy Case is the visual reference: clean white cards, crisp dark ink,
+ * subtle status color, and the football setting visible in page gaps.
+ * Loaded after theme-toggle.css and theme-crisp.css.
+ */
+
+html[data-dhq-theme="light"] main.dhq-page-main {
+  --dhq-light-card: rgba(255, 255, 255, 0.94);
+  --dhq-light-card-solid: #ffffff;
+  --dhq-light-inset: #f4f6f8;
+  --dhq-light-rule: #d6dde6;
+  --dhq-light-ink: #111827;
+  --dhq-light-muted: #374151;
+  --dhq-light-blue: #184f75;
+  --dhq-light-blue-bg: #edf5fa;
+  --dhq-light-green: #205c45;
+  --dhq-light-green-bg: #edf7f2;
+  --dhq-light-amber: #704b08;
+  --dhq-light-amber-bg: #fbf5e8;
+  --dhq-light-red: #7a2d35;
+  --dhq-light-red-bg: #fbf0f1;
+  --dhq-light-violet: #57358a;
+  --dhq-light-violet-bg: #f4f0fa;
+}
+
+/* ---------- Dashboard ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-home-banner {
+  margin: 10px 12px 8px;
+  border: 1px solid var(--dhq-light-rule) !important;
+  border-radius: 12px;
+  background: var(--dhq-light-card) !important;
+  background-image: none !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.09) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-grid {
+  background: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-card {
+  border-color: var(--dhq-light-rule) !important;
+  background: var(--dhq-light-card) !important;
+  background-image: none !important;
+  box-shadow: 0 9px 24px rgba(15, 23, 42, 0.09) !important;
+  backdrop-filter: none !important;
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-card :is(
+  [class~="bg-black/20"], [class~="bg-black/30"], [class~="bg-black/35"],
+  [class*="bg-[#0a1c2b]"], [class*="bg-[#07111c]"]
+) {
+  background: var(--dhq-light-inset) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center :is(
+  .dhq-home-banner, .dhq-dashboard-card
+) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"]) {
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center :is(
+  .dhq-home-banner, .dhq-dashboard-card
+) :is([class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-slate-700"]) {
+  color: var(--dhq-light-muted) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center :is(
+  .dhq-home-banner, .dhq-dashboard-card
+) [class*="border-white/"] {
+  border-color: var(--dhq-light-rule) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center :is(
+  .dhq-home-banner, .dhq-dashboard-card
+) [class*="divide-white/"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--dhq-light-rule) !important;
+}
+
+/* Preserve the intentionally dark Newsroom image tile inside the light dashboard. */
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-card [class~="bg-slate-950"][class~="text-left"] {
+  background: #101923 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-card [class~="bg-slate-950"][class~="text-left"] :is(
+  [class~="text-white"], [class~="text-slate-200"]
+) {
+  color: #ffffff !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-card [class~="bg-slate-950"][class~="text-left"] [class~="text-slate-400"] {
+  color: #d1d5db !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-dashboard-card [class~="bg-slate-950"][class~="text-left"] [class~="text-emerald-300"] {
+  color: #a7f3d0 !important;
+}
+
+/* ---------- Recruiting ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace :is(
+  section, article, aside, details, div
+)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace :is(
+  section, article, aside, details, div
+)[class*="bg-slate-8"] {
+  background: var(--dhq-light-card) !important;
+  background-image: none !important;
+  border-color: var(--dhq-light-rule) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-blue-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-blue-500/"] {
+  background: var(--dhq-light-blue-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-emerald-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-emerald-500/"] {
+  background: var(--dhq-light-green-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-amber-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-amber-500/"] {
+  background: var(--dhq-light-amber-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-red-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-red-500/"] {
+  background: var(--dhq-light-red-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-violet-950/"] {
+  background: var(--dhq-light-violet-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace [class*="bg-gradient-to-"] {
+  background: var(--dhq-light-amber-bg) !important;
+  background-image: none !important;
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace :is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-amber-950"]
+) {
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace :is(
+  [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"]
+) {
+  color: var(--dhq-light-muted) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace :is(
+  [class~="border-slate-700"], [class~="border-slate-700/70"], [class~="border-slate-800"]
+) {
+  border-color: var(--dhq-light-rule) !important;
+}
+
+/* ---------- Chronicle ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] header:not(.no-print) {
+  border-color: var(--dhq-light-rule) !important;
+  background: var(--dhq-light-card) !important;
+  background-image: none !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.09) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(
+  section, article, div, button, span, blockquote
+)[class*="bg-blue-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(
+  section, article, div, button, span, blockquote
+)[class*="bg-blue-500/"] {
+  background: var(--dhq-light-blue-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(section, article, div, button, span)[class*="bg-emerald-950/"] {
+  background: var(--dhq-light-green-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(section, article, div, button, span, blockquote)[class*="bg-amber-950/"] {
+  background: var(--dhq-light-amber-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(section, article, div, button, span)[class*="bg-red-950/"] {
+  background: var(--dhq-light-red-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(section, article, div, button, span)[class*="bg-violet-950/"] {
+  background: var(--dhq-light-violet-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"]
+) {
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] :is(
+  [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"]
+) {
+  color: var(--dhq-light-muted) !important;
+}
+
+/* ---------- Podcast ---------- */
+/* Podcast did not establish its own stacking level, so the fixed stadium wash
+   could visually sit over the studio. Raise the actual studio above it. */
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] > :not([data-background-sport="football"]) {
+  position: relative;
+  z-index: 10;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] header:not(.no-print) {
+  border-color: var(--dhq-light-rule) !important;
+  background: var(--dhq-light-card) !important;
+  background-image: none !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.09) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(
+  section, aside, main, div, button
+)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(
+  section, aside, main, div, button
+)[class*="bg-slate-8"] {
+  background: var(--dhq-light-card) !important;
+  background-image: none !important;
+  border-color: var(--dhq-light-rule) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-blue-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-blue-500/"] {
+  background: var(--dhq-light-blue-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-emerald-950/"] {
+  background: var(--dhq-light-green-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-red-950/"] {
+  background: var(--dhq-light-red-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"]
+) {
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(
+  [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"]
+) {
+  color: var(--dhq-light-muted) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] button[class~="bg-blue-600"]:not(:disabled) {
+  border: 1px solid #aec9dc !important;
+  background: #dcebf5 !important;
+  color: #18364d !important;
+  opacity: 1 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] button:disabled {
+  opacity: 0.48 !important;
+}
+
+/* ---------- Newsroom workspace chrome ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] [class*="bg-blue-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] [class*="bg-blue-500/"] {
+  background: var(--dhq-light-blue-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] [class*="bg-amber-950/"] {
+  background: var(--dhq-light-amber-bg) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] .dhq-newsroom-story-card {
+  border-color: color-mix(in srgb, var(--news-accent) 34%, #cbd5e1) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  background-image: none !important;
+  color: var(--dhq-light-ink) !important;
+  box-shadow: 0 9px 24px rgba(15, 23, 42, 0.09) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] .dhq-newsroom-story-card__headline {
+  color: var(--dhq-light-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] .dhq-newsroom-story-card__dek {
+  color: var(--dhq-light-muted) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  .dhq-newsroom-story-card__outlet, .dhq-newsroom-story-card__action
+) {
+  color: color-mix(in srgb, var(--news-accent) 58%, #111827) !important;
+}
+
+/* Leave full article-reader publication designs alone; only the workspace shell
+   is normalized to the Legacy light-mode treatment. */

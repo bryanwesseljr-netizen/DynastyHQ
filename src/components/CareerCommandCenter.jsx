@@ -112,7 +112,7 @@ const ProfileHeadshotUploader = ({
 
   return (
     <div
-      className={`relative h-[84px] w-[78px] shrink-0 overflow-hidden rounded border bg-gradient-to-b from-slate-800 to-[#07111b] transition-all ${isDragging ? 'border-amber-300 bg-amber-500/15 shadow-[0_0_18px_rgba(251,191,36,.22)]' : 'border-slate-500/70'}`}
+      className="group/headshot w-[78px] shrink-0"
       onDragEnter={(event) => {
         if (readOnly || busy) return;
         event.preventDefault();
@@ -133,47 +133,60 @@ const ProfileHeadshotUploader = ({
         receiveFile(event.dataTransfer.files?.[0]);
       }}
     >
-      {readOnly ? (
-        src
-          ? <img src={src} alt={`${playerName} headshot`} className="h-full w-full object-cover object-top" />
-          : <div className="flex h-full w-full items-end justify-center"><UserRound size={64} strokeWidth={1.1} className="translate-y-2 text-slate-600" aria-label="Player headshot placeholder" /></div>
-      ) : (
-        <button
-          type="button"
-          onClick={openFilePicker}
-          disabled={busy}
-          className="group relative flex h-full w-full items-center justify-center overflow-hidden text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-300 disabled:cursor-wait"
-          aria-label={src ? `Replace ${playerName} headshot` : `Upload ${playerName} headshot`}
-        >
-          {src ? (
-            <>
-              <img src={src} alt={`${playerName} headshot`} className="h-full w-full object-cover object-top" />
-              <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/75 px-1 py-1 text-[5px] font-black uppercase tracking-wider text-white opacity-90 transition-opacity group-hover:opacity-100">
-                <Camera size={8} /> {busy ? 'Saving…' : 'Replace'}
+      <div className={`relative h-[84px] w-full overflow-hidden rounded border bg-gradient-to-b from-slate-800 to-[#07111b] transition-all ${isDragging ? 'border-amber-300 bg-amber-500/15 shadow-[0_0_18px_rgba(251,191,36,.22)]' : 'border-slate-500/70'}`}>
+        {readOnly ? (
+          src
+            ? <img src={src} alt={`${playerName} headshot`} className="h-full w-full object-cover object-top" />
+            : <div className="flex h-full w-full items-end justify-center"><UserRound size={64} strokeWidth={1.1} className="translate-y-2 text-slate-600" aria-label="Player headshot placeholder" /></div>
+        ) : (
+          <button
+            type="button"
+            onClick={openFilePicker}
+            disabled={busy}
+            className="group relative flex h-full w-full items-center justify-center overflow-hidden text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-300 disabled:cursor-wait"
+            aria-label={src ? `Change ${playerName} headshot` : `Upload ${playerName} headshot`}
+            title={src ? 'Change headshot' : 'Upload headshot'}
+          >
+            {src ? (
+              <>
+                <img src={src} alt={`${playerName} headshot`} className="h-full w-full object-cover object-top" />
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-all group-hover:bg-black/35 group-hover:opacity-100 group-focus-visible:bg-black/35 group-focus-visible:opacity-100">
+                  <Camera size={16} aria-hidden="true" />
+                </span>
+              </>
+            ) : (
+              <span className="flex h-full w-full flex-col items-center justify-center px-1.5 text-slate-400 transition-colors group-hover:text-amber-300">
+                <Camera size={22} strokeWidth={1.5} />
+                <span className="mt-1 text-[5px] font-black uppercase leading-tight tracking-wider">Drop photo<br />or upload</span>
               </span>
-            </>
-          ) : (
-            <span className="flex h-full w-full flex-col items-center justify-center px-1.5 text-slate-400 transition-colors group-hover:text-amber-300">
-              <Camera size={22} strokeWidth={1.5} />
-              <span className="mt-1 text-[5px] font-black uppercase leading-tight tracking-wider">Drop photo<br />or upload</span>
-            </span>
-          )}
-        </button>
-      )}
+            )}
+          </button>
+        )}
+      </div>
 
-      {!readOnly && src && !busy ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRemove();
-          }}
-          className="absolute right-1 top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-white/30 bg-black/80 text-[9px] font-black leading-none text-white transition-colors hover:border-red-300 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-          aria-label={`Remove ${playerName} headshot`}
-          title="Remove headshot"
-        >
-          ×
-        </button>
+      {!readOnly && src ? (
+        <div className="mt-1 flex items-center justify-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover/headshot:opacity-100 md:group-focus-within/headshot:opacity-100">
+          <button
+            type="button"
+            onClick={openFilePicker}
+            disabled={busy}
+            className="flex h-5 w-7 items-center justify-center rounded border border-slate-700 bg-slate-950/80 text-slate-400 transition-colors hover:border-amber-400/70 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-wait disabled:opacity-50"
+            aria-label={`Change ${playerName} headshot`}
+            title="Change headshot"
+          >
+            <Camera size={10} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={busy}
+            className="flex h-5 w-7 items-center justify-center rounded border border-slate-700 bg-slate-950/80 text-slate-400 transition-colors hover:border-red-400/70 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-wait disabled:opacity-50"
+            aria-label={`Remove ${playerName} headshot`}
+            title="Remove headshot"
+          >
+            ×
+          </button>
+        </div>
       ) : null}
 
       <input

@@ -178,7 +178,10 @@ test('the homepage mirrors the compact command-center dashboard without duplicat
   assert.match(source, /type="file"/);
   assert.match(source, /accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(source, /onProfileHeadshotUpload/);
+  assert.match(source, /Change .* headshot/);
   assert.match(source, /Remove .* headshot/);
+  assert.match(source, /group-hover\/headshot:opacity-100/);
+  assert.doesNotMatch(source, /Saving….*Replace/);
   assert.match(source, /<details open/);
   assert.doesNotMatch(source, /View full snapshot|Career profile|View RTG career|View history/);
   assert.doesNotMatch(source, /dynastyhq-player-wessel|Wessel, number 2/);

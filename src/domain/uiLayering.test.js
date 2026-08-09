@@ -6,6 +6,7 @@ const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const newsroomSourceUrl = new URL('../components/GroundedNewsroom.jsx', import.meta.url);
 const newsroomEmptyStateSourceUrl = new URL('../components/NewsroomEmptyState.jsx', import.meta.url);
 const commandCenterSourceUrl = new URL('../components/CareerCommandCenter.jsx', import.meta.url);
+const playerRecruitingSourceUrl = new URL('../components/PlayerRecruitingWorkspace.jsx', import.meta.url);
 const globalStylesUrl = new URL('../index.css', import.meta.url);
 
 test('the fixed workspace background cannot intercept newsroom article clicks', async () => {
@@ -79,6 +80,26 @@ test('every workspace uses the same football-only presentation background', asyn
   assert.match(globalStyles, /rgba\(2, 8, 15, 0\.42\)/);
   assert.doesNotMatch(appSource, /case 'newsroom': return/);
   assert.doesNotMatch(appSource, /case 'podcast': return/);
+});
+
+test('desktop workspaces use compact route-aware spacing without changing mobile density', async () => {
+  const [appSource, playerRecruitingSource, globalStyles] = await Promise.all([
+    readFile(appSourceUrl, 'utf8'),
+    readFile(playerRecruitingSourceUrl, 'utf8'),
+    readFile(globalStylesUrl, 'utf8'),
+  ]);
+
+  assert.match(appSource, /<main data-active-tab=\{activeTab\} className=\{`dhq-page-main/);
+  assert.match(globalStyles, /\.dhq-page-main\[data-active-tab\]:not\(\[data-active-tab="dashboard"\]\)/);
+  assert.match(globalStyles, /padding: 76px 16px 14px !important/);
+  assert.match(globalStyles, /data-active-tab="recruiting"/);
+  assert.match(globalStyles, /data-active-tab="newsroom"/);
+  assert.match(globalStyles, /data-active-tab="chronicle"/);
+  assert.match(globalStyles, /data-active-tab="podcast"/);
+  assert.match(globalStyles, /data-active-tab="settings"/);
+  assert.match(globalStyles, /data-active-tab="trophies"/);
+  assert.match(playerRecruitingSource, /dhq-player-recruiting-workspace/);
+  assert.match(globalStyles, /\.dhq-player-recruiting-workspace/);
 });
 
 test('the homepage mirrors the compact command-center dashboard without duplicate briefs', async () => {

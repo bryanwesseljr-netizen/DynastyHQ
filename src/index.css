@@ -154,6 +154,155 @@ textarea {
   .dhq-dashboard-grid {
     padding: 10px;
   }
+
+  /* Desktop workspaces use a compact density so the useful controls and data
+     stay in the first viewport. Long records still scroll inside their own
+     lists instead of forcing oversized page-level whitespace. */
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) {
+    padding: 76px 16px 14px !important;
+    scrollbar-gutter: stable;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none)[class~="pb-20"] {
+    padding-bottom: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) [class~="space-y-8"] > :not([hidden]) ~ :not([hidden]),
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none)[class~="space-y-8"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) [class~="space-y-6"] > :not([hidden]) ~ :not([hidden]),
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none)[class~="space-y-6"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) :where([class~="gap-8"], [class~="gap-6"]) {
+    gap: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) :where([class~="p-10"], [class~="p-8"], [class~="p-7"], [class~="p-6"], [class~="md:p-10"], [class~="md:p-9"], [class~="md:p-8"], [class~="md:p-7"], [class~="md:p-6"]) {
+    padding: 16px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) :where([class~="p-5"], [class~="md:p-5"]) {
+    padding: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) :where([class~="mb-8"], [class~="mt-12"]) {
+    margin-block: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > div:not(.pointer-events-none) :where([class~="mb-6"], [class~="mt-8"]) {
+    margin-block: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab="recruiting"] [class~="min-h-[300px]"] {
+    min-height: 220px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] [class~="min-h-52"] {
+    min-height: 150px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] [class~="pt-5"] {
+    padding-top: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] [class~="max-h-[760px]"] {
+    max-height: calc(100vh - 252px) !important;
+  }
+
+  .dhq-page-main[data-active-tab="podcast"] > div:not(.pointer-events-none) > div.grid {
+    height: calc(100vh - 284px);
+    min-height: 360px;
+    overflow: hidden;
+  }
+
+  .dhq-page-main[data-active-tab="podcast"] > div:not(.pointer-events-none) > div.grid > :where(aside, main) {
+    max-height: 100%;
+    overflow-y: auto;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > div.grid {
+    height: calc(100vh - 340px);
+    min-height: 320px;
+    overflow: hidden;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > div.grid > section,
+  .dhq-page-main[data-active-tab="chronicle"] article {
+    max-height: 100%;
+    overflow-y: auto;
+  }
+
+  .dhq-page-main[data-active-tab="settings"] > div:not(.pointer-events-none) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    max-width: 1120px;
+  }
+
+  .dhq-page-main[data-active-tab="settings"] > div:not(.pointer-events-none) > * {
+    margin: 0 !important;
+  }
+
+  .dhq-page-main[data-active-tab="settings"] > div:not(.pointer-events-none) > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-page-main[data-active-tab="trophies"] > div:not(.pointer-events-none) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+    gap: 14px;
+    max-width: 1380px;
+  }
+
+  .dhq-page-main[data-active-tab="trophies"] > div:not(.pointer-events-none) > * {
+    margin: 0 !important;
+  }
+
+  .dhq-page-main[data-active-tab="trophies"] > div:not(.pointer-events-none) > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-page-main[data-active-tab="trophies"] > div:not(.pointer-events-none) > :nth-child(2) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .dhq-page-main[data-active-tab="trophies"] [class~="py-12"] {
+    padding-block: 28px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dhq-player-recruiting-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.8fr);
+    gap: 12px;
+  }
+
+  .dhq-player-recruiting-workspace > * {
+    margin-top: 0 !important;
+  }
+
+  .dhq-player-recruiting-workspace > section:first-of-type {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-player-recruiting-workspace > section:nth-of-type(2) {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    max-height: calc(100vh - 286px);
+    min-height: 390px;
+    overflow-y: auto;
+  }
+
+  .dhq-player-recruiting-workspace > section:nth-of-type(3),
+  .dhq-player-recruiting-workspace > section:nth-of-type(4) {
+    grid-column: 2;
+  }
 }
 
 @media (max-width: 1199px) {

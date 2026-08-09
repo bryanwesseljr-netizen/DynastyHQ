@@ -3843,7 +3843,7 @@ const handleSaveGameClick = () => {
        {renderNav()}
        
        {/* Main Content Area */}
-       <main className={`dhq-page-main relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[64px]' : 'px-4 pb-4 pt-24 md:px-8 md:pb-8 md:pt-28'}`}>
+       <main data-active-tab={activeTab} className={`dhq-page-main relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[64px]' : 'px-4 pb-4 pt-24 md:px-8 md:pb-8 md:pt-28'}`}>
          {/* Background Image */}
          <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true" data-background-sport="football">
             <img src={getBgImage()} className="h-full w-full object-cover opacity-[0.72]" alt="" />

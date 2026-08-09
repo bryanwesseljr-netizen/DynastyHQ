@@ -138,7 +138,7 @@ const PlayerRecruitingWorkspace = ({
   }
 
   return (
-    <div className="relative z-10 mx-auto max-w-7xl space-y-6 pb-20 animate-in fade-in">
+    <div className="dhq-player-recruiting-workspace relative z-10 mx-auto max-w-7xl space-y-6 pb-20 animate-in fade-in">
       <section className="rounded-2xl border border-blue-500/30 bg-slate-950/90 p-6 shadow-2xl md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-blue-400"><Map size={16} /> High School Recruiting Tracker</p><h2 className="mt-2 text-3xl font-black uppercase text-white">Five games. One decision.</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">Update the board from each postgame recruiting screen. DynastyHQ will carry verified movement into that week&rsquo;s Recruiting Wire article.</p></div>

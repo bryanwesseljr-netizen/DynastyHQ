@@ -276,16 +276,16 @@ textarea {
   }
 
   .dhq-weekly-agenda-grid {
-    display: block !important;
-    column-count: 2;
-    column-gap: 14px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 14px !important;
   }
 
   .dhq-weekly-agenda-grid > * {
-    display: inline-flex;
     width: 100%;
-    margin: 0 0 14px !important;
-    break-inside: avoid;
+    margin: 0 !important;
+    align-self: start;
   }
 
   .dhq-weekly-agenda-workspace .dhq-agenda-game-log-drawer {

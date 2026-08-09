@@ -103,6 +103,9 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   assert.match(appSource, /dhq-weekly-agenda-workspace/);
   assert.match(appSource, /dhq-agenda-game-log-drawer/);
   assert.match(globalStyles, /\.dhq-weekly-agenda-grid/);
+  assert.match(globalStyles, /\.dhq-weekly-agenda-grid \{[\s\S]*?display: grid !important;[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  const agendaCardOrder = [...appSource.matchAll(/data-agenda-card="([1-4])"/g)].map((match) => match[1]);
+  assert.deepEqual(agendaCardOrder, ['1', '2', '3', '4']);
   assert.match(playerRecruitingSource, /dhq-five-game-timeline/);
   assert.match(playerRecruitingSource, /dhq-five-game-grid/);
   assert.match(globalStyles, /grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);

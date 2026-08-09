@@ -3395,7 +3395,7 @@ const handleSaveGameClick = () => {
       
       <div className="dhq-weekly-agenda-grid grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
-        <div className={`bg-slate-900/85 backdrop-blur-md rounded-xl border ${editingGameIndex !== null ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-slate-700/50 shadow-2xl'} p-6 space-y-6 flex flex-col transition-all`}>
+        <div data-agenda-card="1" className={`bg-slate-900/85 backdrop-blur-md rounded-xl border ${editingGameIndex !== null ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-slate-700/50 shadow-2xl'} p-6 space-y-6 flex flex-col transition-all`}>
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className={`font-bold uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow ${editingGameIndex !== null ? 'text-amber-400' : 'text-white'}`}>
               <Trophy size={16} className="text-amber-500"/> 1. {(isHighSchoolCareer || newGame.stage === 'high-school' || newGame.evaluation) ? (editingGameIndex !== null ? `Edit Tape Evaluation (Game ${activeHighSchoolEvaluation.gameNumber})` : 'High-School Tape Evaluation') : (editingGameIndex !== null ? `Edit Box Score (Week ${appState.gameLogs[editingGameIndex].week})` : 'Game Box Score')}
@@ -3452,7 +3452,7 @@ const handleSaveGameClick = () => {
           </>)}
         </div>
 
-        <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-6 flex flex-col justify-start">
+        <div data-agenda-card="2" className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-6 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Settings size={16} className="text-emerald-500"/> {isCoach ? '2. Coach Dashboard Updates' : isHighSchoolCareer ? '2. Recruiting Evaluation' : '2. RTG Mechanics & NIL'}</h3>
           </div>
@@ -3576,7 +3576,7 @@ const handleSaveGameClick = () => {
           )}
         </div>
 
-        <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-4 flex flex-col justify-start">
+        <div data-agenda-card="3" className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 space-y-4 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Map size={16} className="text-blue-500"/> {isCoach ? '3. Manual Recruiting Updates' : '3. Top Schools Snapshot'}</h3>
           </div>
@@ -3652,7 +3652,7 @@ const handleSaveGameClick = () => {
           )}
         </div>
 
-        <div className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 shadow-2xl space-y-6 flex flex-col justify-start">
+        <div data-agenda-card="4" className="bg-slate-900/85 backdrop-blur-md rounded-xl border border-slate-700/50 p-6 shadow-2xl space-y-6 flex flex-col justify-start">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
             <h3 className="font-bold text-white uppercase tracking-wider text-sm flex items-center gap-2 drop-shadow"><Medal size={16} className="text-amber-500"/> 4. Media & Milestones</h3>
           </div>

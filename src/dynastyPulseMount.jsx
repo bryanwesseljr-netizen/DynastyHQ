@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { BookOpen, ChevronDown, Gauge, LogOut, Settings, User } from 'lucide-react';
+import { BookOpen, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { appId, auth, db } from './firebase';
 import { CAREER_STAGES, deriveCareerStage } from './domain/commandCenter';
 import './dynastyPulse.css';
@@ -203,8 +203,50 @@ const useDynastyState = () => {
   return { state, readOnly };
 };
 
+const useHeaderRoom = () => {
+  const [room, setRoom] = useState({ avatar: false, pulse: false });
+
+  useEffect(() => {
+    let resizeObserver;
+    const measure = () => {
+      const nav = document.querySelector('.dhq-primary-nav');
+      const buttons = [...(nav?.querySelectorAll('.dhq-primary-nav-item') || [])]
+        .filter((button) => button.getClientRects().length > 0);
+      const lastButton = buttons.at(-1);
+      if (!lastButton || window.innerWidth < 1200) {
+        setRoom({ avatar: false, pulse: false });
+        return;
+      }
+      const freeSpace = window.innerWidth - lastButton.getBoundingClientRect().right - 18;
+      setRoom({
+        avatar: freeSpace >= 72,
+        pulse: freeSpace >= 470,
+      });
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    window.setTimeout(measure, 120);
+    window.setTimeout(measure, 600);
+
+    const header = document.querySelector('header.no-print');
+    if (header && globalThis.ResizeObserver) {
+      resizeObserver = new ResizeObserver(measure);
+      resizeObserver.observe(header);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
+  return room;
+};
+
 const DynastyPulse = () => {
   const { state, readOnly } = useDynastyState();
+  const room = useHeaderRoom();
   const pulse = useMemo(() => buildPulse(state), [state]);
   const [metricIndex, setMetricIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -230,20 +272,28 @@ const DynastyPulse = () => {
     return () => document.removeEventListener('pointerdown', close);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!room.avatar) setMenuOpen(false);
+  }, [room.avatar]);
+
+  if (!room.avatar) return null;
+
   return (
     <div className="dhq-pulse-host-inner" ref={menuRef}>
-      <div className="dhq-pulse-shell" aria-label="Dynasty Pulse">
-        <span className="dhq-pulse-live"><span className="dhq-pulse-dot" /> LIVE</span>
-        <span className="dhq-pulse-separator" />
-        <span className="dhq-pulse-context">S{pulse.season} · W{pulse.week}</span>
-        <span className="dhq-pulse-separator" />
-        <span className="dhq-pulse-context dhq-pulse-summary">{pulse.summary || pulse.stageName}</span>
-        <span className="dhq-pulse-separator" />
-        <span key={`${metric.label}-${metric.value}-${metricIndex}`} className="dhq-pulse-metric">
-          <span className="dhq-pulse-metric-label">{metric.label}</span>
-          <strong title={metric.value}>{metric.value}</strong>
-        </span>
-      </div>
+      {room.pulse ? (
+        <div className="dhq-pulse-shell" aria-label="Dynasty Pulse">
+          <span className="dhq-pulse-live"><span className="dhq-pulse-dot" /> LIVE</span>
+          <span className="dhq-pulse-separator" />
+          <span className="dhq-pulse-context">S{pulse.season} · W{pulse.week}</span>
+          <span className="dhq-pulse-separator" />
+          <span className="dhq-pulse-context dhq-pulse-summary">{pulse.summary || pulse.stageName}</span>
+          <span className="dhq-pulse-separator" />
+          <span key={`${metric.label}-${metric.value}-${metricIndex}`} className="dhq-pulse-metric">
+            <span className="dhq-pulse-metric-label">{metric.label}</span>
+            <strong title={metric.value}>{metric.value}</strong>
+          </span>
+        </div>
+      ) : null}
 
       <button
         type="button"
@@ -284,29 +334,29 @@ const DynastyPulse = () => {
 let pulseRoot = null;
 let pulseHost = null;
 
+const teardownPulse = () => {
+  const root = pulseRoot;
+  const host = pulseHost;
+  pulseRoot = null;
+  pulseHost = null;
+  root?.unmount();
+  host?.remove();
+};
+
 const ensurePulseMounted = () => {
   const header = document.querySelector('header.no-print');
-  const headerRow = header?.firstElementChild;
-
-  if (!headerRow) {
-    if (pulseHost && !document.contains(pulseHost)) {
-      pulseRoot?.unmount();
-      pulseRoot = null;
-      pulseHost = null;
-    }
+  if (!header) {
+    if (pulseRoot || pulseHost) teardownPulse();
     return;
   }
 
   if (pulseHost && document.contains(pulseHost)) return;
-  if (pulseRoot) pulseRoot.unmount();
+  if (pulseRoot || pulseHost) teardownPulse();
 
   pulseHost = document.createElement('div');
   pulseHost.id = 'dynasty-pulse-root';
   pulseHost.className = 'dhq-pulse-mount';
-
-  const mobileToggle = headerRow.querySelector('button[aria-controls="mobile-primary-navigation"]')?.parentElement;
-  if (mobileToggle) headerRow.insertBefore(pulseHost, mobileToggle);
-  else headerRow.appendChild(pulseHost);
+  document.body.appendChild(pulseHost);
 
   pulseRoot = createRoot(pulseHost);
   pulseRoot.render(<DynastyPulse />);

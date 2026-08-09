@@ -11,62 +11,62 @@ body {
   line-height: 1.5;
 }
 
-/* Normal desktop navigation size. */
+/* Use a normal application navigation size rather than micro-copy. */
 .dhq-primary-nav-item {
-  font-size: clamp(12.5px, 0.82vw, 14px) !important;
-  letter-spacing: 0.04em !important;
+  font-size: clamp(13.5px, 0.9vw, 15px) !important;
+  letter-spacing: 0.035em !important;
 }
 
 /*
- * The interface contains many deliberately tiny Tailwind utility sizes.
- * Normalize them everywhere in the application, including auth/modals/nav,
- * while leaving the full digital newsroom article renderer untouched.
+ * DynastyHQ was designed with many 7-13px utility labels. At desktop scale
+ * those read as micro-copy, especially across the command-center cards.
+ * Bring the UI back to conventional app typography while leaving the full
+ * digital newsroom article renderer untouched.
  */
 body :where([class~="text-[7px]"], [class~="text-[8px]"], [class~="text-[9px]"]):not(.dhq-news-article *) {
-  font-size: 12px !important;
-  line-height: 1.4 !important;
-}
-
-body :where([class~="text-[10px]"], [class~="text-[11px]"]):not(.dhq-news-article *) {
   font-size: 13px !important;
   line-height: 1.45 !important;
 }
 
-body :where([class~="text-[12px]"], [class~="text-[13px]"], [class~="text-xs"]):not(.dhq-news-article *) {
+body :where([class~="text-[10px]"], [class~="text-[11px]"]):not(.dhq-news-article *) {
   font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
+body :where([class~="text-[12px]"], [class~="text-[13px]"], [class~="text-xs"]):not(.dhq-news-article *) {
+  font-size: 15px !important;
   line-height: 1.5 !important;
 }
 
 body :where([class~="text-sm"]):not(.dhq-news-article *) {
-  font-size: 15px !important;
+  font-size: 16px !important;
   line-height: 1.5 !important;
 }
 
-/* Keep standard form text comfortably readable without shrinking controls
-   that intentionally use text-base/text-lg or larger. */
+/* Standard form controls and compact buttons should read at normal UI sizes. */
 body :where(input, select, textarea)[class~="text-xs"]:not(.dhq-news-article *) {
-  font-size: 14px !important;
-}
-
-body :where(input, select, textarea)[class~="text-sm"]:not(.dhq-news-article *) {
   font-size: 15px !important;
 }
 
-/* Preserve a compact mobile layout, but never return to micro-copy. */
+body :where(input, select, textarea)[class~="text-sm"]:not(.dhq-news-article *) {
+  font-size: 16px !important;
+}
+
+/* Keep mobile compact without returning to tiny text. */
 @media (max-width: 640px) {
   .dhq-primary-nav-item {
-    font-size: 12px !important;
+    font-size: 13px !important;
   }
 
   body :where([class~="text-[7px]"], [class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"]):not(.dhq-news-article *) {
-    font-size: 12px !important;
+    font-size: 12.5px !important;
   }
 
   body :where([class~="text-[11px]"], [class~="text-[12px]"], [class~="text-[13px]"], [class~="text-xs"]):not(.dhq-news-article *) {
-    font-size: 13.5px !important;
+    font-size: 14px !important;
   }
 
   body :where([class~="text-sm"]):not(.dhq-news-article *) {
-    font-size: 14.5px !important;
+    font-size: 15px !important;
   }
 }

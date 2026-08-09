@@ -101,6 +101,7 @@ import {
 } from './services/podcastAudioStorage';
 import { compressImage } from './services/imageCompression';
 import { generateNewsroomImage } from './services/newsroomImageClient';
+import { generateNewsroomEdition } from './services/newsroomClient';
 import { deleteNewsroomMedia, uploadNewsroomMedia } from './services/newsroomMediaStorage';
 import PlayerRecruitingWorkspace from './components/PlayerRecruitingWorkspace';
 import HighSchoolEvaluationEditor from './components/HighSchoolEvaluationEditor';
@@ -130,6 +131,11 @@ import {
   removeNewsroomMediaAsset,
   setNewsroomReferenceStatus,
 } from './domain/newsroomMedia';
+import {
+  applyGeneratedNewsroomEdition,
+  buildNewsroomGenerationPayload,
+  normalizeGeneratedNewsroomEdition,
+} from './domain/newsroomGeneration';
 import {
   buildPostgameFrontPage,
   updatePostgameFrontPage,
@@ -185,6 +191,7 @@ const App = () => {
   const draftRecoveryOwnerRef = useRef(null);
   const agendaProgressRecoveryRef = useRef(null);
   const autoImageAttemptsRef = useRef(new Set());
+  const newsroomWritingAttemptsRef = useRef(new Set());
   const [messageModal, setMessageModal] = useState({ isOpen: false, text: '', type: 'success' });
   const [userState, setUserState] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -194,6 +201,7 @@ const App = () => {
   const [hasMigrationBackup, setHasMigrationBackup] = useState(false);
   const [isMigratingCloudSave, setIsMigratingCloudSave] = useState(false);
   const [newsroomMediaBusy, setNewsroomMediaBusy] = useState(false);
+  const [newsroomWritingBusyId, setNewsroomWritingBusyId] = useState('');
   const [profileHeadshotBusy, setProfileHeadshotBusy] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState({ state: 'idle', lastSavedAt: null, message: '' });
@@ -1562,6 +1570,42 @@ const handleSaveGameClick = () => {
 
   const handleFrontPageNotice = (text, type = 'success') => setMessageModal({ isOpen: true, text, type });
 
+  const handleGenerateNewsroomEdition = useCallback(async (publicationId, { automatic = false, force = false } = {}) => {
+    if (!userState || isReadOnly || !publicationId) return false;
+    const attemptKey = `${userState.uid}:${publicationId}`;
+    if (!force && newsroomWritingAttemptsRef.current.has(attemptKey)) return false;
+    newsroomWritingAttemptsRef.current.add(attemptKey);
+    setNewsroomWritingBusyId(publicationId);
+    try {
+      const idToken = await userState.getIdToken();
+      const payload = buildNewsroomGenerationPayload(appState, publicationId);
+      const generated = await generateNewsroomEdition({ idToken, payload });
+      const edition = normalizeGeneratedNewsroomEdition({
+        generated: generated.edition,
+        payload,
+        model: generated.model,
+      });
+      updateAppState(
+        (prev) => applyGeneratedNewsroomEdition(prev, publicationId, edition),
+        automatic ? null : 'A fresh immersive newsroom edition is ready!',
+      );
+      return true;
+    } catch (error) {
+      if (!automatic) {
+        setMessageModal({
+          isOpen: true,
+          text: error?.message || 'The newsroom edition could not be written. The existing version was preserved.',
+          type: 'error',
+        });
+      } else {
+        console.error('Automatic newsroom writing failed', error);
+      }
+      return false;
+    } finally {
+      setNewsroomWritingBusyId((current) => current === publicationId ? '' : current);
+    }
+  }, [appState, isReadOnly, updateAppState, userState]);
+
   const handleAssignNewsroomMedia = ({ issue, article, asset }) => {
     updateAppState((prev) => ({
       ...prev,
@@ -2747,7 +2791,9 @@ const handleSaveGameClick = () => {
           readOnly={isReadOnly}
           mediaLibrary={appState.newsroomMediaLibrary || []}
           mediaBusy={newsroomMediaBusy}
+          writingBusyId={newsroomWritingBusyId}
           autoGenerateLead={Boolean(appState.newsroomMediaSettings?.autoGenerateLead)}
+          onGenerateEdition={handleGenerateNewsroomEdition}
           onUploadMedia={handleUploadNewsroomMedia}
           onAssignMedia={handleAssignNewsroomMedia}
           onClearMedia={handleClearNewsroomMedia}

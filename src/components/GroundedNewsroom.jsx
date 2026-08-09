@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, ArrowRight, BookOpen, ChevronLeft, FileImage, Newspaper, Quote, ShieldCheck, Star, Zap,
+  Activity, ArrowRight, BookOpen, ChevronLeft, FileImage, Loader2, Newspaper, PenLine, RefreshCw, Star, Zap,
 } from 'lucide-react';
 import NewsroomMediaManager from './NewsroomMediaManager';
 import PostgameFrontPage from './PostgameFrontPage';
@@ -39,7 +39,9 @@ const GroundedNewsroom = ({
   readOnly = false,
   mediaLibrary = [],
   mediaBusy = false,
+  writingBusyId = '',
   autoGenerateLead = false,
+  onGenerateEdition,
   onUploadMedia,
   onAssignMedia,
   onClearMedia,
@@ -81,6 +83,13 @@ const GroundedNewsroom = ({
   const featureImage = currentMedia.url;
   const frontPage = frontPages.find((entry) => entry.publicationId === (selectedIssue.publicationId || selectedIssue.id));
   const isFrontPageOpen = Boolean(frontPage && frontPageIssueId === (selectedIssue.publicationId || selectedIssue.id));
+  const selectedPublicationId = selectedIssue.publicationId || selectedIssue.id;
+  const isWriting = writingBusyId === selectedPublicationId;
+
+  useEffect(() => {
+    if (readOnly || !onGenerateEdition || selectedIssue.editorialStatus === 'generated' || isWriting) return;
+    onGenerateEdition(selectedPublicationId, { automatic: true });
+  }, [isWriting, onGenerateEdition, readOnly, selectedIssue.editorialStatus, selectedPublicationId]);
 
   const openStory = (theme) => {
     setNewsTheme(theme);
@@ -96,25 +105,38 @@ const GroundedNewsroom = ({
 
   return (
     <div className="relative z-10 mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in">
-      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 shadow-xl">
+      <div className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-4 shadow-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 shrink-0 text-emerald-400" size={20} />
+            <PenLine className="mt-0.5 shrink-0 text-blue-300" size={20} />
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Verified career edition</p>
-              <p className="mt-1 text-sm text-slate-300">Every claim below is generated from published Fact Ledger entries. Unsupported tactics, awards, quotes, and rumors are excluded.</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-300">DynastyHQ Press Room</p>
+              <p className="mt-1 text-sm text-slate-300">Every outlet follows its own beat—local news, recruiting, film study, and the national story of your career.</p>
             </div>
           </div>
-          <select
-            value={selectedIssue.id}
-            onChange={(event) => chooseIssue(event.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-white"
-            aria-label="Choose weekly newsroom edition"
-          >
-            {[...issues].reverse().map((issue) => (
-              <option key={issue.id} value={issue.id}>{issue.label || `Season ${issue.season} · Week ${issue.week}`}</option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <select
+              value={selectedIssue.id}
+              onChange={(event) => chooseIssue(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-white"
+              aria-label="Choose weekly newsroom edition"
+            >
+              {[...issues].reverse().map((issue) => (
+                <option key={issue.id} value={issue.id}>{issue.label || `Season ${issue.season} · Week ${issue.week}`}</option>
+              ))}
+            </select>
+            {!readOnly && (
+              <button
+                type="button"
+                disabled={isWriting}
+                onClick={() => onGenerateEdition?.(selectedPublicationId, { force: true })}
+                className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/40 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-blue-200 transition-colors hover:border-blue-300 hover:bg-blue-500/20 disabled:cursor-wait disabled:opacity-60"
+              >
+                {isWriting ? <Loader2 className="animate-spin" size={13} /> : <RefreshCw size={13} />}
+                {isWriting ? 'Writing edition…' : (selectedIssue.editorialStatus === 'generated' ? 'Rewrite edition' : 'Write immersive edition')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -201,11 +223,16 @@ const GroundedNewsroom = ({
         <article className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
           <header className="border-b border-current/20 p-6 md:p-9">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">
-              <span>{story.outletName} · {story.desk}</span>
+              <span>{story.kicker || story.desk}</span>
               <span>Season {selectedIssue.season} · Week {selectedIssue.week}</span>
             </div>
             <h1 className="max-w-4xl text-3xl font-black uppercase leading-[1.02] md:text-5xl">{story.headline}</h1>
             <p className={`mt-4 border-l-4 pl-4 text-base font-semibold opacity-80 md:text-lg ${style.rule}`}>{story.dek}</p>
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider opacity-65">
+              <span>By {story.byline || `${story.outletName} Staff`}</span>
+              {story.dateline && <span>{story.dateline}</span>}
+              <span>{story.readingMinutes || Math.max(2, Math.round(story.paragraphs.join(' ').split(/\s+/).length / 225))} min read</span>
+            </div>
           </header>
 
           {featureImage && (
@@ -233,20 +260,12 @@ const GroundedNewsroom = ({
             />
           )}
 
-          <div className="grid gap-8 p-6 md:grid-cols-[minmax(0,1fr)_240px] md:p-9">
-            <div className="space-y-5 text-base leading-8">
+          <div className="p-6 md:p-9">
+            <div className="mx-auto max-w-3xl space-y-5 text-base leading-8 md:text-[17px]">
               {story.paragraphs.map((paragraph, index) => (
                 <p key={`${story.id}-${index}`}>{paragraph}</p>
               ))}
             </div>
-            <aside className="h-fit rounded-xl border border-current/20 bg-black/5 p-4 text-xs">
-              <p className={`mb-3 flex items-center gap-2 font-black uppercase tracking-wider ${style.accent}`}><ShieldCheck size={15} /> Source ledger</p>
-              <p className="mb-4 leading-relaxed opacity-70">This story cites {story.citedFactKeys.length} verified entries from the published week.</p>
-              <div className="space-y-1.5 font-mono text-[10px] opacity-60">
-                {story.citedFactKeys.map((key) => <div key={key}>{key}</div>)}
-              </div>
-              {story.paragraphs.some((paragraph) => paragraph.includes('“')) && <Quote className={`mt-5 ${style.accent}`} size={20} />}
-            </aside>
           </div>
         </article>
       ) : null}

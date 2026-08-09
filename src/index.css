@@ -68,20 +68,49 @@ textarea {
   background:
     linear-gradient(rgba(255, 255, 255, 0.011) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.011) 1px, transparent 1px),
-    rgba(3, 9, 13, 0.76);
+    rgba(3, 9, 13, 0.48);
   background-size: 44px 44px;
   gap: 6px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(3px) saturate(112%);
 }
 
 .dhq-dashboard-card {
   border: 1px solid rgba(123, 150, 165, 0.3);
   border-radius: 6px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 30%),
-    rgba(5, 14, 19, 0.91);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(10px);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 34%),
+    rgba(5, 14, 19, 0.74);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(12px) saturate(115%);
+}
+
+/* Keep the football setting visible through route workspaces while retaining
+   a dark glass surface behind all important text and data. Controls and modal
+   dialogs intentionally keep their stronger fills for clarity and focus. */
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/95"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/90"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/85"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/80"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/70"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900/60"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-900"] {
+  background-color: rgba(9, 20, 31, 0.72) !important;
+  backdrop-filter: blur(12px) saturate(112%);
+}
+
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/90"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/80"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/70"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/60"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/50"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950/40"],
+.dhq-page-main :where(section, article, aside, header, details, div, thead, tbody)[class~="bg-slate-950"] {
+  background-color: rgba(2, 8, 15, 0.64) !important;
+  backdrop-filter: blur(10px) saturate(110%);
+}
+
+.dhq-page-main :where(h1, h2, h3, h4, p, label, th, td) {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.78);
 }
 
 .dhq-dashboard-card h3 {

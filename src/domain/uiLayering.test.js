@@ -6,6 +6,7 @@ const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const newsroomSourceUrl = new URL('../components/GroundedNewsroom.jsx', import.meta.url);
 const newsroomEmptyStateSourceUrl = new URL('../components/NewsroomEmptyState.jsx', import.meta.url);
 const commandCenterSourceUrl = new URL('../components/CareerCommandCenter.jsx', import.meta.url);
+const globalStylesUrl = new URL('../index.css', import.meta.url);
 
 test('the fixed workspace background cannot intercept newsroom article clicks', async () => {
   const [appSource, newsroomSource] = await Promise.all([
@@ -62,11 +63,19 @@ test('the app opens on the command-center homepage with one responsive top navig
 });
 
 test('every workspace uses the same football-only presentation background', async () => {
-  const appSource = await readFile(appSourceUrl, 'utf8');
+  const [appSource, globalStyles] = await Promise.all([
+    readFile(appSourceUrl, 'utf8'),
+    readFile(globalStylesUrl, 'utf8'),
+  ]);
 
   assert.match(appSource, /import footballStadiumBg from '\.\/assets\/dynastyhq-football-stadium-bg\.webp';/);
   assert.match(appSource, /const getBgImage = \(\) => footballStadiumBg;/);
   assert.match(appSource, /data-background-sport="football"/);
+  assert.match(appSource, /dhq-page-main relative w-full flex-1 overflow-y-auto/);
+  assert.match(appSource, /object-cover opacity-\[0\.56\]/);
+  assert.match(globalStyles, /rgba\(5, 14, 19, 0\.74\)/);
+  assert.match(globalStyles, /rgba\(9, 20, 31, 0\.72\)/);
+  assert.match(globalStyles, /rgba\(2, 8, 15, 0\.64\)/);
   assert.doesNotMatch(appSource, /case 'newsroom': return/);
   assert.doesNotMatch(appSource, /case 'podcast': return/);
 });

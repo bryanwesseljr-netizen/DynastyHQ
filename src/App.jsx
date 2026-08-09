@@ -3843,11 +3843,11 @@ const handleSaveGameClick = () => {
        {renderNav()}
        
        {/* Main Content Area */}
-       <main className={`relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[64px]' : 'px-4 pb-4 pt-24 md:px-8 md:pb-8 md:pt-28'}`}>
+       <main className={`dhq-page-main relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[64px]' : 'px-4 pb-4 pt-24 md:px-8 md:pb-8 md:pt-28'}`}>
          {/* Background Image */}
          <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true" data-background-sport="football">
-            <img src={getBgImage()} className="h-full w-full object-cover opacity-40" alt="" />
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/72 to-slate-950/95"></div>
+            <img src={getBgImage()} className="h-full w-full object-cover opacity-[0.56]" alt="" />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/42 via-slate-950/52 to-slate-950/78"></div>
          </div>
 
          <Suspense fallback={<div className="relative z-10 flex min-h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-amber-500" aria-label="Loading workspace" /></div>}>

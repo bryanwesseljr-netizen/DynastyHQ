@@ -1,0 +1,225 @@
+/* DynastyHQ light/dark appearance test.
+ * Presentation only: no Firebase or career-state writes.
+ */
+
+html[data-dhq-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-dhq-theme="light"] {
+  color-scheme: light;
+  background: #e8edf3;
+}
+
+html[data-dhq-theme="light"] body,
+html[data-dhq-theme="light"] #root {
+  background: #e8edf3;
+  color: #0f172a;
+}
+
+/* Header shell */
+html[data-dhq-theme="light"] header.no-print {
+  background: rgba(248, 250, 252, 0.97) !important;
+  border-color: rgba(148, 163, 184, 0.55) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
+html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item {
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item[aria-current="page"] {
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation {
+  background: rgba(248, 250, 252, 0.99) !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Keep the football backdrop, but turn it into a light editorial wash. */
+html[data-dhq-theme="light"] [data-background-sport="football"] > img {
+  opacity: 0.22 !important;
+  filter: saturate(0.72) brightness(1.12) contrast(0.86);
+}
+
+html[data-dhq-theme="light"] [data-background-sport="football"] > div {
+  background: linear-gradient(
+    to bottom,
+    rgba(248, 250, 252, 0.72),
+    rgba(241, 245, 249, 0.86),
+    rgba(226, 232, 240, 0.95)
+  ) !important;
+}
+
+/* Convert the common dark DynastyHQ surfaces into light glass/paper surfaces. */
+html[data-dhq-theme="light"] :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"]
+) {
+  background-color: rgba(248, 250, 252, 0.92) !important;
+}
+
+html[data-dhq-theme="light"] :is(
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) {
+  background-color: rgba(226, 232, 240, 0.92) !important;
+}
+
+/* Text hierarchy */
+html[data-dhq-theme="light"] :is(
+  [class~="text-white"],
+  [class~="text-slate-100"],
+  [class~="text-slate-200"]
+) {
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] [class~="text-slate-300"] {
+  color: #334155 !important;
+}
+
+html[data-dhq-theme="light"] [class~="text-slate-400"] {
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] [class~="text-slate-500"] {
+  color: #64748b !important;
+}
+
+/* Preserve legible white type on strong action colors. */
+html[data-dhq-theme="light"] :is(
+  [class~="bg-blue-600"],
+  [class~="bg-blue-500"],
+  [class~="bg-emerald-600"],
+  [class~="bg-emerald-500"],
+  [class~="bg-red-600"],
+  [class~="bg-red-500"]
+),
+html[data-dhq-theme="light"] :is(
+  [class~="bg-blue-600"],
+  [class~="bg-blue-500"],
+  [class~="bg-emerald-600"],
+  [class~="bg-emerald-500"],
+  [class~="bg-red-600"],
+  [class~="bg-red-500"]
+) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"]) {
+  color: #ffffff !important;
+}
+
+/* Borders, rules, inputs, and tables */
+html[data-dhq-theme="light"] :is(
+  [class~="border-slate-600"],
+  [class~="border-slate-700"],
+  [class~="border-slate-700/30"],
+  [class~="border-slate-700/50"],
+  [class~="border-slate-800"],
+  [class~="border-slate-800/50"],
+  [class~="border-slate-800/90"]
+) {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-dhq-theme="light"] [class~="divide-slate-700/50"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #d7dee8 !important;
+}
+
+html[data-dhq-theme="light"] input,
+html[data-dhq-theme="light"] select,
+html[data-dhq-theme="light"] textarea {
+  color: #0f172a;
+}
+
+html[data-dhq-theme="light"] input::placeholder,
+html[data-dhq-theme="light"] textarea::placeholder {
+  color: #64748b;
+}
+
+/* Light cards need a softer shadow than the dark theme. */
+html[data-dhq-theme="light"] :is([class~="shadow-xl"], [class~="shadow-2xl"]) {
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* Small appearance control that visually lives in the tab header. */
+#dhq-theme-toggle-host {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 145;
+}
+
+#dhq-theme-toggle-host[hidden] {
+  display: none !important;
+}
+
+#dhq-theme-toggle {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(100, 116, 139, 0.65);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fbbf24;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.20);
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+#dhq-theme-toggle:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.75);
+}
+
+#dhq-theme-toggle:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+#dhq-theme-toggle svg {
+  width: 17px;
+  height: 17px;
+  pointer-events: none;
+}
+
+html[data-dhq-theme="light"] #dhq-theme-toggle {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(148, 163, 184, 0.85);
+  color: #334155;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.12);
+}
+
+/* Reserve only one compact control-width on desktop so it never covers a tab. */
+@media (min-width: 1200px) {
+  header.no-print > div:first-child {
+    padding-right: 60px !important;
+  }
+}
+
+/* On smaller screens, sit just to the left of the existing Menu button. */
+@media (max-width: 1199px) {
+  #dhq-theme-toggle-host {
+    right: 94px;
+  }
+}
+
+@media print {
+  #dhq-theme-toggle-host {
+    display: none !important;
+  }
+}

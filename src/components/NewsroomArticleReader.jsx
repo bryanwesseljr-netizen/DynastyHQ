@@ -17,6 +17,14 @@ const headingPositions = (paragraphCount, headingCount) => {
   ));
 };
 
+const headlineSize = (headline = '') => {
+  const text = String(headline).trim();
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (text.length > 86 || words > 13) return 'long';
+  if (text.length > 62 || words > 9) return 'medium';
+  return 'short';
+};
+
 const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => {
   const presentation = resolveNewsroomPresentation(story);
   const extras = buildEditorialExtras({ story, issue });
@@ -38,6 +46,7 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       className="dhq-news-article"
       data-editorial-layout={presentation.layout}
       data-has-image={hasImage ? 'true' : 'false'}
+      data-headline-size={headlineSize(story.headline)}
       style={presentationVariables(presentation)}
     >
       <header className="dhq-news-masthead">
@@ -115,4 +124,3 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
 };
 
 export default NewsroomArticleReader;
-

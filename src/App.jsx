@@ -3393,16 +3393,6 @@ const handleSaveGameClick = () => {
         </div>
       )}
 
-      <div className="dhq-weekly-agenda-milestone mb-6">
-        <MilestoneRecorder
-          key={`${appState.currentSeason}-${appState.currentWeek}-${appState.careerPhase}`}
-          season={appState.currentSeason}
-          week={appState.currentWeek}
-          institution={appState.player.college || (isCoach ? appState.player.school : '')}
-          onPublish={handlePublishMilestone}
-        />
-      </div>
-      
       <div className="dhq-weekly-agenda-grid grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
         <div data-agenda-card="1" className={`bg-slate-900/85 backdrop-blur-md rounded-xl border ${editingGameIndex !== null ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-slate-700/50 shadow-2xl'} p-6 space-y-6 flex flex-col transition-all`}>
@@ -3681,6 +3671,16 @@ const handleSaveGameClick = () => {
         </div>
         </div>
 
+      </div>
+
+      <div className="dhq-weekly-agenda-milestone mb-6">
+        <MilestoneRecorder
+          key={`${appState.currentSeason}-${appState.currentWeek}-${appState.careerPhase}`}
+          season={appState.currentSeason}
+          week={appState.currentWeek}
+          institution={appState.player.college || (isCoach ? appState.player.school : '')}
+          onPublish={handlePublishMilestone}
+        />
       </div>
 
       {editingGameIndex !== null ? (

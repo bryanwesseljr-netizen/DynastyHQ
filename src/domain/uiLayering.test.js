@@ -118,6 +118,16 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   assert.match(globalStyles, /grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
 });
 
+test('weekly agenda milestone recorder uses a compact horizontal desktop layout', async () => {
+  const milestoneSource = await readFile(new URL('../components/MilestoneRecorder.jsx', import.meta.url), 'utf8');
+
+  assert.match(milestoneSource, /milestone-recorder-layout/);
+  assert.match(milestoneSource, /xl:grid-cols-\[minmax\(140px,0\.42fr\)_minmax\(0,1\.58fr\)\]/);
+  assert.match(milestoneSource, /milestone-recorder-fields[^\n]*sm:grid-cols-6/);
+  assert.match(milestoneSource, /sm:col-span-4/);
+  assert.match(milestoneSource, /sm:col-span-2/);
+});
+
 test('the homepage mirrors the compact command-center dashboard without duplicate briefs', async () => {
   const source = await readFile(commandCenterSourceUrl, 'utf8');
 

@@ -140,6 +140,12 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     if (paragraphs.length < 4 || articleWords < 220) return null;
     const citedFactKeys = normalizeCitations(entry.citedFactIds, payload);
     if (!citedFactKeys.length) return null;
+    const sectionHeadings = (entry.sectionHeadings || []).map((heading) => clean(heading, 100)).filter(Boolean).slice(0, 3);
+    const sidebars = (entry.sidebars || []).map((section) => ({
+      title: clean(section?.title, 80),
+      items: (section?.items || []).map((item) => clean(item, 220)).filter(Boolean).slice(0, 5),
+    })).filter((section) => section.title && section.items.length >= 2).slice(0, 3);
+    if (sectionHeadings.length < 2 || sidebars.length < 2) return null;
     return {
       outletId,
       kicker: clean(entry.kicker, 80),
@@ -148,6 +154,9 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       byline: brief.byline,
       dateline: clean(entry.dateline, 100),
       paragraphs,
+      sectionHeadings,
+      pullQuote: clean(entry.pullQuote, 320),
+      sidebars,
       citedFactKeys,
       readingMinutes: Math.max(2, Math.round(articleWords / 225)),
       editorialStatus: 'generated',

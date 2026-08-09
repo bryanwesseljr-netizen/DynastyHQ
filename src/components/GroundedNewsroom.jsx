@@ -3,8 +3,10 @@ import {
   Activity, ArrowRight, BookOpen, ChevronLeft, FileImage, Loader2, Newspaper, PenLine, RefreshCw, Star, Zap,
 } from 'lucide-react';
 import NewsroomMediaManager from './NewsroomMediaManager';
+import NewsroomArticleReader from './NewsroomArticleReader';
 import PostgameFrontPage from './PostgameFrontPage';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
+import { presentationVariables, resolveNewsroomPresentation } from '../domain/newsroomPresentation';
 
 const iconForOutlet = (outletId) => ({
   bolt: Zap,
@@ -19,16 +21,6 @@ const tabsForIssue = (issue) => (issue?.articles || []).map((story) => ({
   label: story.outletName,
   icon: iconForOutlet(story.outletId),
 }));
-
-const themeStyles = {
-  broadsheet: { shell: 'bg-[#f5f1e8] text-slate-950 border-amber-900/30', accent: 'text-amber-800', rule: 'border-slate-900' },
-  local: { shell: 'bg-[#eef2f4] text-slate-950 border-slate-400', accent: 'text-blue-900', rule: 'border-blue-900' },
-  on3: { shell: 'bg-zinc-950 text-zinc-100 border-amber-500/40', accent: 'text-amber-400', rule: 'border-amber-500' },
-  filmroom: { shell: 'bg-[#081528] text-slate-100 border-emerald-500/40', accent: 'text-emerald-400', rule: 'border-emerald-500' },
-  national: { shell: 'bg-slate-950 text-slate-100 border-blue-500/40', accent: 'text-blue-400', rule: 'border-blue-500' },
-  regional: { shell: 'bg-[#f0eee8] text-slate-950 border-red-900/30', accent: 'text-red-800', rule: 'border-red-800' },
-  network: { shell: 'bg-[#101010] text-white border-red-600/50', accent: 'text-red-500', rule: 'border-red-600' },
-};
 
 const GroundedNewsroom = ({
   issues,
@@ -72,7 +64,6 @@ const GroundedNewsroom = ({
   const tabs = useMemo(() => tabsForIssue(selectedIssue), [selectedIssue]);
   const activeTheme = tabs.some((tab) => tab.theme === newsTheme) ? newsTheme : tabs[0]?.theme;
   const selectedTab = tabs.find((tab) => tab.theme === activeTheme) || tabs[0];
-  const style = themeStyles[selectedTab.theme] || themeStyles.broadsheet;
   const story = selectedIssue.articles.find((entry) => entry.outletId === selectedTab.outletId);
   const imageKey = selectedTab.theme === 'on3' ? 'on3' : selectedTab.theme;
   const currentMedia = resolveNewsroomMedia({
@@ -104,7 +95,7 @@ const GroundedNewsroom = ({
   };
 
   return (
-    <div className="relative z-10 mx-auto max-w-5xl space-y-6 pb-20 animate-in fade-in">
+    <div className="relative z-10 mx-auto max-w-6xl space-y-6 pb-20 animate-in fade-in">
       <div className="rounded-2xl border border-blue-500/30 bg-blue-950/20 p-4 shadow-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
@@ -172,18 +163,21 @@ const GroundedNewsroom = ({
             {tabs.map(({ theme, outletId, label, icon: Icon }) => {
               const cardStory = selectedIssue.articles.find((entry) => entry.outletId === outletId);
               if (!cardStory) return null;
+              const cardPresentation = resolveNewsroomPresentation(cardStory);
               return (
                 <button
                   key={theme}
                   type="button"
                   onClick={() => openStory(theme)}
-                  className="group flex min-h-52 cursor-pointer flex-col rounded-xl border border-slate-700 bg-slate-900 p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 hover:border-blue-400 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="dhq-newsroom-story-card group flex min-h-52 cursor-pointer flex-col rounded-xl p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  data-editorial-layout={cardPresentation.layout}
+                  style={presentationVariables(cardPresentation)}
                   aria-label={`Read full article from ${label}: ${cardStory.headline}`}
                 >
-                  <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-400"><Icon size={15} /> {label}</span>
-                  <span className="mt-4 text-xl font-black uppercase leading-tight text-white">{cardStory.headline}</span>
-                  <span className="mt-3 line-clamp-2 text-sm leading-relaxed text-slate-400">{cardStory.dek}</span>
-                  <span className="mt-auto flex items-center gap-2 pt-5 text-xs font-black uppercase tracking-wider text-amber-400 transition-colors group-hover:text-amber-300">Read full article <ArrowRight size={15} /></span>
+                  <span className="dhq-newsroom-story-card__outlet flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]"><Icon size={15} /> {label}</span>
+                  <span className="dhq-newsroom-story-card__headline mt-4 text-xl font-black leading-tight">{cardStory.headline}</span>
+                  <span className="dhq-newsroom-story-card__dek mt-3 line-clamp-2 text-sm leading-relaxed">{cardStory.dek}</span>
+                  <span className="dhq-newsroom-story-card__action mt-auto flex items-center gap-2 pt-5 text-xs font-black uppercase tracking-wider transition-colors">Read full article <ArrowRight size={15} /></span>
                 </button>
               );
             })}
@@ -240,54 +234,34 @@ const GroundedNewsroom = ({
       ) : null}
 
       {isReaderOpen && !isFrontPageOpen && story ? (
-        <article className={`overflow-hidden rounded-2xl border shadow-2xl ${style.shell}`}>
-          <header className="border-b border-current/20 p-6 md:p-9">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">
-              <span>{story.kicker || story.desk}</span>
-              <span>Season {selectedIssue.season} · Week {selectedIssue.week}</span>
-            </div>
-            <h1 className="max-w-4xl text-3xl font-black uppercase leading-[1.02] md:text-5xl">{story.headline}</h1>
-            <p className={`mt-4 border-l-4 pl-4 text-base font-semibold opacity-80 md:text-lg ${style.rule}`}>{story.dek}</p>
-            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider opacity-65">
-              <span>By {story.byline || `${story.outletName} Staff`}</span>
-              {story.dateline && <span>{story.dateline}</span>}
-              <span>{story.readingMinutes || Math.max(2, Math.round(story.paragraphs.join(' ').split(/\s+/).length / 225))} min read</span>
-            </div>
-          </header>
-
-          {featureImage && (
-            <div className="relative h-72 overflow-hidden bg-black md:h-[440px]">
-              <img src={featureImage} alt="Weekly newsroom feature" className="h-full w-full object-contain" />
-              {currentMedia.disclosure && <span className="absolute bottom-3 right-3 rounded-full border border-white/20 bg-black/75 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-white">{currentMedia.disclosure}</span>}
-            </div>
-          )}
-
+        <>
+          <NewsroomArticleReader
+            issue={selectedIssue}
+            story={story}
+            featureImage={featureImage}
+            currentMedia={currentMedia}
+          />
           {!readOnly && (
-            <NewsroomMediaManager
-              issue={selectedIssue}
-              article={story}
-              mediaLibrary={mediaLibrary}
-              currentMedia={currentMedia}
-              busy={mediaBusy}
-              autoAssignLibrary={autoAssignLibrary}
-              onUpload={onUploadMedia}
-              onAssign={onAssignMedia}
-              onClear={onClearMedia}
-              onGenerate={onGenerateMedia}
-              onToggleReference={onToggleReference}
-              onDelete={onDeleteMedia}
-              onSetAutoAssignLibrary={onSetAutoAssignLibrary}
-            />
+            <details className="dhq-newsroom-media-tools overflow-hidden rounded-xl border border-slate-700 bg-slate-950/90 shadow-xl">
+              <summary className="cursor-pointer px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-200">Manage this article&rsquo;s photo</summary>
+              <NewsroomMediaManager
+                issue={selectedIssue}
+                article={story}
+                mediaLibrary={mediaLibrary}
+                currentMedia={currentMedia}
+                busy={mediaBusy}
+                autoAssignLibrary={autoAssignLibrary}
+                onUpload={onUploadMedia}
+                onAssign={onAssignMedia}
+                onClear={onClearMedia}
+                onGenerate={onGenerateMedia}
+                onToggleReference={onToggleReference}
+                onDelete={onDeleteMedia}
+                onSetAutoAssignLibrary={onSetAutoAssignLibrary}
+              />
+            </details>
           )}
-
-          <div className="p-6 md:p-9">
-            <div className="mx-auto max-w-3xl space-y-5 text-base leading-8 md:text-[17px]">
-              {story.paragraphs.map((paragraph, index) => (
-                <p key={`${story.id}-${index}`}>{paragraph}</p>
-              ))}
-            </div>
-          </div>
-        </article>
+        </>
       ) : null}
     </div>
   );

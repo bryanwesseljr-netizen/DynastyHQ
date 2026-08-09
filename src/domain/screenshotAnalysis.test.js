@@ -91,6 +91,76 @@ test('captures the verified CFB 27 high-school recruiting profile and school ove
   assert.equal(result.facts.some((entry) => entry.key === 'recruiting.profile.tapeScore'), true);
 });
 
+test('creates an empty player recruiting board from a complete My Top Schools screenshot', () => {
+  const visibleSchools = [
+    ['E. MICHIGAN', 'Eastern Michigan'],
+    ['W. MICHIGAN', 'Western Michigan'],
+    ['C. MICHIGAN', 'Central Michigan'],
+    ['TOLEDO', 'TOLEDO'],
+    ['OHIO', 'OHIO'],
+    ['BOWLING GREEN', 'BOWLING GREEN'],
+    ['MIAMI (OH)', 'Miami (Ohio)'],
+    ['NIU', 'Northern Illinois'],
+    ['INDIANA', 'INDIANA'],
+    ['CINCINNATI', 'CINCINNATI'],
+  ];
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'initial-top-ten',
+    fileName: 'my-top-schools.jpg',
+    recruiting: [],
+    careerPhase: 'Player',
+    uploadContext: { kind: 'high_school_postgame' },
+    analysis: {
+      screenTypes: ['rtg_recruiting'],
+      screenTitle: 'My Top Schools',
+      summary: 'Tape Score 0 and a complete ordered Top 10.',
+      facts: [
+        { key: 'recruiting.tapeScore', label: 'Tape Score', value: '0', confidence: 0.99, evidence: 'Tape Score 0', schoolName: '' },
+        ...visibleSchools.map(([visibleName], index) => ({
+          key: 'recruiting.preferenceRank',
+          label: `Top school ${index + 1}`,
+          value: String(index + 1),
+          confidence: 0.98,
+          evidence: `${index + 1} ${visibleName}`,
+          schoolName: visibleName,
+        })),
+      ],
+    },
+  });
+
+  assert.equal(result.recruitingPatches.length, 10);
+  assert.deepEqual(result.recruitingPatches.map(({ name, preferenceRank }) => ({ name, preferenceRank })),
+    visibleSchools.map(([, canonicalName], index) => ({ name: canonicalName, preferenceRank: index + 1 })));
+  assert.equal(result.playerRecruitingPatch.tapeScore, 0);
+  assert.equal(result.playerRecruitingPatch.topSchoolsSelected, 10);
+  assert.equal(result.facts.filter((entry) => /\.preferenceRank$/.test(entry.key)).length, 10);
+  assert.equal(result.facts.some((entry) => entry.key === 'recruiting.profile.topSchoolsSelected'), true);
+});
+
+test('matches game abbreviations to schools already saved with full names', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'existing-school-alias',
+    fileName: 'top-schools.jpg',
+    recruiting: [{ id: 22, name: 'Eastern Michigan', preferenceRank: 4 }],
+    careerPhase: 'Player',
+    analysis: {
+      screenTypes: ['rtg_recruiting'],
+      screenTitle: 'My Top Schools',
+      summary: 'Eastern Michigan is the first preference.',
+      facts: [{
+        key: 'recruiting.preferenceRank',
+        label: 'Top school 1',
+        value: '1',
+        confidence: 0.99,
+        evidence: '1 E. MICHIGAN',
+        schoolName: 'E. MICHIGAN',
+      }],
+    },
+  });
+
+  assert.deepEqual(result.recruitingPatches, [{ id: 22, name: 'Eastern Michigan', preferenceRank: 1 }]);
+});
+
 test('normalizes standard and scholarship high-school moments with the correct objective counts', () => {
   const result = normalizeScreenshotAnalysis({
     sourceId: 'moments', fileName: 'moments.png', recruiting: [],

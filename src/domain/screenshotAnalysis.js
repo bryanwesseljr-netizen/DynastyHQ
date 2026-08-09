@@ -234,6 +234,30 @@ const SCHOOL_RECRUITING_FIELDS = new Set([
 
 const cleanString = (value) => String(value ?? '').trim();
 
+const PLAYER_SCHOOL_ALIASES = new Map([
+  ['e. michigan', 'Eastern Michigan'],
+  ['e michigan', 'Eastern Michigan'],
+  ['w. michigan', 'Western Michigan'],
+  ['w michigan', 'Western Michigan'],
+  ['c. michigan', 'Central Michigan'],
+  ['c michigan', 'Central Michigan'],
+  ['miami (oh)', 'Miami (Ohio)'],
+  ['miami oh', 'Miami (Ohio)'],
+  ['niu', 'Northern Illinois'],
+]);
+
+const schoolLookupKey = (value) => cleanString(value)
+  .toLowerCase()
+  .replace(/\./g, '')
+  .replace(/\bohio\b/g, 'oh')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const canonicalPlayerSchoolName = (value) => {
+  const cleaned = cleanString(value);
+  return PLAYER_SCHOOL_ALIASES.get(cleaned.toLowerCase()) || cleaned;
+};
+
 const normalizeValue = (key, value) => {
   const cleaned = cleanString(value).replace(/,/g, '');
   if (NUMERIC_KEYS.has(key)) {
@@ -277,10 +301,16 @@ const confidence = (value) => {
 };
 
 const findSchool = (schools, schoolName) => {
-  const normalizedName = cleanString(schoolName).toLowerCase();
+  const normalizedName = schoolLookupKey(canonicalPlayerSchoolName(schoolName));
   if (!normalizedName) return null;
-  return schools.find((school) => school.name.toLowerCase() === normalizedName) || null;
+  return schools.find((school) => schoolLookupKey(canonicalPlayerSchoolName(school.name)) === normalizedName) || null;
 };
+
+const playerSchoolId = (name) => `school-${canonicalPlayerSchoolName(name)
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '')
+  .slice(0, 64)}`;
 
 const prospectId = (name) => `prospect-${cleanString(name)
   .toLowerCase()
@@ -322,6 +352,21 @@ export const normalizeScreenshotAnalysis = ({
   const retentionById = new Map();
   const playerRecruitingPatch = { rankings: {} };
   const highSchoolEvaluationPatch = { moments: [] };
+  const coachRecruiting = ['OC', 'HC'].includes(careerPhase);
+  const discoveredPlayerSchools = new Map();
+
+  if (!coachRecruiting) {
+    (scopedAnalysis?.facts || []).forEach((rawFact) => {
+      if (cleanString(rawFact.key) !== 'recruiting.preferenceRank') return;
+      const rank = Number(cleanString(rawFact.value).replace(/,/g, ''));
+      const visibleName = cleanString(rawFact.schoolName || rawFact.subjectName);
+      if (!visibleName || !Number.isInteger(rank) || rank < 1 || rank > 10) return;
+      const name = canonicalPlayerSchoolName(visibleName);
+      const existing = findSchool(recruiting, name);
+      const school = existing || { id: playerSchoolId(name), name, isNew: true };
+      discoveredPlayerSchools.set(schoolLookupKey(name), school);
+    });
+  }
 
   (scopedAnalysis?.facts || []).forEach((rawFact, index) => {
     const key = cleanString(rawFact.key);
@@ -335,9 +380,11 @@ export const normalizeScreenshotAnalysis = ({
     const knownRetentionPlayer = key.startsWith('retention.')
       ? findSchool(retentionBoard, subjectName)
       : null;
-    const coachRecruiting = ['OC', 'HC'].includes(careerPhase);
     const visibleRecruitName = subjectName;
-    const school = knownSchool || (coachRecruiting && key.startsWith('recruiting.') && visibleRecruitName
+    const discoveredPlayerSchool = !coachRecruiting && key.startsWith('recruiting.')
+      ? discoveredPlayerSchools.get(schoolLookupKey(canonicalPlayerSchoolName(visibleRecruitName)))
+      : null;
+    const school = knownSchool || discoveredPlayerSchool || (coachRecruiting && key.startsWith('recruiting.') && visibleRecruitName
       ? { id: prospectId(visibleRecruitName), name: visibleRecruitName, isNew: true }
       : null);
     const retentionPlayer = knownRetentionPlayer || (coachRecruiting && RETENTION_KEYS.has(key) && subjectName
@@ -456,6 +503,27 @@ export const normalizeScreenshotAnalysis = ({
       verified: false,
     });
   });
+
+  if (
+    !Object.hasOwn(playerRecruitingPatch, 'topSchoolsSelected')
+    && discoveredPlayerSchools.size === 10
+  ) {
+    const ranks = new Set([...recruitingById.values()].map((school) => Number(school.preferenceRank)));
+    const hasCompleteTopTen = Array.from({ length: 10 }, (_, index) => index + 1).every((rank) => ranks.has(rank));
+    if (hasCompleteTopTen) {
+      playerRecruitingPatch.topSchoolsSelected = 10;
+      facts.push({
+        id: `${sourceId}:recruiting.topSchoolsSelected:derived`,
+        key: 'recruiting.profile.topSchoolsSelected',
+        label: 'Top Schools selected',
+        value: 10,
+        confidence: 0.95,
+        evidence: 'All 10 numbered Top Schools rows are visible.',
+        sourceId,
+        verified: false,
+      });
+    }
+  }
 
   if (Object.keys(wearPatch).length) rtgPatch.wear = wearPatch;
 

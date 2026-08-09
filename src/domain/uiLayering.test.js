@@ -56,10 +56,21 @@ test('the app opens on the command-center homepage with one responsive top navig
   assert.match(appSource, /dhq-settings-share-button/);
   assert.match(appSource, /getElementById\('recruit-command-center'\)/);
   assert.match(appSource, /getElementById\('dynastyhq-command-center'\)/);
+  assert.match(appSource, /if \(tab === 'commandCenter'\)/);
   assert.doesNotMatch(appSource, /fixed inset-y-0 left-0/);
 });
 
-test('the homepage uses the compact dashboard grid without duplicate destinations', async () => {
+test('every workspace uses the same football-only presentation background', async () => {
+  const appSource = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(appSource, /import footballStadiumBg from '\.\/assets\/dynastyhq-football-stadium-bg\.webp';/);
+  assert.match(appSource, /const getBgImage = \(\) => footballStadiumBg;/);
+  assert.match(appSource, /data-background-sport="football"/);
+  assert.doesNotMatch(appSource, /case 'newsroom': return/);
+  assert.doesNotMatch(appSource, /case 'podcast': return/);
+});
+
+test('the homepage mirrors the compact command-center dashboard without duplicate briefs', async () => {
   const source = await readFile(commandCenterSourceUrl, 'utf8');
 
   for (const title of [
@@ -71,23 +82,31 @@ test('the homepage uses the compact dashboard grid without duplicate destination
     'Career Journey',
     'Newsroom',
     'Recruiting Board',
-    'Quick Actions',
+    'Podcast',
     'Recent Schedule',
+    'Verified Career Detail',
   ]) {
     assert.match(source, new RegExp(title));
   }
+  assert.match(source, /Your hub for recruiting, development, and legacy\./);
+  assert.match(source, /Track every decision\. Build your legacy\. Make history\./);
   assert.ok(source.indexOf('Current Phase') < source.indexOf('Season Snapshot'));
   assert.ok(source.indexOf('Season Snapshot') < source.indexOf('Your Profile'));
   assert.ok(source.indexOf('Road to Glory') < source.indexOf('Career Timeline'));
   assert.ok(source.indexOf('Career Timeline') < source.indexOf('Career Journey'));
-  assert.ok(source.indexOf('Newsroom') < source.indexOf('Recruiting Board'));
-  assert.ok(source.indexOf('Recruiting Board') < source.indexOf('Quick Actions'));
-  assert.ok(source.indexOf('Quick Actions') < source.indexOf('Recent Schedule'));
+  assert.ok(source.indexOf('<DashboardCard title="Newsroom"') < source.indexOf('<DashboardCard title="Recruiting Board"'));
+  assert.ok(source.indexOf('<DashboardCard title="Recruiting Board"') < source.indexOf('<DashboardCard title="Podcast"'));
+  assert.ok(source.indexOf('<DashboardCard title="Podcast"') < source.indexOf('<DashboardCard title="Recent Schedule"'));
   assert.doesNotMatch(source, /Dynasty Central/);
+  assert.doesNotMatch(source, /Quick Actions/);
   assert.doesNotMatch(source, /Open Gridiron Grind|Open Gridiron Podcast/);
-  assert.match(source, /\{ label: 'Open Newsroom', tab: 'newsroom', Icon: Newspaper \}/);
-  assert.equal((source.match(/actionLabel="View newsroom"/g) || []).length, 0);
-  assert.doesNotMatch(source, /View weekly agenda|View full snapshot|Career profile|View RTG career|View history/);
+  assert.equal((source.match(/actionLabel="Open Newsroom"/g) || []).length, 1);
+  assert.equal((source.match(/actionLabel="Listen to Podcast"/g) || []).length, 1);
+  assert.equal((source.match(/actionLabel="Open Recruit Command Center"/g) || []).length, 1);
+  assert.match(source, /actionLabel=\{showFullSchedule \? 'Show Compact Schedule' : 'View Schedule'\}/);
+  assert.match(source, /Player headshot placeholder/);
+  assert.match(source, /<details open/);
+  assert.doesNotMatch(source, /View full snapshot|Career profile|View RTG career|View history/);
   assert.doesNotMatch(source, /dynastyhq-player-wessel|Wessel, number 2/);
 });
 

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import footballStadiumBg from './assets/dynastyhq-football-stadium-bg.webp';
 import { 
   Home, Newspaper, Map, Trophy, Target, 
   Settings, Save, Activity, Zap,
@@ -552,20 +553,7 @@ const App = () => {
   const gamesPlayed = appState.gameLogs.length;
 
   // --- BACKGROUND ENGINE ---
-  const getBgImage = () => {
-    switch(activeTab) {
-      case 'dashboard': return 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80'; 
-      case 'frontOffice': return 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1920&q=80';
-      case 'offseason': return 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1920&q=80';
-      case 'recruiting': return 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1920&q=80'; 
-      case 'newsroom': return 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1920&q=80'; 
-      case 'podcast': return 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=1920&q=80';
-      case 'trophies': return 'https://images.unsplash.com/photo-1587280590050-1d99ce697928?auto=format&fit=crop&w=1920&q=80'; 
-      case 'dataEntry': return 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1920&q=80'; 
-      case 'settings': return 'https://images.unsplash.com/photo-1518063319808-88e89f8d16d0?auto=format&fit=crop&w=1920&q=80'; 
-      default: return appState.bgDashboard || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1920&q=80';
-    }
-  };
+  const getBgImage = () => footballStadiumBg;
 
   // --- SECURE SCREENSHOT ANALYSIS ENGINE ---
   const analyzeScreenshotFiles = async ({ files, uploadContext = null, appendToDraft = false }) => {
@@ -1954,7 +1942,7 @@ const handleSaveGameClick = () => {
 
     return (
       <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
-        <div className="flex h-[56px] w-full items-stretch px-4 2xl:px-6">
+        <div className="flex h-[64px] w-full items-stretch px-4 2xl:px-6">
           <button type="button" onClick={() => openNavItem({ id: 'dashboard' })} className="flex shrink-0 items-center gap-2.5 pr-7 text-left 2xl:pr-9" aria-label="Open Dynasty HQ dashboard">
             <span className="flex h-8 w-7 items-center justify-center border border-amber-400 bg-amber-500/10 text-amber-400 [clip-path:polygon(50%_0,94%_20%,88%_78%,50%_100%,12%_78%,6%_20%)]">
               <Trophy size={14} />
@@ -1962,7 +1950,7 @@ const handleSaveGameClick = () => {
             <span className="whitespace-nowrap text-[18px] font-black uppercase tracking-[0.08em] text-slate-100">Dynasty <span className="text-amber-400">HQ</span></span>
           </button>
 
-          <nav className="dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden min-[1120px]:flex" aria-label="Primary navigation">
+          <nav className="dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden min-[1200px]:flex" aria-label="Primary navigation">
             {desktopNavItems.map((item) => {
               const selected = activeTab === item.id;
               return (
@@ -1981,13 +1969,13 @@ const handleSaveGameClick = () => {
             })}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center min-[1120px]:hidden">
-            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1120px]:hidden"><Menu size={16} /> Menu</button>
+          <div className="ml-auto flex shrink-0 items-center min-[1200px]:hidden">
+            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1200px]:hidden"><Menu size={16} /> Menu</button>
           </div>
         </div>
 
         {mobileNavOpen ? (
-          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1120px]:hidden">
+          <div id="mobile-primary-navigation" className="border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1200px]:hidden">
             <nav className="mx-auto grid max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Mobile primary navigation">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -2018,7 +2006,14 @@ const handleSaveGameClick = () => {
           readOnly={isReadOnly}
           onNavigate={(tab) => {
             if (tab === 'newsroom') setNewsroomFocusId('');
-            setActiveTab(tab);
+            if (tab === 'commandCenter') {
+              setActiveTab('dashboard');
+              window.setTimeout(() => {
+                document.getElementById('recruit-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 0);
+            } else {
+              setActiveTab(tab);
+            }
           }}
           onBeginCollege={handleBeginCollegeCareer}
           onChecklistChange={handleGraduationChecklist}
@@ -3856,11 +3851,11 @@ const handleSaveGameClick = () => {
        {renderNav()}
        
        {/* Main Content Area */}
-       <main className={`relative w-full flex-1 overflow-y-auto pt-[56px] ${activeTab === 'dashboard' ? 'p-0' : 'px-4 pb-4 pt-20 md:px-8 md:pb-8 md:pt-24'}`}>
+       <main className={`relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[64px]' : 'px-4 pb-4 pt-24 md:px-8 md:pb-8 md:pt-28'}`}>
          {/* Background Image */}
-         <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true">
-            <img src={getBgImage()} className="w-full h-full object-cover opacity-20 mix-blend-luminosity" alt="Background" />
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/60 to-slate-950"></div>
+         <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true" data-background-sport="football">
+            <img src={getBgImage()} className="h-full w-full object-cover opacity-40" alt="" />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/72 to-slate-950/95"></div>
          </div>
 
          <Suspense fallback={<div className="relative z-10 flex min-h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-amber-500" aria-label="Loading workspace" /></div>}>

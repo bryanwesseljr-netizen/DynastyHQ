@@ -25,12 +25,12 @@ textarea {
 }
 
 .dhq-primary-nav {
-  gap: clamp(12px, 1.25vw, 24px);
+  gap: clamp(14px, 1.35vw, 26px);
 }
 
 .dhq-primary-nav-item {
-  font-size: clamp(7px, 0.52vw, 8px);
-  letter-spacing: 0.11em;
+  font-size: clamp(8px, 0.62vw, 10px);
+  letter-spacing: 0.06em;
 }
 
 .dhq-command-title {
@@ -53,16 +53,25 @@ textarea {
 }
 
 #recruit-command-center {
-  scroll-margin-top: 72px;
+  scroll-margin-top: 78px;
+}
+
+.dhq-home-banner {
+  min-height: 118px;
+  background:
+    radial-gradient(circle at 56% 120%, rgba(34, 197, 94, 0.19), transparent 33%),
+    linear-gradient(90deg, rgba(1, 7, 12, 0.93) 0%, rgba(3, 13, 22, 0.7) 54%, rgba(2, 8, 14, 0.93) 100%);
+  box-shadow: inset 0 -18px 38px rgba(0, 0, 0, 0.34);
 }
 
 .dhq-dashboard-grid {
   background:
     linear-gradient(rgba(255, 255, 255, 0.011) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.011) 1px, transparent 1px),
-    #03090d;
+    rgba(3, 9, 13, 0.76);
   background-size: 44px 44px;
-  gap: 8px;
+  gap: 6px;
+  backdrop-filter: blur(2px);
 }
 
 .dhq-dashboard-card {
@@ -70,7 +79,7 @@ textarea {
   border-radius: 6px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 30%),
-    rgba(5, 14, 19, 0.96);
+    rgba(5, 14, 19, 0.91);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(10px);
 }
@@ -78,6 +87,20 @@ textarea {
 .dhq-dashboard-card h3 {
   font-family: "Arial Narrow", Impact, sans-serif;
   letter-spacing: 0.13em;
+}
+
+.dhq-career-journey::before {
+  position: absolute;
+  top: 19px;
+  bottom: 19px;
+  left: 27px;
+  width: 1px;
+  content: "";
+  background: linear-gradient(to bottom, rgba(52, 211, 153, 0.5), rgba(71, 85, 105, 0.38));
+}
+
+.dhq-dashboard-card summary::-webkit-details-marker {
+  display: none;
 }
 
 @media (min-width: 1024px) {
@@ -103,7 +126,7 @@ textarea {
   }
 }
 
-@media (max-width: 1119px) {
+@media (max-width: 1199px) {
   .dhq-command-title > span {
     white-space: normal;
   }

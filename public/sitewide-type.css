@@ -1,5 +1,61 @@
 @import url("/theme-workspaces.css");
 
+/* Final light-mode contrast exception for intentionally preserved dark
+   editorial surfaces. The global light theme correctly turns normal cards
+   into white paper, but some Newsroom hero/feature gradients intentionally
+   remain dark. Keep their original light-on-dark text hierarchy readable. */
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  [class*="to-slate-950"],
+  [class*="from-slate-950"]
+) :is(
+  [class~="text-white"],
+  [class~="text-slate-100"],
+  [class~="text-slate-200"]
+) {
+  color: #ffffff !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  [class*="to-slate-950"],
+  [class*="from-slate-950"]
+) [class~="text-slate-300"] {
+  color: #d7e0ea !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  [class*="to-slate-950"],
+  [class*="from-slate-950"]
+) :is([class~="text-slate-400"], [class~="text-slate-500"]) {
+  color: #b8c4d1 !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  [class*="to-slate-950"],
+  [class*="from-slate-950"]
+) :is([class~="text-emerald-300"], [class~="text-emerald-400"]) {
+  color: #86efac !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  [class*="to-slate-950"],
+  [class*="from-slate-950"]
+) :is([class~="text-blue-300"], [class~="text-blue-400"]) {
+  color: #bfdbfe !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="newsroom"] :is(
+  [class*="to-slate-950"],
+  [class*="from-slate-950"]
+) :is([class~="text-amber-300"], [class~="text-amber-400"], [class~="text-amber-500"]) {
+  color: #fde68a !important;
+}
+
 /* DynastyHQ sitewide readability normalization.
    Keep the immersive newsroom article typography independent so its
    headline sizing/layout remains exactly as designed. */

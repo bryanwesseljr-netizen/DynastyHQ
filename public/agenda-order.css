@@ -20,3 +20,43 @@
 .dhq-weekly-agenda-workspace > .dhq-weekly-agenda-milestone + .relative {
   order: 40;
 }
+
+/* Desktop agenda layout: keep RTG mechanics in the right column while
+   stacking cards 1, 3 and 4 vertically in the left column. The DOM order is
+   unchanged, so phones still receive the natural single-column flow. */
+@media (min-width: 1024px) {
+  .dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: start !important;
+    gap: 14px !important;
+  }
+
+  .dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid > [data-agenda-card="1"] {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .dhq-weekly-agenda-workspace .dhq-weekly-agenda-side-stack {
+    display: contents !important;
+  }
+
+  .dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid [data-agenda-card="2"] {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: start;
+  }
+
+  .dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid [data-agenda-card="3"] {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+  }
+
+  .dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid [data-agenda-card="4"] {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+  }
+}

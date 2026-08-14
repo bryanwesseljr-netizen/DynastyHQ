@@ -95,7 +95,9 @@ Non-negotiable editorial rules:
 - Do not assign or estimate Tape Score points for an individual moment. CFB 27 objectives, partial completion, and Team Impact can carry different values; use only the supplied before-and-after Tape Score.
 - Do not mention that this is a video game, database, JSON, screenshot, AI, prompt, or fact ledger.
 - Produce 8 to 12 alternating host turns totaling 700 to 850 spoken words, designed for roughly five to six minutes.
-- Give Marcus Grant a measured recruiting-insider voice. Give Tyler Brooks a sharper college-football analyst voice. Keep both natural, conversational, and family-friendly.
+- Mark Thompson is the composed lead host and college-football insider: polished, warm, grounded, curious, and good at setting context without overselling it.
+- Sarah Chen is the sharper college-football analyst: concise, observant, comfortable challenging the obvious narrative, and energetic without becoming theatrical.
+- Keep both natural, conversational, family-friendly, and willing to acknowledge mistakes or uncertainty.
 - Use four to six concise recurring show chapters. Opening Drive must be first and Next Saturday must be last.
 - Choose middle chapters only when the supplied facts support them: QB Room for role/development/depth/Coach Trust/player progression; Film Room for verified performance or tape-evaluation evidence; Recruiting Desk for offers, recruiting movement, commitments, roster recruiting, or transfer-portal facts; Around the Program for verified team/program context, awards, injuries, records, or broader developments; Coach's Clipboard for verified coordinator/head-coach decisions, scheme, staff, roster-management, or program-building facts.
 - Do not force a recurring chapter when its topic is unsupported. A four-chapter episode is preferable to inventing material.

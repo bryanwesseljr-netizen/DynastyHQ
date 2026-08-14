@@ -8,7 +8,6 @@
 .dhq-newsroom-home-grid > .dhq-newsroom-story-card {
   grid-column: span 6;
   min-height: 230px;
-  padding: 0 !important;
 }
 
 .dhq-newsroom-home-grid > .dhq-newsroom-story-card:first-child {
@@ -26,35 +25,32 @@
 .dhq-newsroom-story-card__media {
   position: relative;
   display: block;
-  width: 100%;
+  width: calc(100% + 40px);
+  margin: 14px -20px 0;
   aspect-ratio: 16 / 9;
   overflow: hidden;
+  border-top: 1px solid color-mix(in srgb, var(--news-accent) 24%, #334155);
   border-bottom: 1px solid color-mix(in srgb, var(--news-accent) 30%, #334155);
   background: #080b0f;
 }
 
 .dhq-newsroom-story-card__media img {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
   object-fit: contain;
   object-position: center;
   background: #080b0f;
 }
 
-.dhq-newsroom-story-card__body {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  padding: 18px 20px 20px;
-}
-
 .dhq-newsroom-home-grid > .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__media {
+  margin-top: 16px;
   aspect-ratio: 16 / 8.2;
 }
 
 .dhq-newsroom-home-grid > .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__headline {
   max-width: 820px;
+  margin-top: 18px;
   font-size: clamp(1.75rem, 3vw, 3rem);
   line-height: 1.02;
 }
@@ -71,52 +67,31 @@
 
 .dhq-newsroom-home-grid > .dhq-newsroom-story-card:nth-child(2) .dhq-newsroom-story-card__headline,
 .dhq-newsroom-home-grid > .dhq-newsroom-story-card:nth-child(3) .dhq-newsroom-story-card__headline {
+  margin-top: 13px;
   font-size: 1.05rem;
-}
-
-.dhq-newsroom-story-card::after {
-  position: absolute;
-  z-index: 3;
-  top: 12px;
-  right: 12px;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--news-accent) 55%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--news-masthead) 88%, transparent);
-  color: #fff;
-  content: attr(data-importance-label);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.54rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  backdrop-filter: blur(8px);
-}
-
-.dhq-newsroom-story-card[data-story-importance="routine"]::after {
-  opacity: 0.62;
 }
 
 .dhq-newsroom-story-card[data-story-importance="major"],
 .dhq-newsroom-story-card[data-story-importance="career-defining"] {
+  border-width: 2px;
   box-shadow: 0 22px 54px color-mix(in srgb, var(--news-accent) 16%, rgba(0, 0, 0, 0.65));
 }
 
-.dhq-newsroom-story-card[data-editorial-layout="analysis"] .dhq-newsroom-story-card__body {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--news-accent) 10%, transparent), transparent 58%);
+.dhq-newsroom-story-card[data-story-format="analysis"] {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--news-accent) 12%, transparent), transparent 56%),
+    linear-gradient(145deg, color-mix(in srgb, var(--news-masthead) 94%, #172033), var(--news-masthead));
 }
 
-.dhq-newsroom-story-card[data-editorial-layout="insider"] .dhq-newsroom-story-card__body {
-  border-top: 3px solid var(--news-accent);
+.dhq-newsroom-story-card[data-story-format="recruiting-intel"] {
+  border-top: 4px solid var(--news-accent);
 }
 
-.dhq-newsroom-story-card[data-editorial-layout="network"] .dhq-newsroom-story-card__body {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--news-accent) 7%, transparent), transparent 70%);
-}
-
-.dhq-newsroom-home-grid + .dhq-newsroom-keepsake,
-.dhq-newsroom-home-grid ~ .dhq-newsroom-keepsake {
-  margin-top: 18px;
+.dhq-newsroom-story-card[data-story-format="feature"],
+.dhq-newsroom-story-card[data-story-format="milestone"] {
+  background:
+    radial-gradient(circle at 84% 4%, color-mix(in srgb, var(--news-accent) 25%, transparent), transparent 36%),
+    linear-gradient(145deg, color-mix(in srgb, var(--news-masthead) 94%, #172033), var(--news-masthead));
 }
 
 @media (max-width: 900px) {
@@ -140,10 +115,6 @@
 @media (max-width: 640px) {
   .dhq-newsroom-home-grid {
     gap: 12px !important;
-  }
-
-  .dhq-newsroom-story-card__body {
-    padding: 16px;
   }
 
   .dhq-newsroom-home-grid > .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__headline {

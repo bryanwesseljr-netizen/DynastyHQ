@@ -1,0 +1,410 @@
+/* DynastyHQ light-mode completion pass
+   Presentation only. Loaded last so newer dark opacity utilities and gradients
+   cannot leak through the light theme. */
+
+html[data-dhq-theme="light"] {
+  --dhq-day-card: rgba(255, 255, 255, .97);
+  --dhq-day-soft: rgba(248, 250, 252, .97);
+  --dhq-day-inset: rgba(241, 245, 249, .96);
+  --dhq-day-rule: rgba(148, 163, 184, .46);
+  --dhq-day-rule-soft: rgba(203, 213, 225, .84);
+  --dhq-day-ink: #0f172a;
+  --dhq-day-muted: #475569;
+  --dhq-day-blue: #184f75;
+  --dhq-day-blue-soft: #edf6fb;
+  --dhq-day-amber: #744d08;
+  --dhq-day-amber-soft: #fbf4e5;
+  --dhq-day-green: #205c45;
+  --dhq-day-green-soft: #edf7f2;
+  --dhq-day-red-soft: #fbf0f1;
+  --dhq-day-violet-soft: #f5f1fb;
+}
+
+/* ---------- Header + compact/mobile navigation ---------- */
+html[data-dhq-theme="light"] header.no-print button[aria-controls="mobile-primary-navigation"] {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: var(--dhq-day-ink) !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .07) !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation {
+  background: rgba(255, 255, 255, .985) !important;
+  border-color: #d7dee8 !important;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, .12) !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation nav button {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  box-shadow: 0 3px 9px rgba(15, 23, 42, .04) !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation nav button:hover {
+  border-color: #b58a32 !important;
+  background: #fffaf0 !important;
+  color: #3f2e0a !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation nav button[class*="bg-amber-500"] {
+  border-color: #d59a19 !important;
+  background: #fff1ca !important;
+  color: #4b3304 !important;
+  box-shadow: inset 4px 0 0 #f59e0b !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation > div:last-child {
+  border-color: #d7dee8 !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation > div:last-child button {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation > div:last-child button[class*="bg-red-950"] {
+  border-color: #e4b8bd !important;
+  background: var(--dhq-day-red-soft) !important;
+  color: #7a2d35 !important;
+}
+
+/* ---------- Homepage command-center actions ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-home-banner button {
+  border-color: #c5cfdb !important;
+  background: #f8fafc !important;
+  background-image: none !important;
+  color: #1e293b !important;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, .07) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-home-banner button[class*="border-amber-400"] {
+  border-color: #d7ae54 !important;
+  background: #fff7e5 !important;
+  color: #664609 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] #dynastyhq-command-center .dhq-home-banner button:hover {
+  border-color: #b58a32 !important;
+  background: #fffaf0 !important;
+  color: #3f2e0a !important;
+}
+
+/* ---------- Generic light surfaces for utility / career workspaces ---------- */
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="settings"]
+) :is(section, article, aside, form, div, button)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="settings"]
+) :is(section, article, aside, form, div, button)[class*="bg-slate-8"] {
+  background: var(--dhq-day-card) !important;
+  background-image: none !important;
+  border-color: var(--dhq-day-rule-soft) !important;
+  color: var(--dhq-day-ink) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="settings"]
+) :is(section, article, aside, div, button)[class*="bg-black/"] {
+  background: var(--dhq-day-inset) !important;
+  background-image: none !important;
+  color: var(--dhq-day-ink) !important;
+}
+
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="settings"]
+) :is(header, section, article, aside, div)[class*="bg-gradient-to-"] {
+  background: var(--dhq-day-card) !important;
+  background-image: none !important;
+  border-color: var(--dhq-day-rule-soft) !important;
+}
+
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="settings"]
+) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: var(--dhq-day-ink) !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="settings"]
+) :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-slate-700"]) {
+  color: var(--dhq-day-muted) !important;
+}
+
+/* Accent-tinted surfaces stay meaningful without becoming dark islands. */
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-blue-950/"],
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-blue-500/"] {
+  background: var(--dhq-day-blue-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-amber-950/"],
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-amber-500/"] {
+  background: var(--dhq-day-amber-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-emerald-950/"],
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-emerald-500/"] {
+  background: var(--dhq-day-green-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-red-950/"],
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-red-500/"] {
+  background: var(--dhq-day-red-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-violet-950/"],
+html[data-dhq-theme="light"] main:is([data-active-tab="dataEntry"], [data-active-tab="chronicle"], [data-active-tab="trophies"]) [class*="bg-violet-500/"] {
+  background: var(--dhq-day-violet-soft) !important;
+  background-image: none !important;
+}
+
+/* ---------- College Game Week command center ---------- */
+html[data-dhq-theme="light"] .dhq-gameweek-command {
+  border-color: #b9cadb !important;
+  background: rgba(255, 255, 255, .97) !important;
+  background-image: none !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, .11) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__top {
+  border-color: #d7dee8 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__eyebrow {
+  color: #245e87 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__title,
+html[data-dhq-theme="light"] .dhq-gameweek-command__status-value,
+html[data-dhq-theme="light"] .dhq-gameweek-command__stat strong,
+html[data-dhq-theme="light"] .dhq-gameweek-step__label {
+  color: var(--dhq-day-ink) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__sub,
+html[data-dhq-theme="light"] .dhq-gameweek-command__status-copy,
+html[data-dhq-theme="light"] .dhq-gameweek-command__stat span {
+  color: var(--dhq-day-muted) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__status {
+  border-color: #e0c27a !important;
+  background: #fff9eb !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__status-label {
+  color: #8a5c08 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__stats {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__stat,
+html[data-dhq-theme="light"] .dhq-gameweek-step {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-step[data-state="done"] {
+  border-color: #a8d5c2 !important;
+  background: #edf8f3 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-step[data-state="active"] {
+  border-color: #d9a83f !important;
+  background: #fff6df !important;
+  box-shadow: inset 0 0 0 1px rgba(217, 168, 63, .18), 0 5px 16px rgba(120, 80, 10, .07) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-step__num {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__action {
+  border-color: #a9c4d9 !important;
+  background: #eef6fb !important;
+  color: #184f75 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-gameweek-command__action:hover {
+  border-color: #6f9fbe !important;
+  background: #e2f0f8 !important;
+  color: #103b59 !important;
+}
+
+/* ---------- Postgame scanner ---------- */
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] {
+  border-color: #cbd5e1 !important;
+  background: rgba(255, 255, 255, .97) !important;
+  background-image: none !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .10) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: var(--dhq-day-ink) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"]) {
+  color: var(--dhq-day-muted) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] :is(div, section)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] :is(div, section)[class*="bg-slate-8"] {
+  background: var(--dhq-day-soft) !important;
+  background-image: none !important;
+  border-color: #d7dee8 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] [class*="bg-emerald-950/"] {
+  background: var(--dhq-day-green-soft) !important;
+}
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] [class*="bg-blue-950/"] {
+  background: var(--dhq-day-blue-soft) !important;
+}
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-gameweek-scanner] [class*="bg-amber-950/"] {
+  background: var(--dhq-day-amber-soft) !important;
+}
+
+/* ---------- Chronicle ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] header:not(.no-print) {
+  border-color: #bfd0df !important;
+  background: linear-gradient(135deg, #ffffff, #f3f8fb) !important;
+  box-shadow: 0 15px 34px rgba(15, 23, 42, .10) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] section > button[class*="bg-slate-900"],
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] button[class*="bg-slate-900"] {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: var(--dhq-day-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] button[class*="bg-blue-950"] {
+  border-color: #8db9d4 !important;
+  background: #edf7fd !important;
+  box-shadow: inset 4px 0 0 #60a5fa, 0 7px 18px rgba(15, 23, 42, .07) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="chronicle"] span[class*="border-slate-950"] {
+  border-color: #ffffff !important;
+}
+
+/* ---------- Legacy ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="trophies"] header:not(.no-print) {
+  border-color: #dbc487 !important;
+  background: linear-gradient(135deg, #ffffff, #fff9ec) !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .10) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="trophies"] :is(section, div)[class*="bg-slate-900"],
+html[data-dhq-theme="light"] main[data-active-tab="trophies"] :is(section, div)[class*="bg-slate-950"] {
+  border-color: #d7dee8 !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  color: var(--dhq-day-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="trophies"] :is(div, section)[class*="bg-amber-950/"] {
+  border-color: #ead7a4 !important;
+  background: #fff9eb !important;
+}
+
+/* ---------- Podcast ---------- */
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(section, aside, div, button)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(section, aside, div, button)[class*="bg-slate-8"] {
+  border-color: #d7dee8 !important;
+  background: var(--dhq-day-card) !important;
+  background-image: none !important;
+  color: var(--dhq-day-ink) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is(section, aside, div)[class*="bg-gradient-to-"] {
+  background: var(--dhq-day-card) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] section > div.grid > div.relative.overflow-hidden {
+  background: linear-gradient(160deg, #f8fbfd, #eef4f8) !important;
+  border-color: #d7dee8 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] section > div.grid > div.relative.overflow-hidden > img[aria-hidden="true"] {
+  opacity: .07 !important;
+  filter: blur(12px) saturate(.7) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] section > div.grid > div.relative.overflow-hidden > div.absolute.inset-0 {
+  background: linear-gradient(to top, rgba(255,255,255,.78), rgba(255,255,255,.18), rgba(255,255,255,.04)) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: var(--dhq-day-ink) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-slate-700"]) {
+  color: var(--dhq-day-muted) !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-blue-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-blue-500/"] {
+  background: var(--dhq-day-blue-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-emerald-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-emerald-500/"] {
+  background: var(--dhq-day-green-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-amber-950/"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] [class*="bg-amber-500/"] {
+  background: var(--dhq-day-amber-soft) !important;
+  background-image: none !important;
+}
+
+/* Keep the actual podcast artwork itself untouched. */
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] img[alt="The Gridiron Grind"],
+html[data-dhq-theme="light"] main[data-active-tab="podcast"] img[alt="The Gridiron Grind podcast cover"] {
+  background: #07111b !important;
+}
+
+/* ---------- Consistent readable shadows in day mode ---------- */
+html[data-dhq-theme="light"] main:is(
+  [data-active-tab="dataEntry"],
+  [data-active-tab="chronicle"],
+  [data-active-tab="trophies"],
+  [data-active-tab="podcast"],
+  [data-active-tab="settings"]
+) :is([class~="shadow-xl"], [class~="shadow-2xl"], [class~="shadow-lg"]) {
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .09) !important;
+}

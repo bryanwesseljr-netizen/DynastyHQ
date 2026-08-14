@@ -1,21 +1,14 @@
 import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { PODCAST_HOSTS } from '../src/domain/podcastShow.js';
 
 const MODEL = process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts';
 export const config = { maxDuration: 60 };
 
-// Keep the legacy host IDs for stored-episode compatibility while presenting
-// the current Gridiron Grind identities in the UI and generation layer.
-const HOSTS = {
-  'marcus-grant': {
-    voice: 'cedar',
-    instructions: 'Speak as Mark Thompson, an adult male lead host on a polished American college-football podcast. Use a natural lower male register, confident newsroom delivery, warm conversational tone, medium pace, and restrained sports-radio energy. Do not sound theatrical or like an announcer caricature.',
-  },
-  'tyler-brooks': {
-    voice: 'coral',
-    instructions: 'Speak as Sarah Chen, an adult female college-football analyst on a polished American sports podcast. Use a natural female register, clear intelligent delivery, conversational confidence, medium pace, and restrained excitement. Sound analytical and personable rather than theatrical.',
-  },
-};
+const HOSTS = Object.fromEntries(PODCAST_HOSTS.map((host) => [host.id, {
+  voice: host.voice,
+  instructions: host.speechInstructions,
+}]));
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

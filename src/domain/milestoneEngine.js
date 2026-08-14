@@ -1,4 +1,5 @@
 import { CAREER_SCHEMA_VERSION } from './weeklyEngine.js';
+import { findExistingCommitment } from './careerDataHygiene.js';
 
 export const MILESTONE_TYPES = Object.freeze({
   COMMITMENT: 'commitment',
@@ -140,6 +141,14 @@ const milestoneSummary = (type, institution, previousInstitution, achievement, n
 };
 
 export const findMilestoneConflict = (state, draft) => {
+  if (draft?.type === MILESTONE_TYPES.COMMITMENT) {
+    const existingCommitment = findExistingCommitment([
+      ...(state?.careerMilestones || []),
+      ...(state?.careerChronicle || []),
+    ], draft.institution);
+    if (existingCommitment) return existingCommitment;
+  }
+
   const milestoneKey = createMilestoneKey(draft);
   const record = (state?.careerMilestones || []).find((entry) => entry.milestoneKey === milestoneKey);
   if (record) return record;

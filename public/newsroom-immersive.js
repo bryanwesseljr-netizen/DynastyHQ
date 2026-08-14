@@ -4,6 +4,67 @@
   let overviewRequested = false;
   let applying = false;
 
+  const installStyles = () => {
+    if (document.getElementById('dhq-newsroom-immersive-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'dhq-newsroom-immersive-styles';
+    style.textContent = `
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact {
+        border-color: rgba(51, 65, 85, 0.72) !important;
+        background: rgba(2, 6, 23, 0.86) !important;
+        box-shadow: 0 12px 30px rgba(2, 6, 23, 0.2) !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > div:first-child {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        padding: 10px 16px !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > div:first-child > p:first-child,
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > div:first-child > p:last-child {
+        display: none !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > div:first-child > h2 {
+        margin: 0 !important;
+        font-size: 12px !important;
+        line-height: 1 !important;
+        letter-spacing: 0.12em !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > section {
+        border-top: 1px solid rgba(51, 65, 85, 0.55) !important;
+        padding: 10px 16px !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > section > p:not(.text-blue-300) {
+        display: none !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > section > div:first-of-type {
+        gap: 8px !important;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-compact button {
+        min-height: 34px;
+      }
+
+      @media (max-width: 640px) {
+        main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > div:first-child {
+          padding: 9px 12px !important;
+        }
+
+        main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > section {
+          padding: 9px 12px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  };
+
   const newsroomMain = () => document.querySelector('main[data-active-tab="newsroom"]');
 
   const compactPhotoLibrary = (main) => {
@@ -38,6 +99,7 @@
     if (applying) return;
     applying = true;
     requestAnimationFrame(() => {
+      installStyles();
       const main = newsroomMain();
       if (main) {
         compactPhotoLibrary(main);
@@ -62,7 +124,6 @@
     if (label.includes('back to all articles')) {
       overviewRequested = true;
       articleFirstPending = false;
-      return;
     }
   }, true);
 

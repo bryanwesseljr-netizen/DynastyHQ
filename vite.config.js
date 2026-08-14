@@ -211,6 +211,107 @@ const recruitingCommandCenter = () => ({
   },
 })
 
+const podcastHostCoverExperience = () => ({
+  name: 'dynastyhq-podcast-host-cover-experience',
+  enforce: 'pre',
+  transform(code, id) {
+    if (/[\\/]src[\\/]App\.jsx$/.test(id)) {
+      let next = code
+      const handlerTarget = `  const handleGeneratePodcast = async (publicationId, onProgress = () => {}) => {`
+      const handlerReplacement = `  const handlePodcastCoverUpload = async (file) => {
+    if (!file) return '';
+    if (!userState || isReadOnly) throw new Error('Sign in as the DynastyHQ owner before changing podcast artwork.');
+    if (!String(file.type || '').startsWith('image/')) throw new Error('Choose a JPEG, PNG, or WebP image for the podcast cover.');
+    setNewsroomMediaBusy(true);
+    try {
+      const assetId = 'podcast-cover-' + Date.now();
+      const imageDataUrl = await compressImage(file, 2000, 0.9);
+      const uploaded = await uploadNewsroomMedia({
+        firebaseApp,
+        appId,
+        userId: userState.uid,
+        assetId,
+        imageDataUrl,
+        fileName: file.name || 'gridiron-grind-cover.jpg',
+        origin: NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+      });
+      updateAppState((prev) => ({
+        ...prev,
+        outletImages: { ...(prev.outletImages || {}), podcast: uploaded.downloadUrl },
+      }), 'Gridiron Grind cover updated.');
+      return uploaded.downloadUrl;
+    } finally {
+      setNewsroomMediaBusy(false);
+    }
+  };
+
+${handlerTarget}`
+      next = next.replace(handlerTarget, handlerReplacement)
+      const propsTarget = `               onGenerate={handleGeneratePodcast}
+               onLoadAudio={handleLoadPodcastAudio}`
+      const propsReplacement = `${propsTarget}
+               onCoverUpload={handlePodcastCoverUpload}
+               coverBusy={newsroomMediaBusy}`
+      next = next.replace(propsTarget, propsReplacement)
+      if (next === code) return null
+      return { code: next, map: null }
+    }
+
+    if (/[\\/]src[\\/]components[\\/]PodcastStudio\.jsx$/.test(id)) {
+      let next = code
+      next = next.replace(
+        `const PodcastStudioContent = ({ state = {}, readOnly, initialPublicationId, onGenerate, onLoadAudio }) => {`,
+        `const PodcastStudioContent = ({ state = {}, readOnly, initialPublicationId, onGenerate, onLoadAudio, onCoverUpload, coverBusy = false }) => {`,
+      )
+      next = next.replace(
+        `  const episodeHosts = Array.isArray(episode?.hosts) ? episode.hosts : [];`,
+        `  const canonicalHostIdentity = {
+    'marcus-grant': { name: 'Mark Thompson', role: 'Lead Host & College Football Insider' },
+    'tyler-brooks': { name: 'Sarah Chen', role: 'College Football Analyst' },
+  };
+  const episodeHosts = (Array.isArray(episode?.hosts) ? episode.hosts : []).map((host) => ({
+    ...host,
+    ...(canonicalHostIdentity[host.id] || {}),
+  }));`,
+      )
+      next = next.replace(
+        'Marcus Grant and Tyler Brooks break down each verified week from the high-school recruiting trail through the head-coaching years.',
+        'Mark Thompson and Sarah Chen break down each verified week from the high-school recruiting trail through the head-coaching years.',
+      )
+      const disclosureTarget = `<p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Voices are AI-generated.</p>`
+      const disclosureReplacement = `${disclosureTarget}
+            {!readOnly && typeof onCoverUpload === 'function' && (
+              <label className="mt-4 inline-flex cursor-pointer items-center rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-blue-200 transition-colors hover:bg-blue-500/20">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={coverBusy}
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    setError('');
+                    try {
+                      await onCoverUpload(file);
+                    } catch (uploadError) {
+                      setError(uploadError.message || 'The podcast cover could not be uploaded.');
+                    } finally {
+                      event.target.value = '';
+                    }
+                  }}
+                />
+                {coverBusy ? 'Uploading Cover…' : (state.outletImages?.podcast ? 'Change Podcast Cover' : 'Add Podcast Cover')}
+              </label>
+            )}`
+      next = next.replace(disclosureTarget, disclosureReplacement)
+      if (next === code) return null
+      return { code: next, map: null }
+    }
+
+    return null
+  },
+})
+
 export default defineConfig({
   server: {
     host: '0.0.0.0',
@@ -222,6 +323,7 @@ export default defineConfig({
     collegeGameWeekCommandCenter(),
     legacyCareerResume(),
     recruitingCommandCenter(),
+    podcastHostCoverExperience(),
     react(),
     tailwindcss(),
   ],

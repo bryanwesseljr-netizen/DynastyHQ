@@ -15,6 +15,11 @@ const dataUrlToBlob = (dataUrl) => {
   }
 };
 
+const safePart = (value, fallback) => String(value || fallback)
+  .replace(/[^a-zA-Z0-9_-]/g, '-')
+  .replace(/-+/g, '-')
+  .slice(0, 120);
+
 const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, reject) => {
   const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
   Promise.resolve(promise).then(
@@ -23,41 +28,23 @@ const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, rejec
   );
 });
 
-const waitForUpload = (task, timeoutMs = 45000) => new Promise((resolve, reject) => {
-  let settled = false;
-  const timer = setTimeout(() => {
-    if (settled) return;
-    settled = true;
-    try { task.cancel(); } catch { /* no-op */ }
-    reject(new Error('The photo upload timed out. Check your connection and try again.'));
-  }, timeoutMs);
+const getOwnerToken = async (firebaseApp, userId) => {
+  if (!firebaseApp || !userId) throw new Error('Sign in as the DynastyHQ owner before uploading photos.');
+  const { getAuth } = await import('firebase/auth');
+  const currentUser = getAuth(firebaseApp).currentUser;
+  if (!currentUser || currentUser.uid !== userId) throw new Error('Your DynastyHQ sign-in expired. Sign in again and retry.');
+  return currentUser.getIdToken();
+};
 
-  task.on('state_changed', undefined, (error) => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    reject(error);
-  }, () => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    resolve(task.snapshot);
-  });
-});
-
-const safePart = (value, fallback) => String(value || fallback)
-  .replace(/[^a-zA-Z0-9_-]/g, '-')
-  .replace(/-+/g, '-')
-  .slice(0, 120);
-
-const friendlyStorageError = (error) => {
-  if (error?.message?.includes('timed out')) return error;
-  const code = String(error?.code || '');
-  if (code.includes('unauthorized')) return new Error('Firebase Storage blocked this upload. Sign in again and retry.');
-  if (code.includes('canceled')) return new Error('The photo upload was canceled before it finished.');
-  if (code.includes('quota')) return new Error('Firebase Storage quota was reached. Try again later or check the project storage quota.');
-  if (code.includes('retry-limit')) return new Error('The photo upload could not finish after several retries. Check your connection and try again.');
-  return new Error(error?.message || 'The newsroom photo could not be uploaded.');
+const friendlyBlobError = (error) => {
+  const message = String(error?.message || '');
+  if (error?.name === 'AbortError' || message.toLowerCase().includes('aborted')) {
+    return new Error('The photo upload took too long and was canceled. Try again.');
+  }
+  if (/401|unauthor/i.test(message)) return new Error('DynastyHQ could not authorize this photo upload. Sign in again and retry.');
+  if (/413|too large|maximum size/i.test(message)) return new Error('That photo is too large for the Career Photo Library. Choose an image under 12 MB.');
+  if (/blob_store_id|blob store|credentials|oidc/i.test(message)) return new Error('Vercel Blob is not available to this preview yet. Check the Preview storage connection and retry.');
+  return new Error(message || 'The newsroom photo could not be uploaded.');
 };
 
 export const uploadNewsroomMedia = async ({
@@ -70,46 +57,83 @@ export const uploadNewsroomMedia = async ({
   origin = 'upload',
 }) => {
   if (!firebaseApp || !userId || !assetId || !imageDataUrl) throw new Error('The newsroom upload is missing required information.');
-  const { getDownloadURL, getStorage, ref, uploadBytesResumable } = await import('firebase/storage');
-  const storage = getStorage(firebaseApp);
   const blob = dataUrlToBlob(imageDataUrl);
+  if (blob.size > 12_000_000) throw new Error('That photo is larger than 12 MB. Choose a smaller image.');
+
   const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
-  const storagePath = `artifacts/${safePart(appId, 'dynasty-hq')}/users/${safePart(userId, 'owner')}/newsroom_media/${safePart(assetId, 'image')}.${extension}`;
-  const storageRef = ref(storage, storagePath);
+  const pathname = `${safePart(appId, 'dynasty-hq')}/${safePart(userId, 'owner')}/newsroom-media/${safePart(assetId, 'image')}-${Date.now()}.${extension}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
 
   try {
-    const task = uploadBytesResumable(storageRef, blob, {
+    const idToken = await getOwnerToken(firebaseApp, userId);
+    const { uploadPresigned } = await import('@vercel/blob/client');
+    const uploaded = await uploadPresigned(pathname, blob, {
+      access: 'public',
+      handleUploadUrl: '/api/newsroom-media',
       contentType: blob.type || 'image/jpeg',
-      cacheControl: 'private,max-age=31536000,immutable',
-      customMetadata: {
-        originalFileName: String(fileName || 'newsroom-photo').slice(0, 180),
+      headers: { Authorization: `Bearer ${idToken}` },
+      multipart: blob.size > 5_000_000,
+      abortSignal: controller.signal,
+      clientPayload: JSON.stringify({
+        assetId: String(assetId).slice(0, 180),
+        fileName: String(fileName || 'newsroom-photo').slice(0, 180),
         origin: String(origin).slice(0, 40),
-      },
+      }),
     });
-    await waitForUpload(task);
-    const downloadUrl = await withTimeout(
-      getDownloadURL(storageRef),
-      15000,
-      'The photo uploaded, but DynastyHQ could not retrieve its library URL. Try again.',
-    );
+
     return {
-      downloadUrl,
-      storagePath,
-      mimeType: blob.type || 'image/jpeg',
+      downloadUrl: uploaded.url,
+      storagePath: uploaded.url,
+      mimeType: uploaded.contentType || blob.type || 'image/jpeg',
       sizeBytes: blob.size,
+      storageProvider: 'vercel-blob',
     };
   } catch (error) {
-    throw friendlyStorageError(error);
+    throw friendlyBlobError(error);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const deleteVercelBlob = async ({ firebaseApp, storagePath }) => {
+  const { getAuth } = await import('firebase/auth');
+  const currentUser = getAuth(firebaseApp).currentUser;
+  if (!currentUser) throw new Error('Sign in as the DynastyHQ owner before deleting photos.');
+  const idToken = await currentUser.getIdToken();
+  const response = await withTimeout(fetch('/api/newsroom-media', {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url: storagePath }),
+  }), 20_000, 'Deleting this photo took too long. Try again.');
+
+  if (!response.ok) {
+    let message = 'The image could not be deleted from Vercel Blob.';
+    try {
+      const body = await response.json();
+      if (body?.error) message = body.error;
+    } catch { /* keep fallback */ }
+    throw new Error(message);
   }
 };
 
 export const deleteNewsroomMedia = async ({ firebaseApp, storagePath }) => {
   if (!firebaseApp || !storagePath) return;
+
+  if (/^https?:\/\//i.test(storagePath)) {
+    await deleteVercelBlob({ firebaseApp, storagePath });
+    return;
+  }
+
+  // Backward compatibility for any media assets created before the Vercel Blob migration.
   const { deleteObject, getStorage, ref } = await import('firebase/storage');
   const storage = getStorage(firebaseApp);
   await withTimeout(
     deleteObject(ref(storage, storagePath)),
-    20000,
-    'Deleting this photo took too long. Try again.',
+    20_000,
+    'Deleting this legacy photo took too long. Try again.',
   );
 };

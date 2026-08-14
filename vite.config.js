@@ -165,6 +165,34 @@ const collegeGameWeekCommandCenter = () => ({
   },
 })
 
+const betweenGamesEfficiency = () => ({
+  name: 'dynastyhq-between-games-efficiency',
+  enforce: 'pre',
+  transform(code, id) {
+    if (/[\\/]src[\\/]components[\\/]CareerCommandCenter\.jsx$/.test(id)) {
+      let next = code
+      const importTarget = `import CareerTransitionPanel from './CareerTransitionPanel';`
+      next = next.replace(importTarget, `${importTarget}\nimport BetweenGamesHub from './BetweenGamesHub';`)
+      const dashboardGridTarget = `      <div className="dhq-dashboard-grid grid gap-1.5 p-2 sm:px-3 lg:grid-cols-12">`
+      next = next.replace(dashboardGridTarget, `      <BetweenGamesHub state={state} readOnly={readOnly} onNavigate={onNavigate} />\n\n${dashboardGridTarget}`)
+      if (next === code) return null
+      return { code: next, map: null }
+    }
+
+    if (/[\\/]src[\\/]App\.jsx$/.test(id)) {
+      let next = code
+      const lazyTarget = `const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));`
+      next = next.replace(lazyTarget, `${lazyTarget}\nconst WeeklyEfficiencyPanel = lazy(() => import('./components/WeeklyEfficiencyPanel'));`)
+      const agendaTarget = `      {isHighSchoolCareer ? (\n        <div className="mb-6">`
+      next = next.replace(agendaTarget, `      <WeeklyEfficiencyPanel state={appState} rtgUpdate={rtgUpdate} coachUpdate={coachUpdate} isCoach={isCoach} isHighSchoolCareer={isHighSchoolCareer} />\n\n${agendaTarget}`)
+      if (next === code) return null
+      return { code: next, map: null }
+    }
+
+    return null
+  },
+})
+
 const legacyCareerResume = () => ({
   name: 'dynastyhq-legacy-career-resume',
   enforce: 'pre',
@@ -334,6 +362,7 @@ export default defineConfig({
     legacyGameLogSafety(),
     newsroomCoverageHome(),
     collegeGameWeekCommandCenter(),
+    betweenGamesEfficiency(),
     legacyCareerResume(),
     recruitingCommandCenter(),
     podcastHostCoverExperience(),

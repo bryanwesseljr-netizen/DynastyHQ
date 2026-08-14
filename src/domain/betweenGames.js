@@ -1,4 +1,5 @@
 const hasValue = (value) => value !== '' && value !== null && value !== undefined;
+const safeArray = (value) => Array.isArray(value) ? value : [];
 
 const normalizedComparable = (value) => {
   if (!hasValue(value)) return '';
@@ -15,7 +16,7 @@ const chronological = (left, right) => (
 );
 
 const publicationIdentity = (entry = {}) => (
-  entry.publicationId || entry.weekKey || entry.id || ''
+  entry?.publicationId || entry?.weekKey || entry?.id || ''
 );
 
 const samePublication = (left, right) => {
@@ -58,24 +59,25 @@ export const formatBetweenGamesValue = (key, value) => {
 };
 
 export const getLatestPublishedWeek = (state = {}) => (
-  [...(state.weeklyUpdates || [])].sort(chronological).at(-1) || null
+  [...safeArray(state?.weeklyUpdates)].filter(Boolean).sort(chronological).at(-1) || null
 );
 
 export const getLatestPublishedRtgSnapshot = (state = {}) => {
-  const update = [...(state.weeklyUpdates || [])]
+  const update = [...safeArray(state?.weeklyUpdates)]
+    .filter(Boolean)
     .sort(chronological)
     .reverse()
-    .find((entry) => entry?.rtgSnapshot && Object.values(entry.rtgSnapshot).some(hasValue));
+    .find((entry) => entry?.rtgSnapshot && typeof entry.rtgSnapshot === 'object' && Object.values(entry.rtgSnapshot).some(hasValue));
   return {
     update: update || null,
-    snapshot: update?.rtgSnapshot || {},
+    snapshot: update?.rtgSnapshot && typeof update.rtgSnapshot === 'object' ? update.rtgSnapshot : {},
   };
 };
 
 export const buildChangeOnlyModel = ({ state = {}, rtgUpdate = {} } = {}) => {
   const { update: baselineUpdate, snapshot: baseline } = getLatestPublishedRtgSnapshot(state);
-  const savedCurrent = state.rtg || {};
-  const draft = rtgUpdate || {};
+  const savedCurrent = state?.rtg && typeof state.rtg === 'object' ? state.rtg : {};
+  const draft = rtgUpdate && typeof rtgUpdate === 'object' ? rtgUpdate : {};
 
   const fields = fieldDefinitions.map((field) => {
     const baselineValue = baseline[field.key];
@@ -119,9 +121,9 @@ export const buildChangeOnlyModel = ({ state = {}, rtgUpdate = {} } = {}) => {
 };
 
 const formatGameSummary = (game = {}) => {
-  if (!game) return null;
+  if (!game || typeof game !== 'object') return null;
   if (game.stage === 'high-school' || game.evaluation) {
-    const evaluation = game.evaluation || game;
+    const evaluation = game.evaluation && typeof game.evaluation === 'object' ? game.evaluation : game;
     return {
       label: `Tape Game ${evaluation.gameNumber || game.week || '—'}`,
       result: 'Evaluation logged',
@@ -139,7 +141,7 @@ const formatGameSummary = (game = {}) => {
 };
 
 const latestMatchingIssue = (state, latestUpdate) => {
-  const issues = [...(state.newsroomIssues || [])];
+  const issues = safeArray(state?.newsroomIssues).filter(Boolean);
   if (!issues.length) return null;
   if (latestUpdate) {
     const exact = [...issues].reverse().find((issue) => samePublication(issue, latestUpdate));
@@ -149,7 +151,7 @@ const latestMatchingIssue = (state, latestUpdate) => {
 };
 
 const latestMatchingPodcast = (state, issue, latestUpdate) => {
-  const episodes = [...(state.podcastEpisodes || [])];
+  const episodes = safeArray(state?.podcastEpisodes).filter(Boolean);
   if (!episodes.length) return null;
   const target = issue || latestUpdate;
   if (target) {
@@ -160,15 +162,15 @@ const latestMatchingPodcast = (state, issue, latestUpdate) => {
 };
 
 const currentStage = (state = {}) => {
-  if (state.careerPhase === 'HC') return 'Head Coach';
-  if (state.careerPhase === 'OC') return 'Offensive Coordinator';
-  if (state.player?.isCommitted) return 'College Player';
+  if (state?.careerPhase === 'HC') return 'Head Coach';
+  if (state?.careerPhase === 'OC') return 'Offensive Coordinator';
+  if (state?.player?.isCommitted) return 'College Player';
   return 'High School Recruiting';
 };
 
 const recoverableAgendaDraft = (state = {}) => {
-  const draft = state.weeklyAgendaDraft;
-  if (!draft) return null;
+  const draft = state?.weeklyAgendaDraft;
+  if (!draft || typeof draft !== 'object') return null;
   if (Number(draft.season || 0) !== Number(state.currentSeason || 1)) return null;
   if (Number(draft.week || 0) !== Number(state.currentWeek || 1)) return null;
   if (draft.careerPhase && state.careerPhase && draft.careerPhase !== state.careerPhase) return null;
@@ -176,16 +178,21 @@ const recoverableAgendaDraft = (state = {}) => {
 };
 
 export const buildBetweenGamesModel = (state = {}) => {
-  const latestUpdate = getLatestPublishedWeek(state);
-  const latestGame = latestUpdate?.game || [...(state.gameLogs || [])].at(-1) || null;
-  const latestIssue = latestMatchingIssue(state, latestUpdate);
-  const latestPodcast = latestMatchingPodcast(state, latestIssue, latestUpdate);
-  const agendaDraft = recoverableAgendaDraft(state);
-  const { snapshot: latestRtg } = getLatestPublishedRtgSnapshot(state);
-  const stage = currentStage(state);
+  const safeState = state && typeof state === 'object' ? state : {};
+  const latestUpdate = getLatestPublishedWeek(safeState);
+  const gameLogs = safeArray(safeState.gameLogs).filter(Boolean);
+  const latestGame = latestUpdate?.game || gameLogs.at(-1) || null;
+  const latestIssue = latestMatchingIssue(safeState, latestUpdate);
+  const latestPodcast = latestMatchingPodcast(safeState, latestIssue, latestUpdate);
+  const agendaDraft = recoverableAgendaDraft(safeState);
+  const { snapshot: latestRtg } = getLatestPublishedRtgSnapshot(safeState);
+  const stage = currentStage(safeState);
   const isCollegePlayer = stage === 'College Player';
-  const transfer = state.playerRecruiting?.transfer || {};
-  const transferOpen = transfer.status === 'exploring';
+  const transfer = safeState?.playerRecruiting?.transfer && typeof safeState.playerRecruiting.transfer === 'object'
+    ? safeState.playerRecruiting.transfer
+    : {};
+  const transferTargets = safeArray(transfer.targets);
+  const transferOpen = String(transfer.status || '').toLowerCase() === 'exploring';
 
   const missingRtg = isCollegePlayer
     ? [
@@ -201,7 +208,7 @@ export const buildBetweenGamesModel = (state = {}) => {
     inbox.push({
       id: 'saved-week',
       priority: 'high',
-      title: `Week ${state.currentWeek || 1} draft is in progress`,
+      title: `Week ${safeState.currentWeek || 1} draft is in progress`,
       detail: 'Resume the saved Weekly Agenda instead of starting over.',
       actionLabel: 'Resume Week',
       tab: 'dataEntry',
@@ -212,7 +219,7 @@ export const buildBetweenGamesModel = (state = {}) => {
       id: 'transfer-decision',
       priority: 'high',
       title: 'Transfer decision is open',
-      detail: `${(transfer.targets || []).length} option${(transfer.targets || []).length === 1 ? '' : 's'} currently on the board.`,
+      detail: `${transferTargets.length} option${transferTargets.length === 1 ? '' : 's'} currently on the board.`,
       actionLabel: 'Open Decision Desk',
       tab: 'recruiting',
     });
@@ -248,30 +255,35 @@ export const buildBetweenGamesModel = (state = {}) => {
     });
   }
 
-  const latestChanges = (latestUpdate?.rtgChanges || []).slice(0, 5).map((change) => ({
-    key: change.key,
-    label: change.label || change.key,
-    before: formatBetweenGamesValue(change.key, change.previous),
-    after: formatBetweenGamesValue(change.key, change.current),
-    direction: Number(change.delta) > 0 ? 'up' : Number(change.delta) < 0 ? 'down' : 'changed',
-  }));
+  const rtgChanges = safeArray(latestUpdate?.rtgChanges);
+  const latestChanges = rtgChanges.slice(0, 5).map((change, index) => {
+    const entry = change && typeof change === 'object' ? change : {};
+    const key = entry.key || entry.field || `change-${index}`;
+    return {
+      key,
+      label: entry.label || entry.key || entry.field || 'RTG update',
+      before: formatBetweenGamesValue(key, entry.previous ?? entry.before),
+      after: formatBetweenGamesValue(key, entry.current ?? entry.after),
+      direction: Number(entry.delta) > 0 ? 'up' : Number(entry.delta) < 0 ? 'down' : 'changed',
+    };
+  });
 
   const primaryAction = agendaDraft
     ? {
-        label: `Resume Week ${state.currentWeek || 1}`,
+        label: `Resume Week ${safeState.currentWeek || 1}`,
         detail: 'A saved Weekly Agenda is waiting for you.',
         tab: 'dataEntry',
       }
     : {
-        label: `Open Week ${state.currentWeek || 1}`,
+        label: `Open Week ${safeState.currentWeek || 1}`,
         detail: latestUpdate ? 'The previous week is closed. Start with the next pregame snapshot.' : 'Start the first verified weekly workflow.',
         tab: 'dataEntry',
       };
 
   return {
     stage,
-    season: Number(state.currentSeason) || 1,
-    week: Number(state.currentWeek) || 1,
+    season: Number(safeState.currentSeason) || 1,
+    week: Number(safeState.currentWeek) || 1,
     latestUpdate,
     latestGame: formatGameSummary(latestGame),
     latestIssue,

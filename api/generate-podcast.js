@@ -4,6 +4,16 @@ import { json, verifyFirebaseUser } from './_auth.js';
 const MODEL = process.env.OPENAI_PODCAST_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
+const CHAPTER_TITLES = [
+  'Opening Drive',
+  'QB Room',
+  'Film Room',
+  'Recruiting Desk',
+  'Around the Program',
+  "Coach's Clipboard",
+  'Next Saturday',
+];
+
 const safeText = (value, max) => String(value || '').trim().slice(0, max);
 
 const validatePayload = (body = {}) => {
@@ -47,7 +57,9 @@ const schemaFor = (payload) => ({
         type: 'object', additionalProperties: false,
         required: ['id', 'title', 'summary', 'segmentStart'],
         properties: {
-          id: { type: 'string' }, title: { type: 'string' }, summary: { type: 'string' },
+          id: { type: 'string' },
+          title: { type: 'string', enum: CHAPTER_TITLES },
+          summary: { type: 'string' },
           segmentStart: { type: 'integer', minimum: 0, maximum: 11 },
         },
       },
@@ -84,7 +96,11 @@ Non-negotiable editorial rules:
 - Do not mention that this is a video game, database, JSON, screenshot, AI, prompt, or fact ledger.
 - Produce 8 to 12 alternating host turns totaling 700 to 850 spoken words, designed for roughly five to six minutes.
 - Give Marcus Grant a measured recruiting-insider voice. Give Tyler Brooks a sharper college-football analyst voice. Keep both natural, conversational, and family-friendly.
-- Use four to six concise chapters. segmentStart is the zero-based index of the first segment in that chapter.
+- Use four to six concise recurring show chapters. Opening Drive must be first and Next Saturday must be last.
+- Choose middle chapters only when the supplied facts support them: QB Room for role/development/depth/Coach Trust/player progression; Film Room for verified performance or tape-evaluation evidence; Recruiting Desk for offers, recruiting movement, commitments, roster recruiting, or transfer-portal facts; Around the Program for verified team/program context, awards, injuries, records, or broader developments; Coach's Clipboard for verified coordinator/head-coach decisions, scheme, staff, roster-management, or program-building facts.
+- Do not force a recurring chapter when its topic is unsupported. A four-chapter episode is preferable to inventing material.
+- Next Saturday is a forward-looking closing segment, but it may only identify verified unresolved questions or themes to watch. Never invent the next opponent, schedule, event, or expected outcome.
+- segmentStart is the zero-based index of the first host turn in that chapter.
 - Each segment must cite every supplied fact key it relies on. Intro/outro connective language may use an empty citation list.
 - End with a short tease that promises only future analysis, not an invented matchup or event.`;
 

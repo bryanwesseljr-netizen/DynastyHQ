@@ -68,6 +68,10 @@ export const DEFAULT_CAREER_STATE = {
     filmroom: '',
     podcast: '',
   },
+  podcastBranding: {
+    version: 2,
+    coverUrl: '',
+  },
   trophies: [],
   rumors: [],
   podcastAudio: '',

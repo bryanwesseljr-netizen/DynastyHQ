@@ -180,6 +180,29 @@ const collegeGameWeekCommandCenter = () => ({
   },
 })
 
+// Legacy is a career resume rather than another event browser. Route the tab to
+// its dedicated workspace while leaving the old inline renderer in place as a
+// harmless fallback for source compatibility.
+const legacyCareerResume = () => ({
+  name: 'dynastyhq-legacy-career-resume',
+  enforce: 'pre',
+  transform(code, id) {
+    if (!/[\\/]src[\\/]App\.jsx$/.test(id)) return null
+
+    let next = code
+    const lazyTarget = `const CareerCommandCenter = lazy(() => import('./components/CareerCommandCenter'));`
+    const lazyReplacement = `${lazyTarget}\nconst LegacyWorkspace = lazy(() => import('./components/LegacyWorkspace'));`
+    next = next.replace(lazyTarget, lazyReplacement)
+    next = next.replace(
+      `{activeTab === 'trophies' && renderTrophies()}`,
+      `{activeTab === 'trophies' && <LegacyWorkspace state={appState} />}`,
+    )
+
+    if (next === code) return null
+    return { code: next, map: null }
+  },
+})
+
 export default defineConfig({
   server: {
     host: '0.0.0.0',
@@ -189,6 +212,7 @@ export default defineConfig({
     legacyGameLogSafety(),
     newsroomCoverageHome(),
     collegeGameWeekCommandCenter(),
+    legacyCareerResume(),
     react(),
     tailwindcss(),
   ],

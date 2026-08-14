@@ -1,0 +1,20 @@
+/* Consistent sports-editorial hero image framing.
+   Photos fill the available article width without stretching. */
+.dhq-news-hero {
+  overflow: hidden;
+}
+
+.dhq-news-hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center center;
+}
+
+@media (max-width: 640px) {
+  .dhq-news-hero img {
+    aspect-ratio: 4 / 3;
+  }
+}

@@ -29,6 +29,60 @@ const legacyGameLogSafety = () => ({
   },
 })
 
+// The Newsroom coverage overview uses the same article media and editorial
+// metadata as the reader, but the base component predates the immersive
+// homepage treatment. Enhance only that overview at build time so the lead
+// story can carry photography and importance/format styling without changing
+// stored career data or the article reader itself.
+const newsroomCoverageHome = () => ({
+  name: 'dynastyhq-newsroom-coverage-home',
+  enforce: 'pre',
+  transform(code, id) {
+    if (!/[\\/]src[\\/]components[\\/]GroundedNewsroom\.jsx$/.test(id)) return null
+
+    let next = code
+
+    next = next.replace(
+      '<div className="grid gap-4 md:grid-cols-2">',
+      '<div className="dhq-newsroom-home-grid">',
+    )
+
+    const mediaTarget = `const cardPresentation = resolveNewsroomPresentation(cardStory);
+              return (`
+    const mediaReplacement = `const cardPresentation = resolveNewsroomPresentation(cardStory);
+              const cardImageKey = theme === 'on3' ? 'on3' : theme;
+              const cardMedia = resolveNewsroomMedia({
+                article: cardStory,
+                mediaLibrary,
+                fallbackUrl: outletImages?.[cardImageKey] || outletImages?.broadsheet,
+              });
+              return (`
+    next = next.replace(mediaTarget, mediaReplacement)
+
+    const metadataTarget = `data-editorial-layout={cardPresentation.layout}
+                  style={presentationVariables(cardPresentation)}`
+    const metadataReplacement = `data-editorial-layout={cardPresentation.layout}
+                  data-story-importance={cardStory.storyImportance || 'routine'}
+                  data-story-format={cardStory.storyFormat || 'news'}
+                  style={presentationVariables(cardPresentation)}`
+    next = next.replace(metadataTarget, metadataReplacement)
+
+    const outletTarget = `<span className="dhq-newsroom-story-card__outlet flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]"><Icon size={15} /> {label}</span>
+                  <span className="dhq-newsroom-story-card__headline mt-4 text-xl font-black leading-tight">{cardStory.headline}</span>`
+    const outletReplacement = `<span className="dhq-newsroom-story-card__outlet flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]"><Icon size={15} /> {label}</span>
+                  {cardMedia?.url && (
+                    <span className="dhq-newsroom-story-card__media" aria-hidden="true">
+                      <img src={cardMedia.url} alt="" />
+                    </span>
+                  )}
+                  <span className="dhq-newsroom-story-card__headline mt-4 text-xl font-black leading-tight">{cardStory.headline}</span>`
+    next = next.replace(outletTarget, outletReplacement)
+
+    if (next === code) return null
+    return { code: next, map: null }
+  },
+})
+
 export default defineConfig({
   server: {
     host: '0.0.0.0',
@@ -36,6 +90,7 @@ export default defineConfig({
   },
   plugins: [
     legacyGameLogSafety(),
+    newsroomCoverageHome(),
     react(),
     tailwindcss(),
   ],

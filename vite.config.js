@@ -162,9 +162,17 @@ const collegeGameWeekCommandCenter = () => ({
     next = next.replace(target, replacement)
 
     const scannerTarget = `<div className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl mb-6 text-center">
-          <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>`
+          <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>
+          <p className="text-slate-300 text-sm font-bold drop-shadow">Upload your Box Score, Player Hub, and Recruiting Board screenshots together. Nothing changes until you review and publish.</p>`
     const scannerReplacement = `<div data-gameweek-scanner className="bg-slate-900/85 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl mb-6 text-center">
-          <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">The Universal Scanner</h2>`
+          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">After the game</p>
+          <h2 className="text-3xl font-black text-white uppercase mb-1 drop-shadow-md">Postgame Scanner</h2>
+          <p className="mx-auto max-w-3xl text-slate-300 text-sm font-bold drop-shadow">Start with the Box Score and Player Hub. Add Recruiting Board or other RTG screens only when something changed. Nothing reaches career history until you review, apply, and publish.</p>
+          <div className="mx-auto mt-4 grid max-w-3xl grid-cols-1 gap-2 text-left sm:grid-cols-3">
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3"><span className="text-[9px] font-black uppercase tracking-wider text-emerald-300">1 · Core</span><p className="mt-1 text-[10px] leading-relaxed text-slate-400">Box Score + Player Hub</p></div>
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3"><span className="text-[9px] font-black uppercase tracking-wider text-blue-300">2 · If changed</span><p className="mt-1 text-[10px] leading-relaxed text-slate-400">Depth chart, Coach Trust, GPA, energy, NIL</p></div>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3"><span className="text-[9px] font-black uppercase tracking-wider text-amber-300">3 · Optional</span><p className="mt-1 text-[10px] leading-relaxed text-slate-400">Recruiting / special storyline screens</p></div>
+          </div>`
     next = next.replace(scannerTarget, scannerReplacement)
 
     if (next === code) return null

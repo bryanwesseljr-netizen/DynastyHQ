@@ -1,7 +1,8 @@
 /* Consistent sports-editorial hero image framing.
-   Photos fill the available article width without stretching. */
+   Preserve the entire photo inside the article placeholder without stretching or cropping. */
 .dhq-news-hero {
   overflow: hidden;
+  background: #080b0f;
 }
 
 .dhq-news-hero img {
@@ -9,8 +10,9 @@
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
+  background: #080b0f;
 }
 
 @media (max-width: 640px) {

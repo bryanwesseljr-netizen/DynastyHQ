@@ -1,0 +1,317 @@
+/* DynastyHQ final cosmetic polish
+   Presentation only: no career-state or verified-data behavior lives here. */
+
+:root {
+  --dhq-polish-radius: 14px;
+  --dhq-polish-control-radius: 10px;
+  --dhq-polish-focus: rgba(251, 191, 36, .72);
+  --dhq-polish-panel: rgba(5, 17, 28, .88);
+  --dhq-polish-panel-soft: rgba(10, 28, 43, .72);
+  --dhq-polish-border: rgba(100, 116, 139, .34);
+  --dhq-polish-muted: #94a3b8;
+}
+
+/* ---------- Shared interaction polish ---------- */
+#root :where(button, a, input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--dhq-polish-focus);
+  outline-offset: 2px;
+}
+
+#root :where(button, a) {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+#root :where(button):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+#root :where(button:disabled, input:disabled, select:disabled, textarea:disabled) {
+  cursor: not-allowed;
+}
+
+/* Normalize utilitarian forms without overriding editorial components. */
+#root :where(.dhq-weekly-agenda-workspace, .dhq-dashboard-card, [role="dialog"]) :where(input:not([type="file"]):not([type="range"]), select, textarea) {
+  min-height: 40px;
+  border-radius: var(--dhq-polish-control-radius) !important;
+  border-color: rgba(100, 116, 139, .52) !important;
+  background-color: rgba(2, 9, 16, .76) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+
+#root :where(.dhq-weekly-agenda-workspace, .dhq-dashboard-card, [role="dialog"]) :where(input:not([type="file"]):not([type="range"]), select, textarea):hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, .68) !important;
+}
+
+#root :where(.dhq-weekly-agenda-workspace, .dhq-dashboard-card, [role="dialog"]) :where(input:not([type="file"]):not([type="range"]), select, textarea):focus {
+  border-color: rgba(251, 191, 36, .72) !important;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, .08), inset 0 1px 0 rgba(255, 255, 255, .03);
+}
+
+#root :where(.dhq-weekly-agenda-workspace, .dhq-dashboard-card, [role="dialog"]) textarea {
+  line-height: 1.55;
+  resize: vertical;
+}
+
+/* ---------- Weekly Agenda: turn old form cards into a readable workflow ---------- */
+.dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid {
+  position: relative;
+  gap: 16px !important;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] {
+  position: relative;
+  overflow: hidden;
+  padding: 20px !important;
+  padding-top: 48px !important;
+  gap: 16px !important;
+  border-radius: var(--dhq-polish-radius) !important;
+  border-color: var(--dhq-polish-border) !important;
+  background: linear-gradient(145deg, rgba(9, 24, 38, .94), rgba(3, 12, 21, .94)) !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .22) !important;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card]::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 31px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(148, 163, 184, .11);
+  background: rgba(2, 9, 16, .55);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card="1"]::before { content: "Postgame · Performance"; color: #fcd34d; }
+.dhq-weekly-agenda-workspace [data-agenda-card="2"]::before { content: "Career Status · Player Development"; color: #6ee7b7; }
+.dhq-weekly-agenda-workspace [data-agenda-card="3"]::before { content: "Recruiting · Snapshot"; color: #93c5fd; }
+.dhq-weekly-agenda-workspace [data-agenda-card="4"]::before { content: "Storyline · Media"; color: #f0abfc; }
+
+.dhq-weekly-agenda-workspace [data-agenda-card] > div:first-of-type {
+  margin-top: -2px;
+  padding-bottom: 10px !important;
+  border-bottom-color: rgba(148, 163, 184, .14) !important;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] h3 {
+  font-size: 12px !important;
+  letter-spacing: .07em !important;
+  line-height: 1.35 !important;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] :where(label, p) {
+  line-height: 1.5;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] .bg-slate-950\/50,
+.dhq-weekly-agenda-workspace [data-agenda-card] .bg-slate-950\/40,
+.dhq-weekly-agenda-workspace [data-agenda-card] .bg-slate-950\/30 {
+  border-radius: 11px !important;
+  border-color: rgba(100, 116, 139, .24) !important;
+}
+
+.dhq-weekly-agenda-workspace [data-gameweek-scanner] {
+  border-radius: 16px !important;
+  border-color: rgba(245, 158, 11, .25) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .22) !important;
+}
+
+.dhq-weekly-agenda-workspace .dhq-agenda-game-log-drawer,
+.dhq-weekly-agenda-workspace .dhq-weekly-agenda-milestone {
+  border-radius: 16px;
+}
+
+/* Make secondary/manual areas visually quieter than the scanner + publish flow. */
+.dhq-weekly-agenda-workspace [data-agenda-card="3"],
+.dhq-weekly-agenda-workspace [data-agenda-card="4"] {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .16) !important;
+}
+
+/* ---------- Dashboard profile: stronger sports-profile hierarchy ---------- */
+.dhq-profile-polish {
+  position: relative;
+  border-color: rgba(245, 158, 11, .26) !important;
+  background:
+    radial-gradient(circle at 88% 5%, rgba(245, 158, 11, .10), transparent 34%),
+    linear-gradient(145deg, rgba(8, 25, 39, .96), rgba(3, 12, 21, .96)) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .24) !important;
+}
+
+.dhq-profile-polish::after {
+  content: "CURRENT IDENTITY";
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 3;
+  pointer-events: none;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  color: rgba(251, 191, 36, .58);
+}
+
+.dhq-profile-polish > div:first-child {
+  min-height: 38px !important;
+  padding: 7px 14px !important;
+  background: rgba(2, 9, 16, .34);
+}
+
+.dhq-profile-polish .dhq-profile-body {
+  padding: 15px !important;
+  gap: 12px;
+}
+
+.dhq-profile-polish .dhq-profile-name {
+  max-width: 18rem;
+  font-size: 18px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -.015em;
+}
+
+.dhq-profile-polish .dhq-profile-headshot {
+  width: 88px !important;
+}
+
+.dhq-profile-polish .dhq-profile-headshot > div:first-child {
+  height: 96px !important;
+  border-radius: 10px !important;
+  border-color: rgba(148, 163, 184, .48) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+}
+
+.dhq-profile-polish .dhq-profile-metrics {
+  margin-top: 12px !important;
+  padding-top: 11px !important;
+  border-top-color: rgba(148, 163, 184, .13) !important;
+}
+
+.dhq-profile-polish .dhq-profile-metrics > div {
+  min-width: 0;
+  padding-inline: 6px;
+}
+
+/* ---------- Dashboard cards + empty states ---------- */
+.dhq-dashboard-card {
+  border-radius: 12px !important;
+  border-color: rgba(100, 116, 139, .28) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .17);
+}
+
+.dhq-dashboard-card > div:first-child {
+  background: rgba(2, 9, 16, .26);
+}
+
+#root :where(section, div)[class*="border-dashed"]:not([data-gameweek-scanner]) {
+  border-style: dashed;
+  border-color: rgba(100, 116, 139, .38) !important;
+}
+
+/* ---------- Mobile density ---------- */
+@media (max-width: 767px) {
+  .dhq-weekly-agenda-workspace [data-agenda-card] {
+    padding: 16px !important;
+    padding-top: 45px !important;
+    gap: 13px !important;
+  }
+
+  .dhq-weekly-agenda-workspace [data-agenda-card]::before {
+    padding-inline: 15px;
+    font-size: 7px;
+    letter-spacing: .14em;
+  }
+
+  .dhq-weekly-agenda-workspace [data-agenda-card] h3 {
+    font-size: 11px !important;
+  }
+
+  .dhq-profile-polish .dhq-profile-body {
+    padding: 13px !important;
+  }
+
+  .dhq-profile-polish .dhq-profile-name {
+    font-size: 16px !important;
+  }
+
+  .dhq-profile-polish .dhq-profile-headshot {
+    width: 76px !important;
+  }
+
+  .dhq-profile-polish .dhq-profile-headshot > div:first-child {
+    height: 84px !important;
+  }
+
+  #root :where(.dhq-weekly-agenda-workspace, [role="dialog"]) :where(input:not([type="file"]):not([type="range"]), select, textarea) {
+    font-size: 16px !important; /* prevent mobile browser zoom */
+  }
+}
+
+/* ---------- Light-mode audit for the polished utility surfaces ---------- */
+html[data-dhq-theme="light"] {
+  --dhq-polish-panel: rgba(255, 255, 255, .90);
+  --dhq-polish-panel-soft: rgba(248, 250, 252, .90);
+  --dhq-polish-border: rgba(100, 116, 139, .26);
+  --dhq-polish-muted: #64748b;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-agenda-card] {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(248, 250, 252, .94)) !important;
+  border-color: rgba(100, 116, 139, .24) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .10) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-agenda-card]::before,
+html[data-dhq-theme="light"] .dhq-profile-polish > div:first-child,
+html[data-dhq-theme="light"] .dhq-dashboard-card > div:first-child {
+  background: rgba(241, 245, 249, .78);
+  border-color: rgba(100, 116, 139, .15);
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-workspace [data-agenda-card] h3,
+html[data-dhq-theme="light"] .dhq-profile-polish .dhq-profile-name,
+html[data-dhq-theme="light"] .dhq-dashboard-card h3 {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] .dhq-profile-polish {
+  background:
+    radial-gradient(circle at 88% 5%, rgba(245, 158, 11, .10), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(248, 250, 252, .96)) !important;
+  border-color: rgba(217, 119, 6, .22) !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, .10) !important;
+}
+
+html[data-dhq-theme="light"] #root :where(.dhq-weekly-agenda-workspace, .dhq-dashboard-card, [role="dialog"]) :where(input:not([type="file"]):not([type="range"]), select, textarea) {
+  color: #0f172a !important;
+  background-color: rgba(255, 255, 255, .92) !important;
+  border-color: rgba(100, 116, 139, .32) !important;
+}
+
+html[data-dhq-theme="light"] #root :where(.dhq-weekly-agenda-workspace, .dhq-dashboard-card, [role="dialog"]) :where(input:not([type="file"]):not([type="range"]), select, textarea)::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-profile-polish :where(.text-slate-400, .text-slate-500, .text-slate-600),
+html[data-dhq-theme="light"] .dhq-dashboard-card :where(.text-slate-400, .text-slate-500, .text-slate-600) {
+  color: #64748b !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #root :where(button, a, input, select, textarea),
+  .dhq-profile-polish,
+  .dhq-weekly-agenda-workspace [data-agenda-card] {
+    transition: none !important;
+  }
+}

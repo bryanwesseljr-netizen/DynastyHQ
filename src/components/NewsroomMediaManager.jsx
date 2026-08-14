@@ -115,8 +115,8 @@ const NewsroomMediaManager = ({
 
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
         {lockerOnly
-          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. Smart Random uses the photo tags below to match images to each article.`
-          : 'Uploads go to your reusable library. Smart Random matches photo types to new and rewritten articles; AI images are created only when you press Generate AI Photo.'}
+          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. Full photos are preserved; Smart Random uses the photo tags below to match images to each article.`
+          : 'Uploads preserve the full photo in your reusable library. Smart Random matches photo types to new and rewritten articles; AI images are created only when you press Generate AI Photo.'}
       </p>
       {uploading && <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300"><Loader2 size={12} className="animate-spin" /> Preparing and securely uploading your photo. This will stop with an error if the connection times out.</p>}
 
@@ -129,7 +129,7 @@ const NewsroomMediaManager = ({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {[...mediaLibrary].reverse().map((asset) => (
               <button key={asset.id} type="button" onClick={() => { onAssign({ issue, article, asset }); setLibraryOpen(false); }} className={`group overflow-hidden rounded-lg border text-left ${article?.mediaAssetId === asset.id ? 'border-blue-400' : 'border-slate-700 hover:border-slate-500'}`}>
-                <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-cover" />
+                <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-contain" />
                 <div className="flex items-center justify-between gap-2 p-2">
                   <span className="min-w-0 truncate text-[9px] font-bold text-slate-300">{asset.fileName}</span>
                   {asset.isReference && <span className="shrink-0 text-[8px] font-black uppercase text-amber-300">Reference</span>}
@@ -147,7 +147,7 @@ const NewsroomMediaManager = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Career Photo Library &amp; AI References</p>
-              <p className="mt-1 text-[10px] text-slate-500">Tag regular photos so Smart Random can match them to the story. AI references remain separate and are never auto-selected as article photos.</p>
+              <p className="mt-1 text-[10px] text-slate-500">The full uploaded photo is shown without cropping. Tag regular photos so Smart Random can match them to the story. AI references remain separate and are never auto-selected as article photos.</p>
             </div>
             <button type="button" disabled={controlsBusy} onClick={() => referenceRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/10 disabled:opacity-50">
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Add AI Reference
@@ -160,7 +160,7 @@ const NewsroomMediaManager = ({
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {[...mediaLibrary].reverse().map((asset) => (
                 <div key={asset.id} className={`overflow-hidden rounded-lg border ${asset.isReference ? 'border-amber-400' : 'border-slate-700'}`}>
-                  <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-cover" />
+                  <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-contain" />
                   <div className="space-y-2 p-2">
                     <p className="truncate text-[9px] font-bold text-slate-300" title={asset.fileName}>{asset.fileName}</p>
                     {asset.origin === 'upload' && !asset.isReference && (

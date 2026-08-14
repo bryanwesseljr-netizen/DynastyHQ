@@ -62,9 +62,7 @@ const sourceFactsFor = (state, issue) => {
     id: factId(fact, index),
     key: clean(fact.key, 180),
     label: clean(fact.label, 180) || clean(fact.key, 180),
-    value: typeof fact.value === 'number' || typeof fact.value === 'boolean'
-      ? fact.value
-      : clean(fact.value, 600),
+    value: typeof fact.value === 'number' || typeof fact.value === 'boolean' ? fact.value : clean(fact.value, 600),
     period: matchesPublication(fact, publicationId) ? 'current edition' : `earlier career entry (${clean(fact.publicationId, 100)})`,
     publicationId: clean(fact.publicationId, 120),
   }));
@@ -123,12 +121,21 @@ const normalizeCitations = (ids, payload) => {
     .filter(Boolean);
 };
 
+const normalizeImportance = (value) => {
+  const normalized = clean(value, 40).toLowerCase();
+  return ['routine', 'notable', 'major', 'career-defining'].includes(normalized) ? normalized : 'routine';
+};
+
+const normalizeStoryFormat = (value) => {
+  const normalized = clean(value, 50).toLowerCase();
+  return ['news', 'feature', 'analysis', 'recruiting-intel', 'milestone', 'reaction'].includes(normalized) ? normalized : 'news';
+};
+
 export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = '', generatedAt = new Date().toISOString() }) => {
   const briefsById = new Map(payload.articleBriefs.map((brief) => [brief.outletId, brief]));
   const generatedByOutlet = new Map((generated?.articles || []).map((entry) => [clean(entry.outletId, 80), entry]));
-  if (generatedByOutlet.size !== payload.articleBriefs.length) {
-    throw new Error('The newsroom edition was incomplete. Please try writing it again.');
-  }
+  if (generatedByOutlet.size !== payload.articleBriefs.length) throw new Error('The newsroom edition was incomplete. Please try writing it again.');
+
   const articles = payload.articleBriefs.map((requestedBrief) => {
     const entry = generatedByOutlet.get(requestedBrief.outletId);
     if (!entry) return null;
@@ -146,8 +153,11 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       items: (section?.items || []).map((item) => clean(item, 220)).filter(Boolean).slice(0, 5),
     })).filter((section) => section.title && section.items.length >= 2).slice(0, 3);
     if (sectionHeadings.length < 2 || sidebars.length < 2) return null;
+
     return {
       outletId,
+      storyImportance: normalizeImportance(entry.storyImportance),
+      storyFormat: normalizeStoryFormat(entry.storyFormat),
       kicker: clean(entry.kicker, 80),
       headline: clean(entry.headline, 260),
       dek: clean(entry.dek, 500),
@@ -165,9 +175,7 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     };
   }).filter(Boolean);
 
-  if (articles.length !== payload.articleBriefs.length) {
-    throw new Error('The newsroom edition was incomplete. Please try writing it again.');
-  }
+  if (articles.length !== payload.articleBriefs.length) throw new Error('The newsroom edition was incomplete. Please try writing it again.');
   return { articles, generatedAt, model: clean(model, 100) };
 };
 
@@ -188,8 +196,6 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
     };
   }),
   postgameFrontPages: (state.postgameFrontPages || []).map((page) => (
-    page.publicationId === publicationId
-      ? { ...page, needsRegeneration: true, staleAt: edition.generatedAt }
-      : page
+    page.publicationId === publicationId ? { ...page, needsRegeneration: true, staleAt: edition.generatedAt } : page
   )),
 });

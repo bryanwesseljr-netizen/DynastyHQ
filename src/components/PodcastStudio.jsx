@@ -32,6 +32,46 @@ const CHAPTER_IDENTITIES = Object.freeze([
   { title: 'Next Saturday', subtitle: 'What matters next' },
 ]);
 
+const JOURNEY_ARCHIVE_META = Object.freeze([
+  {
+    key: 'high-school',
+    order: 1,
+    eyebrow: 'Road to Glory · Chapter 1',
+    title: 'High School Recruiting',
+    description: 'Tape evaluations, recruiting momentum, scholarship offers and the college decision.',
+  },
+  {
+    key: 'college-player',
+    order: 2,
+    eyebrow: 'Road to Glory · Chapter 2',
+    title: 'College Player',
+    description: 'College game weeks, depth-chart movement, development, NIL and transfer decisions.',
+  },
+  {
+    key: 'offensive-coordinator',
+    order: 3,
+    eyebrow: 'Coaching Journey · Chapter 3',
+    title: 'Offensive Coordinator',
+    description: 'Coordinator results, offensive direction, recruiting duties and the climb toward a head-coaching job.',
+  },
+  {
+    key: 'head-coach',
+    order: 4,
+    eyebrow: 'Coaching Journey · Chapter 4',
+    title: 'Head Coach',
+    description: 'Program building, recruiting, roster management, staff direction and championship pursuits.',
+  },
+  {
+    key: 'career-retrospective',
+    order: 5,
+    eyebrow: 'Legacy',
+    title: 'Career Retrospective',
+    description: 'Career-complete specials and retrospective episodes from the finished player-to-coach journey.',
+  },
+]);
+
+const JOURNEY_ARCHIVE_BY_KEY = new Map(JOURNEY_ARCHIVE_META.map((entry) => [entry.key, entry]));
+
 const downloadFile = (content, fileName, type) => {
   const url = URL.createObjectURL(content instanceof Blob ? content : new Blob([content], { type }));
   const anchor = document.createElement('a');
@@ -104,6 +144,61 @@ const episodeStatus = (episode) => {
   return { label: 'Transcript ready', classes: 'border-amber-500/30 bg-amber-500/10 text-amber-300' };
 };
 
+const journeyForIssue = (issue = {}) => {
+  const phase = String(issue?.careerPhase || '').trim().toLowerCase();
+  if (phase === 'hc' || phase.includes('head coach')) return JOURNEY_ARCHIVE_BY_KEY.get('head-coach');
+  if (phase === 'oc' || phase.includes('offensive coordinator') || phase === 'coordinator') return JOURNEY_ARCHIVE_BY_KEY.get('offensive-coordinator');
+  if (phase === 'retired' || phase.includes('legacy')) return JOURNEY_ARCHIVE_BY_KEY.get('career-retrospective');
+
+  const outletIds = new Set((issue?.articles || []).map((article) => String(article?.outletId || '').toLowerCase()));
+  const explicitlyHighSchool = issue?.game?.stage === 'high-school'
+    || Boolean(issue?.game?.evaluation)
+    || Boolean(issue?.highSchoolEvaluation)
+    || String(issue?.coverageStage || '').toLowerCase() === 'high-school';
+  const explicitlyCollege = String(issue?.coverageStage || '').toLowerCase() === 'college'
+    || Boolean(issue?.outletProfile)
+    || outletIds.has('college-local')
+    || outletIds.has('college-regional');
+
+  if (explicitlyHighSchool && !explicitlyCollege) return JOURNEY_ARCHIVE_BY_KEY.get('high-school');
+  if (explicitlyCollege) return JOURNEY_ARCHIVE_BY_KEY.get('college-player');
+  return phase === 'player' ? JOURNEY_ARCHIVE_BY_KEY.get('high-school') : JOURNEY_ARCHIVE_BY_KEY.get('college-player');
+};
+
+const buildJourneyArchive = (issues, episodes) => {
+  const episodeByPublication = new Map((episodes || []).map((entry) => [entry.publicationId, entry]));
+  const buckets = new Map(JOURNEY_ARCHIVE_META.map((meta) => [meta.key, []]));
+
+  [...(issues || [])].reverse().forEach((archiveIssue) => {
+    const publicationId = archiveIssue.publicationId || archiveIssue.id;
+    const journey = journeyForIssue(archiveIssue);
+    if (!journey || !publicationId) return;
+    buckets.get(journey.key)?.push({
+      issue: archiveIssue,
+      episode: episodeByPublication.get(publicationId) || null,
+      publicationId,
+    });
+  });
+
+  return JOURNEY_ARCHIVE_META
+    .map((meta) => {
+      const items = buckets.get(meta.key) || [];
+      const seasonMap = new Map();
+      items.forEach((item) => {
+        const season = Number(item.issue?.season) || 1;
+        if (!seasonMap.has(season)) seasonMap.set(season, []);
+        seasonMap.get(season).push(item);
+      });
+      return {
+        ...meta,
+        items,
+        producedCount: items.filter((item) => item.episode).length,
+        seasons: [...seasonMap.entries()].map(([season, seasonItems]) => ({ season, items: seasonItems })),
+      };
+    })
+    .filter((group) => group.items.length > 0);
+};
+
 class PodcastStudioBoundary extends Component {
   constructor(props) {
     super(props);
@@ -155,6 +250,7 @@ const PodcastStudioContent = ({
   const [error, setError] = useState('');
   const [showTranscript, setShowTranscript] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
+  const [expandedJourneyKey, setExpandedJourneyKey] = useState('');
   const audioRef = useRef(null);
 
   const managedCover = resolvePodcastCoverUrl(state.outletImages?.podcast, defaultPodcastCover);
@@ -188,6 +284,8 @@ const PodcastStudioContent = ({
     return segmentIndex >= (Number(chapter.segmentStart) || 0) && (!next || segmentIndex < (Number(next.segmentStart) || 0));
   });
   const currentIdentity = identityForChapter(currentChapter, Math.max(0, episodeChapters.indexOf(currentChapter)), Math.max(1, episodeChapters.length));
+  const archiveGroups = useMemo(() => buildJourneyArchive(issues, episodes), [issues, episodes]);
+  const selectedJourneyKey = journeyForIssue(issue)?.key || '';
 
   useEffect(() => {
     if (initialPublicationId) setSelectedPublicationId(initialPublicationId);
@@ -496,26 +594,103 @@ const PodcastStudioContent = ({
             </section>
           )}
 
-          <section className="rounded-3xl border border-slate-700/60 bg-slate-950/88 p-5 shadow-2xl md:p-7">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">Season Archive</p><h3 className="mt-1 text-2xl font-black text-white">Every verified week, in one feed</h3></div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{issues.length} brief{issues.length === 1 ? '' : 's'} · {episodes.length} produced episode{episodes.length === 1 ? '' : 's'}</p>
+          <section className="overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/88 shadow-2xl">
+            <div className="flex flex-col gap-3 border-b border-slate-800 p-5 md:flex-row md:items-end md:justify-between md:p-7">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">RTG → Coach Journey Archive</p>
+                <h3 className="mt-1 text-2xl font-black text-white">Browse the show by career chapter</h3>
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">Old episodes stay out of the way until you need them. Open a career chapter, then choose the season and week you want to revisit.</p>
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">{archiveGroups.length} chapter{archiveGroups.length === 1 ? '' : 's'} · {issues.length} briefs · {episodes.length} produced</p>
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {[...issues].reverse().map((archiveIssue) => {
-                const archivePublicationId = archiveIssue.publicationId || archiveIssue.id;
-                const archivedEpisode = episodes.find((entry) => entry.publicationId === archivePublicationId);
-                const archivedBrief = briefForIssue(archiveIssue);
-                const selected = archivePublicationId === publicationId;
-                const archivedImpact = IMPACT_META[issueImportance(archiveIssue)] || IMPACT_META.routine;
-                const archivedStatus = episodeStatus(archivedEpisode);
+
+            <div className="divide-y divide-slate-800">
+              {archiveGroups.map((group) => {
+                const expanded = expandedJourneyKey === group.key;
+                const containsSelected = selectedJourneyKey === group.key;
+                const latestItem = group.items[0];
                 return (
-                  <button key={archivePublicationId} type="button" onClick={() => selectPublication(archivePublicationId)} className={`rounded-2xl border p-4 text-left transition-all ${selected ? 'border-blue-500/55 bg-blue-500/10 shadow-lg' : 'border-slate-800 bg-slate-900/55 hover:border-slate-600 hover:bg-slate-900'}`}>
-                    <div className="flex items-center justify-between gap-2"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">S{archiveIssue.season || 1} · W{archiveIssue.week ?? 0}</p><span className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-wider ${archivedStatus.classes}`}>{archivedStatus.label}</span></div>
-                    <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm font-black leading-5 text-white">{archivedEpisode?.title || archivedBrief.title}</p>
-                    <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-500">{archivedEpisode?.summary || archivedBrief.summary}</p>
-                    <div className="mt-3 flex items-center justify-between gap-2"><span className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-wider ${archivedImpact.badge}`}>{archivedImpact.label}</span>{archivedEpisode?.estimatedMinutes && <span className="text-[9px] font-bold text-slate-600">~{archivedEpisode.estimatedMinutes} min</span>}</div>
-                  </button>
+                  <div key={group.key} className={containsSelected ? 'bg-blue-500/[0.025]' : ''}>
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      onClick={() => setExpandedJourneyKey((current) => current === group.key ? '' : group.key)}
+                      className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-slate-900/65 md:p-6"
+                    >
+                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-black ${containsSelected ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : 'border-slate-700 bg-slate-900 text-slate-500'}`}>
+                        {String(group.order).padStart(2, '0')}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">{group.eyebrow}</p>
+                          {containsSelected && <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-blue-300">Selected episode</span>}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <h4 className="text-base font-black text-white md:text-lg">{group.title}</h4>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600">{group.items.length} brief{group.items.length === 1 ? '' : 's'} · {group.producedCount} produced</span>
+                        </div>
+                        <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{group.description}</p>
+                      </div>
+                      <div className="hidden shrink-0 text-right sm:block">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">Latest</p>
+                        <p className="mt-1 text-xs font-black text-slate-300">S{latestItem?.issue?.season || 1} · W{latestItem?.issue?.week ?? 0}</p>
+                      </div>
+                      <ChevronDown className={`shrink-0 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} size={20} />
+                    </button>
+
+                    {expanded && (
+                      <div className="border-t border-slate-800/80 bg-slate-950/45 px-4 pb-5 pt-3 md:px-6 md:pb-6">
+                        <div className="space-y-4">
+                          {group.seasons.map((seasonGroup) => (
+                            <div key={`${group.key}-season-${seasonGroup.season}`} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/45">
+                              <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+                                <div>
+                                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Season {seasonGroup.season}</p>
+                                  <p className="mt-0.5 text-[10px] text-slate-600">{seasonGroup.items.length} archived week{seasonGroup.items.length === 1 ? '' : 's'}</p>
+                                </div>
+                              </div>
+                              <div className="divide-y divide-slate-800/80">
+                                {seasonGroup.items.map((archiveItem) => {
+                                  const archiveIssue = archiveItem.issue;
+                                  const archivedEpisode = archiveItem.episode;
+                                  const archivedBrief = briefForIssue(archiveIssue);
+                                  const selected = archiveItem.publicationId === publicationId;
+                                  const archivedImpact = IMPACT_META[issueImportance(archiveIssue)] || IMPACT_META.routine;
+                                  const archivedStatus = episodeStatus(archivedEpisode);
+                                  const archiveDate = formatEpisodeDate(archivedEpisode, archiveIssue);
+                                  return (
+                                    <button
+                                      key={archiveItem.publicationId}
+                                      type="button"
+                                      onClick={() => selectPublication(archiveItem.publicationId)}
+                                      className={`grid w-full gap-3 px-4 py-3 text-left transition-colors md:grid-cols-[90px_minmax(0,1fr)_auto] md:items-center ${selected ? 'bg-blue-500/10' : 'hover:bg-slate-900'}`}
+                                    >
+                                      <div>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-400">Week {archiveIssue.week ?? 0}</p>
+                                        {archiveDate && <p className="mt-1 text-[9px] text-slate-600">{archiveDate}</p>}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="truncate text-xs font-black text-white md:text-sm">{archivedEpisode?.title || archivedBrief.title}</p>
+                                          {selected && <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-blue-300">Playing view</span>}
+                                        </div>
+                                        <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-slate-600">{archivedEpisode?.summary || archivedBrief.summary}</p>
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                                        <span className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-wider ${archivedImpact.badge}`}>{archivedImpact.label}</span>
+                                        <span className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-wider ${archivedStatus.classes}`}>{archivedStatus.label}</span>
+                                        {archivedEpisode?.estimatedMinutes && <span className="text-[9px] font-bold text-slate-600">~{archivedEpisode.estimatedMinutes} min</span>}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

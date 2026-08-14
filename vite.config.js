@@ -89,13 +89,26 @@ const collegeGameWeekCommandCenter = () => ({
           ? 'DynastyHQ is reading the screenshots. Nothing is written to career history until you approve it.'
           : 'Check your current RTG status, play the game in CFB 27, then return here and upload the postgame screens.';
         const workflowSteps = ['Pregame', 'Play Game', 'Postgame Scan', 'Review & Confirm', 'Publish Week'];
+        const latestVerifiedRtgValue = (key) => {
+          const factKey = 'rtg.' + key;
+          const verifiedFact = [...(appState.factLedger || [])].reverse().find((entry) => (
+            entry?.key === factKey
+            && entry.verified === true
+            && valOrEmpty(entry.value) !== ''
+          ));
+          if (verifiedFact) return verifiedFact.value;
+          const publishedSnapshot = [...(appState.weeklyUpdates || [])].reverse().find((entry) => (
+            valOrEmpty(entry?.rtgSnapshot?.[key]) !== ''
+          ));
+          return publishedSnapshot ? publishedSnapshot.rtgSnapshot[key] : '—';
+        };
         const overviewStats = [
           ['School', appState.player.college || appState.player.school || 'College'],
           ['OVR', appState.player.overall || '—'],
-          ['Depth', rtgUpdate.rank || '—'],
-          ['Coach Trust', valOrEmpty(rtgUpdate.coachTrust) === '' ? '—' : rtgUpdate.coachTrust],
-          ['GPA', valOrEmpty(rtgUpdate.gpa) === '' ? '—' : rtgUpdate.gpa],
-          ['Energy', valOrEmpty(rtgUpdate.energy) === '' ? '—' : rtgUpdate.energy],
+          ['Depth', latestVerifiedRtgValue('rank')],
+          ['Coach Trust', latestVerifiedRtgValue('coachTrust')],
+          ['GPA', latestVerifiedRtgValue('gpa')],
+          ['Energy', latestVerifiedRtgValue('energy')],
           ['Opponent', newGame.opponent || 'Not captured'],
         ];
         return (

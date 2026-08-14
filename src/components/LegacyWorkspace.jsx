@@ -1,4 +1,5 @@
 import { Award, BookOpen, Crown, Flag, GraduationCap, Medal, ShieldCheck, Star, Trophy, UserRound } from 'lucide-react';
+import { dedupeCareerMilestones } from '../domain/careerDataHygiene.js';
 
 const number = (value) => {
   const parsed = Number(value);
@@ -29,7 +30,7 @@ const LegacyWorkspace = ({ state }) => {
   const rushingYards = appearances.reduce((sum, log) => sum + number(log.rushYds), 0);
   const rushingTouchdowns = appearances.reduce((sum, log) => sum + number(log.rushTD), 0);
   const totalTouchdowns = passingTouchdowns + rushingTouchdowns;
-  const milestones = [...(state.careerMilestones || [])].sort((a, b) => (
+  const milestones = dedupeCareerMilestones(state.careerMilestones || []).sort((a, b) => (
     number(b.season) - number(a.season) || number(b.week) - number(a.week)
   ));
   const trophies = state.trophies || [];

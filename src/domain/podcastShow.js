@@ -1,6 +1,7 @@
 export const PODCAST_SHOW = Object.freeze({
   name: 'The Gridiron Grind',
   shortName: 'Gridiron Grind',
+  brandingVersion: 2,
   description: 'Mark Thompson and Sarah Chen turn each verified career week into a grounded five-to-six-minute college-football show—from recruiting trail to coaching legacy.',
   disclosure: 'AI-generated voices',
 });
@@ -41,7 +42,11 @@ export const isManagedPodcastCoverUrl = (value) => {
   if (/^data:image\/(?:png|jpe?g|webp);/i.test(urlValue)) return true;
   try {
     const parsed = new URL(urlValue);
-    return parsed.protocol === 'https:' && /(?:^|\.)blob\.vercel-storage\.com$/i.test(parsed.hostname);
+    if (parsed.protocol !== 'https:' || !/(?:^|\.)blob\.vercel-storage\.com$/i.test(parsed.hostname)) return false;
+    // Only covers uploaded through the dedicated Gridiron Grind uploader are trusted.
+    // Legacy generic podcast image URLs are intentionally ignored because a deleted
+    // Vercel Blob can return a valid-looking missing-image graphic instead of firing onError.
+    return /podcast-cover-/i.test(parsed.pathname);
   } catch {
     return false;
   }

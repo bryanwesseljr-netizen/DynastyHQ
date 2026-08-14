@@ -3,15 +3,15 @@ const WORDS_PER_MINUTE = 145;
 export const PODCAST_HOSTS = [
   {
     id: 'marcus-grant',
-    name: 'Marcus Grant',
-    role: 'High School Recruiting Insider',
+    name: 'Mark Thompson',
+    role: 'Lead Host & College Football Insider',
     voice: 'cedar',
   },
   {
     id: 'tyler-brooks',
-    name: 'Tyler Brooks',
-    role: 'College Football Insider',
-    voice: 'onyx',
+    name: 'Sarah Chen',
+    role: 'College Football Analyst',
+    voice: 'coral',
   },
 ];
 
@@ -139,7 +139,11 @@ export const markPodcastAudioReady = (state, publicationId, { model = '', segmen
 };
 
 export const podcastTranscriptText = (episode) => {
-  const hosts = new Map((episode?.hosts || PODCAST_HOSTS).map((host) => [host.id, host.name]));
+  const canonicalHosts = new Map(PODCAST_HOSTS.map((host) => [host.id, host.name]));
+  const hosts = new Map((episode?.hosts || PODCAST_HOSTS).map((host) => [
+    host.id,
+    canonicalHosts.get(host.id) || host.name,
+  ]));
   const lines = [
     'THE GRIDIRON GRIND',
     episode?.title || 'Episode',

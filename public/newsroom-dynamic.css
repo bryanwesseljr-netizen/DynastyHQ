@@ -1,0 +1,246 @@
+/* Dynamic editorial treatment for DynastyHQ Newsroom.
+   Outlet identity controls module placement; story importance controls emphasis. */
+.dhq-news-story-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.dhq-news-story-flags .dhq-news-kicker {
+  margin: 0;
+}
+
+.dhq-news-impact-badge,
+.dhq-news-format-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.57rem;
+  font-weight: 900;
+  letter-spacing: 0.075em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dhq-news-impact-badge {
+  border: 1px solid color-mix(in srgb, var(--news-accent) 48%, transparent);
+  background: color-mix(in srgb, var(--news-accent) 10%, transparent);
+  color: var(--news-accent-strong);
+}
+
+.dhq-news-format-badge {
+  border: 1px solid var(--news-rule);
+  background: color-mix(in srgb, var(--news-paper) 92%, #ffffff);
+  color: var(--news-muted);
+}
+
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-impact-badge,
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-impact-badge,
+.dhq-news-article[data-editorial-layout="network"] .dhq-news-impact-badge {
+  color: var(--news-accent);
+}
+
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-format-badge,
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-format-badge,
+.dhq-news-article[data-editorial-layout="network"][data-has-image="true"] .dhq-news-format-badge {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.22);
+  color: #d7dee6;
+}
+
+.dhq-news-article[data-story-importance="routine"] .dhq-news-impact-badge {
+  opacity: 0.72;
+}
+
+.dhq-news-article[data-story-importance="major"] {
+  box-shadow: 0 34px 100px color-mix(in srgb, var(--news-accent) 15%, rgba(0, 0, 0, 0.55));
+}
+
+.dhq-news-article[data-story-importance="major"] .dhq-news-accent-rule {
+  height: 7px;
+}
+
+.dhq-news-article[data-story-importance="major"] .dhq-news-impact-badge,
+.dhq-news-article[data-story-importance="career-defining"] .dhq-news-impact-badge {
+  border-color: var(--news-accent);
+  background: var(--news-accent);
+  color: #fff;
+}
+
+.dhq-news-article[data-story-importance="career-defining"] {
+  border-color: color-mix(in srgb, var(--news-accent) 82%, var(--news-rule));
+  box-shadow: 0 38px 110px color-mix(in srgb, var(--news-accent) 22%, rgba(0, 0, 0, 0.58));
+}
+
+.dhq-news-article[data-story-importance="career-defining"] .dhq-news-accent-rule {
+  height: 9px;
+}
+
+.dhq-news-module-deck {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 22px clamp(24px, 5vw, 58px) 8px;
+  background: var(--news-paper);
+}
+
+.dhq-news-module {
+  min-width: 0;
+  border: 1px solid var(--news-rule);
+  border-top: 4px solid var(--news-accent);
+  border-radius: 9px;
+  padding: 17px 18px 18px;
+  background: color-mix(in srgb, var(--news-paper) 94%, var(--news-accent));
+  color: var(--news-ink);
+}
+
+.dhq-news-module:first-child:nth-last-child(3) {
+  grid-column: span 2;
+}
+
+.dhq-news-module__eyebrow {
+  margin: 0 0 7px !important;
+  color: var(--news-accent-strong) !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.58rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em;
+  line-height: 1.1 !important;
+  text-transform: uppercase;
+}
+
+.dhq-news-module h2 {
+  margin: 0;
+  color: var(--news-ink);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.dhq-news-module ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dhq-news-module li {
+  position: relative;
+  padding-left: 14px;
+  color: var(--news-muted);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.38;
+}
+
+.dhq-news-module li::before {
+  position: absolute;
+  top: 0.55em;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--news-accent);
+  content: "";
+}
+
+/* Recruiting Wire: compact insider intel cards. */
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-module-deck {
+  background: #111318;
+}
+
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-module {
+  border-color: #343841;
+  border-top-color: var(--news-accent);
+  background: linear-gradient(145deg, #171a20, #101217);
+  color: #fff;
+}
+
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-module h2 {
+  color: #fff;
+}
+
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-module li {
+  color: #c9ced5;
+}
+
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-module__eyebrow {
+  color: var(--news-accent) !important;
+}
+
+/* Film Room: clean analyst cards with stronger data-panel rhythm. */
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-module-deck {
+  border-top: 1px solid #1c3945;
+  background: #071827;
+}
+
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-module {
+  border-color: #244754;
+  border-top-color: var(--news-accent);
+  background: #0b2230;
+}
+
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-module h2 {
+  color: #edfafa;
+}
+
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-module li {
+  color: #b8d0d4;
+}
+
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-module__eyebrow {
+  color: var(--news-accent) !important;
+}
+
+/* Saturday National: broader magazine context cards. */
+.dhq-news-article[data-editorial-layout="network"] .dhq-news-module-deck {
+  gap: 16px;
+  padding-top: 28px;
+}
+
+.dhq-news-article[data-editorial-layout="network"] .dhq-news-module {
+  border-top-width: 6px;
+  border-radius: 2px;
+  padding: 20px 22px;
+}
+
+.dhq-news-article[data-editorial-layout="network"] .dhq-news-module:first-child {
+  background: color-mix(in srgb, var(--news-paper) 90%, var(--news-accent));
+}
+
+.dhq-news-content-grid--wide {
+  grid-template-columns: minmax(0, 880px);
+  justify-content: center;
+}
+
+.dhq-news-article[data-story-importance="major"] .dhq-news-module:first-child,
+.dhq-news-article[data-story-importance="career-defining"] .dhq-news-module:first-child {
+  border-top-width: 7px;
+}
+
+@media (max-width: 720px) {
+  .dhq-news-story-flags {
+    gap: 6px;
+  }
+
+  .dhq-news-impact-badge,
+  .dhq-news-format-badge {
+    font-size: 0.53rem;
+  }
+
+  .dhq-news-module-deck {
+    grid-template-columns: 1fr;
+    padding: 18px 18px 4px;
+  }
+
+  .dhq-news-module:first-child:nth-last-child(3) {
+    grid-column: span 1;
+  }
+}

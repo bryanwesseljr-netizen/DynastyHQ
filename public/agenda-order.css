@@ -21,49 +21,6 @@
   order: 40;
 }
 
-/* Keep the restored readable typography from colliding inside the compact
-   Weekly Agenda cards. This is intentionally scoped to the Agenda only so the
-   site-wide type sizing and Newsroom presentation remain untouched. */
-.dhq-weekly-agenda-workspace,
-.dhq-weekly-agenda-workspace .dhq-weekly-agenda-grid,
-.dhq-weekly-agenda-workspace .dhq-weekly-agenda-side-stack,
-.dhq-weekly-agenda-workspace [data-agenda-card] {
-  min-width: 0;
-}
-
-.dhq-weekly-agenda-workspace [data-agenda-card] :where(h2, h3, h4) {
-  min-width: 0;
-  max-width: 100%;
-  flex-wrap: wrap;
-  overflow-wrap: anywhere;
-  line-height: 1.35;
-}
-
-.dhq-weekly-agenda-workspace [data-agenda-card] :where(p, label, span) {
-  min-width: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.dhq-weekly-agenda-workspace [data-agenda-card] :where(.flex) {
-  min-width: 0;
-}
-
-.dhq-weekly-agenda-workspace [data-agenda-card] :where(.justify-between) {
-  column-gap: 0.75rem;
-  row-gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.dhq-weekly-agenda-workspace [data-agenda-card] :where(.justify-between) > * {
-  min-width: 0;
-}
-
-.dhq-weekly-agenda-workspace [data-agenda-card] :where(button, input, select, textarea) {
-  min-width: 0;
-  max-width: 100%;
-}
-
 /* Desktop agenda layout: keep RTG mechanics in the right column while
    stacking cards 1, 3 and 4 vertically in the left column. The DOM order is
    unchanged, so phones still receive the natural single-column flow. */

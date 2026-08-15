@@ -16,9 +16,22 @@ const compareChronology = (left, right) => (
   || left.index - right.index
 );
 
+const inferredCommitmentInstitution = (entry = {}) => {
+  const explicit = clean(entry.institution || entry.college || entry.school);
+  if (explicit) return explicit;
+
+  const title = clean(entry.title || entry.achievement);
+  const titleMatch = title.match(/\bcommits?\s+to\s+(.+?)(?:[.!]|$)/i);
+  if (titleMatch?.[1]) return clean(titleMatch[1]);
+
+  const summary = clean(entry.summary);
+  const summaryMatch = summary.match(/\bcommitment\s+to\s+(.+?)(?:\s+was\b|\s+is\b|\s+has\b|[.!]|$)/i);
+  return clean(summaryMatch?.[1]);
+};
+
 export const commitmentIdentity = (entry = {}) => {
   if (entry?.type !== 'commitment') return '';
-  const institution = normalize(entry.institution || entry.college || entry.school);
+  const institution = normalize(inferredCommitmentInstitution(entry));
   return institution ? `commitment:${institution}` : '';
 };
 
@@ -53,6 +66,6 @@ export const findExistingCommitment = (entries = [], institution = '') => {
   if (!target) return null;
   return dedupeCareerMilestones(entries).find((entry) => (
     entry?.type === 'commitment'
-    && normalize(entry.institution || entry.college || entry.school) === target
+    && normalize(inferredCommitmentInstitution(entry)) === target
   )) || null;
 };

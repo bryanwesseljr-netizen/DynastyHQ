@@ -41,12 +41,43 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       ? 'AI editorial illustration'
       : '';
 
+  const shareDigitalEdition = async () => {
+    if (typeof window === 'undefined') return;
+
+    // Owner mode: reuse DynastyHQ's existing public-share workflow so the link
+    // points at the read-only shared dynasty rather than a private owner session.
+    const ownerShareButton = [...document.querySelectorAll('header.no-print button')]
+      .find((button) => /get share link/i.test(button.textContent || ''));
+    if (ownerShareButton) {
+      ownerShareButton.click();
+      return;
+    }
+
+    // Read-only/public mode: share the already-public URL directly.
+    const shareData = {
+      title: `${story.headline} | ${story.outletName}`,
+      text: story.dek || story.headline,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareData.url);
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') console.error('Unable to share digital edition', error);
+    }
+  };
+
   return (
     <article
       className="dhq-news-article"
       data-editorial-layout={presentation.layout}
       data-has-image={hasImage ? 'true' : 'false'}
       data-headline-size={headlineSize(story.headline)}
+      data-story-importance={extras.importance}
+      data-story-format={extras.storyFormat}
       style={presentationVariables(presentation)}
     >
       <header className="dhq-news-masthead">
@@ -62,7 +93,11 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
 
       <div className="dhq-news-lead">
         <div className="dhq-news-intro">
-          <p className="dhq-news-kicker">{story.kicker || presentation.category}</p>
+          <div className="dhq-news-story-flags">
+            <span className="dhq-news-kicker">{story.kicker || presentation.category}</span>
+            <span className="dhq-news-impact-badge">{extras.importanceLabel}</span>
+            <span className="dhq-news-format-badge">{extras.formatLabel}</span>
+          </div>
           <h1>{story.headline}</h1>
           <p className="dhq-news-dek">{story.dek}</p>
           <div className="dhq-news-byline">
@@ -86,7 +121,21 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
         )}
       </div>
 
-      <div className="dhq-news-content-grid">
+      {extras.modules.length > 0 && (
+        <section className="dhq-news-module-deck" aria-label="Story context">
+          {extras.modules.map((module, moduleIndex) => (
+            <section className="dhq-news-module" key={`${module.title}-${moduleIndex}`}>
+              <p className="dhq-news-module__eyebrow">{module.eyebrow}</p>
+              <h2>{module.title}</h2>
+              <ul>
+                {module.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
+              </ul>
+            </section>
+          ))}
+        </section>
+      )}
+
+      <div className={`dhq-news-content-grid${extras.sidebarsForAside.length ? '' : ' dhq-news-content-grid--wide'}`}>
         <div className="dhq-news-copy">
           {paragraphs.map((paragraph, index) => (
             <div key={`${story.id}-${index}`}>
@@ -102,22 +151,26 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
           ))}
         </div>
 
-        <aside className="dhq-news-sidebar" aria-label="Article context">
-          {extras.sidebars.map((section, sectionIndex) => (
-            <section key={`${section.title}-${sectionIndex}`}>
-              <h2>{section.title}</h2>
-              <ul>
-                {section.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
-              </ul>
-            </section>
-          ))}
-        </aside>
+        {extras.sidebarsForAside.length > 0 && (
+          <aside className="dhq-news-sidebar" aria-label="Article context">
+            {extras.sidebarsForAside.map((section, sectionIndex) => (
+              <section key={`${section.title}-${sectionIndex}`}>
+                <h2>{section.title}</h2>
+                <ul>
+                  {section.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
+                </ul>
+              </section>
+            ))}
+          </aside>
+        )}
       </div>
 
       <footer className="dhq-news-footer">
         <span>{story.outletName}</span>
         <span>{presentation.strapline}</span>
-        <span className="dhq-news-share"><Share2 size={13} /> Shareable digital edition</span>
+        <button type="button" className="dhq-news-share" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">
+          <Share2 size={13} /> Shareable digital edition
+        </button>
       </footer>
     </article>
   );

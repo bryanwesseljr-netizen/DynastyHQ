@@ -1,17 +1,23 @@
 import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { PODCAST_HOSTS, PODCAST_PUBLIC_HOSTS } from '../src/domain/podcastShow.js';
 
 const MODEL = process.env.OPENAI_PODCAST_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
+const CHAPTER_TITLES = [
+  'Opening Drive',
+  'QB Room',
+  'Film Room',
+  'Recruiting Desk',
+  'Around the Program',
+  "Coach's Clipboard",
+  'Next Saturday',
+];
+
 const safeText = (value, max) => String(value || '').trim().slice(0, max);
 
 const validatePayload = (body = {}) => {
-  const hosts = Array.isArray(body.hosts) ? body.hosts.slice(0, 2).map((host) => ({
-    id: safeText(host.id, 80),
-    name: safeText(host.name, 100),
-    role: safeText(host.role, 160),
-  })) : [];
   const facts = Array.isArray(body.facts) ? body.facts.slice(0, 80).map((fact) => ({
     key: safeText(fact.key, 180),
     label: safeText(fact.label, 180),
@@ -19,7 +25,7 @@ const validatePayload = (body = {}) => {
       ? fact.value
       : safeText(fact.value, 500),
   })).filter((fact) => fact.key && fact.label) : [];
-  if (hosts.length !== 2 || hosts.some((host) => !host.id || !host.name) || !facts.length) return null;
+  if (!facts.length) return null;
   return {
     publicationId: safeText(body.publicationId, 120),
     season: Math.max(1, Number(body.season) || 1),
@@ -29,7 +35,7 @@ const validatePayload = (body = {}) => {
       title: safeText(body.brief?.title, 240),
       summary: safeText(body.brief?.summary, 1200),
     },
-    hosts,
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
   };
 };
@@ -47,7 +53,9 @@ const schemaFor = (payload) => ({
         type: 'object', additionalProperties: false,
         required: ['id', 'title', 'summary', 'segmentStart'],
         properties: {
-          id: { type: 'string' }, title: { type: 'string' }, summary: { type: 'string' },
+          id: { type: 'string' },
+          title: { type: 'string', enum: CHAPTER_TITLES },
+          summary: { type: 'string' },
           segmentStart: { type: 'integer', minimum: 0, maximum: 11 },
         },
       },
@@ -72,6 +80,7 @@ const schemaFor = (payload) => ({
   },
 });
 
+const [mark, sarah] = PODCAST_HOSTS;
 const INSTRUCTIONS = `You write The Gridiron Grind, a private two-host college-football podcast tied to one EA SPORTS College Football career.
 
 Non-negotiable editorial rules:
@@ -83,8 +92,14 @@ Non-negotiable editorial rules:
 - Do not assign or estimate Tape Score points for an individual moment. CFB 27 objectives, partial completion, and Team Impact can carry different values; use only the supplied before-and-after Tape Score.
 - Do not mention that this is a video game, database, JSON, screenshot, AI, prompt, or fact ledger.
 - Produce 8 to 12 alternating host turns totaling 700 to 850 spoken words, designed for roughly five to six minutes.
-- Give Marcus Grant a measured recruiting-insider voice. Give Tyler Brooks a sharper college-football analyst voice. Keep both natural, conversational, and family-friendly.
-- Use four to six concise chapters. segmentStart is the zero-based index of the first segment in that chapter.
+- ${mark.name} is the ${mark.scriptPersona}.
+- ${sarah.name} is the ${sarah.scriptPersona}.
+- Keep both natural, conversational, family-friendly, and willing to acknowledge mistakes or uncertainty.
+- Use four to six concise recurring show chapters. Opening Drive must be first and Next Saturday must be last.
+- Choose middle chapters only when the supplied facts support them: QB Room for role/development/depth/Coach Trust/player progression; Film Room for verified performance or tape-evaluation evidence; Recruiting Desk for offers, recruiting movement, commitments, roster recruiting, or transfer-portal facts; Around the Program for verified team/program context, awards, injuries, records, or broader developments; Coach's Clipboard for verified coordinator/head-coach decisions, scheme, staff, roster-management, or program-building facts.
+- Do not force a recurring chapter when its topic is unsupported. A four-chapter episode is preferable to inventing material.
+- Next Saturday is a forward-looking closing segment, but it may only identify verified unresolved questions or themes to watch. Never invent the next opponent, schedule, event, or expected outcome.
+- segmentStart is the zero-based index of the first host turn in that chapter.
 - Each segment must cite every supplied fact key it relies on. Intro/outro connective language may use an empty citation list.
 - End with a short tease that promises only future analysis, not an invented matchup or event.`;
 
@@ -105,7 +120,7 @@ export default async function handler(req, res) {
   if (!user) return json(res, 401, { error: 'Sign in before generating a podcast.' });
 
   const payload = validatePayload(req.body);
-  if (!payload) return json(res, 400, { error: 'A verified two-host episode brief is required.' });
+  if (!payload) return json(res, 400, { error: 'Verified episode source facts are required.' });
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

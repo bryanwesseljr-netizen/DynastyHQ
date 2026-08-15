@@ -7,6 +7,38 @@ export const NEWSROOM_MEDIA_ORIGINS = Object.freeze({
   AI: 'ai-generated',
 });
 
+export const NEWSROOM_PHOTO_TYPES = Object.freeze({
+  GENERAL: 'general',
+  ACTION: 'action',
+  PORTRAIT: 'portrait',
+  RECRUITING: 'recruiting',
+  CELEBRATION: 'celebration',
+});
+
+const VALID_PHOTO_TYPES = new Set(Object.values(NEWSROOM_PHOTO_TYPES));
+
+export const normalizeNewsroomPhotoType = (value) => (
+  VALID_PHOTO_TYPES.has(String(value || '').toLowerCase())
+    ? String(value).toLowerCase()
+    : NEWSROOM_PHOTO_TYPES.GENERAL
+);
+
+const inferPhotoTypeFromText = (value = '') => {
+  const text = String(value || '').toLowerCase();
+  if (/headshot|portrait|profile|selfie|media day|posed|pose\b/.test(text)) return NEWSROOM_PHOTO_TYPES.PORTRAIT;
+  if (/recruit|commit|signing|offer|visit|camp|top school|scholarship/.test(text)) return NEWSROOM_PHOTO_TYPES.RECRUITING;
+  if (/celebrat|trophy|award|champ|victory|win\b|touchdown|td\b|cheer|gatorade/.test(text)) return NEWSROOM_PHOTO_TYPES.CELEBRATION;
+  if (/action|game|throw|pass|scrambl|run\b|rush|pocket|field|warmup|practice|snap|qb|quarterback/.test(text)) return NEWSROOM_PHOTO_TYPES.ACTION;
+  return NEWSROOM_PHOTO_TYPES.GENERAL;
+};
+
+export const getNewsroomPhotoType = (asset = {}) => {
+  if (VALID_PHOTO_TYPES.has(String(asset.photoType || '').toLowerCase())) {
+    return String(asset.photoType).toLowerCase();
+  }
+  return inferPhotoTypeFromText(`${asset.referenceLabel || ''} ${asset.fileName || ''}`);
+};
+
 export const createNewsroomMediaAsset = ({
   id,
   downloadUrl,
@@ -18,6 +50,7 @@ export const createNewsroomMediaAsset = ({
   createdAt = new Date().toISOString(),
   isReference = false,
   referenceLabel = '',
+  photoType = '',
   generatedFrom = null,
 }) => {
   const assetId = cleanText(id, 120);
@@ -25,17 +58,21 @@ export const createNewsroomMediaAsset = ({
   const path = cleanText(storagePath, 600);
   if (!assetId || !url || !path) throw new Error('A saved newsroom image requires an id, URL, and storage path.');
 
+  const safeFileName = cleanText(fileName || 'newsroom-photo.jpg', 180);
+  const safeReferenceLabel = cleanText(referenceLabel, 120);
+
   return {
     id: assetId,
     downloadUrl: url,
     storagePath: path,
-    fileName: cleanText(fileName || 'newsroom-photo.jpg', 180),
+    fileName: safeFileName,
     mimeType: cleanText(mimeType, 80) || 'image/jpeg',
     sizeBytes: Math.max(0, Number(sizeBytes) || 0),
     origin: origin === NEWSROOM_MEDIA_ORIGINS.AI ? NEWSROOM_MEDIA_ORIGINS.AI : NEWSROOM_MEDIA_ORIGINS.UPLOAD,
     createdAt,
     isReference: Boolean(isReference),
-    referenceLabel: cleanText(referenceLabel, 120),
+    referenceLabel: safeReferenceLabel,
+    photoType: normalizeNewsroomPhotoType(photoType || inferPhotoTypeFromText(`${safeReferenceLabel} ${safeFileName}`)),
     generatedFrom: generatedFrom ? {
       publicationId: cleanText(generatedFrom.publicationId, 120),
       articleId: cleanText(generatedFrom.articleId, 120),
@@ -69,42 +106,133 @@ export const clearNewsroomMediaAssignment = ({ issues = [], publicationId, artic
   })
 );
 
-const stableHash = (value) => {
-  let hash = 2166136261;
-  for (const character of String(value || '')) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
+const articlePhotoPreferences = (article = {}) => {
+  const text = [
+    article.outletId,
+    article.theme,
+    article.desk,
+    article.kicker,
+    article.headline,
+    article.dek,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (/recruit|signing|commit|offer|scholarship|visit|prospect/.test(text)) {
+    return [
+      NEWSROOM_PHOTO_TYPES.RECRUITING,
+      NEWSROOM_PHOTO_TYPES.PORTRAIT,
+      NEWSROOM_PHOTO_TYPES.ACTION,
+      NEWSROOM_PHOTO_TYPES.GENERAL,
+      NEWSROOM_PHOTO_TYPES.CELEBRATION,
+    ];
   }
-  return hash >>> 0;
+  if (/film|scheme|analysis|breakdown|evaluation|scouting/.test(text)) {
+    return [
+      NEWSROOM_PHOTO_TYPES.ACTION,
+      NEWSROOM_PHOTO_TYPES.GENERAL,
+      NEWSROOM_PHOTO_TYPES.PORTRAIT,
+      NEWSROOM_PHOTO_TYPES.RECRUITING,
+      NEWSROOM_PHOTO_TYPES.CELEBRATION,
+    ];
+  }
+  if (/champ|award|victory|win\b|touchdown|milestone|celebrat/.test(text)) {
+    return [
+      NEWSROOM_PHOTO_TYPES.CELEBRATION,
+      NEWSROOM_PHOTO_TYPES.ACTION,
+      NEWSROOM_PHOTO_TYPES.GENERAL,
+      NEWSROOM_PHOTO_TYPES.PORTRAIT,
+      NEWSROOM_PHOTO_TYPES.RECRUITING,
+    ];
+  }
+  if (/profile|spotlight|feature|future|watch|inside|journey|story/.test(text)) {
+    return [
+      NEWSROOM_PHOTO_TYPES.PORTRAIT,
+      NEWSROOM_PHOTO_TYPES.ACTION,
+      NEWSROOM_PHOTO_TYPES.GENERAL,
+      NEWSROOM_PHOTO_TYPES.RECRUITING,
+      NEWSROOM_PHOTO_TYPES.CELEBRATION,
+    ];
+  }
+  return [
+    NEWSROOM_PHOTO_TYPES.ACTION,
+    NEWSROOM_PHOTO_TYPES.GENERAL,
+    NEWSROOM_PHOTO_TYPES.CELEBRATION,
+    NEWSROOM_PHOTO_TYPES.PORTRAIT,
+    NEWSROOM_PHOTO_TYPES.RECRUITING,
+  ];
+};
+
+const randomAsset = (assets = []) => assets[Math.floor(Math.random() * assets.length)];
+
+const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
+  const end = targetIndex >= 0 ? targetIndex : issues.length;
+  const recentIssues = issues.slice(Math.max(0, end - 2), end);
+  return new Set(recentIssues.flatMap((issue) => (
+    (issue.articles || [])
+      .filter((article) => article.mediaSource === NEWSROOM_MEDIA_ORIGINS.UPLOAD)
+      .map((article) => article.mediaAssetId)
+      .filter(Boolean)
+  )));
+};
+
+const chooseSmartLibraryPhoto = ({ candidates, article, usedThisEdition, recentlyUsed }) => {
+  const preferences = articlePhotoPreferences(article);
+  const currentId = article.mediaSource === NEWSROOM_MEDIA_ORIGINS.UPLOAD ? article.mediaAssetId : '';
+  const available = candidates.filter((asset) => !usedThisEdition.has(asset.id));
+  const editionPool = available.length ? available : candidates;
+
+  for (const photoType of preferences) {
+    const typed = editionPool.filter((asset) => getNewsroomPhotoType(asset) === photoType);
+    if (!typed.length) continue;
+
+    const fresh = typed.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
+    if (fresh.length) return randomAsset(fresh);
+
+    const notCurrent = typed.filter((asset) => asset.id !== currentId);
+    if (notCurrent.length) return randomAsset(notCurrent);
+
+    return randomAsset(typed);
+  }
+
+  const freshAny = editionPool.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
+  if (freshAny.length) return randomAsset(freshAny);
+  const notCurrentAny = editionPool.filter((asset) => asset.id !== currentId);
+  return randomAsset(notCurrentAny.length ? notCurrentAny : editionPool);
 };
 
 export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
-  const candidates = mediaLibrary
-    .filter((asset) => (
-      asset?.origin === NEWSROOM_MEDIA_ORIGINS.UPLOAD
-      && !asset.isReference
-      && asset.id
-      && asset.downloadUrl
-    ))
-    .sort((left, right) => (
-      stableHash(`${publicationId}:${left.id}`) - stableHash(`${publicationId}:${right.id}`)
-      || left.id.localeCompare(right.id)
-    ));
+  const candidates = mediaLibrary.filter((asset) => (
+    asset?.origin === NEWSROOM_MEDIA_ORIGINS.UPLOAD
+    && !asset.isReference
+    && asset.id
+    && asset.downloadUrl
+  ));
 
   if (!candidates.length) return issues;
 
+  const targetIndex = issues.findIndex((issue) => issue.publicationId === publicationId || issue.id === publicationId);
+  const recentlyUsed = recentLibraryAssignments(issues, targetIndex);
+
   return issues.map((issue) => {
     if (issue.publicationId !== publicationId && issue.id !== publicationId) return issue;
-    const alreadyUsed = new Set((issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean));
-    const unusedCandidates = candidates.filter((asset) => !alreadyUsed.has(asset.id));
-    const assignmentPool = unusedCandidates.length ? unusedCandidates : candidates;
-    let nextCandidate = 0;
+    const usedThisEdition = new Set();
+
     return {
       ...issue,
       articles: (issue.articles || []).map((article) => {
-        if (article.mediaAssetId) return article;
-        const asset = assignmentPool[nextCandidate % assignmentPool.length];
-        nextCandidate += 1;
+        // Deliberately generated AI editorial art stays attached until the user removes it.
+        if (article.mediaSource === NEWSROOM_MEDIA_ORIGINS.AI && article.mediaAssetId) {
+          usedThisEdition.add(article.mediaAssetId);
+          return article;
+        }
+
+        const asset = chooseSmartLibraryPhoto({
+          candidates,
+          article,
+          usedThisEdition,
+          recentlyUsed,
+        });
+        if (!asset) return article;
+        usedThisEdition.add(asset.id);
         return {
           ...article,
           mediaAssetId: asset.id,
@@ -136,6 +264,13 @@ export const setNewsroomReferenceStatus = (library = [], assetId, isReference, r
     ...asset,
     isReference: Boolean(isReference),
     referenceLabel: isReference ? cleanText(referenceLabel || asset.referenceLabel || asset.fileName, 120) : '',
+  })
+);
+
+export const setNewsroomPhotoType = (library = [], assetId, photoType) => (
+  library.map((asset) => asset.id !== assetId ? asset : {
+    ...asset,
+    photoType: normalizeNewsroomPhotoType(photoType),
   })
 );
 
@@ -197,6 +332,7 @@ export const buildPublicNewsroomMediaLibrary = ({ issues = [], frontPages = [], 
       fileName: asset.fileName,
       mimeType: asset.mimeType,
       origin: asset.origin,
+      photoType: getNewsroomPhotoType(asset),
       createdAt: asset.createdAt,
     }));
 };

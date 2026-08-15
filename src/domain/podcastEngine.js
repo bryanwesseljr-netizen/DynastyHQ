@@ -1,19 +1,10 @@
-const WORDS_PER_MINUTE = 145;
+import {
+  PODCAST_HOSTS,
+  PODCAST_PUBLIC_HOSTS,
+  PODCAST_PUBLIC_HOSTS_BY_ID,
+} from './podcastShow.js';
 
-export const PODCAST_HOSTS = [
-  {
-    id: 'marcus-grant',
-    name: 'Marcus Grant',
-    role: 'High School Recruiting Insider',
-    voice: 'cedar',
-  },
-  {
-    id: 'tyler-brooks',
-    name: 'Tyler Brooks',
-    role: 'College Football Insider',
-    voice: 'onyx',
-  },
-];
+const WORDS_PER_MINUTE = 145;
 
 const text = (value, max = 5000) => String(value || '').trim().slice(0, max);
 const wordCount = (value) => text(value).split(/\s+/).filter(Boolean).length;
@@ -32,6 +23,8 @@ const latestFactsForIssue = (state, issue) => {
   });
   return [...factsByKey.values()];
 };
+
+export { PODCAST_HOSTS };
 
 export const findPodcastIssue = (state, publicationId) => (
   (state.newsroomIssues || []).find((issue) => issue.publicationId === publicationId || issue.id === publicationId) || null
@@ -56,7 +49,7 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
       title: text(issue.podcastBrief.title, 240),
       summary: text(issue.podcastBrief.summary, 1200),
     },
-    hosts: PODCAST_HOSTS.map(({ id, name, role }) => ({ id, name, role })),
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
   };
 };
@@ -106,7 +99,7 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     audioStatus: 'not-generated',
     scriptModel: text(model, 80),
     audioModel: '',
-    hosts: PODCAST_HOSTS,
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     chapters,
     segments,
     citedFactKeys,
@@ -121,7 +114,7 @@ export const upsertPodcastEpisode = (state, episode) => {
   if (existingIndex === -1) return { ...state, podcastEpisodes: [...episodes, episode] };
   return {
     ...state,
-    podcastEpisodes: episodes.map((entry, index) => index === existingIndex ? { ...entry, ...episode } : entry),
+    podcastEpisodes: episodes.map((entry, index) => index === existingIndex ? { ...entry, ...episode, hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })) } : entry),
   };
 };
 
@@ -130,6 +123,7 @@ export const markPodcastAudioReady = (state, publicationId, { model = '', segmen
   if (!episode) return state;
   return upsertPodcastEpisode(state, {
     ...episode,
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     status: 'published',
     audioStatus: 'ready',
     audioModel: text(model, 80),
@@ -139,16 +133,16 @@ export const markPodcastAudioReady = (state, publicationId, { model = '', segmen
 };
 
 export const podcastTranscriptText = (episode) => {
-  const hosts = new Map((episode?.hosts || PODCAST_HOSTS).map((host) => [host.id, host.name]));
   const lines = [
     'THE GRIDIRON GRIND',
     episode?.title || 'Episode',
     `Season ${episode?.season || 1}, Week ${episode?.week || 1}`,
+    'Hosted by Mark Thompson and Sarah Chen',
     'AI-generated voices',
     '',
   ];
   (episode?.segments || []).forEach((segment) => {
-    lines.push(`${hosts.get(segment.hostId) || 'Host'}: ${segment.text}`, '');
+    lines.push(`${PODCAST_PUBLIC_HOSTS_BY_ID.get(segment.hostId)?.name || 'Host'}: ${segment.text}`, '');
   });
   return lines.join('\n').trim();
 };

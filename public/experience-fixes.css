@@ -1,0 +1,194 @@
+/* DynastyHQ experience fixes
+   Small presentation corrections for overlapping utility labels and Legacy flow. */
+
+/* Dashboard profile: the decorative CURRENT IDENTITY label was competing with Edit Profile. */
+.dhq-profile-polish::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Weekly Agenda: the colored category captions were redundant with the numbered
+   section titles and could collide at different viewport sizes. Keep the clear
+   numbered headings and restore a normal card rhythm. */
+.dhq-weekly-agenda-workspace [data-agenda-card] {
+  padding: 20px !important;
+  gap: 16px !important;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card]::before {
+  display: none !important;
+  content: none !important;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] > div:first-of-type {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 10px !important;
+  position: relative;
+  z-index: 1;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] h3 {
+  margin: 0 !important;
+  line-height: 1.35 !important;
+}
+
+/* Between Games: keep the compact dashboard summary readable without letting
+   its micro labels fall below the rest of the site's restored type scale. */
+main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :where(
+  [class~="text-[6px]"],
+  [class~="text-[7px]"]
+) {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+/* The Between Games card was added after the light-mode workspace pass, so it
+   otherwise remained a dark island on the light Dashboard. Match the existing
+   dashboard paper treatment while preserving its status accents. */
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] {
+  border-color: #d6dde6 !important;
+  background: rgba(255, 255, 255, .96) !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .09) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  div, section
+)[class*="bg-slate-950"],
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  div, section
+)[class*="bg-slate-900"] {
+  background: rgba(248, 250, 252, .96) !important;
+  background-image: none !important;
+  border-color: #d6dde6 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-white"],
+  [class~="text-slate-100"],
+  [class~="text-slate-200"],
+  [class~="text-slate-300"]
+) {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-slate-400"],
+  [class~="text-slate-500"],
+  [class~="text-slate-600"]
+) {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] [class~="text-emerald-300"] {
+  color: #205c45 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-blue-200"],
+  [class~="text-blue-300"]
+) {
+  color: #184f75 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-amber-200"],
+  [class~="text-amber-300"]
+) {
+  color: #704b08 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] [class~="text-red-200"] {
+  color: #7a2d35 !important;
+}
+
+/* Newsroom: the footer label is now a real share action. */
+.dhq-news-footer .dhq-news-share {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.dhq-news-footer .dhq-news-share:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dhq-news-footer .dhq-news-share:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Legacy: force the major sections to stack in the intended order instead of
+   inheriting any older grid-flow behavior from the retired trophy workspace. */
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto {
+  display: block !important;
+  width: min(100%, 1500px) !important;
+  max-width: 1500px !important;
+}
+
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > header,
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section {
+  width: 100% !important;
+}
+
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > * + * {
+  margin-top: 24px !important;
+}
+
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(1) {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: start !important;
+}
+
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(2) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr) !important;
+  align-items: start !important;
+}
+
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(3) {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+}
+
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(2) > *,
+main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(3) > * {
+  align-self: start !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 1100px) {
+  main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(1) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(2),
+  main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(3) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .dhq-weekly-agenda-workspace [data-agenda-card] {
+    padding: 16px !important;
+    gap: 13px !important;
+  }
+
+  main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(1) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

@@ -1,0 +1,162 @@
+/* DynastyHQ light-mode contrast refinement.
+ * Loaded after theme-toggle.css so it only sharpens the approved light-theme direction.
+ */
+
+/* Crisp text: remove dark-mode shadow/filter effects that soften type on white surfaces. */
+html[data-dhq-theme="light"] main.dhq-page-main {
+  -webkit-font-smoothing: auto;
+  text-rendering: optimizeLegibility;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  h1, h2, h3, h4, h5, h6,
+  p, span, label, a, button, strong, em,
+  td, th, li, summary, input, select, textarea
+) {
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main [class*="drop-shadow"] {
+  filter: none !important;
+}
+
+/* Make the white cards more solid so text reads cleanly without losing the stadium in the page gaps. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"]
+) {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) {
+  background-color: rgba(244, 246, 248, 0.95) !important;
+  backdrop-filter: none !important;
+}
+
+/* Neutral text becomes true dark ink instead of pale gray. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-slate-100"],
+  [class~="text-slate-200"],
+  [class~="text-slate-300"],
+  [class~="text-slate-400"],
+  [class~="text-gray-100"],
+  [class~="text-gray-200"],
+  [class~="text-gray-300"],
+  [class~="text-gray-400"]
+) {
+  color: #111827 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-slate-500"],
+  [class~="text-slate-600"],
+  [class~="text-gray-500"],
+  [class~="text-gray-600"]
+) {
+  color: #273244 !important;
+}
+
+/* Keep accent meaning, but use darker editorial shades with strong contrast on white. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-blue-200"], [class~="text-blue-300"], [class~="text-blue-400"], [class~="text-blue-500"],
+  [class~="text-sky-200"], [class~="text-sky-300"], [class~="text-sky-400"], [class~="text-sky-500"]
+) {
+  color: #174d73 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-emerald-200"], [class~="text-emerald-300"], [class~="text-emerald-400"], [class~="text-emerald-500"],
+  [class~="text-green-200"], [class~="text-green-300"], [class~="text-green-400"], [class~="text-green-500"],
+  [class~="text-teal-200"], [class~="text-teal-300"], [class~="text-teal-400"], [class~="text-teal-500"]
+) {
+  color: #1f5a43 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-amber-200"], [class~="text-amber-300"], [class~="text-amber-400"], [class~="text-amber-500"],
+  [class~="text-yellow-200"], [class~="text-yellow-300"], [class~="text-yellow-400"], [class~="text-yellow-500"],
+  [class~="text-orange-200"], [class~="text-orange-300"], [class~="text-orange-400"], [class~="text-orange-500"]
+) {
+  color: #704b08 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-red-200"], [class~="text-red-300"], [class~="text-red-400"], [class~="text-red-500"],
+  [class~="text-rose-200"], [class~="text-rose-300"], [class~="text-rose-400"], [class~="text-rose-500"]
+) {
+  color: #7a2d35 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-indigo-200"], [class~="text-indigo-300"], [class~="text-indigo-400"], [class~="text-indigo-500"],
+  [class~="text-violet-200"], [class~="text-violet-300"], [class~="text-violet-400"], [class~="text-violet-500"],
+  [class~="text-purple-200"], [class~="text-purple-300"], [class~="text-purple-400"], [class~="text-purple-500"]
+) {
+  color: #56358a !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-cyan-200"], [class~="text-cyan-300"], [class~="text-cyan-400"], [class~="text-cyan-500"]
+) {
+  color: #155d69 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="text-pink-200"], [class~="text-pink-300"], [class~="text-pink-400"], [class~="text-pink-500"]
+) {
+  color: #8b3158 !important;
+}
+
+/* Inputs and placeholders should read as clean ink too. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(input, select, textarea) {
+  color: #111827 !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(input, textarea)::placeholder {
+  color: #4b5563 !important;
+  opacity: 1 !important;
+}
+
+/* Header typography gets the same crisp treatment without changing its layout. */
+html[data-dhq-theme="light"] header.no-print,
+html[data-dhq-theme="light"] header.no-print * {
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] header.no-print [class*="drop-shadow"] {
+  filter: none !important;
+}
+
+html[data-dhq-theme="light"] header.no-print :is(
+  [class~="text-slate-300"],
+  [class~="text-slate-400"],
+  [class~="text-slate-500"]
+) {
+  color: #273244 !important;
+}
+
+html[data-dhq-theme="light"] header.no-print :is(
+  [class~="text-amber-300"],
+  [class~="text-amber-400"],
+  [class~="text-amber-500"]
+) {
+  color: #704b08 !important;
+}

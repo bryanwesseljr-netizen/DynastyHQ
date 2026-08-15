@@ -1,19 +1,14 @@
 import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { PODCAST_HOSTS } from '../src/domain/podcastShow.js';
 
 const MODEL = process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts';
 export const config = { maxDuration: 60 };
 
-const HOSTS = {
-  'marcus-grant': {
-    voice: 'cedar',
-    instructions: 'Speak like a measured high school football recruiting insider on a polished American sports podcast. Warm baritone, confident but never theatrical, medium pace, natural conversational emphasis.',
-  },
-  'tyler-brooks': {
-    voice: 'onyx',
-    instructions: 'Speak like an energetic college football analyst on a polished American sports podcast. Crisp delivery, slightly quicker pace, analytical and conversational, with restrained excitement.',
-  },
-};
+const HOSTS = Object.fromEntries(PODCAST_HOSTS.map((host) => [host.id, {
+  voice: host.voice,
+  instructions: host.speechInstructions,
+}]));
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -61,4 +56,3 @@ export default async function handler(req, res) {
     });
   }
 }
-

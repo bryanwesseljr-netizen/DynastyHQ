@@ -1,0 +1,57 @@
+/* Newsroom article photos: always preserve the complete uploaded composition.
+   The article keeps a consistent editorial frame; the image scales within it
+   and may letterbox/pillarbox rather than being cropped. These declarations
+   intentionally use !important because the bundled outlet-specific layouts
+   define later and more-specific image heights. */
+
+.dhq-news-article .dhq-news-hero {
+  overflow: hidden !important;
+  background: #080b0f !important;
+}
+
+.dhq-news-article .dhq-news-hero img {
+  display: block !important;
+  width: 100% !important;
+  height: clamp(300px, 48vw, 620px) !important;
+  min-height: 0 !important;
+  max-height: 620px !important;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: #080b0f !important;
+}
+
+/* Split-screen recruiting and film-study layouts. */
+.dhq-news-article[data-editorial-layout="insider"] .dhq-news-hero img,
+.dhq-news-article[data-editorial-layout="analysis"] .dhq-news-hero img {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 520px !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
+/* National magazine/network layout. */
+.dhq-news-article[data-editorial-layout="network"] .dhq-news-hero img {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 660px !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
+@media (max-width: 760px) {
+  .dhq-news-article .dhq-news-hero img,
+  .dhq-news-article[data-editorial-layout="insider"] .dhq-news-hero img,
+  .dhq-news-article[data-editorial-layout="analysis"] .dhq-news-hero img,
+  .dhq-news-article[data-editorial-layout="network"] .dhq-news-hero img {
+    width: 100% !important;
+    height: clamp(260px, 72vw, 390px) !important;
+    min-height: 0 !important;
+    max-height: 390px !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+  }
+}

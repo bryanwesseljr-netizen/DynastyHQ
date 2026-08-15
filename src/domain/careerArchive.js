@@ -1,3 +1,5 @@
+import { dedupeCareerMilestones } from './careerDataHygiene.js';
+
 const numeric = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -42,7 +44,7 @@ const fallbackEvent = (update) => {
 
 export const buildCareerArchive = (state = {}) => {
   const updates = state.weeklyUpdates || [];
-  const events = state.careerChronicle || [];
+  const events = dedupeCareerMilestones(state.careerChronicle || []);
   const facts = state.factLedger || [];
   const issues = state.newsroomIssues || [];
   const eventsById = new Map(events.map((event) => [event.id, event]));

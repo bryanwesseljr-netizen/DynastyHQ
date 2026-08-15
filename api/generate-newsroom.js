@@ -54,41 +54,29 @@ const schemaFor = (payload) => ({
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['outletId', 'kicker', 'headline', 'dek', 'dateline', 'paragraphs', 'sectionHeadings', 'pullQuote', 'sidebars', 'citedFactIds'],
+        required: ['outletId', 'storyImportance', 'storyFormat', 'kicker', 'headline', 'dek', 'dateline', 'paragraphs', 'sectionHeadings', 'pullQuote', 'sidebars', 'citedFactIds'],
         properties: {
           outletId: { type: 'string', enum: payload.articleBriefs.map((brief) => brief.outletId) },
+          storyImportance: { type: 'string', enum: ['routine', 'notable', 'major', 'career-defining'] },
+          storyFormat: { type: 'string', enum: ['news', 'feature', 'analysis', 'recruiting-intel', 'milestone', 'reaction'] },
           kicker: { type: 'string' },
           headline: { type: 'string', maxLength: 90 },
           dek: { type: 'string' },
           dateline: { type: 'string' },
-          paragraphs: {
-            type: 'array', minItems: 5, maxItems: 8,
-            items: { type: 'string' },
-          },
-          sectionHeadings: {
-            type: 'array', minItems: 2, maxItems: 3,
-            items: { type: 'string' },
-          },
+          paragraphs: { type: 'array', minItems: 5, maxItems: 8, items: { type: 'string' } },
+          sectionHeadings: { type: 'array', minItems: 2, maxItems: 3, items: { type: 'string' } },
           pullQuote: { type: 'string' },
           sidebars: {
             type: 'array', minItems: 2, maxItems: 3,
             items: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['title', 'items'],
+              type: 'object', additionalProperties: false, required: ['title', 'items'],
               properties: {
                 title: { type: 'string' },
-                items: {
-                  type: 'array', minItems: 2, maxItems: 5,
-                  items: { type: 'string' },
-                },
+                items: { type: 'array', minItems: 2, maxItems: 5, items: { type: 'string' } },
               },
             },
           },
-          citedFactIds: {
-            type: 'array', minItems: 1,
-            items: { type: 'string', enum: payload.facts.map((fact) => fact.id) },
-          },
+          citedFactIds: { type: 'array', minItems: 1, items: { type: 'string', enum: payload.facts.map((fact) => fact.id) } },
         },
       },
     },
@@ -104,20 +92,30 @@ Non-negotiable reporting rules:
 - Facts, names, numbers, results, rankings, offers, objectives, quotes, and events must come from supplied facts. Never invent a score, play, opponent, coach comment, visit, scholarship offer, injury, tactic, formation, ranking, award, weather detail, crowd reaction, or private conversation.
 - Analysis and inference are encouraged when they follow logically from the supplied facts. Signal them naturally with phrases such as “the shape of the list suggests,” “the larger question is,” or “from an evaluation standpoint.” Do not label ordinary reporting as verified/unverified.
 - Never mention a video game, screenshot, upload, database, JSON, AI, prompt, source packet, fact key, ledger, verification process, missing field, or data limitation in reader-facing copy.
-- Do not write defensive compliance language such as “the outlet will not invent,” “no information was verified,” or “the record does not support.” Simply omit unavailable claims and write around them like a professional reporter.
+- Do not write defensive compliance language. Simply omit unavailable claims and write around them like a professional reporter.
 - Do not fabricate quotations. Use quotation marks only when an exact supplied quote exists.
 - A personal Top Schools order is the player’s preference list, not proof of recruiting interest from those schools. Recruiting progress and official offers are separate facts.
 - During the five-game high-school phase, playable moments and objectives are evaluation situations, not a traditional box score. Tape Score may be discussed only as a supplied before-and-after total; never assign points to an individual moment.
 - Make the opening paragraph a genuine lede with a clear news angle. Build a narrative arc: development or tension, context, interpretation, stakes, and a forward-looking close.
 - Vary sentence length and paragraph rhythm. Avoid repetitive summaries, sterile inventories, and four-paragraph templates.
-- Write 350 to 650 words per article in 5 to 8 paragraphs. Keep it family-friendly and believable as modern digital sports journalism.
-- Write a concise headline of 5 to 10 words and no more than 75 characters. Lead with one clear angle in active, natural language. Do not pack the dek, secondary facts, or the full article summary into the headline. Prefer a compact headline such as “Wessel’s Top 10 Starts Close to Home” over a long explanatory sentence.
+- Write 350 to 650 words per article in 5 to 8 paragraphs. Routine stories should usually stay closer to 5-6 paragraphs; major or career-defining stories may use 7-8 when the facts justify it.
+- Keep it family-friendly and believable as modern digital sports journalism.
+- Write a concise headline of 5 to 10 words and no more than 75 characters. Lead with one clear angle in active, natural language.
 - The kicker should be a short editorial label, not the outlet name. The dek should add stakes rather than repeat the headline.
-- Supply two or three specific section headings that match the article's narrative arc. Avoid generic headings such as “Overview” or “Conclusion.”
-- Supply one concise pullQuote as an unattributed editorial takeaway, not a fabricated quotation. Do not put quotation marks around it.
-- Supply two or three compact sidebar panels with titles and two to five brief items each. Make them useful for that outlet: recruiting snapshots and watch lists for recruiting, performance notes for film analysis, local stakes for community coverage, or big-picture context for national coverage. Every factual item must come from the supplied facts; clearly frame any interpretation as analysis.
+- Supply two or three specific section headings that match the article's narrative arc.
+- Supply one concise pullQuote as an unattributed editorial takeaway, not a fabricated quotation.
+- Supply two or three compact sidebar panels with titles and two to five brief items each. Make them outlet-specific and factual: recruiting snapshots and watch lists for recruiting, performance notes for film analysis, local stakes for community coverage, or big-picture context for national coverage.
 - Use a dateline only when a location is explicitly supplied; otherwise return an empty string.
-- Every article must cite the supplied fact IDs used for its factual claims. Cite only IDs from the packet. Citations are stored internally and never displayed to readers.
+- Every article must cite the supplied fact IDs used for its factual claims. Cite only IDs from the packet.
+
+Editorial classification rules:
+- storyImportance must be based only on supplied facts. Do not inflate a routine update into a major story.
+- routine: normal weekly progress, expected evaluation, ordinary result, or incremental development with no significant status change.
+- notable: meaningful momentum or setback such as an offer, ranking/tape movement, role/depth-chart movement, strong performance, meaningful win/loss, or developing decision pressure.
+- major: a genuinely consequential development such as a commitment, winning a starting job, major upset/rivalry result, major award, significant injury, transfer decision, record-setting performance, or championship-stage result when supplied.
+- career-defining: reserve for rare cornerstone moments such as a championship victory, top national award, defining career record, or similarly historic supplied milestone. Use sparingly.
+- storyFormat should match the strongest editorial treatment: news, feature, analysis, recruiting-intel, milestone, or reaction.
+- Different outlets covering the same facts should not simply retell the same article. The local outlet should emphasize program/community stakes, recruiting should emphasize movement and decisions, film analysis should emphasize what performance data may indicate, and national coverage should emphasize the larger arc.
 - Return exactly one article for every article brief and use every requested outletId exactly once.`;
 
 export default async function handler(req, res) {
@@ -148,18 +146,8 @@ export default async function handler(req, res) {
       reasoning: { effort: 'low' },
       max_output_tokens: 10000,
       instructions: INSTRUCTIONS,
-      input: [{
-        role: 'user',
-        content: [{ type: 'input_text', text: `Write this newsroom edition from the following career packet:\n${JSON.stringify(payload)}` }],
-      }],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'dynastyhq_newsroom_edition',
-          strict: true,
-          schema: schemaFor(payload),
-        },
-      },
+      input: [{ role: 'user', content: [{ type: 'input_text', text: `Write this newsroom edition from the following career packet:\n${JSON.stringify(payload)}` }] }],
+      text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },
     });
     if (!response.output_text) return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
     return json(res, 200, { edition: JSON.parse(response.output_text), model: MODEL });

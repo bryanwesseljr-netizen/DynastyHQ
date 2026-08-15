@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, ArrowRight, BookOpen, ChevronLeft, FileImage, Loader2, Newspaper, PenLine, RefreshCw, Star, Zap,
+  Activity, ArrowRight, BookOpen, ChevronLeft, FileImage, Loader2, Newspaper, PenLine, RefreshCw, Star, Trash2, Zap,
 } from 'lucide-react';
+import { doc, runTransaction } from 'firebase/firestore';
 import NewsroomMediaManager from './NewsroomMediaManager';
 import NewsroomArticleReader from './NewsroomArticleReader';
 import PostgameFrontPage from './PostgameFrontPage';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { presentationVariables, resolveNewsroomPresentation } from '../domain/newsroomPresentation';
+import { appId, auth, db } from '../firebase';
 
 const iconForOutlet = (outletId) => ({
   bolt: Zap,
@@ -56,6 +58,8 @@ const GroundedNewsroom = ({
   );
   const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [frontPageIssueId, setFrontPageIssueId] = useState(initialFrontPageId);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveMessage, setArchiveMessage] = useState(null);
 
   const selectedIssue = useMemo(
     () => issues.find((issue) => issue.id === selectedIssueId) || latestIssue,
@@ -82,6 +86,14 @@ const GroundedNewsroom = ({
     onGenerateEdition(selectedPublicationId, { automatic: true });
   }, [isWriting, onGenerateEdition, readOnly, selectedIssue.editorialStatus, selectedPublicationId]);
 
+  useEffect(() => {
+    if (issues.some((issue) => issue.id === selectedIssueId)) return;
+    const nextId = issues[issues.length - 1]?.id || '';
+    if (nextId) setSelectedIssueId(nextId);
+    setIsReaderOpen(false);
+    setFrontPageIssueId('');
+  }, [issues, selectedIssueId]);
+
   const openStory = (theme) => {
     setNewsTheme(theme);
     setIsReaderOpen(true);
@@ -92,6 +104,54 @@ const GroundedNewsroom = ({
     setSelectedIssueId(issueId);
     setIsReaderOpen(false);
     setFrontPageIssueId(initialFrontPageId === issueId ? issueId : '');
+    setArchiveMessage(null);
+  };
+
+  const deleteSelectedArchive = async () => {
+    if (readOnly || archiveBusy || !selectedIssue?.id) return;
+    const owner = auth?.currentUser;
+    if (!owner || !db) {
+      setArchiveMessage({ type: 'error', text: 'Sign in as the DynastyHQ owner before deleting a Newsroom archive.' });
+      return;
+    }
+
+    const archiveLabel = selectedIssue.label || `Season ${selectedIssue.season} · Week ${selectedIssue.week}`;
+    const confirmed = window.confirm(
+      `Delete “${archiveLabel}” from the Newsroom archive dropdown?\n\nThis removes only this Newsroom archive. Your verified game, Fact Ledger, Chronicle history, and podcast episode are preserved.`,
+    );
+    if (!confirmed) return;
+
+    setArchiveBusy(true);
+    setArchiveMessage(null);
+    try {
+      const masterRef = doc(db, 'artifacts', appId, 'users', owner.uid, 'hq_data', 'main');
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(masterRef);
+        if (!snapshot.exists()) throw new Error('The DynastyHQ master save could not be found.');
+        const data = snapshot.data();
+        const currentIssues = Array.isArray(data.newsroomIssues) ? data.newsroomIssues : [];
+        const nextIssues = currentIssues.filter((entry) => entry.id !== selectedIssue.id);
+        if (nextIssues.length === currentIssues.length) throw new Error('That Newsroom archive was already removed.');
+        const remoteRevision = Number(data?._sync?.revision) || 0;
+        transaction.update(masterRef, {
+          newsroomIssues: nextIssues,
+          '_sync.revision': remoteRevision + 1,
+          '_sync.deviceId': data?._sync?.deviceId || 'newsroom-archive-manager',
+          '_sync.updatedAt': new Date().toISOString(),
+        });
+      });
+
+      const remaining = issues.filter((issue) => issue.id !== selectedIssue.id);
+      const nextId = remaining[remaining.length - 1]?.id || '';
+      setSelectedIssueId(nextId);
+      setIsReaderOpen(false);
+      setFrontPageIssueId('');
+      setArchiveMessage({ type: 'success', text: 'Newsroom archive deleted. Verified career history and podcast data were preserved.' });
+    } catch (error) {
+      setArchiveMessage({ type: 'error', text: error?.message || 'The Newsroom archive could not be deleted.' });
+    } finally {
+      setArchiveBusy(false);
+    }
   };
 
   return (
@@ -105,21 +165,35 @@ const GroundedNewsroom = ({
               <p className="mt-1 text-sm text-slate-300">Every outlet follows its own beat—local news, recruiting, film study, and the national story of your career.</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            <select
-              value={selectedIssue.id}
-              onChange={(event) => chooseIssue(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-white"
-              aria-label="Choose weekly newsroom edition"
-            >
-              {[...issues].reverse().map((issue) => (
-                <option key={issue.id} value={issue.id}>{issue.label || `Season ${issue.season} · Week ${issue.week}`}</option>
-              ))}
-            </select>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <select
+                value={selectedIssue.id}
+                onChange={(event) => chooseIssue(event.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-white sm:min-w-56"
+                aria-label="Choose weekly newsroom edition"
+              >
+                {[...issues].reverse().map((issue) => (
+                  <option key={issue.id} value={issue.id}>{issue.label || `Season ${issue.season} · Week ${issue.week}`}</option>
+                ))}
+              </select>
+              {!readOnly && (
+                <button
+                  type="button"
+                  disabled={archiveBusy || isWriting}
+                  onClick={deleteSelectedArchive}
+                  title="Delete selected Newsroom archive only"
+                  className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-red-300 transition-colors hover:border-red-400 hover:bg-red-500/20 disabled:cursor-wait disabled:opacity-50"
+                >
+                  {archiveBusy ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}
+                  <span className="hidden md:inline">Delete archive</span>
+                </button>
+              )}
+            </div>
             {!readOnly && (
               <button
                 type="button"
-                disabled={isWriting}
+                disabled={isWriting || archiveBusy}
                 onClick={() => onGenerateEdition?.(selectedPublicationId, { force: true })}
                 className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/40 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-blue-200 transition-colors hover:border-blue-300 hover:bg-blue-500/20 disabled:cursor-wait disabled:opacity-60"
               >
@@ -129,6 +203,11 @@ const GroundedNewsroom = ({
             )}
           </div>
         </div>
+        {archiveMessage && (
+          <p className={`mt-3 rounded-lg border px-3 py-2 text-[10px] font-bold ${archiveMessage.type === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
+            {archiveMessage.text}
+          </p>
+        )}
       </div>
 
       {!readOnly && !isReaderOpen && !isFrontPageOpen && (
@@ -136,7 +215,7 @@ const GroundedNewsroom = ({
           <div className="border-b border-slate-800 p-5">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">Reusable Career Media</p>
             <h2 className="mt-1 text-2xl font-black uppercase text-white">Career Photo Library</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">Upload once, reuse throughout the journey. New and rewritten articles can automatically choose from your saved game, action, recruiting, and portrait photos.</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">Upload once, reuse throughout the journey. Every saved thumbnail appears below, and new or rewritten articles can automatically choose from your game, action, recruiting, and portrait photos.</p>
           </div>
           <NewsroomMediaManager
             lockerOnly

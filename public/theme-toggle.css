@@ -1,0 +1,314 @@
+/* DynastyHQ light/dark appearance test.
+ * Presentation only: no Firebase or career-state writes.
+ * Light mode is a soft paper/frosted treatment over the same football setting.
+ */
+
+html[data-dhq-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-dhq-theme="light"] {
+  color-scheme: light;
+  background: #f4f5f7;
+}
+
+html[data-dhq-theme="light"] body,
+html[data-dhq-theme="light"] #root,
+html[data-dhq-theme="light"] #root > div.flex.h-screen {
+  background-color: #f4f5f7 !important;
+  color: #111827;
+}
+
+/* White daytime wash while keeping the football stadium clearly present. */
+html[data-dhq-theme="light"] [data-background-sport="football"] > img {
+  opacity: 0.34 !important;
+  filter: saturate(0.62) brightness(1.08) contrast(0.78) !important;
+}
+
+html[data-dhq-theme="light"] [data-background-sport="football"] > div {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.64),
+    rgba(248, 250, 252, 0.72),
+    rgba(244, 245, 247, 0.84)
+  ) !important;
+}
+
+/* A quiet frosted header instead of a second dark visual system. */
+html[data-dhq-theme="light"] header.no-print {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(203, 213, 225, 0.92) !important;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(18px) saturate(0.9);
+}
+
+html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item {
+  color: #4b5563 !important;
+}
+
+html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item:hover,
+html[data-dhq-theme="light"] header.no-print .dhq-primary-nav-item[aria-current="page"] {
+  color: #111827 !important;
+}
+
+html[data-dhq-theme="light"] header.no-print [class~="text-slate-100"],
+html[data-dhq-theme="light"] header.no-print [class~="text-white"] {
+  color: #111827 !important;
+}
+
+html[data-dhq-theme="light"] header.no-print [class~="text-amber-400"] {
+  color: #9a6a12 !important;
+}
+
+html[data-dhq-theme="light"] #mobile-primary-navigation {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-color: #d5dbe4 !important;
+  color-scheme: light;
+}
+
+/* Main cards: translucent white, not stark white blocks. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"]
+) {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  color: #111827;
+  border-color: rgba(203, 213, 225, 0.92) !important;
+  backdrop-filter: blur(14px) saturate(0.88);
+}
+
+/* Secondary/inset surfaces stay only one shade darker for a calm hierarchy. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) {
+  background-color: rgba(241, 244, 247, 0.88) !important;
+  color: #111827;
+  border-color: rgba(203, 213, 225, 0.90) !important;
+}
+
+/* Convert the normal light-on-dark text hierarchy to charcoal/black inside paper surfaces. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"],
+  [class~="bg-slate-950/50"],
+  [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"],
+  [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"],
+  [class~="bg-slate-900/50"],
+  [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/85"],
+  [class~="bg-slate-900/90"],
+  [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"],
+  [class~="bg-slate-800/30"],
+  [class~="bg-slate-800/50"],
+  [class~="bg-slate-800/80"]
+) :is(
+  [class~="text-white"],
+  [class~="text-slate-100"],
+  [class~="text-slate-200"]
+) {
+  color: #111827 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"], [class~="bg-slate-950/50"], [class~="bg-slate-950/55"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"], [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/50"], [class~="bg-slate-900/70"], [class~="bg-slate-900/80"], [class~="bg-slate-900/85"], [class~="bg-slate-900/90"], [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"], [class~="bg-slate-800/30"], [class~="bg-slate-800/50"], [class~="bg-slate-800/80"]
+) [class~="text-slate-300"] {
+  color: #293241 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"], [class~="bg-slate-950/50"], [class~="bg-slate-950/55"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"], [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/50"], [class~="bg-slate-900/70"], [class~="bg-slate-900/80"], [class~="bg-slate-900/85"], [class~="bg-slate-900/90"], [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"], [class~="bg-slate-800/30"], [class~="bg-slate-800/50"], [class~="bg-slate-800/80"]
+) [class~="text-slate-400"] {
+  color: #4b5563 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-slate-950"], [class~="bg-slate-950/50"], [class~="bg-slate-950/55"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"], [class~="bg-slate-950/80"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/50"], [class~="bg-slate-900/70"], [class~="bg-slate-900/80"], [class~="bg-slate-900/85"], [class~="bg-slate-900/90"], [class~="bg-slate-900/95"],
+  [class~="bg-slate-800"], [class~="bg-slate-800/30"], [class~="bg-slate-800/50"], [class~="bg-slate-800/80"]
+) [class~="text-slate-500"] {
+  color: #667085 !important;
+}
+
+/* Soft, restrained accent text instead of neon-on-white. */
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-blue-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-blue-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-blue-500"] {
+  color: #365f83 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-amber-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-amber-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-amber-500"] {
+  color: #8a6417 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-emerald-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-emerald-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-emerald-500"] {
+  color: #376c58 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-red-300"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-red-400"],
+html[data-dhq-theme="light"] main.dhq-page-main [class~="text-red-500"] {
+  color: #984f55 !important;
+}
+
+/* Turn saturated action blocks into soft editorial tints with dark lettering. */
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-blue-600"], [class~="bg-blue-500"]) {
+  background-color: #dceaf5 !important;
+  color: #18364d !important;
+  border-color: #b8cfdf !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-emerald-600"], [class~="bg-emerald-500"]) {
+  background-color: #dfeee7 !important;
+  color: #214a3d !important;
+  border-color: #bdd8cc !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-amber-600"], [class~="bg-amber-500"]) {
+  background-color: #f4ead2 !important;
+  color: #5e4717 !important;
+  border-color: #decda5 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="bg-red-600"], [class~="bg-red-500"]) {
+  background-color: #f3e1e3 !important;
+  color: #6f3439 !important;
+  border-color: #dfbec2 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="bg-blue-600"], [class~="bg-blue-500"],
+  [class~="bg-emerald-600"], [class~="bg-emerald-500"],
+  [class~="bg-amber-600"], [class~="bg-amber-500"],
+  [class~="bg-red-600"], [class~="bg-red-500"]
+) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-900"]) {
+  color: inherit !important;
+}
+
+/* Borders, dividers, form controls and tables. */
+html[data-dhq-theme="light"] main.dhq-page-main :is(
+  [class~="border-slate-600"],
+  [class~="border-slate-700"],
+  [class~="border-slate-700/30"],
+  [class~="border-slate-700/50"],
+  [class~="border-slate-800"],
+  [class~="border-slate-800/50"],
+  [class~="border-slate-800/90"]
+) {
+  border-color: rgba(203, 213, 225, 0.92) !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main [class~="divide-slate-700/50"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(203, 213, 225, 0.78) !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main input,
+html[data-dhq-theme="light"] main.dhq-page-main select,
+html[data-dhq-theme="light"] main.dhq-page-main textarea {
+  color: #111827 !important;
+  background-color: rgba(255, 255, 255, 0.76) !important;
+  border-color: #cbd5e1 !important;
+}
+
+html[data-dhq-theme="light"] main.dhq-page-main input::placeholder,
+html[data-dhq-theme="light"] main.dhq-page-main textarea::placeholder {
+  color: #7b8492 !important;
+}
+
+/* Softer depth: distinguish cards without creating hard high-contrast islands. */
+html[data-dhq-theme="light"] main.dhq-page-main :is([class~="shadow-xl"], [class~="shadow-2xl"]) {
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* Appearance control in the tab header. */
+#dhq-theme-toggle-host {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 145;
+}
+
+#dhq-theme-toggle-host[hidden] {
+  display: none !important;
+}
+
+#dhq-theme-toggle {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(100, 116, 139, 0.65);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fbbf24;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.20);
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+#dhq-theme-toggle:hover {
+  transform: translateY(-1px);
+  border-color: rgba(154, 106, 18, 0.55);
+}
+
+#dhq-theme-toggle:focus-visible {
+  outline: 2px solid #b78522;
+  outline-offset: 2px;
+}
+
+#dhq-theme-toggle svg {
+  width: 17px;
+  height: 17px;
+  pointer-events: none;
+}
+
+html[data-dhq-theme="light"] #dhq-theme-toggle {
+  background: rgba(246, 247, 249, 0.94);
+  border-color: #cbd5e1;
+  color: #344054;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+@media (min-width: 1200px) {
+  header.no-print > div:first-child {
+    padding-right: 60px !important;
+  }
+}
+
+@media (max-width: 1199px) {
+  #dhq-theme-toggle-host {
+    right: 94px;
+  }
+}
+
+@media print {
+  #dhq-theme-toggle-host {
+    display: none !important;
+  }
+}

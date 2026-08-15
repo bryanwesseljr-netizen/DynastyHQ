@@ -24,6 +24,31 @@
   z-index: 1;
 }
 
+/* Newsroom: the footer label is now a real share action. */
+.dhq-news-footer .dhq-news-share {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.dhq-news-footer .dhq-news-share:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dhq-news-footer .dhq-news-share:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
 /* Legacy: force the major sections to stack in the intended order instead of
    inheriting any older grid-flow behavior from the retired trophy workspace. */
 main[data-active-tab="trophies"] > div.relative.z-10.mx-auto {

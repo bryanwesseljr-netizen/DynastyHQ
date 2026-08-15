@@ -7,21 +7,30 @@
   content: none !important;
 }
 
-/* Weekly Agenda: reserve a full label row above the original numbered heading. */
+/* Weekly Agenda: the colored category captions were redundant with the numbered
+   section titles and could collide at different viewport sizes. Keep the clear
+   numbered headings and restore a normal card rhythm. */
 .dhq-weekly-agenda-workspace [data-agenda-card] {
-  padding-top: 62px !important;
+  padding: 20px !important;
+  gap: 16px !important;
 }
 
 .dhq-weekly-agenda-workspace [data-agenda-card]::before {
-  min-height: 36px !important;
-  padding-block: 7px !important;
-  line-height: 1.15 !important;
+  display: none !important;
+  content: none !important;
 }
 
 .dhq-weekly-agenda-workspace [data-agenda-card] > div:first-of-type {
   margin-top: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 10px !important;
   position: relative;
   z-index: 1;
+}
+
+.dhq-weekly-agenda-workspace [data-agenda-card] h3 {
+  margin: 0 !important;
+  line-height: 1.35 !important;
 }
 
 /* Newsroom: the footer label is now a real share action. */
@@ -103,11 +112,8 @@ main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-ty
 
 @media (max-width: 767px) {
   .dhq-weekly-agenda-workspace [data-agenda-card] {
-    padding-top: 58px !important;
-  }
-
-  .dhq-weekly-agenda-workspace [data-agenda-card]::before {
-    min-height: 34px !important;
+    padding: 16px !important;
+    gap: 13px !important;
   }
 
   main[data-active-tab="trophies"] > div.relative.z-10.mx-auto > section:nth-of-type(1) {

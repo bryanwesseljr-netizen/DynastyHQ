@@ -41,6 +41,35 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       ? 'AI editorial illustration'
       : '';
 
+  const shareDigitalEdition = async () => {
+    if (typeof window === 'undefined') return;
+
+    // Owner mode: reuse DynastyHQ's existing public-share workflow so the link
+    // points at the read-only shared dynasty rather than a private owner session.
+    const ownerShareButton = [...document.querySelectorAll('header.no-print button')]
+      .find((button) => /get share link/i.test(button.textContent || ''));
+    if (ownerShareButton) {
+      ownerShareButton.click();
+      return;
+    }
+
+    // Read-only/public mode: share the already-public URL directly.
+    const shareData = {
+      title: `${story.headline} | ${story.outletName}`,
+      text: story.dek || story.headline,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareData.url);
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') console.error('Unable to share digital edition', error);
+    }
+  };
+
   return (
     <article
       className="dhq-news-article"
@@ -139,7 +168,9 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       <footer className="dhq-news-footer">
         <span>{story.outletName}</span>
         <span>{presentation.strapline}</span>
-        <span className="dhq-news-share"><Share2 size={13} /> Shareable digital edition</span>
+        <button type="button" className="dhq-news-share" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">
+          <Share2 size={13} /> Shareable digital edition
+        </button>
       </footer>
     </article>
   );

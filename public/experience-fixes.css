@@ -33,6 +33,78 @@
   line-height: 1.35 !important;
 }
 
+/* Between Games: keep the compact dashboard summary readable without letting
+   its micro labels fall below the rest of the site's restored type scale. */
+main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :where(
+  [class~="text-[6px]"],
+  [class~="text-[7px]"]
+) {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+/* The Between Games card was added after the light-mode workspace pass, so it
+   otherwise remained a dark island on the light Dashboard. Match the existing
+   dashboard paper treatment while preserving its status accents. */
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] {
+  border-color: #d6dde6 !important;
+  background: rgba(255, 255, 255, .96) !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .09) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  div, section
+)[class*="bg-slate-950"],
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  div, section
+)[class*="bg-slate-900"] {
+  background: rgba(248, 250, 252, .96) !important;
+  background-image: none !important;
+  border-color: #d6dde6 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-white"],
+  [class~="text-slate-100"],
+  [class~="text-slate-200"],
+  [class~="text-slate-300"]
+) {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-slate-400"],
+  [class~="text-slate-500"],
+  [class~="text-slate-600"]
+) {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] [class~="text-emerald-300"] {
+  color: #205c45 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-blue-200"],
+  [class~="text-blue-300"]
+) {
+  color: #184f75 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] :is(
+  [class~="text-amber-200"],
+  [class~="text-amber-300"]
+) {
+  color: #704b08 !important;
+}
+
+html[data-dhq-theme="light"] main[data-active-tab="dashboard"] section[aria-labelledby="between-games-title"] [class~="text-red-200"] {
+  color: #7a2d35 !important;
+}
+
 /* Newsroom: the footer label is now a real share action. */
 .dhq-news-footer .dhq-news-share {
   appearance: none;

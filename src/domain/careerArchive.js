@@ -5,6 +5,11 @@ const numeric = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const weekNumber = (value, fallback = 1) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
 const normalizedPhase = (value) => String(value || 'Player').trim() || 'Player';
 
 const fallbackEvent = (update) => {
@@ -36,7 +41,7 @@ const fallbackEvent = (update) => {
   return {
     id: update.id,
     type: update.weekType === 'bye' ? 'bye' : 'weekly-update',
-    title: update.weekType === 'bye' ? `Week ${update.week} bye` : `Week ${update.week} update`,
+    title: update.weekType === 'bye' ? (update.weekLabel || `Week ${update.week} bye`) : `Week ${update.week} update`,
     summary: 'A verified weekly update was published.',
     factKeys: [],
   };
@@ -57,8 +62,10 @@ export const buildCareerArchive = (state = {}) => {
     return {
       ...event,
       id: update.id,
-      season: numeric(update.season || event.season) || 1,
-      week: numeric(update.week || event.week) || 1,
+      season: numeric(update.season ?? event.season) || 1,
+      week: weekNumber(update.week ?? event.week, 1),
+      weekLabel: update.weekLabel || event.weekLabel || '',
+      weekPhase: update.weekPhase || event.weekPhase || '',
       careerPhase: normalizedPhase(update.careerPhase || event.careerPhase),
       occurredAt: event.occurredAt || update.publishedAt,
       publishedAt: update.publishedAt || event.occurredAt,
@@ -79,7 +86,9 @@ export const buildCareerArchive = (state = {}) => {
     entries.push({
       ...event,
       season: numeric(event.season) || 1,
-      week: numeric(event.week) || 1,
+      week: weekNumber(event.week, 1),
+      weekLabel: event.weekLabel || '',
+      weekPhase: event.weekPhase || '',
       careerPhase: normalizedPhase(event.careerPhase),
       occurredAt: event.occurredAt || '',
       publishedAt: event.occurredAt || '',
@@ -116,6 +125,7 @@ export const filterCareerArchive = (entries, filters = {}) => {
     const searchable = [
       entry.title,
       entry.summary,
+      entry.weekLabel,
       entry.game?.opponent,
       entry.quote,
       ...entry.facts.map((fact) => `${fact.label} ${fact.value}`),

@@ -72,7 +72,7 @@ export const diffRtgSnapshots = (current = {}, previous = {}) => {
 
 const chronological = (left, right) => (
   Number(left.season || 1) - Number(right.season || 1)
-  || Number(left.week || 1) - Number(right.week || 1)
+  || Number(left.week ?? 1) - Number(right.week ?? 1)
   || String(left.publishedAt || '').localeCompare(String(right.publishedAt || ''))
 );
 
@@ -83,7 +83,7 @@ export const buildRtgProgress = (state = {}) => {
     .map((update, index, ordered) => ({
       id: update.id,
       season: Number(update.season || 1),
-      week: Number(update.week || 1),
+      week: Number(update.week ?? 1),
       careerPhase: update.careerPhase || 'Player',
       game: update.game || null,
       snapshot: update.rtgSnapshot,

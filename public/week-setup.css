@@ -1,0 +1,59 @@
+/* Week Setup is intentionally isolated from global typography/theme rules. */
+html[data-dhq-theme="light"] [data-week-setup-panel] {
+  border-color: #d6dde6 !important;
+  background: rgba(255, 255, 255, .97) !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .10) !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] > div:first-child {
+  border-color: #e2e8f0 !important;
+  background: linear-gradient(90deg, rgba(255,247,237,.98), rgba(255,255,255,.98), rgba(248,250,252,.98)) !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] :is(h2, h3, [class~="text-white"]) {
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] :is([class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: #334155 !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] :is([class~="text-slate-400"], [class~="text-slate-500"]) {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] :is(input, select, textarea) {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] :is(input, textarea)::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] [class*="bg-slate-900"],
+html[data-dhq-theme="light"] [data-week-setup-panel] [class*="bg-slate-950"] {
+  background-color: #f8fafc !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] [class*="border-slate-7"],
+html[data-dhq-theme="light"] [data-week-setup-panel] [class*="border-slate-6"] {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] [class~="text-amber-200"],
+html[data-dhq-theme="light"] [data-week-setup-panel] [class~="text-amber-300"] {
+  color: #8a5a08 !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] [class~="text-blue-200"],
+html[data-dhq-theme="light"] [data-week-setup-panel] [class~="text-blue-300"] {
+  color: #1d5f8a !important;
+}
+
+html[data-dhq-theme="light"] [data-week-setup-panel] [class~="text-emerald-200"],
+html[data-dhq-theme="light"] [data-week-setup-panel] [class~="text-emerald-300"] {
+  color: #176044 !important;
+}

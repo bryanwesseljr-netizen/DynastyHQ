@@ -11,7 +11,7 @@ const sameValue = (left, right) => normalizedComparable(left) === normalizedComp
 
 const chronological = (left, right) => (
   Number(left?.season || 1) - Number(right?.season || 1)
-  || Number(left?.week || 1) - Number(right?.week || 1)
+  || Number(left?.week ?? 1) - Number(right?.week ?? 1)
   || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
 );
 
@@ -23,10 +23,14 @@ const samePublication = (left, right) => {
   const leftId = publicationIdentity(left);
   const rightId = publicationIdentity(right);
   if (leftId && rightId && leftId === rightId) return true;
-  return Number(left?.season || 0) === Number(right?.season || 0)
-    && Number(left?.week || 0) === Number(right?.week || 0)
-    && Number(left?.season || 0) > 0
-    && Number(left?.week || 0) > 0;
+  const leftSeason = Number(left?.season || 0);
+  const rightSeason = Number(right?.season || 0);
+  const leftWeek = Number(left?.week ?? -1);
+  const rightWeek = Number(right?.week ?? -1);
+  return leftSeason === rightSeason
+    && leftWeek === rightWeek
+    && leftSeason > 0
+    && leftWeek >= 0;
 };
 
 const fieldDefinitions = [
@@ -108,7 +112,7 @@ export const buildChangeOnlyModel = ({ state = {}, rtgUpdate = {} } = {}) => {
   return {
     baselineUpdate,
     baselineLabel: baselineUpdate
-      ? `Season ${baselineUpdate.season || 1} · Week ${baselineUpdate.week || 1}`
+      ? `Season ${baselineUpdate.season || 1} · Week ${baselineUpdate.week ?? 1}`
       : 'No published RTG baseline yet',
     fields,
     changed,
@@ -172,7 +176,7 @@ const recoverableAgendaDraft = (state = {}) => {
   const draft = state?.weeklyAgendaDraft;
   if (!draft || typeof draft !== 'object') return null;
   if (Number(draft.season || 0) !== Number(state.currentSeason || 1)) return null;
-  if (Number(draft.week || 0) !== Number(state.currentWeek || 1)) return null;
+  if (Number(draft.week ?? -1) !== Number(state.currentWeek ?? 1)) return null;
   if (draft.careerPhase && state.careerPhase && draft.careerPhase !== state.careerPhase) return null;
   return draft;
 };
@@ -208,7 +212,7 @@ export const buildBetweenGamesModel = (state = {}) => {
     inbox.push({
       id: 'saved-week',
       priority: 'high',
-      title: `Week ${safeState.currentWeek || 1} draft is in progress`,
+      title: `Week ${safeState.currentWeek ?? 1} draft is in progress`,
       detail: 'Resume the saved Weekly Agenda instead of starting over.',
       actionLabel: 'Resume Week',
       tab: 'dataEntry',
@@ -270,12 +274,12 @@ export const buildBetweenGamesModel = (state = {}) => {
 
   const primaryAction = agendaDraft
     ? {
-        label: `Resume Week ${safeState.currentWeek || 1}`,
+        label: `Resume Week ${safeState.currentWeek ?? 1}`,
         detail: 'A saved Weekly Agenda is waiting for you.',
         tab: 'dataEntry',
       }
     : {
-        label: `Open Week ${safeState.currentWeek || 1}`,
+        label: `Open Week ${safeState.currentWeek ?? 1}`,
         detail: latestUpdate ? 'The previous week is closed. Start with the next pregame snapshot.' : 'Start the first verified weekly workflow.',
         tab: 'dataEntry',
       };
@@ -283,7 +287,7 @@ export const buildBetweenGamesModel = (state = {}) => {
   return {
     stage,
     season: Number(safeState.currentSeason) || 1,
-    week: Number(safeState.currentWeek) || 1,
+    week: Number(safeState.currentWeek ?? 1),
     latestUpdate,
     latestGame: formatGameSummary(latestGame),
     latestIssue,

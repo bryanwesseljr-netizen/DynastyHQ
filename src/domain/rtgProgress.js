@@ -10,6 +10,39 @@ export const RTG_FIELDS = Object.freeze([
   { key: 'sponsorships', label: 'Sponsorships', kind: 'text' },
 ]);
 
+export const RTG_STATUS_FIELDS = Object.freeze([
+  { key: 'weeklyPoints', label: 'Weekly Action Points', kind: 'number' },
+  { key: 'coachHappiness', label: 'Coach Happiness', kind: 'text' },
+  { key: 'draftProjection', label: 'Draft Projection', kind: 'text' },
+  { key: 'academicsStanding', label: 'Academics Standing', kind: 'text' },
+  { key: 'examWeeks', label: 'Weeks Until Exam', kind: 'number' },
+  { key: 'academicsAbility', label: 'Academics Ability', kind: 'text' },
+  { key: 'academicsCoachHappinessBonus', label: 'Academics Coach Happiness Bonus', kind: 'number' },
+  { key: 'leadershipLevel', label: 'Leadership Level', kind: 'text' },
+  { key: 'leadershipAbility', label: 'Leadership Ability', kind: 'text' },
+  { key: 'leadershipCoachHappinessBonus', label: 'Leadership Coach Happiness Bonus', kind: 'number' },
+  { key: 'leadershipTeamXpMultiplier', label: 'Leadership Team XP Multiplier', kind: 'text' },
+  { key: 'leadershipComposureBonus', label: 'Leadership Composure Bonus', kind: 'number' },
+  { key: 'healthLevel', label: 'Health Level', kind: 'text' },
+  { key: 'injuryRisk', label: 'Injury Risk', kind: 'text' },
+  { key: 'healthWearImpact', label: 'Health Wear & Tear Impact', kind: 'text' },
+  { key: 'fitnessLevel', label: 'Fitness Level', kind: 'text' },
+  { key: 'fitnessCoachHappinessBonus', label: 'Fitness Coach Happiness Bonus', kind: 'number' },
+  { key: 'fitnessTeamXpMultiplier', label: 'Fitness Team XP Multiplier', kind: 'text' },
+  { key: 'fitnessComposureBonus', label: 'Fitness Composure Bonus', kind: 'number' },
+  { key: 'fitnessWeightBonus', label: 'Fitness Weight Bonus', kind: 'number' },
+  { key: 'fitnessWearImpact', label: 'Fitness Wear & Tear Impact', kind: 'text' },
+  { key: 'brandTier', label: 'Brand Tier', kind: 'text' },
+  { key: 'nextFanMilestone', label: 'Next Fan Milestone', kind: 'number' },
+  { key: 'brandEngagement', label: 'Brand Engagement', kind: 'text' },
+  { key: 'dealTier', label: 'Deal Tier', kind: 'text' },
+  { key: 'brandAbility', label: 'Brand Ability', kind: 'text' },
+  { key: 'nilWeeklyCost', label: 'NIL Weekly Cost', kind: 'number' },
+  { key: 'openNilSlots', label: 'Open NIL Slots', kind: 'number' },
+]);
+
+export const RTG_ALL_FIELDS = Object.freeze([...RTG_FIELDS, ...RTG_STATUS_FIELDS]);
+
 const hasValue = (value) => value !== '' && value !== null && value !== undefined;
 
 const normalizedValue = (value, kind) => {
@@ -20,7 +53,7 @@ const normalizedValue = (value, kind) => {
 };
 
 export const createRtgSnapshot = (rtg = {}) => {
-  const snapshot = RTG_FIELDS.reduce((result, field) => {
+  const snapshot = RTG_ALL_FIELDS.reduce((result, field) => {
     const value = normalizedValue(rtg[field.key], field.kind);
     if (hasValue(value) && value !== '') result[field.key] = value;
     return result;
@@ -34,12 +67,12 @@ export const createRtgSnapshot = (rtg = {}) => {
 
 export const hasRtgSnapshot = (snapshot = {}) => {
   const safeSnapshot = snapshot && typeof snapshot === 'object' ? snapshot : {};
-  return RTG_FIELDS.some((field) => hasValue(safeSnapshot[field.key]))
+  return RTG_ALL_FIELDS.some((field) => hasValue(safeSnapshot[field.key]))
     || Object.keys(safeSnapshot.wear || {}).length > 0;
 };
 
 export const diffRtgSnapshots = (current = {}, previous = {}) => {
-  const changes = RTG_FIELDS.flatMap((field) => {
+  const changes = RTG_ALL_FIELDS.flatMap((field) => {
     const currentValue = normalizedValue(current[field.key], field.kind);
     const previousValue = normalizedValue(previous[field.key], field.kind);
     if (!hasValue(currentValue) || !hasValue(previousValue) || currentValue === previousValue) return [];
@@ -104,8 +137,12 @@ export const formatRtgValue = (key, value) => {
   if (!hasValue(value)) return '—';
   if (key === 'gpa') return Number(value).toFixed(1);
   if (key === 'valuation') return `$${Number(value).toLocaleString()}`;
-  if (['followers', 'coachTrust', 'trustToNext', 'skillPoints', 'energy'].includes(key)) {
+  if (['followers', 'coachTrust', 'trustToNext', 'skillPoints', 'energy', 'weeklyPoints', 'nextFanMilestone', 'nilWeeklyCost', 'openNilSlots', 'examWeeks'].includes(key)) {
     return Number(value).toLocaleString();
+  }
+  if (['academicsCoachHappinessBonus', 'leadershipCoachHappinessBonus', 'leadershipComposureBonus', 'fitnessCoachHappinessBonus', 'fitnessComposureBonus', 'fitnessWeightBonus'].includes(key)) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? `+${parsed}` : String(value);
   }
   return String(value);
 };

@@ -1,0 +1,46 @@
+/* College-player replacement for Weekly Agenda Card 3. High school and coach cards remain untouched. */
+[data-agenda-card="3"].dhq-college-card-enhanced > :not(.dhq-college-career-card) {
+  display: none !important;
+}
+
+[data-agenda-card="3"].dhq-college-card-enhanced .dhq-college-career-card {
+  width: 100%;
+  min-width: 0;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] {
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] :is(h3, [class~="text-white"]) {
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] :is([class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: #334155 !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] :is([class~="text-slate-400"], [class~="text-slate-500"]) {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] [class*="bg-slate-950"] {
+  background-color: #f8fafc !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] [class*="border-slate-8"],
+html[data-dhq-theme="light"] [data-college-career-card] [class*="border-slate-7"] {
+  border-color: #d6dde6 !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] [class~="text-blue-300"] {
+  color: #1d5f8a !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] [class~="text-amber-300"] {
+  color: #8a5a08 !important;
+}
+
+html[data-dhq-theme="light"] [data-college-career-card] [class~="text-emerald-400"] {
+  color: #177553 !important;
+}

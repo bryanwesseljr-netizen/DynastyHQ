@@ -9,19 +9,140 @@ const WORDS_PER_MINUTE = 145;
 const text = (value, max = 5000) => String(value || '').trim().slice(0, max);
 const wordCount = (value) => text(value).split(/\s+/).filter(Boolean).length;
 
-const latestFactsForIssue = (state, issue) => {
-  const allowedKeys = new Set(issue?.podcastBrief?.citedFactKeys || []);
+const coverageStageFor = (state = {}, issue = {}) => {
+  const phase = text(issue.careerPhase || state.careerPhase, 40);
+  if (['OC', 'HC'].includes(phase)) return 'coach';
+  if (['high-school-evaluation', 'recruiting'].includes(text(issue.editionType, 80))) return 'high-school';
+  if (state.player?.isCommitted || state.player?.college) return 'college-player';
+  return 'high-school';
+};
+
+const isHighSchoolLegacyFact = (key) => (
+  key.startsWith('highSchool.')
+  || key.startsWith('recruiting.profile.')
+  || key === 'profile.player.stars'
+  || key === 'profile.player.nationalQbRank'
+);
+
+const isMechanicalRtgFact = (key) => new Set([
+  'profile.player.overall',
+  'rtg.coachTrust',
+  'rtg.trustToNext',
+  'rtg.skillPoints',
+  'rtg.weeklyPoints',
+  'rtg.energy',
+  'rtg.gpa',
+  'rtg.examWeeks',
+  'rtg.academicsStanding',
+  'rtg.academicsAbility',
+  'rtg.academicsCoachHappinessBonus',
+  'rtg.leadershipLevel',
+  'rtg.leadershipAbility',
+  'rtg.leadershipCoachHappinessBonus',
+  'rtg.leadershipTeamXpMultiplier',
+  'rtg.leadershipComposureBonus',
+  'rtg.healthLevel',
+  'rtg.injuryRisk',
+  'rtg.healthWearImpact',
+  'rtg.fitnessLevel',
+  'rtg.fitnessCoachHappinessBonus',
+  'rtg.fitnessTeamXpMultiplier',
+  'rtg.fitnessComposureBonus',
+  'rtg.fitnessWeightBonus',
+  'rtg.fitnessWearImpact',
+  'rtg.followers',
+  'rtg.brandTier',
+  'rtg.nextFanMilestone',
+  'rtg.brandEngagement',
+  'rtg.dealTier',
+  'rtg.brandAbility',
+  'rtg.nilWeeklyCost',
+  'rtg.openNilSlots',
+  'rtg.valuation',
+  'rtg.sponsorships',
+  'rtg.coachHappiness',
+]).has(key) || key.startsWith('rtg.wear.');
+
+const podcastUseFor = (fact, coverageStage) => {
+  const key = text(fact?.key, 180);
+  if (!key) return 'exclude';
+  if (coverageStage === 'college-player' && isHighSchoolLegacyFact(key)) return 'exclude';
+  if (coverageStage === 'college-player' && key.startsWith('recruiting.')) return 'exclude';
+  if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'exclude';
+  if (coverageStage === 'coach' && (key.startsWith('rtg.') || key.startsWith('highSchool.') || key.startsWith('recruiting.profile.'))) return 'exclude';
+  if (key.startsWith('game.')) return 'primary';
+  if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
+  if (key === 'weekly.note' && text(fact.value, 800)) return 'primary';
+  if (key === 'rtg.rank') return 'primary';
+  if (key === 'rtg.draftProjection') return coverageStage === 'college-player' ? 'context' : 'exclude';
+  if (isMechanicalRtgFact(key)) return coverageStage === 'high-school' ? 'context' : 'exclude';
+  if (key.startsWith('highSchool.')) return coverageStage === 'high-school' ? 'primary' : 'exclude';
+  if (key.startsWith('recruiting.')) return coverageStage === 'high-school' ? 'primary' : 'context';
+  if (key.startsWith('coach.')) {
+    return ['coach.portalDepartures', 'coach.openScholarships', 'coach.classCommits', 'coach.portalAdditions'].includes(key)
+      ? 'primary'
+      : 'context';
+  }
+  if (key.startsWith('roster.')) return 'context';
+  if (key.startsWith('profile.player.')) return 'context';
+  if (key.startsWith('weekly.')) return 'context';
+  return 'context';
+};
+
+const factsForIssue = (state, issue, coverageStage) => {
+  const publicationId = issue.publicationId || issue.id;
   const factsByKey = new Map();
   (state.factLedger || []).forEach((fact) => {
-    if (!fact?.verified || !allowedKeys.has(fact.key)) return;
-    if (fact.publicationId && fact.publicationId !== issue.publicationId) return;
+    if (!fact?.verified || fact.publicationId !== publicationId) return;
+    const editorialUse = podcastUseFor(fact, coverageStage);
+    if (editorialUse === 'exclude') return;
     factsByKey.set(fact.key, {
       key: fact.key,
       label: text(fact.label, 160),
       value: fact.value,
+      editorialUse,
     });
   });
   return [...factsByKey.values()];
+};
+
+const editorialBriefFor = (state, issue, coverageStage) => {
+  const playerName = text(state.player?.name, 120) || 'the quarterback';
+  const school = text(state.player?.college || state.player?.school, 160) || 'the program';
+  const label = text(issue.label || issue.weekLabel, 160) || `Week ${Number(issue.week ?? 1)}`;
+  const weekType = text(issue.weekType, 60);
+  const weekPhase = text(issue.weekPhase, 80);
+
+  if (coverageStage === 'college-player' && weekType === 'bye') {
+    const phaseAngle = weekPhase === 'postseason'
+      ? 'postseason positioning, preparation, pressure, and the path ahead'
+      : weekPhase === 'preseason'
+        ? 'arrival, quarterback-room position, preparation, patience, and the path toward playing time'
+        : 'reset, preparation, quarterback-room competition, recovery, and the next opportunity';
+    return {
+      title: `${school} ${label}: what matters next`,
+      summary: `Discuss ${playerName}'s football situation during ${label}. Center ${phaseAngle}. Use the depth-chart role and any real football developments supplied in the packet, but do not discuss game ratings, progression points, academics meters, follower counts, brand meters, or old high-school recruiting mechanics.`,
+    };
+  }
+
+  if (coverageStage === 'college-player') {
+    return {
+      title: text(issue.podcastBrief?.title, 240) || `${school} ${label}: the football story`,
+      summary: `Discuss the actual football result, player performance, role, pressure, momentum, and season implications supported by the packet. Use statistics selectively to support analysis. Do not discuss tracker mechanics, ratings currencies, GPA, followers, or old high-school recruiting data.`,
+    };
+  }
+
+  if (coverageStage === 'coach') {
+    return {
+      title: text(issue.podcastBrief?.title, 240) || `${school} ${label}: program outlook`,
+      summary: `Discuss the real coaching and program story: results, roster decisions, recruiting wins or losses, portal movement, depth concerns, postseason stakes, and career pressure supported by the packet. Keep management counters and game currencies out of the conversation.`,
+    };
+  }
+
+  return {
+    title: text(issue.podcastBrief?.title, 240),
+    summary: text(issue.podcastBrief?.summary, 1200),
+  };
 };
 
 export { PODCAST_HOSTS };
@@ -36,19 +157,22 @@ export const findPodcastEpisode = (state, publicationId) => (
 
 export const buildPodcastGenerationPayload = (state, publicationId) => {
   const issue = findPodcastIssue(state, publicationId);
-  if (!issue?.podcastBrief) throw new Error('A verified newsroom issue is required before generating an episode.');
-  const facts = latestFactsForIssue(state, issue);
-  if (!facts.length) throw new Error('The selected issue has no verified facts available for a podcast.');
+  if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
+  const coverageStage = coverageStageFor(state, issue);
+  const facts = factsForIssue(state, issue, coverageStage);
+  if (!facts.length) throw new Error('The selected issue has no football facts available for a podcast.');
+  const brief = editorialBriefFor(state, issue, coverageStage);
 
   return {
     publicationId: issue.publicationId || issue.id,
     season: Number(issue.season) || 1,
-    week: Number(issue.week) || 1,
+    week: Math.max(0, Number(issue.week) || 0),
+    label: text(issue.label || issue.weekLabel, 160),
+    weekType: text(issue.weekType, 60),
+    weekPhase: text(issue.weekPhase, 80),
     careerPhase: text(issue.careerPhase, 40),
-    brief: {
-      title: text(issue.podcastBrief.title, 240),
-      summary: text(issue.podcastBrief.summary, 1200),
-    },
+    coverageStage,
+    brief,
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
   };
@@ -84,7 +208,7 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
   }
 
   const citedFactKeys = [...new Set(segments.flatMap((segment) => segment.citedFactKeys))];
-  if (!citedFactKeys.length) throw new Error('The generated episode did not cite its verified source facts.');
+  if (!citedFactKeys.length) throw new Error('The generated episode did not cite its source facts.');
 
   return {
     id: `podcast-${payload.publicationId}`,
@@ -136,7 +260,7 @@ export const podcastTranscriptText = (episode) => {
   const lines = [
     'THE GRIDIRON GRIND',
     episode?.title || 'Episode',
-    `Season ${episode?.season || 1}, Week ${episode?.week || 1}`,
+    `Season ${episode?.season || 1}, Week ${episode?.week ?? 1}`,
     'Hosted by Mark Thompson and Sarah Chen',
     'AI-generated voices',
     '',

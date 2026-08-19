@@ -62,6 +62,7 @@ const isHighSchoolLegacyFact = (key) => (
 );
 
 const isMechanicalRtgFact = (key) => new Set([
+  'profile.player.overall',
   'rtg.coachTrust',
   'rtg.trustToNext',
   'rtg.skillPoints',
@@ -97,6 +98,7 @@ const isMechanicalRtgFact = (key) => new Set([
   'rtg.valuation',
   'rtg.sponsorships',
   'rtg.coachHappiness',
+  'rtg.draftProjection',
 ]).has(key) || key.startsWith('rtg.wear.');
 
 const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' } = {}) => {
@@ -107,7 +109,7 @@ const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' 
   if (key.startsWith('game.')) return 'primary';
   if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
   if (key === 'weekly.note' && clean(fact.value, 500)) return 'primary';
-  if (key === 'rtg.rank' || key === 'rtg.draftProjection') return 'primary';
+  if (key === 'rtg.rank') return 'primary';
   if (isMechanicalRtgFact(key)) return 'background-only';
   if (key.startsWith('highSchool.')) return coverageStage === 'high-school' ? 'primary' : 'exclude';
   if (key.startsWith('recruiting.')) return current ? 'primary' : 'context';
@@ -302,5 +304,16 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
   }),
   postgameFrontPages: (state.postgameFrontPages || []).map((page) => (
     page.publicationId === publicationId ? { ...page, needsRegeneration: true, staleAt: edition.generatedAt } : page
+  )),
+  podcastEpisodes: (state.podcastEpisodes || []).map((episode) => (
+    episode.publicationId === publicationId ? {
+      ...episode,
+      status: 'needs-regeneration',
+      audioStatus: 'stale',
+      staleAt: edition.generatedAt,
+      chapters: [],
+      segments: [],
+      citedFactKeys: [],
+    } : episode
   )),
 });

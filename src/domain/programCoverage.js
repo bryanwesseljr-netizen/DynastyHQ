@@ -150,15 +150,23 @@ const storyPlansFor = ({ issue, relevance, program }) => {
     subjectPriority: 'season-first',
   });
 
-  const hasGameAnalysis = Boolean(program.currentGame && (
+  const hasTeamAnalysis = Boolean(program.currentGame && (
     program.currentGame.teamTotalYards !== undefined
     || program.currentGame.teamTurnovers !== undefined
     || program.currentGame.teamFirstDowns !== undefined
     || program.currentGame.teamRushYds !== undefined
     || program.currentGame.teamPassYds !== undefined
-    || relevance.didPlay
   ));
-  if (!isBye && hasGameAnalysis) {
+
+  if (relevance.roleChanged) {
+    plans.push({
+      outletId: 'filmroom',
+      storyType: 'qb-room-analysis',
+      angle: `Use the verified depth-chart ${relevance.promoted ? 'promotion' : relevance.demoted ? 'demotion' : 'change'} (${relevance.previousRole} to ${relevance.currentRole}) as a real quarterback-room story. Explain what changes about opportunity and role without inventing practice performance, coach quotes, or promised snaps.${program.currentGame ? ' Keep the same week’s team result in view as context.' : ''}`,
+      playerMentionPolicy: 'focal',
+      subjectPriority: 'player-event',
+    });
+  } else if (!isBye && (hasTeamAnalysis || relevance.didPlay)) {
     plans.push({
       outletId: 'filmroom',
       storyType: relevance.level === 'primary' || relevance.level === 'high' ? 'performance-analysis' : 'game-analysis',
@@ -168,14 +176,6 @@ const storyPlansFor = ({ issue, relevance, program }) => {
       playerMentionPolicy: relevance.level === 'primary' ? 'focal' : relevance.level === 'high' ? 'major-secondary' : 'omit-unless-evidence',
       subjectPriority: relevance.level === 'primary' ? 'player-and-game' : 'game-first',
     });
-  } else if (isBye && relevance.roleChanged) {
-    plans.push({
-      outletId: 'filmroom',
-      storyType: 'qb-room-analysis',
-      angle: 'Use the verified depth-chart change as a football roster-development story. Discuss what the move changes about opportunity without inventing practice performance, coach quotes, or snap expectations.',
-      playerMentionPolicy: 'focal',
-      subjectPriority: 'player-event',
-    });
   }
 
   plans.push({
@@ -184,7 +184,7 @@ const storyPlansFor = ({ issue, relevance, program }) => {
     angle: relevance.level === 'primary'
       ? 'Frame the game and quarterback performance inside Cincinnati’s larger season. The player may be central because his role and production justify it, but keep the team result and stakes visible.'
       : 'Take the widest legitimate angle on Cincinnati’s season: trajectory, record, momentum, stakes, or an unusual verified development. Do not force a national player feature when the tracked player is not currently newsworthy.',
-    playerMentionPolicy: relevance.level === 'primary' ? 'focal-if-nationally-relevant' : relevance.level === 'high' ? 'secondary-if-useful' : 'omit-unless-story-event',
+    playerMentionPolicy: relevance.level === 'primary' ? 'focal-if-nationally-relevant' : relevance.level === 'high' ? 'secondary-if-useful' : relevance.level === 'developing' && relevance.roleChanged ? 'brief-if-relevant' : 'omit-unless-story-event',
     subjectPriority: relevance.level === 'primary' ? 'shared' : 'program-first',
   });
 
@@ -229,6 +229,24 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
     if (teamScore !== null && opponentScore !== null) {
       facts.push(derivedFact({ publicationId, key: 'program.scoringMargin', label: 'Current game scoring margin', value: teamScore - opponentScore, editorialUse: 'context' }));
     }
+    [
+      ['teamTotalYards', 'opponentTotalYards', 'program.totalYards', 'Total yards'],
+      ['teamFirstDowns', 'opponentFirstDowns', 'program.firstDowns', 'First downs'],
+      ['teamTurnovers', 'opponentTurnovers', 'program.turnovers', 'Turnovers'],
+      ['teamRushYds', 'opponentRushYds', 'program.rushingYards', 'Rushing yards'],
+      ['teamPassYds', 'opponentPassYds', 'program.passingYards', 'Passing yards'],
+    ].forEach(([teamKey, opponentKey, factKey, label]) => {
+      const teamValue = finite(currentGame[teamKey]);
+      const opponentValue = finite(currentGame[opponentKey]);
+      if (teamValue === null || opponentValue === null) return;
+      facts.push(derivedFact({
+        publicationId,
+        key: factKey,
+        label: `${label}, team vs opponent`,
+        value: `${teamValue}-${opponentValue}`,
+        editorialUse: 'primary',
+      }));
+    });
     if (currentGame.didPlay === false) {
       facts.push(derivedFact({ publicationId, key: 'player.didPlay', label: 'Tracked player appeared', value: false, editorialUse: 'context' }));
     } else if (relevance.didPlay) {

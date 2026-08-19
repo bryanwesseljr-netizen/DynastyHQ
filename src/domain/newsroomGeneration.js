@@ -154,12 +154,14 @@ const isPlayerPerformanceKey = (key) => [
   'rtg.rank', 'player.didPlay', 'player.firstAppearance', 'player.roleChange',
 ].includes(key);
 
-const programFact = (fact) => fact.key.startsWith('program.') || [
-  'game.opponent', 'game.result', 'game.homeScore', 'game.awayScore',
-  'game.teamTotalYards', 'game.opponentTotalYards', 'game.teamFirstDowns', 'game.opponentFirstDowns',
-  'game.teamTurnovers', 'game.opponentTurnovers', 'game.teamRushYds', 'game.opponentRushYds',
-  'game.teamPassYds', 'game.opponentPassYds', 'game.teamPossession', 'game.opponentPossession',
-].includes(fact.key);
+const programFact = (fact) => fact.key.startsWith('program.')
+  || fact.key.startsWith('weekly.')
+  || [
+    'game.opponent', 'game.result', 'game.homeScore', 'game.awayScore',
+    'game.teamTotalYards', 'game.opponentTotalYards', 'game.teamFirstDowns', 'game.opponentFirstDowns',
+    'game.teamTurnovers', 'game.opponentTurnovers', 'game.teamRushYds', 'game.opponentRushYds',
+    'game.teamPassYds', 'game.opponentPassYds', 'game.teamPossession', 'game.opponentPossession',
+  ].includes(fact.key);
 
 const focusFactsForPlan = ({ plan, facts, fallback }) => {
   const currentUseful = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse !== 'background-only');
@@ -176,6 +178,31 @@ const focusFactsForPlan = ({ plan, facts, fallback }) => {
   }
   if (!selected.length) selected = fallback;
   return [...new Map(selected.map((fact) => [fact.id, fact])).values()];
+};
+
+const choosePlannedEntries = (issue, storyPlans = []) => {
+  const entries = issue.articles || [];
+  const byId = new Map(entries.map((entry) => [clean(entry.outletId || entry.id, 80), entry]));
+  const used = new Set();
+  const themeMatch = (plan) => {
+    const desired = plan.outletId === 'national'
+      ? ['national']
+      : plan.outletId === 'filmroom'
+        ? ['filmroom']
+        : plan.outletId === 'college-local'
+          ? ['local', 'broadsheet']
+          : ['regional', 'filmroom', 'local'];
+    return entries.find((entry) => !used.has(entry) && desired.includes(clean(entry.theme, 60)));
+  };
+
+  return storyPlans.flatMap((plan, index) => {
+    let entry = byId.get(plan.outletId);
+    if (!entry || used.has(entry)) entry = themeMatch(plan);
+    if (!entry || used.has(entry)) entry = entries.find((candidate) => !used.has(candidate));
+    if (!entry) return [];
+    used.add(entry);
+    return [{ plan, entry, coverageOutletId: plan.outletId, order: index }];
+  });
 };
 
 export const buildNewsroomGenerationPayload = (state, publicationId) => {
@@ -197,13 +224,12 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const currentContext = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse === 'context');
   const fallback = currentPrimary.length ? currentPrimary : currentContext;
 
-  const baseByOutlet = new Map(issue.articles.map((entry) => [clean(entry.outletId || entry.id, 80), entry]));
   const plannedEntries = coverageStage === 'college-player'
-    ? (coverageContext.storyPlans || []).map((plan) => ({ plan, entry: baseByOutlet.get(plan.outletId) })).filter(({ entry }) => entry)
-    : issue.articles.slice(0, 5).map((entry) => ({ plan: null, entry }));
+    ? choosePlannedEntries(issue, coverageContext.storyPlans || [])
+    : issue.articles.slice(0, 5).map((entry) => ({ plan: null, entry, coverageOutletId: entry.outletId || entry.id }));
 
-  const articleBriefs = plannedEntries.map(({ plan, entry }) => {
-    const profile = profileFor(entry);
+  const articleBriefs = plannedEntries.map(({ plan, entry, coverageOutletId }) => {
+    const profile = plan ? profileFor({ ...entry, outletId: coverageOutletId }) : profileFor(entry);
     let focusFacts;
     if (plan) {
       focusFacts = focusFactsForPlan({ plan, facts, fallback });
@@ -228,6 +254,8 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
     };
   }).filter((brief) => brief.focusFactIds.length);
+
+  if (!articleBriefs.length) throw new Error('This edition does not have a usable program-coverage assignment yet.');
 
   return {
     publicationId: issue.publicationId || issue.id,

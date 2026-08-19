@@ -1,3 +1,5 @@
+import { buildProgramCoverageContext } from './programCoverage.js';
+
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 
 const wordCount = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
@@ -21,19 +23,19 @@ const EDITORIAL_PROFILES = Object.freeze({
   },
   filmroom: {
     byline: 'Tyler Brooks · Football Analyst',
-    purpose: 'Write football analysis from actual performance, role, production, and meaningful development. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as though they are football analysis.',
+    purpose: 'Write football analysis from actual performance, team statistical contrasts, role, production, and meaningful development. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as football analysis.',
   },
   national: {
     byline: 'Nicole Benton · National College Football Writer',
-    purpose: 'Frame the week inside the larger football career arc. Focus on role, opportunity, results, pressure, momentum, postseason stakes, and consequential decisions without inventing outside reaction.',
+    purpose: 'Frame the week inside the larger football season and career arc. Focus on team results, stakes, momentum, role, opportunity, and consequential developments without inventing outside reaction.',
   },
   'college-local': {
     byline: 'Rachel Monroe · Campus Beat Writer',
-    purpose: 'Write the definitive local college beat story. Center the player’s real role in the program, the quarterback-room or team stakes, the week’s football context, and what coaches and fans would realistically care about. Never write an article about OVR, Coach Trust, Skill Points, GPA, followers, or other game meters.',
+    purpose: 'Cover the college football program like a real local beat writer. The team and game are the default story; the tracked player becomes the focal point only when his role, playing time, performance, or a meaningful depth-chart event makes him newsworthy.',
   },
   'college-regional': {
     byline: 'Anthony Carter · Regional College Football Writer',
-    purpose: 'Interpret the week through a regional college-football lens: competition, opportunity, depth-chart movement, development, team trajectory, opponent context, and postseason implications. Keep internal progression numbers invisible.',
+    purpose: 'Interpret the week through a regional college-football lens: game result, season trajectory, opponent context, depth-chart movement, development, conference/postseason implications, and program momentum. Do not default to a player profile.',
   },
 });
 
@@ -41,10 +43,10 @@ const profileFor = (article = {}) => EDITORIAL_PROFILES[article.outletId]
   || EDITORIAL_PROFILES[article.theme]
   || {
     byline: `${clean(article.outletName, 80) || 'DynastyHQ'} Staff`,
-    purpose: 'Write a polished modern sports article with a clear football angle, strong lead, useful context, realistic stakes, and a forward-looking close. Treat tracker mechanics as background only.',
+    purpose: 'Write polished modern sports journalism with one clear football angle, useful context, realistic stakes, and a forward-looking close. Treat tracker mechanics as background only.',
   };
 
-const factId = (fact, index) => `${clean(fact.publicationId, 80) || 'career'}:${index}:${clean(fact.key, 140)}`;
+const factId = (fact, index) => fact.id || `${clean(fact.publicationId, 80) || 'career'}:${index}:${clean(fact.key, 140)}`;
 
 const coverageStageFor = (state = {}, issue = {}) => {
   const phase = clean(issue.careerPhase || state.careerPhase, 40);
@@ -63,42 +65,16 @@ const isHighSchoolLegacyFact = (key) => (
 
 const isMechanicalRtgFact = (key) => new Set([
   'profile.player.overall',
-  'rtg.coachTrust',
-  'rtg.trustToNext',
-  'rtg.skillPoints',
-  'rtg.weeklyPoints',
-  'rtg.energy',
-  'rtg.gpa',
-  'rtg.examWeeks',
-  'rtg.academicsStanding',
-  'rtg.academicsAbility',
-  'rtg.academicsCoachHappinessBonus',
-  'rtg.leadershipLevel',
-  'rtg.leadershipAbility',
-  'rtg.leadershipCoachHappinessBonus',
-  'rtg.leadershipTeamXpMultiplier',
-  'rtg.leadershipComposureBonus',
-  'rtg.healthLevel',
-  'rtg.injuryRisk',
-  'rtg.healthWearImpact',
-  'rtg.fitnessLevel',
-  'rtg.fitnessCoachHappinessBonus',
-  'rtg.fitnessTeamXpMultiplier',
-  'rtg.fitnessComposureBonus',
-  'rtg.fitnessWeightBonus',
-  'rtg.fitnessWearImpact',
-  'rtg.followers',
-  'rtg.brandTier',
-  'rtg.nextFanMilestone',
-  'rtg.brandEngagement',
-  'rtg.dealTier',
-  'rtg.brandAbility',
-  'rtg.nilWeeklyCost',
-  'rtg.openNilSlots',
-  'rtg.valuation',
-  'rtg.sponsorships',
-  'rtg.coachHappiness',
-  'rtg.draftProjection',
+  'rtg.coachTrust', 'rtg.trustToNext', 'rtg.skillPoints', 'rtg.weeklyPoints', 'rtg.energy',
+  'rtg.gpa', 'rtg.examWeeks', 'rtg.academicsStanding', 'rtg.academicsAbility',
+  'rtg.academicsCoachHappinessBonus', 'rtg.leadershipLevel', 'rtg.leadershipAbility',
+  'rtg.leadershipCoachHappinessBonus', 'rtg.leadershipTeamXpMultiplier', 'rtg.leadershipComposureBonus',
+  'rtg.healthLevel', 'rtg.injuryRisk', 'rtg.healthWearImpact', 'rtg.fitnessLevel',
+  'rtg.fitnessCoachHappinessBonus', 'rtg.fitnessTeamXpMultiplier', 'rtg.fitnessComposureBonus',
+  'rtg.fitnessWeightBonus', 'rtg.fitnessWearImpact', 'rtg.followers', 'rtg.brandTier',
+  'rtg.nextFanMilestone', 'rtg.brandEngagement', 'rtg.dealTier', 'rtg.brandAbility',
+  'rtg.nilWeeklyCost', 'rtg.openNilSlots', 'rtg.valuation', 'rtg.sponsorships',
+  'rtg.coachHappiness', 'rtg.draftProjection',
 ]).has(key) || key.startsWith('rtg.wear.');
 
 const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' } = {}) => {
@@ -106,6 +82,7 @@ const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' 
   if (!key) return 'exclude';
   if (coverageStage === 'college-player' && isHighSchoolLegacyFact(key)) return 'exclude';
   if (coverageStage === 'college-player' && !current && key.startsWith('recruiting.')) return 'exclude';
+  if (key.startsWith('program.') || key.startsWith('player.')) return fact.editorialUse || 'context';
   if (key.startsWith('game.')) return 'primary';
   if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
   if (key === 'weekly.note' && clean(fact.value, 500)) return 'primary';
@@ -124,7 +101,7 @@ const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' 
   return 'context';
 };
 
-const sourceFactsFor = (state, issue) => {
+const sourceFactsFor = (state, issue, coverageContext = null) => {
   const publicationId = issue.publicationId || issue.id;
   const coverageStage = coverageStageFor(state, issue);
   const season = Math.max(1, Number(issue.season) || 1);
@@ -142,34 +119,73 @@ const sourceFactsFor = (state, issue) => {
     .filter(Boolean);
   const allowedPublicationIds = new Set([publicationId, ...historicalPublicationIds]);
 
-  const relevant = (state.factLedger || [])
+  const ledgerFacts = (state.factLedger || [])
     .filter((fact) => fact?.verified && allowedPublicationIds.has(fact.publicationId))
     .filter((fact) => {
       const current = matchesPublication(fact, publicationId);
       return editorialUseFor(fact, { current, coverageStage }) !== 'exclude';
     })
-    .slice(-100);
+    .slice(-100)
+    .map((fact, index) => {
+      const current = matchesPublication(fact, publicationId);
+      return {
+        id: factId(fact, index),
+        key: clean(fact.key, 180),
+        label: clean(fact.label, 180) || clean(fact.key, 180),
+        value: typeof fact.value === 'number' || typeof fact.value === 'boolean' ? fact.value : clean(fact.value, 600),
+        period: current ? 'current edition' : `earlier same-stage context (${clean(fact.publicationId, 100)})`,
+        publicationId: clean(fact.publicationId, 120),
+        editorialUse: editorialUseFor(fact, { current, coverageStage }),
+      };
+    });
 
-  return relevant.map((fact, index) => {
-    const current = matchesPublication(fact, publicationId);
-    return {
-      id: factId(fact, index),
-      key: clean(fact.key, 180),
-      label: clean(fact.label, 180) || clean(fact.key, 180),
-      value: typeof fact.value === 'number' || typeof fact.value === 'boolean' ? fact.value : clean(fact.value, 600),
-      period: current ? 'current edition' : `earlier same-stage context (${clean(fact.publicationId, 100)})`,
-      publicationId: clean(fact.publicationId, 120),
-      editorialUse: editorialUseFor(fact, { current, coverageStage }),
-    };
+  const derivedFacts = coverageStage === 'college-player'
+    ? (coverageContext?.facts || []).map((fact, index) => ({ ...fact, id: factId(fact, ledgerFacts.length + index) }))
+    : [];
+  const byKeyAndPeriod = new Map();
+  [...ledgerFacts, ...derivedFacts].forEach((fact) => {
+    byKeyAndPeriod.set(`${fact.period}:${fact.key}`, fact);
   });
+  return [...byKeyAndPeriod.values()];
+};
+
+const isPlayerPerformanceKey = (key) => [
+  'game.passYds', 'game.passTD', 'game.rushYds', 'game.rushTD', 'game.int',
+  'rtg.rank', 'player.didPlay', 'player.firstAppearance', 'player.roleChange',
+].includes(key);
+
+const programFact = (fact) => fact.key.startsWith('program.') || [
+  'game.opponent', 'game.result', 'game.homeScore', 'game.awayScore',
+  'game.teamTotalYards', 'game.opponentTotalYards', 'game.teamFirstDowns', 'game.opponentFirstDowns',
+  'game.teamTurnovers', 'game.opponentTurnovers', 'game.teamRushYds', 'game.opponentRushYds',
+  'game.teamPassYds', 'game.opponentPassYds', 'game.teamPossession', 'game.opponentPossession',
+].includes(fact.key);
+
+const focusFactsForPlan = ({ plan, facts, fallback }) => {
+  const currentUseful = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse !== 'background-only');
+  const programFacts = currentUseful.filter(programFact);
+  const playerFacts = currentUseful.filter((fact) => isPlayerPerformanceKey(fact.key));
+  let selected = [];
+  if (['program-first', 'season-first', 'game-first'].includes(plan.subjectPriority)) {
+    selected = [...programFacts];
+    if (!/omit/.test(plan.playerMentionPolicy || '')) selected.push(...playerFacts);
+  } else if (plan.subjectPriority === 'player-event' || plan.subjectPriority === 'player-and-game') {
+    selected = [...playerFacts, ...programFacts];
+  } else {
+    selected = [...programFacts, ...playerFacts];
+  }
+  if (!selected.length) selected = fallback;
+  return [...new Map(selected.map((fact) => [fact.id, fact])).values()];
 };
 
 export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const issue = (state.newsroomIssues || []).find((entry) => matchesPublication(entry, publicationId));
   if (!issue?.articles?.length) throw new Error('Choose a published newsroom edition first.');
-  const facts = sourceFactsFor(state, issue);
-  if (!facts.length) throw new Error('This edition has no published career facts available for writing.');
   const coverageStage = coverageStageFor(state, issue);
+  const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
+  const facts = sourceFactsFor(state, issue, coverageContext);
+  if (!facts.length) throw new Error('This edition has no published football facts available for writing.');
+
   const currentFactIdsByKey = new Map();
   facts.forEach((fact) => {
     if (fact.period !== 'current edition') return;
@@ -177,9 +193,41 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     ids.push(fact.id);
     currentFactIdsByKey.set(fact.key, ids);
   });
-
   const currentPrimary = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse === 'primary');
   const currentContext = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse === 'context');
+  const fallback = currentPrimary.length ? currentPrimary : currentContext;
+
+  const baseByOutlet = new Map(issue.articles.map((entry) => [clean(entry.outletId || entry.id, 80), entry]));
+  const plannedEntries = coverageStage === 'college-player'
+    ? (coverageContext.storyPlans || []).map((plan) => ({ plan, entry: baseByOutlet.get(plan.outletId) })).filter(({ entry }) => entry)
+    : issue.articles.slice(0, 5).map((entry) => ({ plan: null, entry }));
+
+  const articleBriefs = plannedEntries.map(({ plan, entry }) => {
+    const profile = profileFor(entry);
+    let focusFacts;
+    if (plan) {
+      focusFacts = focusFactsForPlan({ plan, facts, fallback });
+    } else {
+      const requestedFocus = [...new Set((entry.citedFactKeys || [])
+        .flatMap((key) => currentFactIdsByKey.get(key) || []))]
+        .map((id) => facts.find((fact) => fact.id === id))
+        .filter((fact) => fact && fact.editorialUse !== 'background-only');
+      focusFacts = requestedFocus.length ? requestedFocus : fallback;
+    }
+    return {
+      outletId: clean(entry.outletId || entry.id, 80),
+      outletName: clean(entry.outletName, 120),
+      desk: clean(entry.desk, 100),
+      theme: clean(entry.theme, 60),
+      byline: profile.byline,
+      purpose: profile.purpose,
+      storyType: clean(plan?.storyType, 80),
+      angle: clean(plan?.angle, 1000),
+      subjectPriority: clean(plan?.subjectPriority, 80),
+      playerMentionPolicy: clean(plan?.playerMentionPolicy, 80),
+      focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
+    };
+  }).filter((brief) => brief.focusFactIds.length);
 
   return {
     publicationId: issue.publicationId || issue.id,
@@ -191,6 +239,11 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     weekPhase: clean(issue.weekPhase, 80),
     careerPhase: clean(issue.careerPhase, 60),
     coverageStage,
+    coveragePlan: coverageContext ? {
+      program: coverageContext.program,
+      playerRelevance: coverageContext.relevance,
+      editorialPrinciple: 'The team/game is the default story. The tracked player becomes the story only when football relevance makes him the story.',
+    } : null,
     player: {
       name: clean(state.player?.name, 120),
       school: clean(state.player?.school, 160),
@@ -200,24 +253,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       archetype: clean(state.player?.archetype, 80),
     },
     facts,
-    articleBriefs: issue.articles.slice(0, 5).map((entry) => {
-      const profile = profileFor(entry);
-      const requestedFocus = [...new Set((entry.citedFactKeys || [])
-        .flatMap((key) => currentFactIdsByKey.get(key) || []))]
-        .map((id) => facts.find((fact) => fact.id === id))
-        .filter((fact) => fact && fact.editorialUse !== 'background-only');
-      const fallback = currentPrimary.length ? currentPrimary : currentContext;
-      const focusFacts = requestedFocus.length ? requestedFocus : fallback;
-      return {
-        outletId: clean(entry.outletId || entry.id, 80),
-        outletName: clean(entry.outletName, 120),
-        desk: clean(entry.desk, 100),
-        theme: clean(entry.theme, 60),
-        byline: profile.byline,
-        purpose: profile.purpose,
-        focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
-      };
-    }).filter((brief) => brief.focusFactIds.length),
+    articleBriefs,
   };
 };
 
@@ -279,6 +315,9 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       editorialStatus: 'generated',
       generatedAt,
       articleModel: clean(model, 100),
+      storyType: brief.storyType,
+      subjectPriority: brief.subjectPriority,
+      playerMentionPolicy: brief.playerMentionPolicy,
     };
   }).filter(Boolean);
 
@@ -290,16 +329,25 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
   ...state,
   newsroomIssues: (state.newsroomIssues || []).map((issue) => {
     if (!matchesPublication(issue, publicationId)) return issue;
-    const generatedByOutlet = new Map(edition.articles.map((entry) => [entry.outletId, entry]));
+    const existingByOutlet = new Map((issue.articles || []).map((article) => [article.outletId, article]));
+    const articles = edition.articles.map((generated) => {
+      const prior = existingByOutlet.get(generated.outletId) || {};
+      return {
+        ...prior,
+        ...generated,
+        id: prior.id || generated.outletId,
+        outletId: generated.outletId,
+        outletName: prior.outletName || generated.outletName,
+        desk: prior.desk || generated.desk,
+        theme: prior.theme || generated.theme,
+      };
+    });
     return {
       ...issue,
       editorialStatus: 'generated',
       editorialGeneratedAt: edition.generatedAt,
       editorialModel: edition.model,
-      articles: (issue.articles || []).map((article) => {
-        const generated = generatedByOutlet.get(article.outletId);
-        return generated ? { ...article, ...generated, id: article.id, outletId: article.outletId } : article;
-      }),
+      articles,
     };
   }),
   postgameFrontPages: (state.postgameFrontPages || []).map((page) => (

@@ -44,7 +44,7 @@ const recordContext = (updates = []) => {
   const streak = streakCount >= 2
     ? `${streakCount}-game ${lastResult === 'W' ? 'winning' : 'losing'} streak`
     : '';
-  return { wins, losses, games: decided.length, streak };
+  return { wins, losses, games: decided.length, streak, streakCount };
 };
 
 const priorRtgSnapshot = (state, issue, publicationId) => [...(state.weeklyUpdates || [])]
@@ -178,15 +178,21 @@ const storyPlansFor = ({ issue, relevance, program }) => {
     });
   }
 
-  plans.push({
-    outletId: 'national',
-    storyType: relevance.level === 'primary' ? 'player-program-arc' : 'program-trajectory',
-    angle: relevance.level === 'primary'
-      ? 'Frame the game and quarterback performance inside Cincinnati’s larger season. The player may be central because his role and production justify it, but keep the team result and stakes visible.'
-      : 'Take the widest legitimate angle on Cincinnati’s season: trajectory, record, momentum, stakes, or an unusual verified development. Do not force a national player feature when the tracked player is not currently newsworthy.',
-    playerMentionPolicy: relevance.level === 'primary' ? 'focal-if-nationally-relevant' : relevance.level === 'high' ? 'secondary-if-useful' : relevance.level === 'developing' && relevance.roleChanged ? 'brief-if-relevant' : 'omit-unless-story-event',
-    subjectPriority: relevance.level === 'primary' ? 'shared' : 'program-first',
-  });
+  const postseason = clean(issue.weekPhase, 80) === 'postseason';
+  const nationalWorthy = relevance.level === 'primary' || postseason || program.streakCount >= 3;
+  if (nationalWorthy) {
+    plans.push({
+      outletId: 'national',
+      storyType: relevance.level === 'primary' ? 'player-program-arc' : 'program-trajectory',
+      angle: relevance.level === 'primary'
+        ? 'Frame the game and quarterback performance inside Cincinnati’s larger season. The player may be central because his role and production justify it, but keep the team result and stakes visible.'
+        : postseason
+          ? 'Take a national college-football view of Cincinnati’s postseason position and the verified path or result without inventing rankings, bracket details, or outside reaction.'
+          : 'Use the sustained verified team streak as the reason this Cincinnati development deserves wider attention. Keep the story program-first unless a separate player event warrants more.',
+      playerMentionPolicy: relevance.level === 'primary' ? 'focal-if-nationally-relevant' : 'omit-unless-story-event',
+      subjectPriority: relevance.level === 'primary' ? 'shared' : 'program-first',
+    });
+  }
 
   return plans.slice(0, 4);
 };
@@ -217,6 +223,7 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
     games: record.games,
     record: `${record.wins}-${record.losses}`,
     streak: record.streak,
+    streakCount: record.streakCount,
   };
   const facts = [
     derivedFact({ publicationId, key: 'program.seasonRecord', label: 'Team record', value: program.record, editorialUse: 'primary' }),

@@ -4,6 +4,7 @@ import App from './App.jsx'
 import WeekSetupPortal from './components/WeekSetupPortal.jsx'
 import CollegeCareerAgendaCardPortal from './components/CollegeCareerAgendaCardPortal.jsx'
 import RtgStatusScannerPortal from './components/RtgStatusScannerPortal.jsx'
+import PodcastHumanizedAudioPortal from './components/PodcastHumanizedAudioPortal.jsx'
 import './index.css' // <-- Make sure this line is here!
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -12,5 +13,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <WeekSetupPortal />
     <CollegeCareerAgendaCardPortal />
     <RtgStatusScannerPortal />
+    <PodcastHumanizedAudioPortal />
   </React.StrictMode>,
 )

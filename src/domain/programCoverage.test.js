@@ -45,7 +45,7 @@ test('QB3 with no appearance remains a low-relevance program-first story', () =>
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.relevance.didPlay, false);
   assert.equal(context.program.record, '1-0');
-  assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional', 'national']);
+  assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
   assert.match(context.storyPlans[0].playerMentionPolicy, /omit/);
 });
 
@@ -67,6 +67,7 @@ test('QB3 to QB2 promotion creates a dedicated quarterback-room story even witho
   assert.equal(context.relevance.level, 'developing');
   assert.equal(qbStory?.storyType, 'qb-room-analysis');
   assert.equal(qbStory?.playerMentionPolicy, 'focal');
+  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), false);
 });
 
 test('QB1 with a game appearance becomes a primary storyline while preserving program coverage', () => {
@@ -89,14 +90,29 @@ test('QB1 with a game appearance becomes a primary storyline while preserving pr
   assert.equal(local?.subjectPriority, 'program-first');
   assert.equal(analysis?.storyType, 'performance-analysis');
   assert.equal(analysis?.playerMentionPolicy, 'focal');
+  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
 });
 
-test('preseason bye with an initial QB3 baseline does not manufacture a player spotlight', () => {
+test('preseason bye with an initial QB3 baseline does not manufacture player or national spotlight', () => {
   const state = baseState([update(0, { rank: 'QB3' })]);
   const context = buildProgramCoverageContext(state, issue(0, { weekType: 'bye', weekPhase: 'preseason', label: 'Preseason Bye' }));
 
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.relevance.roleChanged, false);
   assert.equal(context.program.record, '0-0');
-  assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional', 'national']);
+  assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
+});
+
+test('three-game team streak can earn a national program story even when tracked player is low relevance', () => {
+  const games = [1, 2, 3].map((week) => ({
+    opponent: `Opponent ${week}`, result: 'W', homeScore: 24 + week, awayScore: 17,
+    passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false,
+    season: 1, week,
+  }));
+  const state = baseState(games.map((game) => update(game.week, { rank: 'QB3', game })), games);
+  const context = buildProgramCoverageContext(state, issue(3));
+
+  assert.equal(context.relevance.level, 'low');
+  assert.equal(context.program.streakCount, 3);
+  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
 });

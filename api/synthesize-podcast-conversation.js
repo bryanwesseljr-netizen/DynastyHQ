@@ -127,7 +127,7 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Method not allowed.' });
   }
   if (!process.env.GEMINI_API_KEY) {
-    return json(res, 503, { error: 'Humanized podcast audio is not configured yet. Add GEMINI_API_KEY to the Vercel environment first.' });
+    return json(res, 503, { error: 'Humanized podcast audio is not configured in this deployment. Add GEMINI_API_KEY to the Vercel Preview environment and redeploy.' });
   }
 
   let user;

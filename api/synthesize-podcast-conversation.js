@@ -1,3 +1,4 @@
+import * as lame from '@breezystack/lamejs';
 import { json, verifyFirebaseUser } from './_auth.js';
 
 const MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
@@ -6,6 +7,8 @@ const SARAH_VOICE = process.env.GEMINI_TTS_SARAH_VOICE || 'Kore';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MAX_SEGMENTS = 20;
 const MAX_TOTAL_WORDS = 1000;
+const DEFAULT_SAMPLE_RATE = 24000;
+const MP3_KBPS = 56;
 
 export const config = { maxDuration: 120 };
 
@@ -33,8 +36,8 @@ const normalizeSegments = (rawSegments) => {
   if (!Array.isArray(rawSegments)) return [];
   return rawSegments.slice(0, MAX_SEGMENTS).map((segment, index) => {
     const host = HOSTS[segment?.hostId];
-    const text = clean(segment?.text, 1900);
-    if (!host || !text) return null;
+    const segmentText = clean(segment?.text, 1900);
+    if (!host || !segmentText) return null;
     const deliveryStyle = Object.hasOwn(DELIVERY_TAGS, segment?.deliveryStyle)
       ? segment.deliveryStyle
       : 'neutral';
@@ -42,7 +45,7 @@ const normalizeSegments = (rawSegments) => {
       id: clean(segment?.id, 80) || `turn-${index + 1}`,
       speaker: host.speaker,
       name: host.name,
-      text,
+      text: segmentText,
       deliveryStyle,
     };
   }).filter(Boolean);
@@ -81,12 +84,7 @@ const callGemini = async (prompt) => {
         body: JSON.stringify({
           model: MODEL,
           input: prompt,
-          response_format: {
-            type: 'audio',
-            mime_type: 'audio/mp3',
-            bit_rate: 64000,
-            delivery: 'inline',
-          },
+          response_format: { type: 'audio' },
           generation_config: {
             speech_config: [
               { speaker: 'Mark', voice: MARK_VOICE },
@@ -121,6 +119,30 @@ const callGemini = async (prompt) => {
   throw lastError || new Error('Gemini TTS did not return audio.');
 };
 
+const pcmBufferToInt16 = (pcmBuffer) => {
+  const byteLength = pcmBuffer.byteLength - (pcmBuffer.byteLength % 2);
+  return new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, byteLength / 2);
+};
+
+const encodePcmToMp3 = ({ pcmBase64, sampleRate = DEFAULT_SAMPLE_RATE }) => {
+  const pcmBuffer = Buffer.from(pcmBase64, 'base64');
+  if (pcmBuffer.length < 2) throw new Error('Gemini returned an empty PCM audio payload.');
+  const samples = pcmBufferToInt16(pcmBuffer);
+  const encoder = new lame.Mp3Encoder(1, Number(sampleRate) || DEFAULT_SAMPLE_RATE, MP3_KBPS);
+  const chunks = [];
+  const blockSize = 1152;
+
+  for (let index = 0; index < samples.length; index += blockSize) {
+    const encoded = encoder.encodeBuffer(samples.subarray(index, Math.min(index + blockSize, samples.length)));
+    if (encoded?.length) chunks.push(Buffer.from(encoded));
+  }
+
+  const tail = encoder.flush();
+  if (tail?.length) chunks.push(Buffer.from(tail));
+  if (!chunks.length) throw new Error('The PCM-to-MP3 encoder returned no audio.');
+  return Buffer.concat(chunks);
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -148,23 +170,35 @@ export default async function handler(req, res) {
   try {
     const prompt = buildPerformancePrompt({ title: req.body?.title, segments });
     const { audio } = await callGemini(prompt);
-    const mimeType = audio.mime_type || audio.mimeType || 'audio/mpeg';
+    const sampleRate = Number(audio.sample_rate || audio.sampleRate) || DEFAULT_SAMPLE_RATE;
+    const mp3 = encodePcmToMp3({ pcmBase64: audio.data, sampleRate });
+    const audioBase64 = mp3.toString('base64');
+
+    if (Buffer.byteLength(audioBase64, 'utf8') > 4_000_000) {
+      throw new Error('The compressed podcast exceeded the safe response size.');
+    }
+
     return json(res, 200, {
-      audioBase64: audio.data,
-      mimeType,
+      audioBase64,
+      mimeType: 'audio/mpeg',
       model: MODEL,
       engine: 'gemini-multispeaker-v3',
       voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
       transcriptTurns: segments.length,
       transcriptWords: totalWords,
+      sampleRate,
+      mp3Kbps: MP3_KBPS,
     });
   } catch (error) {
     console.error('Gemini multispeaker podcast generation failed', error);
     const status = Number(error?.status) === 429 ? 429 : 502;
+    const message = String(error?.message || '');
     return json(res, status, {
       error: status === 429
         ? 'Humanized podcast audio is temporarily busy. Try again shortly.'
-        : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
+        : /response size/i.test(message)
+          ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
+          : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
     });
   }
 }

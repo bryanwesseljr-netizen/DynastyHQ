@@ -103,21 +103,25 @@ const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) 
   const weekPhase = text(issue.weekPhase, 80);
   const relevance = coverageContext?.relevance;
   const program = coverageContext?.program;
+  const hasPlayed = Number(program?.games) > 0;
 
   if (coverageStage === 'college-player' && (weekType === 'bye' || !program?.currentGame)) {
     const phaseAngle = weekPhase === 'postseason'
-      ? 'postseason positioning, preparation, pressure, and the path ahead'
+      ? 'postseason positioning, pressure, meaningful season trends, and the path ahead'
       : weekPhase === 'preseason'
-        ? 'the program’s opening-week preparation, quarterback hierarchy, roster opportunity, and what must take shape before the opener'
-        : 'reset, preparation, season trajectory, role evaluation, recovery, and the next opportunity';
+        ? 'the program entering the season, quarterback hierarchy, roster opportunity, and the football questions that actually matter before the opener'
+        : 'the most meaningful season trends, role evaluation, recovery when supported, and the next opportunity';
     const playerAngle = relevance?.roleChanged
       ? ` A real depth-chart change (${relevance.previousRole} to ${relevance.currentRole}) gives ${playerName} a legitimate QB-room segment.`
       : relevance?.level === 'low'
         ? ` ${playerName} is low-relevance this week and should not be forced into the conversation.`
         : ' Mention the tracked player only to the extent his verified football role warrants it.';
+    const recordAngle = hasPlayed
+      ? ' The season record may be used briefly when it adds context, but it is not automatically a talking point.'
+      : ' Do not mention 0-0, describe the record as clean or fresh, or turn the fact that no game has been played into a storyline.';
     return {
       title: `${school} ${label}: the program outlook`,
-      summary: `Lead with ${school} and ${phaseAngle}. Current verified team record: ${program?.record || '0-0'}.${playerAngle}`,
+      summary: `Lead with ${school} and ${phaseAngle}.${recordAngle}${playerAngle}`,
     };
   }
 
@@ -131,7 +135,7 @@ const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) 
           : `${playerName} is not a meaningful player storyline this week; do not manufacture a QB segment just because he is the tracked player.`;
     return {
       title: `${school} Week ${Number(issue.week ?? 0)}: the game and what it means`,
-      summary: `Discuss the actual ${school} game first: result, opponent, score, meaningful verified team/player statistics, current ${program?.record || 'season'} record, momentum, and what changes next. ${relevanceInstruction}`,
+      summary: `Discuss the actual ${school} game first: result, opponent, score, meaningful verified team/player statistics, the football consequence of the result, and what changes next. Use the season record or streak only when it adds real context, and do not repeat either as filler. ${relevanceInstruction}`,
     };
   }
 
@@ -178,9 +182,12 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     careerPhase: text(issue.careerPhase, 40),
     coverageStage,
     coveragePlan: coverageContext ? {
-      program: coverageContext.program,
+      program: {
+        ...coverageContext.program,
+        record: coverageContext.program.recordEstablished ? coverageContext.program.record : '',
+      },
       playerRelevance: coverageContext.relevance,
-      editorialPrinciple: 'Discuss the team/game first. Make the tracked player a focal point only when his football relevance warrants it.',
+      editorialPrinciple: 'Discuss the team/game first, rank verified facts by real football news value, and do not expand bookkeeping facts merely because they are available. Make the tracked player a focal point only when his football relevance warrants it.',
     } : null,
     brief,
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),

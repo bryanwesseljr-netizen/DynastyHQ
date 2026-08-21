@@ -20,8 +20,9 @@ const DELIVERY_STYLES = [
 ];
 
 const MIN_COMPLETE_WORDS = 400;
-const TARGET_QUIET_MIN_WORDS = 440;
-const TARGET_QUIET_MAX_WORDS = 575;
+const DEFAULT_TARGET_MIN_WORDS = 450;
+const DEFAULT_TARGET_MAX_WORDS = 700;
+const PODCAST_ELIGIBLE_TIERS = new Set(['standard', 'major', 'career-defining']);
 
 const COLLEGE_MECHANIC_KEY_RE = /(overall|coach.?trust|trust.?to.?next|skill.?points?|weekly.?points?|energy|gpa|exam|academic|leadership|health|injury.?risk|fitness|wear|followers?|brand|nil|valuation|sponsorship|ability|draft.?projection|coach.?happiness)/i;
 const COLLEGE_MECHANIC_LABEL_RE = /(overall rating|\boverall\b|coach trust|skill points?|weekly action points?|\benergy\b|\bgpa\b|exam|academic|leadership|health|injury risk|fitness|wear indicator|followers?|brand tier|nil valuation|nil weekly|sponsorship|ability|draft projection|coach happiness)/i;
@@ -55,20 +56,53 @@ const listenerFacingViolation = (episode = {}, payload = {}) => {
   return '';
 };
 
+const sanitizeCoverageDecision = (body = {}) => {
+  const raw = body.coverageDecision || {};
+  const tier = ['no-coverage', 'brief', 'standard', 'major', 'career-defining'].includes(raw.tier)
+    ? raw.tier
+    : 'standard';
+  const requestedRange = raw.podcastWordRange || {};
+  const min = Math.max(MIN_COMPLETE_WORDS, Math.min(900, Number(requestedRange.min) || DEFAULT_TARGET_MIN_WORDS));
+  const max = Math.max(min, Math.min(950, Number(requestedRange.max) || DEFAULT_TARGET_MAX_WORDS));
+  return {
+    tier,
+    podcastEligible: PODCAST_ELIGIBLE_TIERS.has(tier) && raw.podcastEligible !== false,
+    playerMentionPolicy: safeText(raw.playerMentionPolicy, 80),
+    storylineKeys: Array.isArray(raw.storylineKeys) ? raw.storylineKeys.slice(0, 12).map((key) => safeText(key, 160)).filter(Boolean) : [],
+    podcastWordRange: { min, max },
+  };
+};
+
+const sanitizeStorylineThreads = (body = {}) => (Array.isArray(body.storylineThreads) ? body.storylineThreads.slice(0, 12).map((thread) => ({
+  key: safeText(thread?.key, 160),
+  label: safeText(thread?.label, 160),
+  value: typeof thread?.value === 'number' || typeof thread?.value === 'boolean' ? thread.value : safeText(thread?.value, 300),
+  status: safeText(thread?.status, 60),
+  changedThisWeek: Boolean(thread?.changedThisWeek),
+  recentlyCovered: Boolean(thread?.recentlyCovered),
+  editorialUse: ['primary', 'context', 'background-only'].includes(thread?.editorialUse) ? thread.editorialUse : 'context',
+})).filter((thread) => thread.key && thread.label) : []);
+
 const validatePayload = (body = {}) => {
   const coverageStage = ['high-school', 'college-player', 'coach'].includes(body.coverageStage)
     ? body.coverageStage
     : 'high-school';
+  const coverageDecision = sanitizeCoverageDecision(body);
+  if (coverageStage === 'college-player' && !coverageDecision.podcastEligible) return null;
+
   const relevance = body.coveragePlan?.playerRelevance || {};
   const relevanceLevel = ['low', 'developing', 'high', 'primary'].includes(relevance.level)
     ? relevance.level
     : 'low';
+  const sharedPlayerPolicy = safeText(body.coveragePlan?.playerMentionPolicy || coverageDecision.playerMentionPolicy, 80);
   const suppressTrackedPlayer = coverageStage === 'college-player'
-    && relevanceLevel === 'low'
-    && !Boolean(relevance.roleChanged)
-    && !Boolean(relevance.didPlay)
-    && !Boolean(relevance.firstAppearance)
-    && !Boolean(relevance.starter);
+    && (sharedPlayerPolicy === 'omit' || (
+      relevanceLevel === 'low'
+      && !Boolean(relevance.roleChanged)
+      && !Boolean(relevance.didPlay)
+      && !Boolean(relevance.firstAppearance)
+      && !Boolean(relevance.starter)
+    ));
 
   const program = body.coveragePlan?.program || {};
   const programGames = Number(program.games) || 0;
@@ -87,7 +121,6 @@ const validatePayload = (body = {}) => {
 
   const facts = rawFacts.filter((fact) => {
     if (coverageStage === 'college-player' && isCollegeMechanicFact(fact)) return false;
-
     if (suppressTrackedPlayer) {
       if (fact.key === 'rtg.rank') return false;
       if (fact.key.startsWith('player.')) return false;
@@ -95,7 +128,6 @@ const validatePayload = (body = {}) => {
       if (fact.key.startsWith('rtg.')) return false;
       if (!LOW_RELEVANCE_ALLOWED_KEY_RE.test(fact.key) && fact.key !== 'weekly.note') return false;
     }
-
     return true;
   });
 
@@ -118,11 +150,13 @@ const validatePayload = (body = {}) => {
     weekPhase: safeText(body.weekPhase, 80),
     careerPhase: safeText(body.careerPhase, 40),
     coverageStage,
+    coverageDecision,
+    storylineThreads: sanitizeStorylineThreads(body),
     coveragePlan: body.coveragePlan ? {
       editorialPrinciple: suppressTrackedPlayer
         ? 'Program and team only this week. The tracked player is not an editorial subject unless a real football event changes his relevance.'
         : safeText(body.coveragePlan.editorialPrinciple, 500),
-      playerMentionPolicy: suppressTrackedPlayer ? 'omit' : 'relevance-based',
+      playerMentionPolicy: suppressTrackedPlayer ? 'omit' : (sharedPlayerPolicy || 'relevance-based'),
       program: {
         school,
         record: programGames > 0 ? safeText(program.record, 40) : '',
@@ -144,10 +178,7 @@ const validatePayload = (body = {}) => {
         starter: suppressTrackedPlayer ? false : Boolean(relevance.starter),
       },
     } : null,
-    brief: {
-      title: briefTitle,
-      summary: briefSummary,
-    },
+    brief: { title: briefTitle, summary: briefSummary },
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
   };
@@ -202,10 +233,15 @@ Write like an experienced college-football producer and two knowledgeable hosts.
 REAL-PODCAST OPENING RULE:
 - Cold-open on the actual football subject. The first host should sound as if the microphones came on in the middle of a real weekly college-football conversation.
 - Do not explain what the episode is going to cover. Do not announce an agenda, editorial method, level of restraint, source limitations or what information is and is not available.
-- Do not say phrases such as "deliberately measured," "the restraint matters," "the foundation of this conversation," "what we know," "verified snapshot," "the disciplined read," "we should not invent," or similar compliance-style language.
 - If a claim is not supported, simply do not say it. Never narrate the reason you are omitting it.
 - A brief natural show identification is fine after the football hook, but do not turn the opening into a formal introduction every week.
 - Use ordinary straight apostrophes and quotation marks in listener-facing text.
+
+SHARED COVERAGE DECISION:
+- coverageDecision is binding. It already decided whether this week deserves a podcast and how important it is.
+- Use coverageDecision.podcastWordRange as a target, not a quota. Never pad to hit the number.
+- storylineThreads with changedThisWeek=true are fresh developments. Threads marked background-only or recentlyCovered should not be restated as if they are new.
+- A continuing status is not a new storyline merely because it remains true.
 
 EDITORIAL DECISION RULE:
 A supplied fact is not automatically a story. Ask what a real college-football audience would care about this week. Prioritize consequence, change, tension, performance and meaningful football questions. Ignore bookkeeping and unchanged states.
@@ -220,9 +256,8 @@ TRACKED PLAYER RULE:
 PRESEASON AND BYE LOGIC:
 - Do not spend airtime explaining that there was no game.
 - If zero games have been played, never say 0-0, undefeated, unblemished, clean slate, fresh start, even footing, or that a record was preserved.
-- A preseason Week 0 episode should discuss only the strongest supplied program-level football material available. Do not default to quarterback hierarchy merely because a depth-chart fact exists.
+- A preseason Week 0 episode should discuss only the strongest supplied program-level football material available.
 - A backup quarterback gets discussion only when a real depth-chart or playing-time event makes him newsworthy.
-- If the surviving football material is too thin to support a meaningful conversation, do not compensate with player-development/game-mechanic content.
 - Regular-season byes may focus on meaningful established trends, pressure points or role changes that are actually supported.
 
 FOOTBALL INTELLIGENCE WITHOUT INVENTION:
@@ -230,21 +265,17 @@ FOOTBALL INTELLIGENCE WITHOUT INVENTION:
 - Separate observation from inference naturally; do not lecture the listener about the distinction.
 - Never invent practice reports, coach intentions, tactics, formations, reads, protections, snap counts, injuries, rankings, quotes, weather, crowd reaction, locker-room scenes, future opponents or schedule details.
 - Do not praise neutral facts or manufacture momentum from nothing happening.
-- Avoid generic sports clichés when a sharper supported question exists.
 
 COLLEGE GAME WEEK:
 - Lead with the Cincinnati game: result, opponent, score and the most meaningful supplied statistical contrasts.
 - Use season record or streak once only when it genuinely frames the result or trajectory.
 - Use player statistics only when the player's football relevance warrants it.
-- Film Room can interpret supplied numbers but may not invent film observations or tactical details.
 
 CONVERSATION STYLE:
 - Produce 10 to 16 alternating host turns.
-- Quiet/preseason episodes should usually aim for about ${TARGET_QUIET_MIN_WORDS}-${TARGET_QUIET_MAX_WORDS} spoken words when the supplied football material supports it. A structurally complete episode may be as short as ${MIN_COMPLETE_WORDS} words when the week is genuinely sparse.
-- Normal game weeks can be 600-800. Major weeks may run longer only when the facts justify it.
-- Do not pad with neutral facts, bookkeeping, repeated conclusions or suppressed player material just to hit a word target. If more depth is warranted, deepen the strongest supported football question or contrast instead of inventing a new topic.
+- Let the coverage tier control scale: standard should feel like a normal weekly show; major can breathe longer; career-defining can be the fullest episode.
+- Do not pad with neutral facts, bookkeeping, repeated conclusions or suppressed player material just to hit a word target.
 - Most turns should be straightforward spoken sentences. Mix a few short reactions with normal analytical turns.
-- Do not force a question, disagreement, joke, callback or emotional beat into every exchange.
 - Mark and Sarah can disagree when the football point genuinely calls for it, but calm agreement is also normal.
 - Avoid hot-take phrasing, rhetorical theatrics and artificial banter.
 - Do not start every turn with the other host's name.
@@ -256,7 +287,7 @@ HOSTS:
 - ${sarah.name} is the ${sarah.scriptPersona}. She adds a distinct analytical lens without needing to challenge every point.
 
 DELIVERY METADATA:
-Use neutral as the default deliveryStyle. Choose curious, reflective, skeptical, emphatic, amused, quick-agreement or analytical only when the actual wording clearly requires it. This metadata is not spoken.
+Use neutral as the default deliveryStyle. Choose another style only when the wording itself clearly requires it. This metadata is not spoken.
 
 CHAPTERS:
 - Use three to six concise chapters. Opening Drive must be first and Next Saturday last.
@@ -280,6 +311,10 @@ GROUNDING:
 
 const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
   const note = repairNote ? `\n\nREVISION NOTE:\n${repairNote}` : '';
+  const range = payload.coverageDecision?.podcastWordRange || { min: DEFAULT_TARGET_MIN_WORDS, max: DEFAULT_TARGET_MAX_WORDS };
+  const storylineNote = payload.storylineThreads?.length
+    ? ` Active storyline memory: ${payload.storylineThreads.map((thread) => `${thread.label}=${thread.status}${thread.changedThisWeek ? ' (changed this week)' : ''}${thread.recentlyCovered ? ' (recently covered)' : ''}`).join('; ')}.`
+    : '';
   return client.responses.create({
     model: MODEL,
     store: false,
@@ -289,7 +324,10 @@ const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
     instructions: INSTRUCTIONS,
     input: [{
       role: 'user',
-      content: [{ type: 'input_text', text: `Write this Gridiron Grind episode from the following internal editorial packet. Use professional football judgment: discuss only what deserves airtime and leave trivial or suppressed player facts out entirely. Never explain your editorial rules to the listener.${note}\n${JSON.stringify(payload)}` }],
+      content: [{
+        type: 'input_text',
+        text: `Write this Gridiron Grind episode from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener.${storylineNote}${note}\n${JSON.stringify(payload)}`,
+      }],
     }],
     text: {
       format: {
@@ -321,7 +359,7 @@ export default async function handler(req, res) {
   const payload = validatePayload(req.body);
   if (!payload) {
     return json(res, 422, {
-      error: 'There is not enough meaningful football material for a full podcast episode this week. A quiet week is more realistic than padding the show with player-development or game-mechanic data.',
+      error: 'No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.',
       code: 'NO_NEWSWORTHY_PODCAST',
     });
   }
@@ -342,12 +380,13 @@ export default async function handler(req, res) {
         inspection.hosts < 2 ? 'only one host represented' : '',
         violation,
       ].filter(Boolean).join('; ');
+      const range = payload.coverageDecision?.podcastWordRange || { min: DEFAULT_TARGET_MIN_WORDS, max: DEFAULT_TARGET_MAX_WORDS };
 
       response = await requestEpisode({
         client,
         user,
         payload,
-        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode. Keep both hosts. If the football material supports it, aim for ${TARGET_QUIET_MIN_WORDS}-${TARGET_QUIET_MAX_WORDS} on a quiet/preseason week, with ${MIN_COMPLETE_WORDS} as the structural floor. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, editorial-process narration, game mechanics, invented facts or a suppressed tracked-player angle. Start directly on the football subject.`,
+        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts or a suppressed tracked-player angle. Start directly on the football subject.`,
       });
 
       if (response.output_text) {
@@ -358,7 +397,6 @@ export default async function handler(req, res) {
           && repairedInspection.segments >= 10
           && repairedInspection.hosts >= 2
           && !repairedViolation;
-
         if (repairedValid || (!violation && repairedInspection.words > inspection.words)) {
           episode = repairedEpisode;
           inspection = repairedInspection;

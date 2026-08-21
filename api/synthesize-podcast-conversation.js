@@ -8,6 +8,8 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interaction
 const MAX_SEGMENTS = 20;
 const MIN_TOTAL_WORDS = 450;
 const MAX_TOTAL_WORDS = 1000;
+const SINGLE_RENDER_MAX_WORDS = 600;
+const THREE_RENDER_MIN_WORDS = 851;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
 const EDGE_PAD_MS = 70;
@@ -40,7 +42,9 @@ const normalizeSegments = (rawSegments) => {
 
 const partitionSegments = (segments) => {
   const totalWords = segments.reduce((total, segment) => total + countWords(segment.text), 0);
-  const desiredChunks = totalWords >= 720 ? 3 : 2;
+  if (totalWords <= SINGLE_RENDER_MAX_WORDS) return [segments];
+
+  const desiredChunks = totalWords >= THREE_RENDER_MIN_WORDS ? 3 : 2;
   const targetWords = totalWords / desiredChunks;
   const chunks = [];
   let current = [];
@@ -54,7 +58,7 @@ const partitionSegments = (segments) => {
     const remainingSegments = segments.length - index - 1;
     const chunksStillNeeded = desiredChunks - chunks.length - 1;
     const enoughTurnsRemain = remainingSegments >= Math.max(2, chunksStillNeeded * 2);
-    const reachedNaturalSize = currentWords >= targetWords * 0.82;
+    const reachedNaturalSize = currentWords >= targetWords * 0.86;
 
     if (chunks.length < desiredChunks - 1 && enoughTurnsRemain && reachedNaturalSize) {
       chunks.push(current);
@@ -74,10 +78,10 @@ const contextFromSegments = (segments) => segments.slice(-2)
 const buildPerformancePrompt = ({ title, segments, priorContext = '', chunkIndex = 0, chunkCount = 1 }) => {
   const transcript = segments.map((segment) => `${segment.speaker}: ${segment.text}`).join('\n');
   const continuation = priorContext
-    ? `\n\n# PRIOR CONVERSATION CONTEXT — DO NOT SPEAK THIS\nThese are the final lines immediately before this section. Use them only to understand the conversational handoff and maintain the same calm studio tone. Do not repeat or paraphrase them.\n${priorContext}`
+    ? `\n\nPRIOR CONTEXT — DO NOT SPEAK:\n${priorContext}`
     : '';
 
-  return `SYNTHESIZE ONLY THE TWO-SPEAKER SPOKEN TRANSCRIPT BELOW. This is section ${chunkIndex + 1} of ${chunkCount} of one continuous podcast episode. Speak only the transcript words. Never read headings, speaker labels, context text, or production notes aloud.\n\n# VOICE CHARACTER\nMark Thompson is an adult male college-football host: relaxed, knowledgeable, confident, and conversational. He sounds comfortable behind a microphone, not like an announcer and not like an actor trying to sound casual.\n\nSarah Chen is an adult female college-football analyst: clear, grounded, intelligent, and conversational. She can disagree naturally, but she does not perform skepticism, humor, or enthusiasm unless the actual sentence clearly calls for it.\n\n# STUDIO TONE\nMark and Sarah are longtime cohosts having an ordinary, informed conversation in a close-mic podcast studio. The default delivery is understated and natural. Most sentences should sound pleasantly neutral. Personality should come from wording and timing, not exaggerated pitch movement or vocal acting. Episode: ${clean(title, 220) || 'The Gridiron Grind'}.\n\n# DIRECTOR'S NOTES\n- Underplay the performance. Do less, not more.\n- Use normal human sentence melody. Do not add dramatic pitch swoops, sing-song cadence, artificial vocal smiles, or emphasized endings to ordinary sentences.\n- Do not force every question to sound highly curious or every disagreement to sound skeptical. Let punctuation and meaning create only the amount of inflection a real person would naturally use.\n- Keep volume, microphone distance, vocal weight, clarity, and timbre stable from the first line through the final line of this section.\n- Do not gradually become breathier, darker, softer, muffled, compressed, strained, metallic, or more theatrical as the section continues.\n- Keep a comfortable conversational pace. Small natural pace changes are fine, but avoid constantly speeding up and slowing down for effect.\n- Handoffs should feel responsive without sounding rushed. A short reply may be quicker; a longer analytical point may be slightly more measured.\n- Preserve exact wording. Add no filler words, laughter, side comments, sound effects, facts, or extra dialogue.\n- Both speakers should sound like the same people at the end of the section as they did at the beginning.\n${continuation}\n\n# SPOKEN TRANSCRIPT\n${transcript}`;
+  return `Speak only the Mark and Sarah transcript below. Preserve every spoken word exactly. Do not read labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE AND DELIVERY:\n- Use the assigned Mark voice for every Mark line and the assigned Sarah voice for every Sarah line. Keep each speaker's identity, pitch range, timbre, loudness and microphone distance consistent throughout this render.\n- Delivery should be plain, calm and conversational, like a knowledgeable sports podcast recorded in a studio.\n- Most sentences should be neutral and matter-of-fact. Use only modest natural inflection required by punctuation and meaning.\n- Do not act, dramatize, perform enthusiasm, manufacture skepticism, add vocal smiles, exaggerate questions, punch ordinary words, or create sing-song sentence endings.\n- Do not add laughter, filler words, breaths for effect, side comments or extra dialogue.\n- Keep the pace steady and comfortable.\n- The transcript wording provides the personality; the voices should not add another layer of performance.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
 };
 
 const audioFromInteraction = (interaction) => {
@@ -226,7 +230,7 @@ export default async function handler(req, res) {
       if (chunkSampleRate !== sampleRate) throw new Error('Gemini returned inconsistent sample rates across podcast sections.');
 
       const rawPcm = Buffer.from(audio.data, 'base64');
-      const trimmedPcm = trimPcmEdges(rawPcm, sampleRate);
+      const trimmedPcm = transcriptChunks.length === 1 ? rawPcm : trimPcmEdges(rawPcm, sampleRate);
       if (trimmedPcm.length < sampleRate) throw new Error('Gemini returned an incomplete podcast audio section.');
       pcmChunks.push(trimmedPcm);
       priorSegments = [...priorSegments, ...chunk].slice(-2);
@@ -244,7 +248,7 @@ export default async function handler(req, res) {
       audioBase64,
       mimeType: 'audio/mpeg',
       model: MODEL,
-      engine: 'gemini-multispeaker-v3.1-restrained',
+      engine: 'gemini-multispeaker-v3.2-stable',
       voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
       transcriptTurns: segments.length,
       transcriptWords: totalWords,

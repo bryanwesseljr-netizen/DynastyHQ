@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, RefreshCw, Sparkles, Volume2, X } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
 import { generateHumanizedPodcastMix } from '../services/podcastClient';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
 import { PODCAST_SHOW } from '../domain/podcastShow';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'podcast-humanized-audio-v3';
+const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const podcastStudioIsVisible = () => [...document.querySelectorAll('h1')]
   .some((heading) => String(heading.textContent || '').trim() === PODCAST_SHOW.name);
@@ -104,6 +105,28 @@ const PodcastHumanizedAudioPortal = () => {
 
   const selectedEpisode = episodes.find((episode) => episode.publicationId === selectedPublicationId) || null;
 
+  const waitForLatestCommittedEpisode = async (publicationId) => {
+    if (!user || !db) return null;
+    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+    const baselineRevision = Number(career?._sync?.revision) || 0;
+    let latestEpisode = selectedEpisode;
+
+    // Transcript generation and cloud persistence run on separate UI/state paths. Give
+    // a just-finished script save a short window to land before we bind expensive TTS.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const snapshot = await getDoc(ref);
+      if (snapshot.exists()) {
+        const state = snapshot.data();
+        const candidate = (state.podcastEpisodes || []).find((episode) => episode.publicationId === publicationId) || null;
+        if (candidate && episodeTimestamp(candidate) >= episodeTimestamp(latestEpisode)) latestEpisode = candidate;
+        const revision = Number(state?._sync?.revision) || 0;
+        if (revision > baselineRevision) return latestEpisode;
+      }
+      if (attempt < 4) await sleep(300);
+    }
+    return latestEpisode;
+  };
+
   const patchEpisodeStatus = async (publicationId, patch) => {
     if (!user || !db) return null;
     const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
@@ -138,19 +161,16 @@ const PodcastHumanizedAudioPortal = () => {
     const publicationId = selectedEpisode.publicationId;
     const previousAudioStatus = selectedEpisode.audioStatus || 'not-generated';
     setBusy(true);
-    setMessage('');
+    setMessage('Checking the newest saved transcript…');
     try {
-      // Read the episode inside a Firestore transaction so the renderer is not bound to
-      // this portal's potentially stale onSnapshot copy. If the freshly generated script
-      // is still in browser memory, prefer it when it is newer than the committed copy.
+      const settledEpisode = await waitForLatestCommittedEpisode(publicationId);
       const committedEpisode = await patchEpisodeStatus(publicationId, {
         audioStatus: 'rendering-v3',
         audioEngine: 'gemini-multispeaker-v3',
       });
       const liveEpisode = liveEpisodes[publicationId] || null;
-      const renderEpisode = liveEpisode && episodeTimestamp(liveEpisode) > episodeTimestamp(committedEpisode)
-        ? liveEpisode
-        : committedEpisode;
+      const candidates = [settledEpisode, committedEpisode, liveEpisode].filter(Boolean);
+      const renderEpisode = candidates.sort((a, b) => episodeTimestamp(b) - episodeTimestamp(a))[0] || null;
 
       if (!renderEpisode || !Array.isArray(renderEpisode.segments) || renderEpisode.segments.length < 8) {
         throw new Error('The newest saved podcast transcript could not be resolved for audio rendering.');
@@ -158,6 +178,7 @@ const PodcastHumanizedAudioPortal = () => {
 
       const fingerprint = transcriptFingerprint(renderEpisode);
       const idToken = await user.getIdToken();
+      setMessage('Rendering the newest transcript with Mark + Sarah…');
       const rendered = await generateHumanizedPodcastMix({ idToken, episode: renderEpisode });
       if (!rendered.pieces?.length) throw new Error('The humanized renderer returned no playable audio.');
 

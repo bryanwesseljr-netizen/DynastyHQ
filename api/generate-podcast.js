@@ -35,6 +35,7 @@ const validatePayload = (body = {}) => {
 
   const relevance = body.coveragePlan?.playerRelevance || {};
   const program = body.coveragePlan?.program || {};
+  const programGames = Number(program.games) || 0;
   return {
     publicationId: safeText(body.publicationId, 120),
     season: Math.max(1, Number(body.season) || 1),
@@ -48,11 +49,12 @@ const validatePayload = (body = {}) => {
       editorialPrinciple: safeText(body.coveragePlan.editorialPrinciple, 500),
       program: {
         school: safeText(program.school, 160),
-        record: safeText(program.record, 40),
+        record: programGames > 0 ? safeText(program.record, 40) : '',
         streak: safeText(program.streak, 100),
         wins: Number(program.wins) || 0,
         losses: Number(program.losses) || 0,
-        games: Number(program.games) || 0,
+        games: programGames,
+        recordEstablished: programGames > 0,
       },
       playerRelevance: {
         level: ['low', 'developing', 'high', 'primary'].includes(relevance.level) ? relevance.level : 'low',
@@ -83,7 +85,7 @@ const schemaFor = (payload) => ({
     title: { type: 'string' },
     summary: { type: 'string' },
     chapters: {
-      type: 'array', minItems: 4, maxItems: 6,
+      type: 'array', minItems: 3, maxItems: 6,
       items: {
         type: 'object', additionalProperties: false,
         required: ['id', 'title', 'summary', 'segmentStart'],
@@ -96,7 +98,7 @@ const schemaFor = (payload) => ({
       },
     },
     segments: {
-      type: 'array', minItems: 12, maxItems: 16,
+      type: 'array', minItems: 10, maxItems: 16,
       items: {
         type: 'object', additionalProperties: false,
         required: ['id', 'hostId', 'chapterId', 'text', 'deliveryStyle', 'citedFactKeys'],
@@ -128,11 +130,20 @@ The TEAM and GAME are the default conversation. The tracked player becomes a foc
 - If he is the starting quarterback, his performance naturally matters a lot, but the episode should still discuss the team result, what swung the game, season trajectory, and what comes next.
 - Never force a QB Room chapter solely because he is the tracked player.
 
+EDITORIAL SALIENCE — THIS IS AS IMPORTANT AS FACTUAL ACCURACY:
+A fact can be TRUE without being WORTH TALKING ABOUT. Think like an experienced college-football producer deciding what earns airtime.
+- Prioritize consequences, change, tension and football meaning: game results, meaningful statistical contrasts, role changes, first appearances/starts, real performance, meaningful streaks/trends, postseason stakes, transfer/recruiting decisions, awards and milestones.
+- Treat bookkeeping as bookkeeping: games played, a preseason 0-0 record, the mere absence of a game, unchanged status, and routine counters are not storylines.
+- If zero games have been played, NEVER say 0-0 on air and never describe it as a clean slate, fresh start, even footing, good place to be, undefeated, unblemished, or something that was "preserved" by a bye. It is simply preseason before a result exists.
+- Once games have been played, the season record may be stated briefly when it helps frame a result or trend. Do not repeat it in multiple chapters just because it is available.
+- Do not turn one small verified fact into several minutes of discussion. Extract the highest-level football question it legitimately raises, discuss that question, then move on.
+- If the source packet is thin, make the episode shorter and sharper instead of padding it with low-value facts.
+
 FACT HIERARCHY:
-- editorialUse=primary may drive discussion.
+- editorialUse=primary may drive discussion, but still apply editorial judgment; primary means usable, not mandatory repetition.
 - editorialUse=context can support analysis but should not become an inventory.
 - editorialUse=background-only is internal only. Never say or imply its raw value.
-- program.* facts are legitimate derived season context from published game results.
+- program.* facts are legitimate derived season context from published game results, but they must still pass the editorial-salience test.
 - player.coverageRelevance is internal editorial metadata. NEVER say “low relevance,” “high relevance,” or anything resembling an editorial score on air.
 
 ABSOLUTE LISTENER-FACING BANS:
@@ -142,9 +153,15 @@ ABSOLUTE LISTENER-FACING BANS:
 - Never bring old high-school Tape Scores, moment outcomes, recruiting-star mechanics, Top Schools rankings, scholarship thresholds, or high-school evaluation details into college-player episodes.
 - Never fabricate coach/player quotes, practice reports, snap counts, injuries, schemes, reads, formations, recruiting contact, visits, awards, rankings, weather, crowd reaction, locker-room scenes, or future opponents.
 
+FOOTBALL INTELLIGENCE WITHOUT INVENTION:
+- Bring high-level football thinking to verified facts. Ask what a role change means for opportunity, what a turnover or yardage edge says about the shape of a game, what a result changes about pressure or trajectory, and which real question becomes more important next.
+- Separate observation from inference. You may make logical football inferences from supplied facts, but never smuggle in unsupplied practice reports, scheme details, coach intentions, opponent tendencies or schedule information.
+- Do not praise neutral facts. A neutral state is not positive momentum merely because nothing bad happened.
+- Avoid empty sports clichés when a sharper football question is available.
+
 COLLEGE GAME-WEEK COVERAGE:
 - Opening Drive should establish what happened in the Cincinnati game and why it matters.
-- Use final score, result, opponent, team record, streak, and verified team-level statistical contrasts when supplied.
+- Use final score, result, opponent, meaningful team-level statistical contrasts, and season context when supplied and editorially useful.
 - Team-level stats such as total offense, turnovers, first downs, rushing/passing production and possession are excellent discussion material when actually supplied.
 - Use player stats selectively; do not read the entire line repeatedly.
 - Film Room may interpret statistical evidence but cannot invent coverage shells, reads, protections, mechanics, formations, play calls, or specific film observations.
@@ -152,32 +169,34 @@ COLLEGE GAME-WEEK COVERAGE:
 
 BYE-WEEK COVERAGE:
 - Do not spend time explaining there was no game.
-- Preseason/Week 0: discuss the program entering the season, quarterback hierarchy, preparation, opportunity, and what must take shape. A backup gets a dedicated discussion only if a real role/depth event warrants it.
-- Regular-season bye: reset, season trends, recovery when supported, role evaluation, and what matters next.
+- Preseason/Week 0: discuss the program entering the season, quarterback hierarchy, real role/opportunity questions and what must take shape. Do not mention 0-0 at all. A backup gets a dedicated discussion only if a real role/depth event warrants it.
+- Regular-season bye: meaningful season trends, recovery when supported, role evaluation, pressure points and what matters next.
 - Postseason bye: preparation window, bracket/path implications when supplied, pressure, and health/rest only when supported.
 
-CONVERSATION V2 — THIS IS CRITICAL:
-- Produce 12 to 16 ALTERNATING host turns totaling 700 to 850 spoken words.
-- Do NOT make every turn the same length. Mix quick 20–40 word reactions with 45–70 word normal turns and a few 70–100 word deeper analysis turns.
+CONVERSATION V3 — NATURAL AND EDITORIALLY DISCIPLINED:
+- Produce 10 to 16 ALTERNATING host turns.
+- Let episode length match the amount of real football substance. Routine/preseason/quiet-bye episodes should usually land around 520–650 spoken words. Normal game weeks can run 650–800. Truly major weeks may reach roughly 850–900 when the facts justify it.
+- Never hit a word target by repeating a record, rephrasing the same conclusion, or inflating a neutral fact.
+- Do NOT make every turn the same length. Mix quick 20–40 word reactions with 45–70 word normal turns and a few deeper turns only when there is real substance.
 - No single turn should feel like a written column. Prefer spoken sentences, contractions, short clauses, rhetorical questions, and occasional fragments that sound natural aloud.
-- Each turn should react to what the previous host just said whenever possible. Use natural callbacks: “That’s the part I keep coming back to,” “Right, but…,” “I’m with you there,” “I don’t know if I’d go that far,” “And that’s where it gets interesting.” Use these sparingly and vary them.
+- Each turn should react to what the previous host just said whenever possible, but do not force canned callbacks into every exchange.
 - Let Mark ask Sarah a direct football question sometimes. Let Sarah push back on Mark sometimes. Let one host concede a point occasionally.
 - It is okay for a short turn to be mostly reaction plus one new idea. Not every turn needs a full setup, evidence, conclusion structure.
 - Avoid robotic transitions such as “Moving on to our next topic,” “As previously stated,” “Additionally,” or “In conclusion.”
 - Do not start every turn with the other host’s name. Use names occasionally, as real cohosts do.
-- Do not overdo “um,” “uh,” fake laughter, stutters, or verbal mistakes. Natural does not mean sloppy.
+- Do not overdo “um,” “uh,” fake laughter, stutters, verbal mistakes, forced emotion, or exaggerated personality. Natural does not mean sloppy or theatrical.
 - Do not have both hosts repeat the same conclusion in different words.
 - Write for the ear. If a sentence feels like newspaper prose, simplify it.
 
 DELIVERY STYLE:
-For every host turn choose one hidden deliveryStyle that best fits the line:
+For every host turn choose one hidden deliveryStyle that best fits the line. Treat neutral as the default; only use a marked style when the wording genuinely calls for it.
 - neutral: relaxed conversational baseline
 - curious: genuine question or exploratory setup
-- reflective: slower, thoughtful observation
+- reflective: thoughtful observation
 - skeptical: respectful pushback or doubt
 - emphatic: strong but controlled football point
 - amused: light, subtle smile in the voice; never comedy shtick
-- quick-agreement: brief energetic agreement/callback
+- quick-agreement: brief agreement/callback
 - analytical: measured breakdown of evidence
 The deliveryStyle is production metadata and must not be spoken or referenced.
 
@@ -187,15 +206,15 @@ HOST CHEMISTRY:
 - Their relationship should feel comfortable and established: respectful, occasionally playful, comfortable disagreeing, never hostile.
 
 CHAPTER RULES:
-- Use four to six concise recurring chapters. Opening Drive must be first and Next Saturday must be last.
+- Use three to six concise recurring chapters. Opening Drive must be first and Next Saturday must be last.
 - Opening Drive: game/program lead story.
 - QB Room: only when depth-chart role, playing-time path, promotion/demotion, first appearance, starting job, or QB performance is genuinely relevant.
 - Film Room: actual game performance/team statistical evidence or legitimate high-school evaluation evidence only.
 - Recruiting Desk: actual offers, commitments, transfer decisions, portal movement, or recruiting developments. Do not force it into a college-player week with no recruiting/transfer story.
-- Around the Program: team context, season record/streak, awards, injuries, records, postseason picture, or broader program developments actually supplied.
+- Around the Program: meaningful team context, consequential season trends/streaks, awards, injuries, records, postseason picture, or broader program developments actually supplied. Do not create this chapter merely to restate a routine record.
 - Coach's Clipboard: coordinator/head-coach decisions, roster management, staff/program building, or coaching-career storylines when supplied.
 - Next Saturday: one or two unresolved football questions/themes to watch. Never invent the next opponent or schedule.
-- A four-chapter episode is better than filler.
+- Fewer strong chapters are better than filler.
 
 HIGH-SCHOOL COVERAGE:
 - During the actual high-school phase, Tape Score, offers, evaluation moments, rankings, and preference movement may be discussed because they belong to that stage.
@@ -244,7 +263,7 @@ export default async function handler(req, res) {
       instructions: INSTRUCTIONS,
       input: [{
         role: 'user',
-        content: [{ type: 'input_text', text: `Write this Gridiron Grind episode from the following internal editorial packet. Make it a fluid two-person football conversation, not alternating mini-essays.\n${JSON.stringify(payload)}` }],
+        content: [{ type: 'input_text', text: `Write this Gridiron Grind episode from the following internal editorial packet. Make it a fluid two-person football conversation, not alternating mini-essays. Apply real editorial judgment: discuss what matters and leave trivial bookkeeping facts alone.\n${JSON.stringify(payload)}` }],
       }],
       text: {
         format: {

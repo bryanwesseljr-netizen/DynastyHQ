@@ -193,7 +193,7 @@ const prepareHumanizedMix = async ({ idToken, episode }) => {
   return rendered;
 };
 
-export const generatePodcastScript = async ({ idToken, payload }) => {
+export const generatePodcastScript = async ({ idToken, payload, prepareAudio = true }) => {
   pendingHumanizedMix = null;
   let generated = null;
   let inspection = null;
@@ -208,7 +208,7 @@ export const generatePodcastScript = async ({ idToken, payload }) => {
     throw new Error(incompleteScriptMessage(inspection));
   }
 
-  await prepareHumanizedMix({ idToken, episode: generated.episode });
+  if (prepareAudio) await prepareHumanizedMix({ idToken, episode: generated.episode });
   return generated;
 };
 

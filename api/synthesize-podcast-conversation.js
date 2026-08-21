@@ -9,23 +9,13 @@ const MAX_SEGMENTS = 20;
 const MAX_TOTAL_WORDS = 1000;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
+const EDGE_PAD_MS = 70;
 
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 180 };
 
 const HOSTS = Object.freeze({
   'marcus-grant': { speaker: 'Mark', name: 'Mark Thompson' },
   'tyler-brooks': { speaker: 'Sarah', name: 'Sarah Chen' },
-});
-
-const DELIVERY_TAGS = Object.freeze({
-  curious: '[curious]',
-  reflective: '[reflective, slightly slower]',
-  skeptical: '[skeptical]',
-  emphatic: '[confident and emphatic]',
-  amused: '[amused, with a subtle vocal smile]',
-  'quick-agreement': '[quickly, like an immediate cohost reaction]',
-  analytical: '[analytical and measured]',
-  neutral: '',
 });
 
 const clean = (value, max = 2000) => String(value || '').trim().slice(0, max);
@@ -38,26 +28,55 @@ const normalizeSegments = (rawSegments) => {
     const host = HOSTS[segment?.hostId];
     const segmentText = clean(segment?.text, 1900);
     if (!host || !segmentText) return null;
-    const deliveryStyle = Object.hasOwn(DELIVERY_TAGS, segment?.deliveryStyle)
-      ? segment.deliveryStyle
-      : 'neutral';
     return {
       id: clean(segment?.id, 80) || `turn-${index + 1}`,
       speaker: host.speaker,
       name: host.name,
       text: segmentText,
-      deliveryStyle,
     };
   }).filter(Boolean);
 };
 
-const buildPerformancePrompt = ({ title, segments }) => {
-  const transcript = segments.map((segment) => {
-    const tag = DELIVERY_TAGS[segment.deliveryStyle] || '';
-    return `${segment.speaker}: ${tag ? `${tag} ` : ''}${segment.text}`;
-  }).join('\n');
+const partitionSegments = (segments) => {
+  const totalWords = segments.reduce((total, segment) => total + countWords(segment.text), 0);
+  const desiredChunks = totalWords >= 720 ? 3 : 2;
+  const targetWords = totalWords / desiredChunks;
+  const chunks = [];
+  let current = [];
+  let currentWords = 0;
 
-  return `SYNTHESIZE THE TWO-SPEAKER PODCAST PERFORMANCE BELOW. Speak only the words in the SPOKEN TRANSCRIPT. Do not read headings, speaker labels, bracketed performance tags, or production notes aloud.\n\n# AUDIO PROFILES\nMark Thompson is an adult male college-football podcast host. He is warm, charismatic, confident, quick on his feet, and sounds like a real football junkie rather than a broadcaster reading copy. He can make a strong take, smile through a line, and toss a question to his cohost naturally. His personality has energy and swagger without becoming a sports-radio caricature.\n\nSarah Chen is an adult female college-football analyst. She is sharp, personable, dryly funny when the moment allows it, and completely comfortable pushing back on Mark. She sounds intelligent without sounding formal. Her best moments feel spontaneous: quick agreement, a skeptical "yeah, but..." turn, or a concise point that makes Mark reconsider his angle.\n\n# THE SCENE\nMark and Sarah are longtime cohosts sitting across from each other in a modern, intimate college-football podcast studio. They know each other's rhythms. The mics are close, the room is relaxed, and this is a real conversation immediately after preparing the week's show. They are engaged with each other, not addressing an auditorium. The listener should feel like they are overhearing two knowledgeable friends talking ball. Episode: ${clean(title, 220) || 'The Gridiron Grind'}.\n\n# DIRECTOR'S NOTES\n- Human, fluid, charismatic and conversational are more important than "perfect" announcer diction.\n- Keep handoffs tight. Avoid dead air and avoid resetting the vocal energy at every speaker change.\n- Let reactions sound like reactions: a quick "right," a skeptical answer, a smile in the voice, or a slightly faster response should feel immediate.\n- Vary pace naturally inside sentences. Use small micro-pauses around important ideas rather than evenly spaced pauses after every clause.\n- Mark should sound warm and confident with an occasional playful edge. Sarah should sound sharp, grounded and comfortable challenging him.\n- Give both hosts personality and character, but never make them cartoonish, shouty, theatrical, or fake.\n- Do not add unscripted facts. Do not add filler words, laughter, coughs, sound effects, or extra dialogue unless an inline performance tag explicitly calls for it.\n- Preserve the exact spoken wording of the transcript.\n- Treat the bracketed tags as acting direction only. Never speak the tags.\n\n# SPOKEN TRANSCRIPT\n${transcript}`;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    current.push(segment);
+    currentWords += countWords(segment.text);
+
+    const remainingSegments = segments.length - index - 1;
+    const chunksStillNeeded = desiredChunks - chunks.length - 1;
+    const enoughTurnsRemain = remainingSegments >= Math.max(2, chunksStillNeeded * 2);
+    const reachedNaturalSize = currentWords >= targetWords * 0.82;
+
+    if (chunks.length < desiredChunks - 1 && enoughTurnsRemain && reachedNaturalSize) {
+      chunks.push(current);
+      current = [];
+      currentWords = 0;
+    }
+  }
+
+  if (current.length) chunks.push(current);
+  return chunks;
+};
+
+const contextFromSegments = (segments) => segments.slice(-2)
+  .map((segment) => `${segment.speaker}: ${clean(segment.text, 420)}`)
+  .join('\n');
+
+const buildPerformancePrompt = ({ title, segments, priorContext = '', chunkIndex = 0, chunkCount = 1 }) => {
+  const transcript = segments.map((segment) => `${segment.speaker}: ${segment.text}`).join('\n');
+  const continuation = priorContext
+    ? `\n\n# PRIOR CONVERSATION CONTEXT — DO NOT SPEAK THIS\nThese are the final lines immediately before this section. Use them only to understand the conversational handoff and maintain the same calm studio tone. Do not repeat or paraphrase them.\n${priorContext}`
+    : '';
+
+  return `SYNTHESIZE ONLY THE TWO-SPEAKER SPOKEN TRANSCRIPT BELOW. This is section ${chunkIndex + 1} of ${chunkCount} of one continuous podcast episode. Speak only the transcript words. Never read headings, speaker labels, context text, or production notes aloud.\n\n# VOICE CHARACTER\nMark Thompson is an adult male college-football host: relaxed, knowledgeable, confident, and conversational. He sounds comfortable behind a microphone, not like an announcer and not like an actor trying to sound casual.\n\nSarah Chen is an adult female college-football analyst: clear, grounded, intelligent, and conversational. She can disagree naturally, but she does not perform skepticism, humor, or enthusiasm unless the actual sentence clearly calls for it.\n\n# STUDIO TONE\nMark and Sarah are longtime cohosts having an ordinary, informed conversation in a close-mic podcast studio. The default delivery is understated and natural. Most sentences should sound pleasantly neutral. Personality should come from wording and timing, not exaggerated pitch movement or vocal acting. Episode: ${clean(title, 220) || 'The Gridiron Grind'}.\n\n# DIRECTOR'S NOTES\n- Underplay the performance. Do less, not more.\n- Use normal human sentence melody. Do not add dramatic pitch swoops, sing-song cadence, artificial vocal smiles, or emphasized endings to ordinary sentences.\n- Do not force every question to sound highly curious or every disagreement to sound skeptical. Let punctuation and meaning create only the amount of inflection a real person would naturally use.\n- Keep volume, microphone distance, vocal weight, clarity, and timbre stable from the first line through the final line of this section.\n- Do not gradually become breathier, darker, softer, muffled, compressed, strained, metallic, or more theatrical as the section continues.\n- Keep a comfortable conversational pace. Small natural pace changes are fine, but avoid constantly speeding up and slowing down for effect.\n- Handoffs should feel responsive without sounding rushed. A short reply may be quicker; a longer analytical point may be slightly more measured.\n- Preserve exact wording. Add no filler words, laughter, side comments, sound effects, facts, or extra dialogue.\n- Both speakers should sound like the same people at the end of the section as they did at the beginning.\n${continuation}\n\n# SPOKEN TRANSCRIPT\n${transcript}`;
 };
 
 const audioFromInteraction = (interaction) => {
@@ -104,7 +123,7 @@ const callGemini = async (prompt) => {
 
       const audio = audioFromInteraction(body);
       if (!audio?.data) {
-        const error = new Error('Gemini returned no playable audio for this episode.');
+        const error = new Error('Gemini returned no playable audio for this episode section.');
         error.status = 502;
         throw error;
       }
@@ -119,14 +138,32 @@ const callGemini = async (prompt) => {
   throw lastError || new Error('Gemini TTS did not return audio.');
 };
 
+const trimPcmEdges = (pcmBuffer, sampleRate) => {
+  const evenLength = pcmBuffer.length - (pcmBuffer.length % 2);
+  if (evenLength < 4) return pcmBuffer.subarray(0, evenLength);
+
+  const sampleCount = evenLength / 2;
+  const threshold = 220;
+  let firstSound = 0;
+  let lastSound = sampleCount - 1;
+
+  while (firstSound < sampleCount && Math.abs(pcmBuffer.readInt16LE(firstSound * 2)) <= threshold) firstSound += 1;
+  while (lastSound > firstSound && Math.abs(pcmBuffer.readInt16LE(lastSound * 2)) <= threshold) lastSound -= 1;
+  if (firstSound >= sampleCount) return pcmBuffer.subarray(0, evenLength);
+
+  const padSamples = Math.max(1, Math.round((Number(sampleRate) || DEFAULT_SAMPLE_RATE) * EDGE_PAD_MS / 1000));
+  const startSample = Math.max(0, firstSound - padSamples);
+  const endSample = Math.min(sampleCount, lastSound + padSamples + 1);
+  return pcmBuffer.subarray(startSample * 2, endSample * 2);
+};
+
 const pcmBufferToInt16 = (pcmBuffer) => {
   const byteLength = pcmBuffer.byteLength - (pcmBuffer.byteLength % 2);
   return new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, byteLength / 2);
 };
 
-const encodePcmToMp3 = ({ pcmBase64, sampleRate = DEFAULT_SAMPLE_RATE }) => {
-  const pcmBuffer = Buffer.from(pcmBase64, 'base64');
-  if (pcmBuffer.length < 2) throw new Error('Gemini returned an empty PCM audio payload.');
+const encodePcmToMp3 = ({ pcmBuffer, sampleRate = DEFAULT_SAMPLE_RATE }) => {
+  if (!pcmBuffer?.length || pcmBuffer.length < 2) throw new Error('Gemini returned an empty PCM audio payload.');
   const samples = pcmBufferToInt16(pcmBuffer);
   const encoder = new lame.Mp3Encoder(1, Number(sampleRate) || DEFAULT_SAMPLE_RATE, MP3_KBPS);
   const chunks = [];
@@ -168,10 +205,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    const prompt = buildPerformancePrompt({ title: req.body?.title, segments });
-    const { audio } = await callGemini(prompt);
-    const sampleRate = Number(audio.sample_rate || audio.sampleRate) || DEFAULT_SAMPLE_RATE;
-    const mp3 = encodePcmToMp3({ pcmBase64: audio.data, sampleRate });
+    const transcriptChunks = partitionSegments(segments);
+    const pcmChunks = [];
+    let sampleRate = DEFAULT_SAMPLE_RATE;
+    let priorSegments = [];
+
+    for (let index = 0; index < transcriptChunks.length; index += 1) {
+      const chunk = transcriptChunks[index];
+      const prompt = buildPerformancePrompt({
+        title: req.body?.title,
+        segments: chunk,
+        priorContext: contextFromSegments(priorSegments),
+        chunkIndex: index,
+        chunkCount: transcriptChunks.length,
+      });
+      const { audio } = await callGemini(prompt);
+      const chunkSampleRate = Number(audio.sample_rate || audio.sampleRate) || DEFAULT_SAMPLE_RATE;
+      if (index === 0) sampleRate = chunkSampleRate;
+      if (chunkSampleRate !== sampleRate) throw new Error('Gemini returned inconsistent sample rates across podcast sections.');
+
+      const rawPcm = Buffer.from(audio.data, 'base64');
+      const trimmedPcm = trimPcmEdges(rawPcm, sampleRate);
+      if (trimmedPcm.length < sampleRate) throw new Error('Gemini returned an incomplete podcast audio section.');
+      pcmChunks.push(trimmedPcm);
+      priorSegments = [...priorSegments, ...chunk].slice(-2);
+    }
+
+    const continuousPcm = Buffer.concat(pcmChunks);
+    const mp3 = encodePcmToMp3({ pcmBuffer: continuousPcm, sampleRate });
     const audioBase64 = mp3.toString('base64');
 
     if (Buffer.byteLength(audioBase64, 'utf8') > 4_000_000) {
@@ -182,10 +243,11 @@ export default async function handler(req, res) {
       audioBase64,
       mimeType: 'audio/mpeg',
       model: MODEL,
-      engine: 'gemini-multispeaker-v3',
+      engine: 'gemini-multispeaker-v3.1-restrained',
       voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
       transcriptTurns: segments.length,
       transcriptWords: totalWords,
+      performanceSections: transcriptChunks.length,
       sampleRate,
       mp3Kbps: MP3_KBPS,
     });

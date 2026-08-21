@@ -21,36 +21,11 @@ export const COVERAGE_TIERS = Object.freeze({
 });
 
 const TIER_CONFIG = Object.freeze({
-  'no-coverage': {
-    articleCount: 0,
-    podcastEligible: false,
-    newsroomWordRange: null,
-    podcastWordRange: null,
-  },
-  brief: {
-    articleCount: 1,
-    podcastEligible: false,
-    newsroomWordRange: { min: 180, max: 320 },
-    podcastWordRange: null,
-  },
-  standard: {
-    articleCount: 2,
-    podcastEligible: true,
-    newsroomWordRange: { min: 300, max: 500 },
-    podcastWordRange: { min: 450, max: 700 },
-  },
-  major: {
-    articleCount: 3,
-    podcastEligible: true,
-    newsroomWordRange: { min: 450, max: 650 },
-    podcastWordRange: { min: 600, max: 850 },
-  },
-  'career-defining': {
-    articleCount: 4,
-    podcastEligible: true,
-    newsroomWordRange: { min: 550, max: 750 },
-    podcastWordRange: { min: 700, max: 950 },
-  },
+  'no-coverage': { articleCount: 0, podcastEligible: false, newsroomWordRange: null, podcastWordRange: null },
+  brief: { articleCount: 1, podcastEligible: false, newsroomWordRange: { min: 180, max: 320 }, podcastWordRange: null },
+  standard: { articleCount: 2, podcastEligible: true, newsroomWordRange: { min: 300, max: 500 }, podcastWordRange: { min: 450, max: 700 } },
+  major: { articleCount: 3, podcastEligible: true, newsroomWordRange: { min: 450, max: 650 }, podcastWordRange: { min: 600, max: 850 } },
+  'career-defining': { articleCount: 4, podcastEligible: true, newsroomWordRange: { min: 550, max: 750 }, podcastWordRange: { min: 700, max: 950 } },
 });
 
 const EVENT_PREFIX_RE = /^(milestone\.|award\.|transfer\.|portal\.|coach\.(?:job|hire|fired|promotion|championship))/i;
@@ -69,14 +44,12 @@ const recentCoverageKeys = (state, publicationId, limit = 3) => {
       if (normalized) keys.push(normalized);
     });
   };
-
   [...(state.newsroomIssues || [])].slice(-limit - 1).forEach(pushFrom);
   [...(state.podcastEpisodes || [])].slice(-limit - 1).forEach(pushFrom);
   return new Set(keys);
 };
 
 const currentWeeklyNote = (facts) => facts.find((fact) => fact.key === 'weekly.note' && clean(fact.value, 1000));
-
 const eventFactsFor = (facts) => facts.filter((fact) => EVENT_PREFIX_RE.test(clean(fact.key, 180)));
 
 const storylineThreadsFor = ({ issue, program, relevance, eventFacts, recentKeys }) => {
@@ -103,23 +76,9 @@ const storylineThreadsFor = ({ issue, program, relevance, eventFacts, recentKeys
   }
 
   if (relevance?.firstAppearance) {
-    add({
-      key: 'player:first-appearance',
-      label: 'First college appearance',
-      value: true,
-      changedThisWeek: true,
-      status: 'new-development',
-      editorialUse: 'primary',
-    });
+    add({ key: 'player:first-appearance', label: 'First college appearance', value: true, changedThisWeek: true, status: 'new-development', editorialUse: 'primary' });
   } else if (relevance?.didPlay) {
-    add({
-      key: 'player:active-role',
-      label: 'Tracked player in game action',
-      value: true,
-      changedThisWeek: true,
-      status: 'active',
-      editorialUse: relevance.level === 'primary' ? 'primary' : 'context',
-    });
+    add({ key: 'player:active-role', label: 'Tracked player in game action', value: true, changedThisWeek: true, status: 'active', editorialUse: relevance.level === 'primary' ? 'primary' : 'context' });
   }
 
   if (program?.streakCount >= 3) {
@@ -135,14 +94,7 @@ const storylineThreadsFor = ({ issue, program, relevance, eventFacts, recentKeys
   }
 
   if (clean(issue?.weekPhase, 80).toLowerCase().includes('postseason')) {
-    add({
-      key: 'program:postseason',
-      label: 'Postseason stage',
-      value: clean(issue.weekPhase, 80),
-      changedThisWeek: true,
-      status: 'active',
-      editorialUse: 'primary',
-    });
+    add({ key: 'program:postseason', label: 'Postseason stage', value: clean(issue.weekPhase, 80), changedThisWeek: true, status: 'active', editorialUse: 'primary' });
   }
 
   eventFacts.forEach((fact) => add({
@@ -165,13 +117,7 @@ const tierForScore = ({ score, careerDefining = false, hasAnyStory = false }) =>
   return COVERAGE_TIERS.BRIEF;
 };
 
-export const buildEditorialCoverageDecision = ({
-  state = {},
-  issue = {},
-  publicationId = '',
-  program = {},
-  relevance = {},
-} = {}) => {
+export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publicationId = '', program = {}, relevance = {} } = {}) => {
   const facts = currentEditorialFacts(state, publicationId);
   const eventFacts = eventFactsFor(facts);
   const weeklyNote = currentWeeklyNote(facts);
@@ -188,55 +134,23 @@ export const buildEditorialCoverageDecision = ({
 
   let score = 0;
   const reasons = [];
-  if (resultKnown) {
-    score += 3;
-    reasons.push('completed game result');
-  }
-  if (roleEvent) {
-    score += 3;
-    reasons.push(relevance.promoted ? 'depth-chart promotion' : relevance.demoted ? 'depth-chart demotion' : 'depth-chart change');
-  }
-  if (relevance.firstAppearance) {
-    score += 3;
-    reasons.push('first college appearance');
-  } else if (appearanceEvent) {
-    score += 1;
-    reasons.push('game appearance');
-  }
-  if (relevance.starter && relevance.didPlay) {
-    score += 1;
-    reasons.push('starting-quarterback role');
-  }
-  if (playerPerformanceEvent) {
-    score += 1;
-    reasons.push('meaningful player production');
-  }
-  if (streakThreshold) {
-    score += 1;
-    reasons.push('sustained team streak became a storyline');
-  }
-  if (postseason) {
-    score += 2;
-    reasons.push('postseason stakes');
-  }
-  if (eventFacts.length) {
-    score += Math.min(4, 2 + eventFacts.length);
-    reasons.push('verified career/program event');
-  }
-  if (weeklyNote) {
-    score += 1;
-    reasons.push('meaningful weekly football note');
-  }
+  if (resultKnown) { score += 3; reasons.push('completed game result'); }
+  if (roleEvent) { score += 3; reasons.push(relevance.promoted ? 'depth-chart promotion' : relevance.demoted ? 'depth-chart demotion' : 'depth-chart change'); }
+  if (relevance.firstAppearance) { score += 3; reasons.push('first college appearance'); }
+  else if (appearanceEvent) { score += 1; reasons.push('game appearance'); }
+  if (relevance.starter && relevance.didPlay) { score += 1; reasons.push('starting-quarterback role'); }
+  if (playerPerformanceEvent) { score += 1; reasons.push('meaningful player production'); }
+  if (streakThreshold) { score += 2; reasons.push('sustained team streak became a storyline'); }
+  if (postseason) { score += 2; reasons.push('postseason stakes'); }
+  if (eventFacts.length) { score += Math.min(4, 2 + eventFacts.length); reasons.push('verified career/program event'); }
+  if (weeklyNote) { score += 1; reasons.push('meaningful weekly football note'); }
 
   const hasAnyStory = resultKnown || roleEvent || appearanceEvent || postseason || eventFacts.length > 0 || Boolean(weeklyNote) || streakThreshold;
   const careerDefining = strongEvent && (postseason || relevance.level === 'primary' || eventFacts.length > 1);
   const tier = tierForScore({ score, careerDefining, hasAnyStory });
   const config = TIER_CONFIG[tier];
   const storylineThreads = storylineThreadsFor({ issue, program, relevance, eventFacts, recentKeys });
-  const storylineKeys = storylineThreads
-    .filter((thread) => thread.editorialUse !== 'background-only')
-    .map((thread) => thread.key);
-
+  const storylineKeys = storylineThreads.filter((thread) => thread.editorialUse !== 'background-only').map((thread) => thread.key);
   const playerMentionPolicy = relevance.level === 'primary'
     ? 'focal-when-story-requires'
     : relevance.level === 'high'
@@ -263,6 +177,4 @@ export const buildEditorialCoverageDecision = ({
   };
 };
 
-export const coverageAtLeast = (decision, tier) => (
-  Number(decision?.rank ?? -1) >= Number(COVERAGE_ORDER[tier] ?? 99)
-);
+export const coverageAtLeast = (decision, tier) => Number(decision?.rank ?? -1) >= Number(COVERAGE_ORDER[tier] ?? 99);

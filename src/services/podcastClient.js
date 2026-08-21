@@ -39,16 +39,29 @@ let pendingHumanizedMix = null;
 
 const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
 const MIN_SCRIPT_TURNS = 10;
-const MIN_SCRIPT_WORDS = 500;
+const MIN_STANDARD_SCRIPT_WORDS = 500;
+const MIN_QUIET_PRESEASON_WORDS = 450;
 const MAX_SCRIPT_WORDS = 950;
 
-const inspectGeneratedScript = (episode) => {
+const minimumScriptWordsFor = (payload = {}) => (
+  payload.coverageStage === 'college-player'
+  && payload.weekType === 'bye'
+  && payload.weekPhase === 'preseason'
+    ? MIN_QUIET_PRESEASON_WORDS
+    : MIN_STANDARD_SCRIPT_WORDS
+);
+
+const inspectGeneratedScript = (episode, payload = {}) => {
   const segments = Array.isArray(episode?.segments) ? episode.segments.filter((segment) => String(segment?.text || '').trim()) : [];
   const words = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
+  const hostIds = new Set(segments.map((segment) => String(segment?.hostId || '').trim()).filter(Boolean));
+  const minimumWords = minimumScriptWordsFor(payload);
   return {
-    valid: segments.length >= MIN_SCRIPT_TURNS && words >= MIN_SCRIPT_WORDS && words <= MAX_SCRIPT_WORDS,
+    valid: segments.length >= MIN_SCRIPT_TURNS && hostIds.size >= 2 && words >= minimumWords && words <= MAX_SCRIPT_WORDS,
     segments: segments.length,
     words,
+    minimumWords,
+    hosts: hostIds.size,
   };
 };
 
@@ -189,7 +202,7 @@ export const generatePodcastScript = async ({ idToken, payload }) => {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     generated = await request('/api/generate-podcast', { idToken, body: payload });
-    inspection = inspectGeneratedScript(generated?.episode);
+    inspection = inspectGeneratedScript(generated?.episode, payload);
     if (inspection.valid) break;
   }
 

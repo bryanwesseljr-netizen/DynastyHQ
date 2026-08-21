@@ -10,7 +10,7 @@ const matchesPublication = (entry, publicationId) => (
 const EDITORIAL_PROFILES = Object.freeze({
   bolt: { byline: 'Rachel Monroe · Thunderbirds Beat Writer', purpose: 'Write like a real school beat reporter. Lead with the actual football development or recruiting news, explain why it matters, and keep game-interface mechanics out of the copy unless they represent a genuine public storyline.' },
   local: { byline: 'Anthony Carter · Metro Detroit Prep Reporter', purpose: 'Tell the hometown story with a human sportswriting angle: development, opportunity, recruiting decisions, role changes, setbacks, and what comes next. Do not turn tracker values into the story.' },
-  recruiting: { byline: 'Marcus Grant · Recruiting Insider', purpose: 'Write a modern recruiting-insider story about offers, visits, preference movement, commitments, transfers, and decision pressure. Use recruiting mechanics only when they translate into a real recruiting development.' },
+  recruiting: { byline: 'Marcus Grant · Recruiting Insider', purpose: 'Write a modern recruiting story with an insider lens about offers, visits, preference movement, commitments, transfers, and decision pressure. Use recruiting mechanics only when they translate into a real recruiting development.' },
   filmroom: { byline: 'Tyler Brooks · Football Analyst', purpose: 'Write football analysis from actual performance, team statistical contrasts, role, production, and meaningful development. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as football analysis.' },
   national: { byline: 'Nicole Benton · National College Football Writer', purpose: 'Frame the week inside the larger football season and career arc. Focus on team results, stakes, momentum, role, opportunity, and consequential developments without inventing outside reaction.' },
   'college-local': { byline: 'Rachel Monroe · Campus Beat Writer', purpose: 'Cover the college football program like a real local beat writer. The team and game are the default story; the tracked player becomes the focal point only when his role, playing time, performance, or a meaningful depth-chart event makes him newsworthy.' },
@@ -226,11 +226,15 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       playerMentionPolicy: clean(plan?.playerMentionPolicy, 80),
       coverageTier: coverageContext?.coverageDecision?.tier || '',
       targetWordRange: coverageContext?.coverageDecision?.newsroomWordRange || null,
+      activeStorylineKeys: coverageContext?.coverageDecision?.storylineKeys || [],
       focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
     };
   }).filter((brief) => brief.focusFactIds.length);
 
-  if (!articleBriefs.length) throw new Error('This edition does not have a usable program-coverage assignment yet.');
+  const cappedBriefs = coverageStage === 'college-player'
+    ? articleBriefs.slice(0, Math.max(0, coverageContext.coverageDecision.articleCount))
+    : articleBriefs;
+  if (!cappedBriefs.length) throw new Error('This edition does not have a usable program-coverage assignment yet.');
 
   return {
     publicationId: issue.publicationId || issue.id,
@@ -247,6 +251,9 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     coveragePlan: coverageContext ? {
       program: coverageContext.program,
       playerRelevance: coverageContext.relevance,
+      coverageTier: coverageContext.coverageDecision.tier,
+      targetWordRange: coverageContext.coverageDecision.newsroomWordRange,
+      activeStorylineKeys: coverageContext.coverageDecision.storylineKeys,
       playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
       editorialPrinciple: 'The team/game is the default story. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
     } : null,
@@ -259,7 +266,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       archetype: clean(state.player?.archetype, 80),
     },
     facts,
-    articleBriefs,
+    articleBriefs: cappedBriefs,
   };
 };
 

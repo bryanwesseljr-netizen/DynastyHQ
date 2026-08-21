@@ -243,7 +243,7 @@ WRITING QUALITY:
 - Cold-open each article with the actual sports story, not an explanation of what the article will discuss.
 - Each outlet needs a distinct angle and cadence.
 - Build around the strongest real idea, not every fact in the packet.
-- Keep headlines concise: roughly 5-10 words, active, one clear angle.
+- Write a headline of 5 to 10 words, active, with one clear angle, and no more than 75 characters.
 - The dek adds stakes rather than repeating the headline.
 - Section headings sound editorial, not like data fields.
 - pullQuote is an unattributed editorial takeaway, not a fabricated person's quote.

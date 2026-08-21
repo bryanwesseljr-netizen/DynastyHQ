@@ -39,30 +39,28 @@ let pendingHumanizedMix = null;
 
 const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
 const MIN_SCRIPT_TURNS = 10;
-const MIN_STANDARD_SCRIPT_WORDS = 500;
-const MIN_QUIET_PRESEASON_WORDS = 450;
+const MIN_SCRIPT_WORDS = 450;
 const MAX_SCRIPT_WORDS = 950;
 
-const minimumScriptWordsFor = (payload = {}) => (
-  payload.coverageStage === 'college-player'
-  && payload.weekType === 'bye'
-  && payload.weekPhase === 'preseason'
-    ? MIN_QUIET_PRESEASON_WORDS
-    : MIN_STANDARD_SCRIPT_WORDS
-);
-
-const inspectGeneratedScript = (episode, payload = {}) => {
+const inspectGeneratedScript = (episode) => {
   const segments = Array.isArray(episode?.segments) ? episode.segments.filter((segment) => String(segment?.text || '').trim()) : [];
   const words = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
   const hostIds = new Set(segments.map((segment) => String(segment?.hostId || '').trim()).filter(Boolean));
-  const minimumWords = minimumScriptWordsFor(payload);
   return {
-    valid: segments.length >= MIN_SCRIPT_TURNS && hostIds.size >= 2 && words >= minimumWords && words <= MAX_SCRIPT_WORDS,
+    valid: segments.length >= MIN_SCRIPT_TURNS && hostIds.size >= 2 && words >= MIN_SCRIPT_WORDS && words <= MAX_SCRIPT_WORDS,
     segments: segments.length,
     words,
-    minimumWords,
     hosts: hostIds.size,
   };
+};
+
+const incompleteScriptMessage = (inspection = {}) => {
+  const reasons = [];
+  if ((inspection.segments || 0) < MIN_SCRIPT_TURNS) reasons.push(`${inspection.segments || 0} turns; at least ${MIN_SCRIPT_TURNS} required`);
+  if ((inspection.hosts || 0) < 2) reasons.push('both Mark and Sarah were not present');
+  if ((inspection.words || 0) < MIN_SCRIPT_WORDS) reasons.push(`${inspection.words || 0} words; at least ${MIN_SCRIPT_WORDS} required`);
+  if ((inspection.words || 0) > MAX_SCRIPT_WORDS) reasons.push(`${inspection.words || 0} words; maximum ${MAX_SCRIPT_WORDS}`);
+  return `The podcast script was incomplete (${reasons.join('; ') || 'unknown validation issue'}). Please try generating it again.`;
 };
 
 const base64ToBytes = (base64) => {
@@ -202,12 +200,12 @@ export const generatePodcastScript = async ({ idToken, payload }) => {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     generated = await request('/api/generate-podcast', { idToken, body: payload });
-    inspection = inspectGeneratedScript(generated?.episode, payload);
+    inspection = inspectGeneratedScript(generated?.episode);
     if (inspection.valid) break;
   }
 
   if (!inspection?.valid) {
-    throw new Error(`The podcast script came back too short or incomplete (${inspection?.words || 0} words across ${inspection?.segments || 0} turns). Please try generating it again.`);
+    throw new Error(incompleteScriptMessage(inspection));
   }
 
   await prepareHumanizedMix({ idToken, episode: generated.episode });

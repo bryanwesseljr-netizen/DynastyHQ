@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, Sparkles, Volume2, X } from 'lucide-react';
+import { FileText, Loader2, RefreshCw, Sparkles, Volume2, X } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
-import { generateHumanizedPodcastMix } from '../services/podcastClient';
+import { generateHumanizedPodcastMix, generatePodcastScript } from '../services/podcastClient';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
+import { buildPodcastGenerationPayload, normalizeGeneratedPodcast } from '../domain/podcastEngine';
 import { PODCAST_SHOW } from '../domain/podcastShow';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'podcast-humanized-audio-v3';
@@ -111,8 +112,6 @@ const PodcastHumanizedAudioPortal = () => {
     const baselineRevision = Number(career?._sync?.revision) || 0;
     let latestEpisode = selectedEpisode;
 
-    // Transcript generation and cloud persistence run on separate UI/state paths. Give
-    // a just-finished script save a short window to land before we bind expensive TTS.
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const snapshot = await getDoc(ref);
       if (snapshot.exists()) {
@@ -148,6 +147,78 @@ const PodcastHumanizedAudioPortal = () => {
       });
       return patchedEpisode;
     });
+  };
+
+  const replaceEpisodeTranscript = async (publicationId, nextEpisode) => {
+    if (!user || !db) return null;
+    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+    return runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
+      const state = snapshot.data();
+      const episodesNow = state.podcastEpisodes || [];
+      const existingIndex = episodesNow.findIndex((episode) => episode.publicationId === publicationId);
+      if (existingIndex < 0) throw new Error('That podcast episode is no longer available.');
+      const revision = (Number(state?._sync?.revision) || 0) + 1;
+      transaction.set(ref, {
+        ...state,
+        podcastEpisodes: episodesNow.map((episode, index) => index === existingIndex ? nextEpisode : episode),
+        _sync: { revision, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
+      });
+      return nextEpisode;
+    });
+  };
+
+  const regenerateTranscript = async () => {
+    if (!user || !selectedEpisode || busy) return;
+    if (user.isAnonymous) {
+      setMessageType('error');
+      setMessage('Sign in with your normal DynastyHQ account before regenerating the podcast transcript.');
+      return;
+    }
+
+    const publicationId = selectedEpisode.publicationId;
+    setBusy(true);
+    setMessageType('success');
+    setMessage('Writing a fresh grounded transcript…');
+    try {
+      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
+      const latestState = snapshot.data();
+      const payload = buildPodcastGenerationPayload(latestState, publicationId);
+      const idToken = await user.getIdToken();
+      const generated = await generatePodcastScript({ idToken, payload, prepareAudio: false });
+      const normalized = normalizeGeneratedPodcast({
+        generated: generated.episode,
+        payload,
+        model: generated.model,
+      });
+      const nextEpisode = {
+        ...normalized,
+        status: 'scripted',
+        audioStatus: 'not-generated',
+        audioModel: '',
+        audioEngine: '',
+        audioSegmentCount: 0,
+        audioGeneratedAt: '',
+        audioTranscriptFingerprint: '',
+      };
+
+      await replaceEpisodeTranscript(publicationId, nextEpisode);
+      const capturedAt = new Date().toISOString();
+      window.dispatchEvent(new CustomEvent('dynastyhq:podcast-script-generated', {
+        detail: { publicationId, episode: nextEpisode, capturedAt },
+      }));
+
+      setMessageType('success');
+      setMessage('Fresh transcript saved. Review it in the Podcast page first; the old audio is now intentionally stale until you regenerate Humanized Audio.');
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error?.message || 'The podcast transcript could not be regenerated. Your existing transcript was preserved.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const regenerate = async () => {
@@ -230,13 +301,13 @@ const PodcastHumanizedAudioPortal = () => {
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-400">Podcast v3</p>
-              <h3 className="text-sm font-black text-white">Humanized Audio</h3>
+              <h3 className="text-sm font-black text-white">Script + Humanized Audio</h3>
             </div>
-            <button type="button" aria-label="Hide Humanized Audio control" onClick={() => setDismissed(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white">
+            <button type="button" aria-label="Hide Podcast v3 controls" onClick={() => setDismissed(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white">
               <X size={15} />
             </button>
           </div>
-          <p className="mt-1 text-[11px] leading-5 text-slate-400">Re-render the newest saved transcript as one shared Mark + Sarah studio performance using Gemini multi-speaker TTS.</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-400">Rewrite the grounded conversation first, review it, then render that exact saved transcript with Mark + Sarah.</p>
         </div>
       </div>
 
@@ -248,13 +319,18 @@ const PodcastHumanizedAudioPortal = () => {
         </select>
       )}
 
-      <button type="button" onClick={regenerate} disabled={busy || !selectedEpisode} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
+      <button type="button" onClick={regenerateTranscript} disabled={busy || !selectedEpisode} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition hover:border-blue-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500">
+        {busy ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
+        {busy ? 'Working…' : 'Regenerate Transcript'}
+      </button>
+
+      <button type="button" onClick={regenerate} disabled={busy || !selectedEpisode} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
         {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-        {busy ? 'Rendering Humanized Mix…' : 'Regenerate Humanized Audio'}
+        {busy ? 'Working…' : 'Regenerate Humanized Audio'}
       </button>
 
       <div className="mt-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
-        <Sparkles size={11} /> Gemini two-speaker performance · newest transcript bound
+        <Sparkles size={11} /> Two-step workflow · transcript first · audio second
       </div>
 
       {message && (

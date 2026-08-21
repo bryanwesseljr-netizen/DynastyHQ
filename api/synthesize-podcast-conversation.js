@@ -6,6 +6,7 @@ const MARK_VOICE = process.env.GEMINI_TTS_MARK_VOICE || 'Charon';
 const SARAH_VOICE = process.env.GEMINI_TTS_SARAH_VOICE || 'Kore';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MAX_SEGMENTS = 20;
+const MIN_TOTAL_WORDS = 450;
 const MAX_TOTAL_WORDS = 1000;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
@@ -200,7 +201,7 @@ export default async function handler(req, res) {
 
   const segments = normalizeSegments(req.body?.segments);
   const totalWords = segments.reduce((total, segment) => total + countWords(segment.text), 0);
-  if (segments.length < 8 || totalWords < 500 || totalWords > MAX_TOTAL_WORDS) {
+  if (segments.length < 10 || totalWords < MIN_TOTAL_WORDS || totalWords > MAX_TOTAL_WORDS) {
     return json(res, 400, { error: 'A complete two-host podcast transcript is required for humanized audio.' });
   }
 

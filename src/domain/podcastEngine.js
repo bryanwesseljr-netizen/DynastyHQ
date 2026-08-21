@@ -6,9 +6,19 @@ import {
 import { buildProgramCoverageContext } from './programCoverage.js';
 
 const WORDS_PER_MINUTE = 145;
+const MIN_STANDARD_SCRIPT_WORDS = 500;
+const MIN_QUIET_PRESEASON_WORDS = 450;
+const MAX_SCRIPT_WORDS = 950;
 
 const text = (value, max = 5000) => String(value || '').trim().slice(0, max);
 const wordCount = (value) => text(value).split(/\s+/).filter(Boolean).length;
+const minimumTranscriptWordsFor = (payload = {}) => (
+  payload.coverageStage === 'college-player'
+  && payload.weekType === 'bye'
+  && payload.weekPhase === 'preseason'
+    ? MIN_QUIET_PRESEASON_WORDS
+    : MIN_STANDARD_SCRIPT_WORDS
+);
 
 const coverageStageFor = (state = {}, issue = {}) => {
   const phase = text(issue.careerPhase || state.careerPhase, 40);
@@ -228,7 +238,8 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
 
   if (segments.length < 10) throw new Error('The podcast script was incomplete. Please try generating it again.');
   const transcriptWordCount = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
-  if (transcriptWordCount < 500 || transcriptWordCount > 950) {
+  const minimumWords = minimumTranscriptWordsFor(payload);
+  if (transcriptWordCount < minimumWords || transcriptWordCount > MAX_SCRIPT_WORDS) {
     throw new Error('The generated episode fell outside the supported script range. Please try again.');
   }
 

@@ -19,7 +19,18 @@ const DELIVERY_STYLES = [
   'neutral', 'curious', 'reflective', 'skeptical', 'emphatic', 'amused', 'quick-agreement', 'analytical',
 ];
 
+const MIN_COMPLETE_WORDS = 400;
+const TARGET_QUIET_MIN_WORDS = 440;
+const TARGET_QUIET_MAX_WORDS = 575;
+
 const safeText = (value, max) => String(value || '').trim().slice(0, max);
+const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
+const inspectEpisode = (episode) => {
+  const segments = Array.isArray(episode?.segments) ? episode.segments.filter((segment) => safeText(segment?.text, 4000)) : [];
+  const words = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
+  const hosts = new Set(segments.map((segment) => safeText(segment?.hostId, 100)).filter(Boolean)).size;
+  return { segments: segments.length, words, hosts };
+};
 
 const validatePayload = (body = {}) => {
   const coverageStage = ['high-school', 'college-player', 'coach'].includes(body.coverageStage)
@@ -185,8 +196,9 @@ COLLEGE GAME WEEK:
 
 CONVERSATION STYLE:
 - Produce 10 to 16 alternating host turns.
-- Quiet/preseason episodes may be about 450–575 spoken words. Normal game weeks can be 600–800. Major weeks may run longer only when the facts justify it.
-- Do not add filler to hit a word target.
+- Quiet/preseason episodes should usually aim for about ${TARGET_QUIET_MIN_WORDS}–${TARGET_QUIET_MAX_WORDS} spoken words when the verified material supports it. A structurally complete episode may be as short as ${MIN_COMPLETE_WORDS} words when the week is genuinely sparse.
+- Normal game weeks can be 600–800. Major weeks may run longer only when the facts justify it.
+- Do not pad with neutral facts, bookkeeping, repeated conclusions or suppressed player material just to hit a word target. If more depth is warranted, deepen the strongest supported football question or contrast instead of inventing a new topic.
 - Most turns should be straightforward spoken sentences. Mix a few short reactions with normal analytical turns.
 - Do not force a question, disagreement, joke, callback or emotional beat into every exchange.
 - Mark and Sarah can disagree when the football point genuinely calls for it, but calm agreement is also normal.
@@ -222,6 +234,30 @@ GROUNDING:
 - segmentStart is the zero-based index of the first turn in the chapter.
 - End with a short unresolved football theme to watch, never an invented matchup or event.`;
 
+const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
+  const note = repairNote ? `\n\nREVISION NOTE:\n${repairNote}` : '';
+  return client.responses.create({
+    model: MODEL,
+    store: false,
+    safety_identifier: user.localId,
+    reasoning: { effort: 'low' },
+    max_output_tokens: 7000,
+    instructions: INSTRUCTIONS,
+    input: [{
+      role: 'user',
+      content: [{ type: 'input_text', text: `Write this Gridiron Grind episode from the following internal editorial packet. Use professional football judgment: discuss only what deserves airtime, keep the tone conversational and restrained, and leave trivial or suppressed player facts out entirely.${note}\n${JSON.stringify(payload)}` }],
+    }],
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'gridiron_grind_episode',
+        strict: true,
+        schema: schemaFor(payload),
+      },
+    },
+  });
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -243,28 +279,35 @@ export default async function handler(req, res) {
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const response = await client.responses.create({
-      model: MODEL,
-      store: false,
-      safety_identifier: user.localId,
-      reasoning: { effort: 'low' },
-      max_output_tokens: 7000,
-      instructions: INSTRUCTIONS,
-      input: [{
-        role: 'user',
-        content: [{ type: 'input_text', text: `Write this Gridiron Grind episode from the following internal editorial packet. Use professional football judgment: discuss only what deserves airtime, keep the tone conversational and restrained, and leave trivial or suppressed player facts out entirely.\n${JSON.stringify(payload)}` }],
-      }],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'gridiron_grind_episode',
-          strict: true,
-          schema: schemaFor(payload),
-        },
-      },
-    });
+    let response = await requestEpisode({ client, user, payload });
     if (!response.output_text) return json(res, 422, { error: 'The podcast script could not be generated safely.' });
-    return json(res, 200, { episode: JSON.parse(response.output_text), model: MODEL });
+
+    let episode = JSON.parse(response.output_text);
+    let inspection = inspectEpisode(episode);
+
+    if (inspection.words < MIN_COMPLETE_WORDS || inspection.segments < 10 || inspection.hosts < 2) {
+      const repairReasons = [
+        inspection.words < MIN_COMPLETE_WORDS ? `${inspection.words} spoken words` : '',
+        inspection.segments < 10 ? `${inspection.segments} turns` : '',
+        inspection.hosts < 2 ? 'only one host represented' : '',
+      ].filter(Boolean).join(', ');
+      response = await requestEpisode({
+        client,
+        user,
+        payload,
+        repairNote: `The previous draft was structurally too thin (${repairReasons}). Write a full replacement episode with both hosts and at least ${MIN_COMPLETE_WORDS} spoken words. Aim for ${TARGET_QUIET_MIN_WORDS}–${TARGET_QUIET_MAX_WORDS} on a quiet/preseason week when the verified material supports it. Do not solve the length problem with 0-0 discussion, bookkeeping, repeated conclusions, invented football facts, or a suppressed tracked-player angle. Deepen only the strongest supported program-level analysis.`,
+      });
+      if (response.output_text) {
+        const repairedEpisode = JSON.parse(response.output_text);
+        const repairedInspection = inspectEpisode(repairedEpisode);
+        if (repairedInspection.words > inspection.words || repairedInspection.hosts > inspection.hosts || repairedInspection.segments > inspection.segments) {
+          episode = repairedEpisode;
+          inspection = repairedInspection;
+        }
+      }
+    }
+
+    return json(res, 200, { episode, model: MODEL, transcriptWords: inspection.words });
   } catch (error) {
     console.error('OpenAI podcast generation failed', error);
     const status = error?.status === 429 ? 429 : 502;

@@ -115,8 +115,8 @@ const NewsroomMediaManager = ({
 
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
         {lockerOnly
-          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. Full photos are preserved; Smart Random uses the photo tags below to match images to each article.`
-          : 'Uploads preserve the full photo in your reusable library. Smart Random matches photo types to new and rewritten articles; AI images are created only when you press Generate AI Photo.'}
+          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. Full photos are preserved; automatic matching uses the photo tags below to choose images for each article.`
+          : 'Uploads preserve the full photo in your reusable library. Automatic library matching uses saved photos only; AI images are created only when you press Generate AI Photo.'}
       </p>
       {uploading && <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300"><Loader2 size={12} className="animate-spin" /> Preparing and securely uploading your photo. This will stop with an error if the connection times out.</p>}
 
@@ -147,7 +147,7 @@ const NewsroomMediaManager = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Career Photo Library &amp; AI References</p>
-              <p className="mt-1 text-[10px] text-slate-500">The full uploaded photo is shown without cropping. Tag regular photos so Smart Random can match them to the story. AI references remain separate and are never auto-selected as article photos.</p>
+              <p className="mt-1 text-[10px] text-slate-500">The full uploaded photo is shown without cropping. Tag regular photos so automatic matching can fit them to the story. AI references remain separate and are never auto-selected as article photos.</p>
             </div>
             <button type="button" disabled={controlsBusy} onClick={() => referenceRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/10 disabled:opacity-50">
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Add AI Reference
@@ -189,8 +189,8 @@ const NewsroomMediaManager = ({
           <label className="mt-4 flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-950/70 p-3">
             <input type="checkbox" disabled={controlsBusy} checked={autoAssignLibrary} onChange={(event) => onSetAutoAssignLibrary(event.target.checked)} className="mt-0.5 accent-blue-500" />
             <span>
-              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Smart Random library photos</span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Generated and rewritten editions prefer story-appropriate photo types, randomize within the best matches, avoid same-edition duplicates and recent repeats, then fall back to any available library photo.</span>
+              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose library photos</span>
+              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">This uses only photos already saved in your Career Photo Library; it never generates an AI image or uses API image credits. DynastyHQ prefers story-appropriate photo types, avoids same-edition duplicates and recent repeats, then falls back to any available library photo.</span>
             </span>
           </label>
         </div>

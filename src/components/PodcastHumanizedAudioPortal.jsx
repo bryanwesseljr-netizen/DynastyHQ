@@ -19,6 +19,23 @@ const episodeLabel = (episode) => {
   return `S${season} · W${week}${title ? ` — ${title}` : ''}`;
 };
 
+const episodeTimestamp = (episode) => {
+  const value = Date.parse(String(episode?.generatedAt || episode?.capturedAt || ''));
+  return Number.isFinite(value) ? value : 0;
+};
+
+const transcriptFingerprint = (episode) => {
+  const source = (episode?.segments || [])
+    .map((segment) => `${String(segment?.hostId || '')}\n${String(segment?.text || '').trim()}`)
+    .join('\n---\n');
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+};
+
 const PodcastHumanizedAudioPortal = () => {
   const [user, setUser] = useState(auth.currentUser || null);
   const [career, setCareer] = useState(null);
@@ -28,6 +45,7 @@ const PodcastHumanizedAudioPortal = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   const [dismissed, setDismissed] = useState(false);
+  const [liveEpisodes, setLiveEpisodes] = useState({});
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -37,6 +55,27 @@ const PodcastHumanizedAudioPortal = () => {
     const observer = new MutationObserver(check);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const capture = (event) => {
+      const publicationId = String(event?.detail?.publicationId || event?.detail?.episode?.publicationId || '').trim();
+      const episode = event?.detail?.episode;
+      if (!publicationId || !episode || !Array.isArray(episode.segments)) return;
+      const capturedAt = event?.detail?.capturedAt || new Date().toISOString();
+      setLiveEpisodes((current) => ({
+        ...current,
+        [publicationId]: {
+          ...episode,
+          id: episode.id || `podcast-${publicationId}`,
+          publicationId,
+          generatedAt: episode.generatedAt || capturedAt,
+          capturedAt,
+        },
+      }));
+    };
+    window.addEventListener('dynastyhq:podcast-script-generated', capture);
+    return () => window.removeEventListener('dynastyhq:podcast-script-generated', capture);
   }, []);
 
   useEffect(() => {
@@ -66,24 +105,25 @@ const PodcastHumanizedAudioPortal = () => {
   const selectedEpisode = episodes.find((episode) => episode.publicationId === selectedPublicationId) || null;
 
   const patchEpisodeStatus = async (publicationId, patch) => {
-    if (!user || !db) return;
+    if (!user || !db) return null;
     const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-    await runTransaction(db, async (transaction) => {
+    return runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(ref);
       if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
       const state = snapshot.data();
       const episodesNow = state.podcastEpisodes || [];
-      if (!episodesNow.some((episode) => episode.publicationId === publicationId)) {
-        throw new Error('That podcast episode is no longer available.');
-      }
+      const currentEpisode = episodesNow.find((episode) => episode.publicationId === publicationId);
+      if (!currentEpisode) throw new Error('That podcast episode is no longer available.');
+      const patchedEpisode = { ...currentEpisode, ...patch };
       const revision = (Number(state?._sync?.revision) || 0) + 1;
       transaction.set(ref, {
         ...state,
         podcastEpisodes: episodesNow.map((episode) => episode.publicationId === publicationId
-          ? { ...episode, ...patch }
+          ? patchedEpisode
           : episode),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
       });
+      return patchedEpisode;
     });
   };
 
@@ -95,43 +135,58 @@ const PodcastHumanizedAudioPortal = () => {
       return;
     }
 
+    const publicationId = selectedEpisode.publicationId;
     const previousAudioStatus = selectedEpisode.audioStatus || 'not-generated';
     setBusy(true);
     setMessage('');
     try {
-      await patchEpisodeStatus(selectedEpisode.publicationId, {
+      // Read the episode inside a Firestore transaction so the renderer is not bound to
+      // this portal's potentially stale onSnapshot copy. If the freshly generated script
+      // is still in browser memory, prefer it when it is newer than the committed copy.
+      const committedEpisode = await patchEpisodeStatus(publicationId, {
         audioStatus: 'rendering-v3',
         audioEngine: 'gemini-multispeaker-v3',
       });
+      const liveEpisode = liveEpisodes[publicationId] || null;
+      const renderEpisode = liveEpisode && episodeTimestamp(liveEpisode) > episodeTimestamp(committedEpisode)
+        ? liveEpisode
+        : committedEpisode;
 
+      if (!renderEpisode || !Array.isArray(renderEpisode.segments) || renderEpisode.segments.length < 8) {
+        throw new Error('The newest saved podcast transcript could not be resolved for audio rendering.');
+      }
+
+      const fingerprint = transcriptFingerprint(renderEpisode);
       const idToken = await user.getIdToken();
-      const rendered = await generateHumanizedPodcastMix({ idToken, episode: selectedEpisode });
+      const rendered = await generateHumanizedPodcastMix({ idToken, episode: renderEpisode });
       if (!rendered.pieces?.length) throw new Error('The humanized renderer returned no playable audio.');
 
-      await savePodcastAudioLocal(selectedEpisode.id, rendered.pieces);
+      const episodeId = renderEpisode.id || `podcast-${publicationId}`;
+      await savePodcastAudioLocal(episodeId, rendered.pieces);
       await savePodcastAudioCloud({
         db,
         appId,
         userId: user.uid,
-        episodeId: selectedEpisode.id,
+        episodeId,
         segments: rendered.pieces,
       });
 
       const generatedAt = new Date().toISOString();
-      await patchEpisodeStatus(selectedEpisode.publicationId, {
+      await patchEpisodeStatus(publicationId, {
         status: 'published',
         audioStatus: 'ready',
         audioModel: rendered.model || 'gemini-3.1-flash-tts-preview',
         audioEngine: rendered.engine || 'gemini-multispeaker-v3',
         audioSegmentCount: rendered.pieces.length,
         audioGeneratedAt: generatedAt,
+        audioTranscriptFingerprint: fingerprint,
       });
 
       setMessageType('success');
-      setMessage('Humanized Mark + Sarah mix is ready. The player will reload the new audio automatically.');
+      setMessage('Humanized Mark + Sarah mix is ready and bound to the newest transcript. The player will reload the new audio automatically.');
     } catch (error) {
       try {
-        await patchEpisodeStatus(selectedEpisode.publicationId, { audioStatus: previousAudioStatus });
+        await patchEpisodeStatus(publicationId, { audioStatus: previousAudioStatus });
       } catch {
         // Keep the useful generation error below even if restoring the status fails.
       }
@@ -160,7 +215,7 @@ const PodcastHumanizedAudioPortal = () => {
               <X size={15} />
             </button>
           </div>
-          <p className="mt-1 text-[11px] leading-5 text-slate-400">Re-render the saved transcript as one shared Mark + Sarah studio performance using Gemini multi-speaker TTS.</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-400">Re-render the newest saved transcript as one shared Mark + Sarah studio performance using Gemini multi-speaker TTS.</p>
         </div>
       </div>
 
@@ -178,7 +233,7 @@ const PodcastHumanizedAudioPortal = () => {
       </button>
 
       <div className="mt-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
-        <Sparkles size={11} /> Gemini two-speaker performance · existing transcript preserved
+        <Sparkles size={11} /> Gemini two-speaker performance · newest transcript bound
       </div>
 
       {message && (

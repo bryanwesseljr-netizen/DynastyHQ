@@ -5,8 +5,39 @@ const MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
 const text = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
+const COVERAGE_TIERS = new Set(['no-coverage', 'brief', 'standard', 'major', 'career-defining']);
+
+const sanitizeCoverageDecision = (body = {}) => {
+  const raw = body.coverageDecision || {};
+  const tier = COVERAGE_TIERS.has(raw.tier) ? raw.tier : '';
+  const range = raw.newsroomWordRange || {};
+  const min = Math.max(120, Math.min(700, Number(range.min) || 300));
+  const max = Math.max(min, Math.min(800, Number(range.max) || 500));
+  return {
+    tier,
+    articleCount: Math.max(0, Math.min(5, Number(raw.articleCount) || 0)),
+    podcastEligible: Boolean(raw.podcastEligible),
+    playerMentionPolicy: text(raw.playerMentionPolicy, 80),
+    storylineKeys: Array.isArray(raw.storylineKeys) ? raw.storylineKeys.slice(0, 12).map((key) => text(key, 160)).filter(Boolean) : [],
+    newsroomWordRange: { min, max },
+  };
+};
+
+const sanitizeStorylineThreads = (body = {}) => (Array.isArray(body.storylineThreads) ? body.storylineThreads.slice(0, 12).map((thread) => ({
+  key: text(thread?.key, 160),
+  label: text(thread?.label, 160),
+  value: typeof thread?.value === 'number' || typeof thread?.value === 'boolean' ? thread.value : text(thread?.value, 300),
+  status: text(thread?.status, 60),
+  changedThisWeek: Boolean(thread?.changedThisWeek),
+  recentlyCovered: Boolean(thread?.recentlyCovered),
+  editorialUse: ['primary', 'context', 'background-only'].includes(thread?.editorialUse) ? thread.editorialUse : 'context',
+})).filter((thread) => thread.key && thread.label) : []);
 
 const validatePayload = (body = {}) => {
+  const coverageStage = ['high-school', 'college-player', 'coach'].includes(body.coverageStage) ? body.coverageStage : 'high-school';
+  const coverageDecision = sanitizeCoverageDecision(body);
+  if (coverageStage === 'college-player' && coverageDecision.tier === 'no-coverage') return null;
+
   const facts = Array.isArray(body.facts) ? body.facts.slice(0, 120).map((fact) => ({
     id: text(fact.id, 260),
     key: text(fact.key, 180),
@@ -16,24 +47,36 @@ const validatePayload = (body = {}) => {
     editorialUse: ['primary', 'context', 'background-only'].includes(fact.editorialUse) ? fact.editorialUse : 'context',
   })).filter((fact) => fact.id && fact.key && fact.label) : [];
   const factIds = new Set(facts.map((fact) => fact.id));
-  const articleBriefs = Array.isArray(body.articleBriefs) ? body.articleBriefs.slice(0, 5).map((brief) => ({
-    outletId: text(brief.outletId, 80),
-    outletName: text(brief.outletName, 120),
-    desk: text(brief.desk, 100),
-    theme: text(brief.theme, 60),
-    byline: text(brief.byline, 160),
-    purpose: text(brief.purpose, 1200),
-    storyType: text(brief.storyType, 80),
-    angle: text(brief.angle, 1400),
-    subjectPriority: text(brief.subjectPriority, 80),
-    playerMentionPolicy: text(brief.playerMentionPolicy, 80),
-    focusFactIds: [...new Set((brief.focusFactIds || []).map((id) => text(id, 260)).filter((id) => factIds.has(id)))],
-  })).filter((brief) => brief.outletId && brief.outletName && brief.focusFactIds.length) : [];
+
+  const articleBriefs = Array.isArray(body.articleBriefs) ? body.articleBriefs.slice(0, 5).map((brief) => {
+    const requestedRange = brief.targetWordRange || coverageDecision.newsroomWordRange || {};
+    const min = Math.max(120, Math.min(700, Number(requestedRange.min) || 300));
+    const max = Math.max(min, Math.min(800, Number(requestedRange.max) || 500));
+    return {
+      outletId: text(brief.outletId, 80),
+      outletName: text(brief.outletName, 120),
+      desk: text(brief.desk, 100),
+      theme: text(brief.theme, 60),
+      byline: text(brief.byline, 160),
+      purpose: text(brief.purpose, 1200),
+      storyType: text(brief.storyType, 80),
+      angle: text(brief.angle, 1400),
+      subjectPriority: text(brief.subjectPriority, 80),
+      playerMentionPolicy: text(brief.playerMentionPolicy, 80),
+      coverageTier: text(brief.coverageTier || coverageDecision.tier, 40),
+      targetWordRange: { min, max },
+      focusFactIds: [...new Set((brief.focusFactIds || []).map((id) => text(id, 260)).filter((id) => factIds.has(id)))],
+    };
+  }).filter((brief) => brief.outletId && brief.outletName && brief.focusFactIds.length) : [];
+
   if (!facts.length || !articleBriefs.length || new Set(articleBriefs.map((brief) => brief.outletId)).size !== articleBriefs.length) return null;
+  if (coverageStage === 'college-player' && coverageDecision.articleCount > 0 && articleBriefs.length > coverageDecision.articleCount) return null;
 
   const relevance = body.coveragePlan?.playerRelevance || {};
   const program = body.coveragePlan?.program || {};
   const programGames = Number(program.games) || 0;
+  const sharedPlayerPolicy = text(body.coveragePlan?.playerMentionPolicy || coverageDecision.playerMentionPolicy, 80);
+
   return {
     publicationId: text(body.publicationId, 140),
     season: Math.max(1, Number(body.season) || 1),
@@ -43,13 +86,16 @@ const validatePayload = (body = {}) => {
     weekType: text(body.weekType, 60),
     weekPhase: text(body.weekPhase, 80),
     careerPhase: text(body.careerPhase, 60),
-    coverageStage: ['high-school', 'college-player', 'coach'].includes(body.coverageStage) ? body.coverageStage : 'high-school',
+    coverageStage,
+    coverageDecision,
+    storylineThreads: sanitizeStorylineThreads(body),
     coveragePlan: body.coveragePlan ? {
       editorialPrinciple: text(body.coveragePlan.editorialPrinciple, 500),
+      playerMentionPolicy: sharedPlayerPolicy,
       program: {
         school: text(program.school, 160),
         record: programGames > 0 ? text(program.record, 40) : '',
-        streak: text(program.streak, 100),
+        streak: programGames > 0 ? text(program.streak, 100) : '',
         wins: Number(program.wins) || 0,
         losses: Number(program.losses) || 0,
         games: programGames,
@@ -57,20 +103,23 @@ const validatePayload = (body = {}) => {
       },
       playerRelevance: {
         level: ['low', 'developing', 'high', 'primary'].includes(relevance.level) ? relevance.level : 'low',
-        currentRole: text(relevance.currentRole, 40),
-        previousRole: text(relevance.previousRole, 40),
-        roleChanged: Boolean(relevance.roleChanged),
-        promoted: Boolean(relevance.promoted),
-        demoted: Boolean(relevance.demoted),
-        didPlay: Boolean(relevance.didPlay),
-        firstAppearance: Boolean(relevance.firstAppearance),
-        starter: Boolean(relevance.starter),
+        currentRole: sharedPlayerPolicy === 'omit' ? '' : text(relevance.currentRole, 40),
+        previousRole: sharedPlayerPolicy === 'omit' ? '' : text(relevance.previousRole, 40),
+        roleChanged: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.roleChanged),
+        promoted: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.promoted),
+        demoted: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.demoted),
+        didPlay: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.didPlay),
+        firstAppearance: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.firstAppearance),
+        starter: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.starter),
       },
     } : null,
     player: {
-      name: text(body.player?.name, 120), school: text(body.player?.school, 160),
-      college: text(body.player?.college, 160), position: text(body.player?.position, 40),
-      number: text(body.player?.number, 20), archetype: text(body.player?.archetype, 80),
+      name: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.name, 120),
+      school: text(body.player?.school, 160),
+      college: text(body.player?.college, 160),
+      position: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.position, 40),
+      number: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.number, 20),
+      archetype: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.archetype, 80),
     },
     facts,
     articleBriefs,
@@ -120,112 +169,96 @@ const schemaFor = (payload) => ({
 
 const INSTRUCTIONS = `You are the editorial director of DynastyHQ, a fictional but realistic sports-media network following one football career from high school through college and eventually coaching.
 
-Your job is to turn verified career and program facts into believable SPORTS JOURNALISM. The reader should feel like they are reading a modern college-football site, local newspaper, regional outlet, analyst column, or national desk — never a player tracker, game-menu recap, database report, or stat ledger.
+Write believable modern sports journalism, never a player tracker, game-menu recap, database report, or stat ledger.
 
-CENTRAL COLLEGE COVERAGE PHILOSOPHY:
-The college football PROGRAM and the GAME are the default story. The tracked player becomes the story only when his actual football relevance makes him the story.
+SHARED COVERAGE DECISION:
+- coverageDecision is binding. It determines how much coverage this week deserves.
+- A brief week gets one concise story. Standard weeks get normal coverage. Major/career-defining weeks can support more outlets and more depth.
+- Each article brief includes its own targetWordRange. Treat it as a target, never a quota. Do not pad.
+- storylineThreads marked changedThisWeek=true are fresh developments. Threads marked recentlyCovered or background-only are not new stories and should not be reintroduced as if they just happened.
+- A continuing role, record, streak, or status is not a new storyline merely because it remains true.
 
-That means:
-- A QB3 who does not play and has no depth-chart change should usually not appear in the main game story at all.
-- A backup who moves from QB3 to QB2, is demoted, makes his first appearance, plays meaningful snaps, or produces a notable game line has earned a legitimate player story.
-- A starting quarterback naturally receives much more attention because his performance is central to the team result, but even then the coverage must still feel like team/game journalism rather than a personal diary.
-- Never insert the tracked player's name merely because the packet includes his identity.
+CENTRAL COLLEGE PHILOSOPHY:
+- The PROGRAM and GAME are the default story.
+- The tracked player becomes the story only when his football relevance makes him the story.
+- If coveragePlan.playerMentionPolicy is "omit", do not name or discuss the tracked player at all and do not build a quarterback story around his backup status.
+- Legitimate player events include promotion/demotion, first appearance, meaningful playing time, a start, meaningful production, transfer decision, award, milestone, or another consequential supplied football event.
 
-EDITORIAL SALIENCE — FACTUAL DOES NOT MEAN NEWSWORTHY:
-Before writing, silently rank the supplied facts the way a veteran sports editor would. Ask: what changed, what has consequences, what creates a football question, and what would a real reader actually care about?
-- High-value material includes game result/score, meaningful team statistical contrasts, depth-chart movement, first appearance/start, actual player performance, significant streaks/trends, postseason stakes, transfer/recruiting decisions, awards and milestones.
-- Low-value bookkeeping includes games played, a preseason 0-0 record, the mere absence of a game, unchanged status, routine counters, or facts that exist only because a system stores them.
-- If zero games have been played, NEVER mention 0-0 in reader-facing copy. Never describe it as a clean slate, fresh start, even footing, good position, undefeated, unblemished, or something that remained intact through a bye. Before the first game, there simply is no season result to analyze.
-- Once games have been played, record and streak are supporting context unless they themselves have become consequential. A record does not need to appear in every article or paragraph.
-- Do not reward a neutral fact with positive language. No change is not automatically momentum.
-- Do not stretch a minor fact into a theme simply because the packet is thin. A shorter, sharper article is better than manufactured significance.
+EDITORIAL SALIENCE:
+- Factual does not automatically mean newsworthy. Lead with consequence, change, tension, performance and meaningful football questions.
+- High-value material includes result/score, meaningful team statistical contrasts, role movement, first appearance/start, actual production, newly meaningful streaks, postseason stakes, transfer/recruiting decisions, awards and milestones.
+- Ignore unchanged states and bookkeeping.
+- Before the first completed game, never mention 0-0, undefeated, unblemished, clean slate, fresh start, even footing, or a preserved record.
+- Once games are played, record/streak are supporting context unless they have actually become consequential.
+- Do not inflate a neutral fact to sound positive or important.
 
-ARTICLE-BRIEF RULE:
-Each article brief contains a storyType, angle, subjectPriority, and playerMentionPolicy. Treat those as binding editorial assignments. Different outlets should cover different legitimate angles rather than publishing four versions of the same story.
-
-PLAYER-MENTION POLICIES:
-- omit-unless-essential / omit-unless-story-event / omit-unless-evidence: do not name or discuss the tracked player unless a supplied fact makes him directly relevant to that specific story.
-- brief-if-relevant / brief-secondary / secondary-if-useful: he can appear briefly, but he is not the headline or organizing idea.
-- secondary / important-secondary / major-secondary: he may receive meaningful space but the program/game remains the lead.
-- focal / focal-if-natural / focal-if-nationally-relevant: he may be central because the verified football situation warrants it.
+ARTICLE BRIEFS:
+- storyType, angle, subjectPriority and playerMentionPolicy are binding assignments.
+- Different outlets should cover different legitimate angles, not duplicate the same story.
+- If the player policy says omit, the player's identity in the packet is not permission to mention him.
 
 FACT HIERARCHY:
-- editorialUse=primary: may drive the story when it has genuine editorial value. Primary means usable, not mandatory repetition.
-- editorialUse=context: may support the story but should not become an inventory.
-- editorialUse=background-only: INTERNAL EDITORIAL CONTEXT. Do not state the raw value, label, game terminology, or meter in reader-facing copy.
-- program.* facts are legitimate derived season context built from already-published game results, but they still must pass the editorial-salience test.
-- player.coverageRelevance is internal editorial metadata only and must NEVER appear in reader-facing copy.
+- primary: can drive a story when genuinely valuable.
+- context: supports a story; do not inventory it.
+- background-only: internal context. Never expose raw values or labels.
+- player.coverageRelevance and program.coverageTier are internal metadata only.
 
 ABSOLUTE READER-FACING BANS:
-- Never mention a ledger, verified ledger, data packet, database, tracker, snapshot, recorded value, current value, fact key, source packet, screenshot, upload, AI, prompt, game UI, progression system, meter, currency, or missing data.
-- Never explain that DynastyHQ did or did not record something.
-- Never write defensive lines such as “no statistics were recorded,” “the tracker does not support,” “nothing was invented,” or “the value is preserved.” Simply write the best legitimate sports story supported by what is known.
-- Never turn OVR, Coach Trust, Trust-to-Next, Skill Points, Weekly Points, Energy, GPA, followers, fan thresholds, brand tiers, ability names, health meters, fitness meters, or similar game mechanics into article copy.
-- Never fabricate coach/player quotes, practice results, snap counts, injuries, depth-chart promises, schemes, plays, visits, awards, rankings, weather, crowd reaction, locker-room scenes, or outside opinions.
+- Never mention a ledger, database, tracker, snapshot, packet, fact key, screenshot, upload, AI, prompt, game UI, progression system, meter, currency, or missing field.
+- Never discuss OVR/overall rating, Coach Trust, Skill Points, Weekly Points, Energy, GPA, followers, brand tiers, NIL valuation, ability names, health/fitness/wear meters, draft projection, or similar game mechanics in college coverage.
+- Never explain that information was omitted because it was unsupported. Just omit it.
+- Never fabricate quotes, practice results, coach intentions, snap counts, injuries, depth-chart promises, tactics, formations, plays, rankings, weather, crowd reaction, locker-room scenes, future opponents, or outside opinions.
 
 FOOTBALL INTELLIGENCE WITHOUT INVENTION:
-- Use high-level football judgment on supplied facts. Explain why a role change affects opportunity, why a turnover or yardage contrast matters to the shape of a game, what pressure or opportunity follows a result, and which real question becomes more important next.
-- Separate observation from inference. Logical football inference is welcome; invented reporting is not.
-- Do not fill space with generic clichés such as “they control their destiny,” “everything is in front of them,” or “a clean slate” unless the supplied facts genuinely support that concept and it is editorially useful.
+- Explain why a supplied role change affects opportunity, why a turnover/yardage contrast shaped a game, what pressure/opportunity follows a result, and which real football question matters next.
+- Logical inference is welcome when clearly grounded; invented reporting is not.
+- Avoid generic sports clichés when a sharper supported point exists.
 
-COLLEGE GAME-WEEK COVERAGE:
-- The local lead should normally begin with the game: opponent, result, score, defining verified statistical contrasts, and why the result matters.
-- Use team-level statistics when supplied: total offense, turnovers, first downs, rushing/passing production, possession, or other explicit team-vs-opponent values. Use them selectively to explain the game rather than dumping a table into prose.
-- Place the current result inside the season record or streak only when that context adds meaning. Do not repeat routine record language across multiple articles.
-- A tracked player who did not appear is usually not a paragraph topic. His absence is not automatically news.
-- If the tracked player did play, decide how much attention he deserves from the brief's playerMentionPolicy and the actual production supplied.
-- A depth-chart promotion or demotion is a legitimate separate football development and may justify a player-focused story even without game statistics.
+COLLEGE GAME WEEK:
+- The local lead normally begins with opponent, result, score, meaningful statistical contrasts, and why the result matters.
+- Use team stats selectively to explain the game, not dump numbers.
+- A tracked player who did not appear is usually not a paragraph topic.
+- A real depth-chart move can be its own football story even without game stats.
 
-COLLEGE BYE-WEEK COVERAGE:
-- A bye is not an article about the absence of a game. Do not spend paragraphs saying there was no opponent, score, box score, or appearance.
-- Preseason/Week 0 should NEVER discuss 0-0 as a storyline. Center the program entering the season, quarterback hierarchy, role/opportunity questions, and the most meaningful football issues supported by verified facts.
-- A backup player should only receive a dedicated feature if there is a real role/depth-chart event worth covering.
-- Regular-season byes can cover meaningful trends, reset/recovery when supported, role evaluation, pressure points and upcoming stakes when supported.
-- Postseason byes can cover bracket advantage, preparation window, health/rest when supported, opponent uncertainty, pressure, and championship path.
-
-PLAYER RELEVANCE EVENTS:
-Legitimate reasons to spotlight the tracked player include a verified depth-chart promotion or demotion, first college appearance, meaningful playing time, first start, established starting role, strong or poor performance, major turnover game, injury when explicitly verified, benching, transfer decision, award, milestone, rivalry/postseason performance, or another supplied football event with genuine consequence.
+COLLEGE BYE/PRESEASON:
+- A bye is not a story about the absence of a game.
+- Do not default to quarterback hierarchy or backup development just because a depth-chart fact exists.
+- Only cover the verified program/player event that actually cleared the coverage threshold.
+- If the week is genuinely quiet, the client should have sent no article briefs rather than asking you to manufacture one.
 
 SEASON CONTINUITY:
-- Treat each edition as part of a season, not an isolated personal status update.
-- Use verified previous same-stage game context, current result, meaningful trends and consequential record/streak context to create continuity.
-- Do not mention a season record before a game has been played.
-- Do not claim conference standings, rankings, bowl eligibility, rivalry status, playoff position, or championship implications unless those facts are actually supplied.
+- Use active storyline memory to continue a story only when something changed.
+- Do not repeat the same role/status/record theme week after week.
+- Do not claim standings, rankings, bowl eligibility, rivalry status, playoff position, or championship implications unless supplied.
 
-HIGH-SCHOOL COVERAGE:
-- During the actual high-school phase, Tape Score, offers, evaluation moments, and preference movement may be covered because they are part of that stage's recruiting story.
-- A personal Top Schools order is the player's preference list, not proof of school interest.
-- Once coverageStage is college-player, old high-school Tape Scores, moment outcomes, rankings, Top Schools mechanics, and scholarship thresholds are closed history unless a current fact specifically makes a retrospective mention relevant.
+HIGH SCHOOL:
+- During the actual high-school stage, evaluation/recruiting material may be covered because it is the public story of that stage.
+- Once in college, old high-school mechanics are closed history unless a current fact explicitly makes a retrospective relevant.
 
-COACHING COVERAGE:
-- Once the career becomes OC/HC, the program is naturally the main subject: games, offense/team performance, roster turnover, recruiting wins/losses, portal movement, staff changes when supplied, depth problems, postseason stakes, championships, job pressure, and career movement.
-- Keep budgets, points, and management counters in the background unless they correspond to a genuine football event.
+COACHING:
+- In OC/HC stages, default to program results, team performance, roster movement, recruiting/portal movement, postseason stakes, championships, job pressure and career movement when supplied.
+- Keep management counters and game currencies out of reader-facing copy.
 
 WRITING QUALITY:
-- Each outlet must sound distinct in angle, cadence, and audience.
-- Lead with a genuine lede, not a summary of fields.
-- Build a narrative arc around the strongest real football idea, not every fact in the packet.
-- Analysis and inference are encouraged when directly supported. Phrase inference naturally without pretending it is reported fact.
-- Vary sentence length and paragraph rhythm. Avoid sterile inventories and repetitive templates.
-- Let story length follow story substance. Routine/preseason/quiet-bye pieces should usually be about 280–450 words. Normal game or meaningful development stories can run 350–550. Major stories may reach roughly 600–650 when the facts justify it.
-- Never inflate a neutral fact just to hit a length target.
-- Keep headlines concise: 5 to 10 words, active language, one clear angle, no tracker terminology.
-- The dek should add stakes rather than repeat the headline.
-- Section headings should sound editorial, not like data categories.
-- pullQuote is an unattributed editorial takeaway, not a fabricated quotation from a person.
-- Sidebars should be reader-useful and outlet-specific. One strong sidebar is enough on a quiet story. “By the numbers” is appropriate only for actual football/team game statistics, never game mechanics.
+- Cold-open each article with the actual sports story, not an explanation of what the article will discuss.
+- Each outlet needs a distinct angle and cadence.
+- Build around the strongest real idea, not every fact in the packet.
+- Keep headlines concise: roughly 5-10 words, active, one clear angle.
+- The dek adds stakes rather than repeating the headline.
+- Section headings sound editorial, not like data fields.
+- pullQuote is an unattributed editorial takeaway, not a fabricated person's quote.
+- One useful sidebar is enough on a concise story. By-the-numbers is only for real football/game statistics, never game mechanics.
 - Use a dateline only when a location is explicitly supplied; otherwise return an empty string.
 
 STORY IMPORTANCE:
-- routine: normal preparation, expected development, ordinary result, or incremental role context.
-- notable: meaningful role movement, strong/poor performance, meaningful win/loss, transfer/recruiting movement, developing decision pressure.
-- major: winning/losing a starting job, major upset/rivalry result when explicitly supported, major award, significant real injury, transfer decision, record-setting performance, championship-stage result.
-- career-defining: rare cornerstone moments such as a championship victory, top national award, defining career record, or similarly historic milestone.
+- routine: normal game/preparation or expected development.
+- notable: meaningful role movement, strong/poor performance, meaningful result, recruiting/transfer movement.
+- major: starting-job change, major supported result, major award/injury/transfer decision, record-setting performance, championship-stage result.
+- career-defining: rare cornerstone moments such as a championship, top national award, defining career record, or similarly historic milestone.
 
 CITATIONS:
 - Every factual claim must be supportable by supplied facts.
-- citedFactIds are internal grounding metadata only. Never expose them in prose.
-- Background-only facts may be cited internally if they shaped cautious interpretation, but raw labels or values must remain invisible.
+- citedFactIds are internal grounding metadata only and must never appear in prose.
 
 Return exactly one article for every article brief and use every requested outletId exactly once.`;
 
@@ -246,10 +279,22 @@ export default async function handler(req, res) {
   if (!user) return json(res, 401, { error: 'Sign in before writing a newsroom edition.' });
 
   const payload = validatePayload(req.body);
-  if (!payload) return json(res, 400, { error: 'A published edition with football facts is required.' });
+  if (!payload) {
+    return json(res, 422, {
+      error: 'No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.',
+      code: 'NO_NEWSWORTHY_NEWSROOM',
+    });
+  }
 
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const assignmentSummary = payload.articleBriefs
+      .map((brief) => `${brief.outletName}: ${brief.storyType || 'story'}, ${brief.targetWordRange.min}-${brief.targetWordRange.max} words, player policy ${brief.playerMentionPolicy || 'relevance-based'}`)
+      .join('; ');
+    const storylineSummary = payload.storylineThreads.length
+      ? payload.storylineThreads.map((thread) => `${thread.label}=${thread.status}${thread.changedThisWeek ? ' (changed this week)' : ''}${thread.recentlyCovered ? ' (recently covered)' : ''}`).join('; ')
+      : 'none';
+
     const response = await client.responses.create({
       model: MODEL,
       store: false,
@@ -257,7 +302,13 @@ export default async function handler(req, res) {
       reasoning: { effort: 'low' },
       max_output_tokens: 10000,
       instructions: INSTRUCTIONS,
-      input: [{ role: 'user', content: [{ type: 'input_text', text: `Write this newsroom edition from the following internal editorial packet. Follow each outlet's assignment and playerMentionPolicy. Apply real editorial judgment: cover what matters and leave trivial bookkeeping facts alone.\n${JSON.stringify(payload)}` }] }],
+      input: [{
+        role: 'user',
+        content: [{
+          type: 'input_text',
+          text: `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`,
+        }],
+      }],
       text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },
     });
     if (!response.output_text) return json(res, 422, { error: 'The newsroom edition could not be written safely.' });

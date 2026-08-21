@@ -43,11 +43,15 @@ const PodcastHumanizedAudioPortal = () => {
   const [career, setCareer] = useState(null);
   const [visible, setVisible] = useState(false);
   const [selectedPublicationId, setSelectedPublicationId] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   const [dismissed, setDismissed] = useState(false);
   const [liveEpisodes, setLiveEpisodes] = useState({});
+
+  const busy = Boolean(operation);
+  const transcriptBusy = operation === 'transcript';
+  const audioBusy = operation === 'audio';
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -178,7 +182,7 @@ const PodcastHumanizedAudioPortal = () => {
     }
 
     const publicationId = selectedEpisode.publicationId;
-    setBusy(true);
+    setOperation('transcript');
     setMessageType('success');
     setMessage('Writing a fresh grounded transcript…');
     try {
@@ -217,7 +221,7 @@ const PodcastHumanizedAudioPortal = () => {
       setMessageType('error');
       setMessage(error?.message || 'The podcast transcript could not be regenerated. Your existing transcript was preserved.');
     } finally {
-      setBusy(false);
+      setOperation('');
     }
   };
 
@@ -231,7 +235,8 @@ const PodcastHumanizedAudioPortal = () => {
 
     const publicationId = selectedEpisode.publicationId;
     const previousAudioStatus = selectedEpisode.audioStatus || 'not-generated';
-    setBusy(true);
+    setOperation('audio');
+    setMessageType('success');
     setMessage('Checking the newest saved transcript…');
     try {
       const settledEpisode = await waitForLatestCommittedEpisode(publicationId);
@@ -285,7 +290,7 @@ const PodcastHumanizedAudioPortal = () => {
       setMessageType('error');
       setMessage(error?.message || 'The humanized podcast audio could not be generated.');
     } finally {
-      setBusy(false);
+      setOperation('');
     }
   };
 
@@ -320,13 +325,13 @@ const PodcastHumanizedAudioPortal = () => {
       )}
 
       <button type="button" onClick={regenerateTranscript} disabled={busy || !selectedEpisode} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition hover:border-blue-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500">
-        {busy ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
-        {busy ? 'Working…' : 'Regenerate Transcript'}
+        {transcriptBusy ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
+        {transcriptBusy ? 'Generating Transcript…' : 'Regenerate Transcript'}
       </button>
 
       <button type="button" onClick={regenerate} disabled={busy || !selectedEpisode} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
-        {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-        {busy ? 'Working…' : 'Regenerate Humanized Audio'}
+        {audioBusy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+        {audioBusy ? 'Rendering Humanized Audio…' : 'Regenerate Humanized Audio'}
       </button>
 
       <div className="mt-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">

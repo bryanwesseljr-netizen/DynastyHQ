@@ -128,7 +128,9 @@ const playerRelevanceFor = ({ state, issue, publicationId }) => {
 
 const storyPlansFor = ({ issue, relevance, program }) => {
   const weekType = clean(issue.weekType, 40) || (program.currentGame ? 'game' : 'weekly');
+  const weekPhase = clean(issue.weekPhase, 80);
   const isBye = weekType === 'bye' || !program.currentGame;
+  const preseasonWithoutGames = weekPhase === 'preseason' && program.games === 0;
   const playerPolicy = relevance.level;
   const plans = [];
 
@@ -136,7 +138,9 @@ const storyPlansFor = ({ issue, relevance, program }) => {
     outletId: 'college-local',
     storyType: isBye ? 'program-preview' : 'game-recap',
     angle: isBye
-      ? 'Cover the program week first: preparation, quarterback-room structure, and what the upcoming phase means. Mention the tracked player only if his relevance warrants it.'
+      ? preseasonWithoutGames
+        ? 'Cover Cincinnati entering the season like a real beat writer: the quarterback hierarchy, roles and opportunity, and the most meaningful unresolved football questions supported by verified facts. Do not make 0-0, the lack of a game, or a "clean slate" into a storyline.'
+        : 'Cover the program week first: the most meaningful verified season themes, quarterback-room structure or role changes, and what the next phase means. Mention the tracked player only if his relevance warrants it. Do not pad the story with bookkeeping facts.'
       : 'Lead with the Cincinnati game: result, opponent, score, defining verified statistical contrasts, and what the result means. The tracked player is the focal point only if his relevance is primary.',
     playerMentionPolicy: playerPolicy === 'primary' ? 'focal-if-natural' : playerPolicy === 'high' ? 'secondary' : playerPolicy === 'developing' ? 'brief-if-relevant' : 'omit-unless-essential',
     subjectPriority: 'program-first',
@@ -144,8 +148,10 @@ const storyPlansFor = ({ issue, relevance, program }) => {
 
   plans.push({
     outletId: 'college-regional',
-    storyType: 'season-context',
-    angle: `Place this week in the larger season picture: current record${program.streak ? `, ${program.streak}` : ''}, trajectory, stakes, and what the result or bye changes. Do not default to a player profile.`,
+    storyType: preseasonWithoutGames ? 'season-outlook' : 'season-context',
+    angle: preseasonWithoutGames
+      ? 'Take the broader Cincinnati season-opening view. Identify the football questions that actually matter before the opener from the verified packet. The team being 0-0 is not news and should not be mentioned or interpreted as momentum, a fresh start, a clean slate, or a positive position.'
+      : `Place this week in the larger season picture: result, trajectory, stakes, and what actually changed. The ${program.record} record may be used once as supporting context if useful, but it is not automatically an angle and should not be repeated. Do not default to a player profile.`,
     playerMentionPolicy: playerPolicy === 'primary' ? 'important-secondary' : playerPolicy === 'high' ? 'brief-secondary' : 'omit-unless-story-event',
     subjectPriority: 'season-first',
   });
@@ -178,7 +184,7 @@ const storyPlansFor = ({ issue, relevance, program }) => {
     });
   }
 
-  const postseason = clean(issue.weekPhase, 80) === 'postseason';
+  const postseason = weekPhase === 'postseason';
   const nationalWorthy = relevance.level === 'primary' || postseason || program.streakCount >= 3;
   if (nationalWorthy) {
     plans.push({
@@ -222,14 +228,25 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
     losses: record.losses,
     games: record.games,
     record: `${record.wins}-${record.losses}`,
+    recordEstablished: record.games > 0,
     streak: record.streak,
     streakCount: record.streakCount,
   };
   const facts = [
-    derivedFact({ publicationId, key: 'program.seasonRecord', label: 'Team record', value: program.record, editorialUse: 'primary' }),
-    derivedFact({ publicationId, key: 'program.gamesPlayed', label: 'Games played', value: record.games }),
+    derivedFact({ publicationId, key: 'program.gamesPlayed', label: 'Games played', value: record.games, editorialUse: 'background-only' }),
   ];
-  if (record.streak) facts.push(derivedFact({ publicationId, key: 'program.streak', label: 'Current streak', value: record.streak, editorialUse: 'primary' }));
+  if (record.games > 0) {
+    facts.push(derivedFact({ publicationId, key: 'program.seasonRecord', label: 'Team record', value: program.record, editorialUse: 'context' }));
+  }
+  if (record.streak) {
+    facts.push(derivedFact({
+      publicationId,
+      key: 'program.streak',
+      label: 'Current streak',
+      value: record.streak,
+      editorialUse: record.streakCount >= 3 ? 'primary' : 'context',
+    }));
+  }
   if (currentGame) {
     const teamScore = finite(currentGame.homeScore);
     const opponentScore = finite(currentGame.awayScore);

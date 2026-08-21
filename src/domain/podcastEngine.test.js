@@ -36,7 +36,7 @@ test('normalizes a grounded five-to-six-minute two-host script', () => {
   const payload = buildPodcastGenerationPayload(state, 'season-1-week-2');
   const generated = {
     title: 'The Week 2 Grind',
-    summary: 'Marcus and Tyler review the verified week.',
+    summary: 'Mark and Sarah review the verified week.',
     chapters: [
       { id: 'open', title: 'Opening Drive', summary: 'The result.', segmentStart: 0 },
       { id: 'tape', title: 'Tape Room', summary: 'The numbers.', segmentStart: 4 },
@@ -72,6 +72,6 @@ test('creates a labeled two-host transcript', () => {
     { hostId: 'tyler-brooks', text: 'Counterpoint.' },
   ] });
   assert.match(transcript, /AI-generated voices/);
-  assert.match(transcript, /Marcus Grant: Opening thought/);
-  assert.match(transcript, /Tyler Brooks: Counterpoint/);
+  assert.match(transcript, /Mark Thompson: Opening thought/);
+  assert.match(transcript, /Sarah Chen: Counterpoint/);
 });

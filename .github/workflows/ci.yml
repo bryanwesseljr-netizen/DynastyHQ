@@ -53,19 +53,19 @@ jobs:
             const install = '${{ steps.install.outcome }}';
             const tests = '${{ steps.tests.outcome }}';
             const build = '${{ steps.build.outcome }}';
-            const status = async (context, outcome, successText, failureText) => {
+            const publishStatus = async (statusContext, outcome, successText, failureText) => {
               await github.rest.repos.createCommitStatus({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 sha: context.sha,
                 state: outcome === 'success' ? 'success' : 'failure',
-                context,
+                context: statusContext,
                 description: outcome === 'success' ? successText : failureText,
               });
             };
-            await status('DynastyHQ Install', install, 'Dependencies installed.', `Dependency install: ${install}.`);
-            await status('DynastyHQ Tests', tests, 'Domain regression tests passed.', `Domain tests: ${tests}.`);
-            await status('DynastyHQ Build', build, 'Vite build passed.', `Vite build: ${build}.`);
+            await publishStatus('DynastyHQ Install', install, 'Dependencies installed.', `Dependency install: ${install}.`);
+            await publishStatus('DynastyHQ Tests', tests, 'Domain regression tests passed.', `Domain tests: ${tests}.`);
+            await publishStatus('DynastyHQ Build', build, 'Vite build passed.', `Vite build: ${build}.`);
             const passed = install === 'success' && tests === 'success' && build === 'success';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,

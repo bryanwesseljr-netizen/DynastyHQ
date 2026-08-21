@@ -38,6 +38,19 @@ const inferDeliveryStyle = (value) => {
 let pendingHumanizedMix = null;
 
 const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
+const MIN_SCRIPT_TURNS = 10;
+const MIN_SCRIPT_WORDS = 500;
+const MAX_SCRIPT_WORDS = 950;
+
+const inspectGeneratedScript = (episode) => {
+  const segments = Array.isArray(episode?.segments) ? episode.segments.filter((segment) => String(segment?.text || '').trim()) : [];
+  const words = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
+  return {
+    valid: segments.length >= MIN_SCRIPT_TURNS && words >= MIN_SCRIPT_WORDS && words <= MAX_SCRIPT_WORDS,
+    segments: segments.length,
+    words,
+  };
+};
 
 const base64ToBytes = (base64) => {
   const binary = atob(base64);
@@ -171,7 +184,19 @@ const prepareHumanizedMix = async ({ idToken, episode }) => {
 
 export const generatePodcastScript = async ({ idToken, payload }) => {
   pendingHumanizedMix = null;
-  const generated = await request('/api/generate-podcast', { idToken, body: payload });
+  let generated = null;
+  let inspection = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    generated = await request('/api/generate-podcast', { idToken, body: payload });
+    inspection = inspectGeneratedScript(generated?.episode);
+    if (inspection.valid) break;
+  }
+
+  if (!inspection?.valid) {
+    throw new Error(`The podcast script came back too short or incomplete (${inspection?.words || 0} words across ${inspection?.segments || 0} turns). Please try generating it again.`);
+  }
+
   await prepareHumanizedMix({ idToken, episode: generated.episode });
   return generated;
 };

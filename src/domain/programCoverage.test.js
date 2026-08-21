@@ -45,6 +45,8 @@ test('QB3 with no appearance remains a low-relevance program-first story', () =>
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.relevance.didPlay, false);
   assert.equal(context.program.record, '1-0');
+  assert.equal(context.program.recordEstablished, true);
+  assert.equal(context.facts.find((fact) => fact.key === 'program.seasonRecord')?.editorialUse, 'context');
   assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
   assert.match(context.storyPlans[0].playerMentionPolicy, /omit/);
 });
@@ -93,14 +95,19 @@ test('QB1 with a game appearance becomes a primary storyline while preserving pr
   assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
 });
 
-test('preseason bye with an initial QB3 baseline does not manufacture player or national spotlight', () => {
+test('preseason bye keeps 0-0 as bookkeeping instead of an editorial storyline', () => {
   const state = baseState([update(0, { rank: 'QB3' })]);
   const context = buildProgramCoverageContext(state, issue(0, { weekType: 'bye', weekPhase: 'preseason', label: 'Preseason Bye' }));
 
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.relevance.roleChanged, false);
   assert.equal(context.program.record, '0-0');
+  assert.equal(context.program.recordEstablished, false);
+  assert.equal(context.facts.some((fact) => fact.key === 'program.seasonRecord'), false);
+  assert.equal(context.facts.find((fact) => fact.key === 'program.gamesPlayed')?.editorialUse, 'background-only');
   assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
+  assert.match(context.storyPlans[0].angle, /Do not make 0-0/i);
+  assert.match(context.storyPlans[1].angle, /0-0 is not news/i);
 });
 
 test('three-game team streak can earn a national program story even when tracked player is low relevance', () => {
@@ -114,5 +121,6 @@ test('three-game team streak can earn a national program story even when tracked
 
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.program.streakCount, 3);
+  assert.equal(context.facts.find((fact) => fact.key === 'program.streak')?.editorialUse, 'primary');
   assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
 });

@@ -57,27 +57,30 @@ jobs:
             const install = '${{ steps.install.outcome }}';
             const tests = '${{ steps.tests.outcome }}';
             const build = '${{ steps.build.outcome }}';
-            let testDetail = `Domain tests: ${tests}.`;
+            let failureName = '';
             try {
               const output = fs.readFileSync('/tmp/dynastyhq-test-output.txt', 'utf8');
               const lines = output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-              const failureLine = lines.find((line) => /^not ok\b/i.test(line))
-                || lines.find((line) => /AssertionError|ERR_ASSERTION|Error:/i.test(line));
-              if (failureLine) testDetail = failureLine.replace(/^#\s*/, '');
+              failureName = lines.find((line) => /^not ok\b/i.test(line))
+                || lines.find((line) => /AssertionError|ERR_ASSERTION|Error:/i.test(line))
+                || '';
             } catch {}
-            const clip = (value) => String(value).slice(0, 140);
+            const clip = (value, max = 140) => String(value).slice(0, max);
             const publishStatus = async (statusContext, outcome, successText, failureText) => {
               await github.rest.repos.createCommitStatus({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 sha: context.sha,
                 state: outcome === 'success' ? 'success' : 'failure',
-                context: statusContext,
+                context: clip(statusContext, 100),
                 description: clip(outcome === 'success' ? successText : failureText),
               });
             };
             await publishStatus('DynastyHQ Install', install, 'Dependencies installed.', `Dependency install: ${install}.`);
-            await publishStatus('DynastyHQ Tests', tests, 'Domain regression tests passed.', testDetail);
+            const testContext = tests === 'success'
+              ? 'DynastyHQ Tests'
+              : `DynastyHQ Tests · ${failureName || tests}`;
+            await publishStatus(testContext, tests, 'Domain regression tests passed.', failureName || `Domain tests: ${tests}.`);
             await publishStatus('DynastyHQ Build', build, 'Vite build passed.', `Vite build: ${build}.`);
             const passed = install === 'success' && tests === 'success' && build === 'success';
             await github.rest.repos.createCommitStatus({
@@ -88,7 +91,7 @@ jobs:
               context: 'DynastyHQ CI',
               description: clip(passed
                 ? 'Install, regression tests, and Vite build passed.'
-                : `install=${install}, tests=${tests}, build=${build}; ${testDetail}`),
+                : `install=${install}, tests=${tests}, build=${build}; ${failureName}`),
             });
 
       - name: Fail workflow when verification fails

@@ -39,7 +39,7 @@ let pendingHumanizedMix = null;
 
 const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
 const MIN_SCRIPT_TURNS = 10;
-const MIN_SCRIPT_WORDS = 450;
+const MIN_SCRIPT_WORDS = 400;
 const MAX_SCRIPT_WORDS = 950;
 
 const inspectGeneratedScript = (episode) => {

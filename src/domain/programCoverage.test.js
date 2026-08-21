@@ -23,14 +23,15 @@ const update = (week, { rank = 'QB3', game = null } = {}) => ({
   rtgSnapshot: { rank },
 });
 
-const baseState = (weeklyUpdates = [], gameLogs = []) => ({
+const baseState = (weeklyUpdates = [], gameLogs = [], factLedger = []) => ({
   player: { name: 'Bryan Wessel', school: 'Cincinnati', college: 'Cincinnati', isCommitted: true },
   rtg: { rank: weeklyUpdates.at(-1)?.rtgSnapshot?.rank || 'QB3' },
   weeklyUpdates,
   gameLogs,
+  factLedger,
 });
 
-test('QB3 with no appearance remains a low-relevance program-first story', () => {
+test('QB3 with no appearance remains program-first while a completed game earns standard coverage', () => {
   const game = {
     opponent: 'Opponent', result: 'W', homeScore: 27, awayScore: 20,
     passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false,
@@ -45,13 +46,14 @@ test('QB3 with no appearance remains a low-relevance program-first story', () =>
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.relevance.didPlay, false);
   assert.equal(context.program.record, '1-0');
-  assert.equal(context.program.recordEstablished, true);
-  assert.equal(context.facts.find((fact) => fact.key === 'program.seasonRecord')?.editorialUse, 'context');
+  assert.equal(context.coverageDecision.tier, 'standard');
+  assert.equal(context.coverageDecision.podcastEligible, true);
+  assert.equal(context.coverageDecision.articleCount, 2);
+  assert.equal(context.coverageDecision.playerMentionPolicy, 'omit');
   assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
-  assert.match(context.storyPlans[0].playerMentionPolicy, /omit/);
 });
 
-test('QB3 to QB2 promotion creates a dedicated quarterback-room story even without playing', () => {
+test('QB3 to QB2 promotion creates a major quarterback-room story even without player production', () => {
   const game = {
     opponent: 'Opponent', result: 'L', homeScore: 17, awayScore: 24,
     passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false,
@@ -60,19 +62,20 @@ test('QB3 to QB2 promotion creates a dedicated quarterback-room story even witho
   const state = baseState([
     update(1, { rank: 'QB3', game: { ...game, week: 1, result: 'W', homeScore: 24, awayScore: 14 } }),
     update(2, { rank: 'QB2', game }),
-  ], []);
+  ]);
   const context = buildProgramCoverageContext(state, issue(2));
   const qbStory = context.storyPlans.find((plan) => plan.outletId === 'filmroom');
 
   assert.equal(context.relevance.roleChanged, true);
   assert.equal(context.relevance.promoted, true);
   assert.equal(context.relevance.level, 'developing');
+  assert.equal(context.coverageDecision.tier, 'major');
   assert.equal(qbStory?.storyType, 'qb-room-analysis');
   assert.equal(qbStory?.playerMentionPolicy, 'focal');
-  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), false);
+  assert.equal(context.coverageDecision.storylineKeys.includes('player-role:QB2'), true);
 });
 
-test('QB1 with a game appearance becomes a primary storyline while preserving program coverage', () => {
+test('QB1 with a meaningful appearance earns major player-and-program coverage', () => {
   const game = {
     opponent: 'Opponent', result: 'W', homeScore: 35, awayScore: 21,
     passYds: 286, passTD: 3, rushYds: 42, rushTD: 1, int: 1, didPlay: true,
@@ -83,34 +86,48 @@ test('QB1 with a game appearance becomes a primary storyline while preserving pr
     update(5, { rank: 'QB1', game }),
   ], [{ ...game, week: 4, passYds: 190, passTD: 1, rushYds: 25, rushTD: 0 }, game]);
   const context = buildProgramCoverageContext(state, issue(5));
-  const local = context.storyPlans.find((plan) => plan.outletId === 'college-local');
   const analysis = context.storyPlans.find((plan) => plan.outletId === 'filmroom');
 
   assert.equal(context.relevance.starter, true);
   assert.equal(context.relevance.didPlay, true);
   assert.equal(context.relevance.level, 'primary');
-  assert.equal(local?.subjectPriority, 'program-first');
+  assert.equal(context.coverageDecision.tier, 'major');
+  assert.equal(context.coverageDecision.playerMentionPolicy, 'focal-when-story-requires');
   assert.equal(analysis?.storyType, 'performance-analysis');
-  assert.equal(analysis?.playerMentionPolicy, 'focal');
-  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
 });
 
-test('preseason bye keeps 0-0 as bookkeeping instead of an editorial storyline', () => {
+test('preseason bye with no football event becomes an intentional no-coverage week', () => {
   const state = baseState([update(0, { rank: 'QB3' })]);
   const context = buildProgramCoverageContext(state, issue(0, { weekType: 'bye', weekPhase: 'preseason', label: 'Preseason Bye' }));
 
   assert.equal(context.relevance.level, 'low');
-  assert.equal(context.relevance.roleChanged, false);
   assert.equal(context.program.record, '0-0');
   assert.equal(context.program.recordEstablished, false);
   assert.equal(context.facts.some((fact) => fact.key === 'program.seasonRecord'), false);
-  assert.equal(context.facts.find((fact) => fact.key === 'program.gamesPlayed')?.editorialUse, 'background-only');
-  assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
-  assert.match(context.storyPlans[0].angle, /Do not make 0-0/i);
-  assert.match(context.storyPlans[1].angle, /0-0 is not news/i);
+  assert.equal(context.coverageDecision.tier, 'no-coverage');
+  assert.equal(context.coverageDecision.podcastEligible, false);
+  assert.equal(context.coverageDecision.articleCount, 0);
+  assert.deepEqual(context.storyPlans, []);
 });
 
-test('three-game team streak can earn a national program story even when tracked player is low relevance', () => {
+test('first appearance is a real storyline and is remembered as a thread', () => {
+  const game = {
+    opponent: 'Opponent', result: 'W', homeScore: 31, awayScore: 13,
+    passYds: 42, passTD: 0, rushYds: 17, rushTD: 0, int: 0, didPlay: true,
+    season: 1, week: 3,
+  };
+  const state = baseState([
+    update(2, { rank: 'QB3', game: { ...game, week: 2, didPlay: false, passYds: '', rushYds: '', passTD: '', rushTD: '', int: '' } }),
+    update(3, { rank: 'QB3', game }),
+  ], [game]);
+  const context = buildProgramCoverageContext(state, issue(3));
+
+  assert.equal(context.relevance.firstAppearance, true);
+  assert.equal(context.coverageDecision.tier, 'major');
+  assert.equal(context.coverageDecision.storylineKeys.includes('player:first-appearance'), true);
+});
+
+test('three-game team streak becomes a major program storyline when threshold is first crossed', () => {
   const games = [1, 2, 3].map((week) => ({
     opponent: `Opponent ${week}`, result: 'W', homeScore: 24 + week, awayScore: 17,
     passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false,
@@ -121,6 +138,9 @@ test('three-game team streak can earn a national program story even when tracked
 
   assert.equal(context.relevance.level, 'low');
   assert.equal(context.program.streakCount, 3);
+  assert.equal(context.program.previousStreakCount, 2);
   assert.equal(context.facts.find((fact) => fact.key === 'program.streak')?.editorialUse, 'primary');
+  assert.equal(context.coverageDecision.tier, 'major');
+  assert.equal(context.coverageDecision.storylineKeys.includes('program:winning-streak'), true);
   assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
 });

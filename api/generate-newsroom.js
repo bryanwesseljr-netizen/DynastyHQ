@@ -33,6 +33,7 @@ const validatePayload = (body = {}) => {
 
   const relevance = body.coveragePlan?.playerRelevance || {};
   const program = body.coveragePlan?.program || {};
+  const programGames = Number(program.games) || 0;
   return {
     publicationId: text(body.publicationId, 140),
     season: Math.max(1, Number(body.season) || 1),
@@ -47,11 +48,12 @@ const validatePayload = (body = {}) => {
       editorialPrinciple: text(body.coveragePlan.editorialPrinciple, 500),
       program: {
         school: text(program.school, 160),
-        record: text(program.record, 40),
+        record: programGames > 0 ? text(program.record, 40) : '',
         streak: text(program.streak, 100),
         wins: Number(program.wins) || 0,
         losses: Number(program.losses) || 0,
-        games: Number(program.games) || 0,
+        games: programGames,
+        recordEstablished: programGames > 0,
       },
       playerRelevance: {
         level: ['low', 'developing', 'high', 'primary'].includes(relevance.level) ? relevance.level : 'low',
@@ -96,16 +98,16 @@ const schemaFor = (payload) => ({
           headline: { type: 'string', maxLength: 90 },
           dek: { type: 'string' },
           dateline: { type: 'string' },
-          paragraphs: { type: 'array', minItems: 5, maxItems: 8, items: { type: 'string' } },
-          sectionHeadings: { type: 'array', minItems: 2, maxItems: 3, items: { type: 'string' } },
+          paragraphs: { type: 'array', minItems: 4, maxItems: 7, items: { type: 'string' } },
+          sectionHeadings: { type: 'array', minItems: 1, maxItems: 3, items: { type: 'string' } },
           pullQuote: { type: 'string' },
           sidebars: {
-            type: 'array', minItems: 2, maxItems: 3,
+            type: 'array', minItems: 1, maxItems: 2,
             items: {
               type: 'object', additionalProperties: false, required: ['title', 'items'],
               properties: {
                 title: { type: 'string' },
-                items: { type: 'array', minItems: 2, maxItems: 5, items: { type: 'string' } },
+                items: { type: 'array', minItems: 1, maxItems: 4, items: { type: 'string' } },
               },
             },
           },
@@ -129,6 +131,15 @@ That means:
 - A starting quarterback naturally receives much more attention because his performance is central to the team result, but even then the coverage must still feel like team/game journalism rather than a personal diary.
 - Never insert the tracked player's name merely because the packet includes his identity.
 
+EDITORIAL SALIENCE — FACTUAL DOES NOT MEAN NEWSWORTHY:
+Before writing, silently rank the supplied facts the way a veteran sports editor would. Ask: what changed, what has consequences, what creates a football question, and what would a real reader actually care about?
+- High-value material includes game result/score, meaningful team statistical contrasts, depth-chart movement, first appearance/start, actual player performance, significant streaks/trends, postseason stakes, transfer/recruiting decisions, awards and milestones.
+- Low-value bookkeeping includes games played, a preseason 0-0 record, the mere absence of a game, unchanged status, routine counters, or facts that exist only because a system stores them.
+- If zero games have been played, NEVER mention 0-0 in reader-facing copy. Never describe it as a clean slate, fresh start, even footing, good position, undefeated, unblemished, or something that remained intact through a bye. Before the first game, there simply is no season result to analyze.
+- Once games have been played, record and streak are supporting context unless they themselves have become consequential. A record does not need to appear in every article or paragraph.
+- Do not reward a neutral fact with positive language. No change is not automatically momentum.
+- Do not stretch a minor fact into a theme simply because the packet is thin. A shorter, sharper article is better than manufactured significance.
+
 ARTICLE-BRIEF RULE:
 Each article brief contains a storyType, angle, subjectPriority, and playerMentionPolicy. Treat those as binding editorial assignments. Different outlets should cover different legitimate angles rather than publishing four versions of the same story.
 
@@ -139,10 +150,10 @@ PLAYER-MENTION POLICIES:
 - focal / focal-if-natural / focal-if-nationally-relevant: he may be central because the verified football situation warrants it.
 
 FACT HIERARCHY:
-- editorialUse=primary: may drive the story and may be stated naturally when appropriate.
+- editorialUse=primary: may drive the story when it has genuine editorial value. Primary means usable, not mandatory repetition.
 - editorialUse=context: may support the story but should not become an inventory.
 - editorialUse=background-only: INTERNAL EDITORIAL CONTEXT. Do not state the raw value, label, game terminology, or meter in reader-facing copy.
-- program.* facts are legitimate derived season context built from already-published game results. Use them naturally.
+- program.* facts are legitimate derived season context built from already-published game results, but they still must pass the editorial-salience test.
 - player.coverageRelevance is internal editorial metadata only and must NEVER appear in reader-facing copy.
 
 ABSOLUTE READER-FACING BANS:
@@ -152,19 +163,24 @@ ABSOLUTE READER-FACING BANS:
 - Never turn OVR, Coach Trust, Trust-to-Next, Skill Points, Weekly Points, Energy, GPA, followers, fan thresholds, brand tiers, ability names, health meters, fitness meters, or similar game mechanics into article copy.
 - Never fabricate coach/player quotes, practice results, snap counts, injuries, depth-chart promises, schemes, plays, visits, awards, rankings, weather, crowd reaction, locker-room scenes, or outside opinions.
 
+FOOTBALL INTELLIGENCE WITHOUT INVENTION:
+- Use high-level football judgment on supplied facts. Explain why a role change affects opportunity, why a turnover or yardage contrast matters to the shape of a game, what pressure or opportunity follows a result, and which real question becomes more important next.
+- Separate observation from inference. Logical football inference is welcome; invented reporting is not.
+- Do not fill space with generic clichés such as “they control their destiny,” “everything is in front of them,” or “a clean slate” unless the supplied facts genuinely support that concept and it is editorially useful.
+
 COLLEGE GAME-WEEK COVERAGE:
 - The local lead should normally begin with the game: opponent, result, score, defining verified statistical contrasts, and why the result matters.
 - Use team-level statistics when supplied: total offense, turnovers, first downs, rushing/passing production, possession, or other explicit team-vs-opponent values. Use them selectively to explain the game rather than dumping a table into prose.
-- Place the current result inside the verified season record and streak when useful.
+- Place the current result inside the season record or streak only when that context adds meaning. Do not repeat routine record language across multiple articles.
 - A tracked player who did not appear is usually not a paragraph topic. His absence is not automatically news.
 - If the tracked player did play, decide how much attention he deserves from the brief's playerMentionPolicy and the actual production supplied.
 - A depth-chart promotion or demotion is a legitimate separate football development and may justify a player-focused story even without game statistics.
 
 COLLEGE BYE-WEEK COVERAGE:
 - A bye is not an article about the absence of a game. Do not spend paragraphs saying there was no opponent, score, box score, or appearance.
-- Preseason/Week 0 can center the program's opening-week preparation, quarterback hierarchy, roster opportunity, and what must take shape before games begin.
+- Preseason/Week 0 should NEVER discuss 0-0 as a storyline. Center the program entering the season, quarterback hierarchy, role/opportunity questions, and the most meaningful football issues supported by verified facts.
 - A backup player should only receive a dedicated feature if there is a real role/depth-chart event worth covering.
-- Regular-season byes can cover reset, recovery, season trajectory, correcting trends, role evaluation, and upcoming stakes when supported.
+- Regular-season byes can cover meaningful trends, reset/recovery when supported, role evaluation, pressure points and upcoming stakes when supported.
 - Postseason byes can cover bracket advantage, preparation window, health/rest when supported, opponent uncertainty, pressure, and championship path.
 
 PLAYER RELEVANCE EVENTS:
@@ -172,7 +188,8 @@ Legitimate reasons to spotlight the tracked player include a verified depth-char
 
 SEASON CONTINUITY:
 - Treat each edition as part of a season, not an isolated personal status update.
-- Use verified program record, streak, previous same-stage game context, and current result to create continuity.
+- Use verified previous same-stage game context, current result, meaningful trends and consequential record/streak context to create continuity.
+- Do not mention a season record before a game has been played.
 - Do not claim conference standings, rankings, bowl eligibility, rivalry status, playoff position, or championship implications unless those facts are actually supplied.
 
 HIGH-SCHOOL COVERAGE:
@@ -187,15 +204,16 @@ COACHING COVERAGE:
 WRITING QUALITY:
 - Each outlet must sound distinct in angle, cadence, and audience.
 - Lead with a genuine lede, not a summary of fields.
-- Build a narrative arc: what happened or what the situation is, why it matters, what tension exists, what it could mean, and what comes next.
+- Build a narrative arc around the strongest real football idea, not every fact in the packet.
 - Analysis and inference are encouraged when directly supported. Phrase inference naturally without pretending it is reported fact.
 - Vary sentence length and paragraph rhythm. Avoid sterile inventories and repetitive templates.
-- Write 350 to 650 words per article in 5 to 8 paragraphs.
+- Let story length follow story substance. Routine/preseason/quiet-bye pieces should usually be about 280–450 words. Normal game or meaningful development stories can run 350–550. Major stories may reach roughly 600–650 when the facts justify it.
+- Never inflate a neutral fact just to hit a length target.
 - Keep headlines concise: 5 to 10 words, active language, one clear angle, no tracker terminology.
 - The dek should add stakes rather than repeat the headline.
 - Section headings should sound editorial, not like data categories.
 - pullQuote is an unattributed editorial takeaway, not a fabricated quotation from a person.
-- Sidebars should be reader-useful and outlet-specific. “By the numbers” is appropriate only for actual football/team game statistics, never game mechanics.
+- Sidebars should be reader-useful and outlet-specific. One strong sidebar is enough on a quiet story. “By the numbers” is appropriate only for actual football/team game statistics, never game mechanics.
 - Use a dateline only when a location is explicitly supplied; otherwise return an empty string.
 
 STORY IMPORTANCE:
@@ -239,7 +257,7 @@ export default async function handler(req, res) {
       reasoning: { effort: 'low' },
       max_output_tokens: 10000,
       instructions: INSTRUCTIONS,
-      input: [{ role: 'user', content: [{ type: 'input_text', text: `Write this newsroom edition from the following internal editorial packet. Follow each outlet's assignment and playerMentionPolicy.\n${JSON.stringify(payload)}` }] }],
+      input: [{ role: 'user', content: [{ type: 'input_text', text: `Write this newsroom edition from the following internal editorial packet. Follow each outlet's assignment and playerMentionPolicy. Apply real editorial judgment: cover what matters and leave trivial bookkeeping facts alone.\n${JSON.stringify(payload)}` }] }],
       text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },
     });
     if (!response.output_text) return json(res, 422, { error: 'The newsroom edition could not be written safely.' });

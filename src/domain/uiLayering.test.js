@@ -68,7 +68,8 @@ test('the podcast studio recovers from incomplete legacy episode data instead of
   assert.match(podcastSource, /class PodcastStudioBoundary extends Component/);
   assert.match(podcastSource, /The studio hit a playback problem/);
   assert.match(podcastSource, /Array\.isArray\(episode\?\.segments\)/);
-  assert.match(podcastSource, /briefForIssue\(archiveIssue\)\.title/);
+  assert.match(podcastSource, /const archivedBrief = briefForIssue\(archiveIssue\)/);
+  assert.match(podcastSource, /archivedEpisode\?\.title \|\| archivedBrief\.title/);
   assert.doesNotMatch(podcastSource, /archiveIssue\.podcastBrief\.title/);
 });
 

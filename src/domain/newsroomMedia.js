@@ -161,7 +161,7 @@ const articlePhotoPreferences = (article = {}) => {
   ];
 };
 
-const randomAsset = (assets = []) => assets[Math.floor(Math.random() * assets.length)];
+const stableAsset = (assets = []) => assets[0];
 
 const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
   const end = targetIndex >= 0 ? targetIndex : issues.length;
@@ -185,18 +185,18 @@ const chooseSmartLibraryPhoto = ({ candidates, article, usedThisEdition, recentl
     if (!typed.length) continue;
 
     const fresh = typed.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
-    if (fresh.length) return randomAsset(fresh);
+    if (fresh.length) return stableAsset(fresh);
 
     const notCurrent = typed.filter((asset) => asset.id !== currentId);
-    if (notCurrent.length) return randomAsset(notCurrent);
+    if (notCurrent.length) return stableAsset(notCurrent);
 
-    return randomAsset(typed);
+    return stableAsset(typed);
   }
 
   const freshAny = editionPool.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
-  if (freshAny.length) return randomAsset(freshAny);
+  if (freshAny.length) return stableAsset(freshAny);
   const notCurrentAny = editionPool.filter((asset) => asset.id !== currentId);
-  return randomAsset(notCurrentAny.length ? notCurrentAny : editionPool);
+  return stableAsset(notCurrentAny.length ? notCurrentAny : editionPool);
 };
 
 export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
@@ -219,8 +219,8 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
     return {
       ...issue,
       articles: (issue.articles || []).map((article) => {
-        // Deliberately generated AI editorial art stays attached until the user removes it.
-        if (article.mediaSource === NEWSROOM_MEDIA_ORIGINS.AI && article.mediaAssetId) {
+        // Auto-assignment fills empty slots only. Manual, uploaded, and AI assignments remain locked until the user clears them.
+        if (article.mediaAssetId) {
           usedThisEdition.add(article.mediaAssetId);
           return article;
         }

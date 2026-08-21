@@ -6,7 +6,7 @@ import {
 import { buildProgramCoverageContext } from './programCoverage.js';
 
 const WORDS_PER_MINUTE = 145;
-const MIN_SCRIPT_WORDS = 450;
+const MIN_SCRIPT_WORDS = 400;
 const MAX_SCRIPT_WORDS = 950;
 
 const text = (value, max = 5000) => String(value || '').trim().slice(0, max);

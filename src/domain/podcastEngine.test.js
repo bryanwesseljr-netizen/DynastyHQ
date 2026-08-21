@@ -25,7 +25,7 @@ const state = {
   podcastEpisodes: [],
 };
 
-const longText = Array.from({ length: 95 }, (_, index) => `word${index}`).join(' ');
+const longText = Array.from({ length: 80 }, (_, index) => `word${index}`).join(' ');
 
 test('builds podcast input from only the selected publication verified facts', () => {
   const payload = buildPodcastGenerationPayload(state, 'season-1-week-2');
@@ -39,20 +39,20 @@ test('normalizes a grounded five-to-six-minute two-host script', () => {
     summary: 'Marcus and Tyler review the verified week.',
     chapters: [
       { id: 'open', title: 'Opening Drive', summary: 'The result.', segmentStart: 0 },
-      { id: 'tape', title: 'Tape Room', summary: 'The numbers.', segmentStart: 3 },
+      { id: 'tape', title: 'Tape Room', summary: 'The numbers.', segmentStart: 4 },
     ],
-    segments: Array.from({ length: 8 }, (_, index) => ({
+    segments: Array.from({ length: 10 }, (_, index) => ({
       id: `turn-${index + 1}`,
       hostId: index % 2 ? 'tyler-brooks' : 'marcus-grant',
-      chapterId: index < 3 ? 'open' : 'tape',
+      chapterId: index < 4 ? 'open' : 'tape',
       text: longText,
       citedFactKeys: index === 0 ? ['game.passYds', 'invented.fact'] : ['profile.player.name'],
     })),
   };
   const episode = normalizeGeneratedPodcast({ generated, payload, model: 'test-model' });
-  assert.equal(episode.segments.length, 8);
+  assert.equal(episode.segments.length, 10);
   assert.equal(episode.segments[0].citedFactKeys.includes('invented.fact'), false);
-  assert.ok(episode.estimatedMinutes >= 5);
+  assert.ok(episode.estimatedMinutes >= 5 && episode.estimatedMinutes <= 6);
   assert.equal(episode.audioStatus, 'not-generated');
 });
 

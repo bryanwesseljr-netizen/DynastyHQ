@@ -6,19 +6,11 @@ import {
 import { buildProgramCoverageContext } from './programCoverage.js';
 
 const WORDS_PER_MINUTE = 145;
-const MIN_STANDARD_SCRIPT_WORDS = 500;
-const MIN_QUIET_PRESEASON_WORDS = 450;
+const MIN_SCRIPT_WORDS = 450;
 const MAX_SCRIPT_WORDS = 950;
 
 const text = (value, max = 5000) => String(value || '').trim().slice(0, max);
 const wordCount = (value) => text(value).split(/\s+/).filter(Boolean).length;
-const minimumTranscriptWordsFor = (payload = {}) => (
-  payload.coverageStage === 'college-player'
-  && payload.weekType === 'bye'
-  && payload.weekPhase === 'preseason'
-    ? MIN_QUIET_PRESEASON_WORDS
-    : MIN_STANDARD_SCRIPT_WORDS
-);
 
 const coverageStageFor = (state = {}, issue = {}) => {
   const phase = text(issue.careerPhase || state.careerPhase, 40);
@@ -109,16 +101,16 @@ const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) 
   const playerName = text(state.player?.name, 120) || 'the quarterback';
   const school = text(state.player?.college || state.player?.school, 160) || 'the program';
   const label = text(issue.label || issue.weekLabel, 160) || `Week ${Number(issue.week ?? 1)}`;
-  const weekType = text(issue.weekType, 60);
-  const weekPhase = text(issue.weekPhase, 80);
+  const weekType = text(issue.weekType, 60).toLowerCase();
+  const weekPhase = text(issue.weekPhase, 80).toLowerCase();
   const relevance = coverageContext?.relevance;
   const program = coverageContext?.program;
   const hasPlayed = Number(program?.games) > 0;
 
-  if (coverageStage === 'college-player' && (weekType === 'bye' || !program?.currentGame)) {
-    const phaseAngle = weekPhase === 'postseason'
+  if (coverageStage === 'college-player' && (weekType.includes('bye') || !program?.currentGame)) {
+    const phaseAngle = weekPhase.includes('postseason')
       ? 'postseason positioning, pressure, meaningful season trends, and the path ahead'
-      : weekPhase === 'preseason'
+      : weekPhase.includes('preseason')
         ? 'the program entering the season, quarterback hierarchy, roster opportunity, and the football questions that actually matter before the opener'
         : 'the most meaningful season trends, role evaluation, recovery when supported, and the next opportunity';
     const playerAngle = relevance?.roleChanged
@@ -187,8 +179,8 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     season: Number(issue.season) || 1,
     week: Math.max(0, Number(issue.week) || 0),
     label: text(issue.label || issue.weekLabel, 160),
-    weekType: text(issue.weekType, 60),
-    weekPhase: text(issue.weekPhase, 80),
+    weekType: text(issue.weekType, 60).toLowerCase(),
+    weekPhase: text(issue.weekPhase, 80).toLowerCase(),
     careerPhase: text(issue.careerPhase, 40),
     coverageStage,
     coveragePlan: coverageContext ? {
@@ -237,9 +229,11 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
   })).filter((segment) => segment.text);
 
   if (segments.length < 10) throw new Error('The podcast script was incomplete. Please try generating it again.');
+  if (new Set(segments.map((segment) => segment.hostId)).size < 2) {
+    throw new Error('The podcast script did not include both hosts. Please try generating it again.');
+  }
   const transcriptWordCount = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
-  const minimumWords = minimumTranscriptWordsFor(payload);
-  if (transcriptWordCount < minimumWords || transcriptWordCount > MAX_SCRIPT_WORDS) {
+  if (transcriptWordCount < MIN_SCRIPT_WORDS || transcriptWordCount > MAX_SCRIPT_WORDS) {
     throw new Error('The generated episode fell outside the supported script range. Please try again.');
   }
 

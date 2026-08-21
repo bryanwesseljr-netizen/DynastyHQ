@@ -322,8 +322,8 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     const sidebars = (entry.sidebars || []).map((section) => ({
       title: clean(section?.title, 80),
       items: (section?.items || []).map((item) => clean(item, 220)).filter(Boolean).slice(0, 5),
-    })).filter((section) => section.title && section.items.length >= 2).slice(0, 3);
-    if (sectionHeadings.length < 2 || sidebars.length < 2) return null;
+    })).filter((section) => section.title && section.items.length >= 1).slice(0, 3);
+    if (sectionHeadings.length < 1 || sidebars.length < 1) return null;
 
     return {
       outletId,
@@ -339,7 +339,7 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       pullQuote: clean(entry.pullQuote, 320),
       sidebars,
       citedFactKeys,
-      readingMinutes: Math.max(2, Math.round(articleWords / 225)),
+      readingMinutes: Math.max(1, Math.round(articleWords / 225)),
       editorialStatus: 'generated',
       generatedAt,
       articleModel: clean(model, 100),

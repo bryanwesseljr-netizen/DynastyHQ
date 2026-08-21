@@ -1,7 +1,6 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
-
 const wordCount = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
 
 const matchesPublication = (entry, publicationId) => (
@@ -9,42 +8,18 @@ const matchesPublication = (entry, publicationId) => (
 );
 
 const EDITORIAL_PROFILES = Object.freeze({
-  bolt: {
-    byline: 'Rachel Monroe · Thunderbirds Beat Writer',
-    purpose: 'Write like a real school beat reporter. Lead with the actual football development or recruiting news, explain why it matters, and keep game-interface mechanics out of the copy unless they represent a genuine public storyline.',
-  },
-  local: {
-    byline: 'Anthony Carter · Metro Detroit Prep Reporter',
-    purpose: 'Tell the hometown story with a human sportswriting angle: development, opportunity, recruiting decisions, role changes, setbacks, and what comes next. Do not turn tracker values into the story.',
-  },
-  recruiting: {
-    byline: 'Marcus Grant · Recruiting Insider',
-    purpose: 'Write a modern recruiting-insider story about offers, visits, preference movement, commitments, transfers, and decision pressure. Use recruiting mechanics only when they translate into a real recruiting development.',
-  },
-  filmroom: {
-    byline: 'Tyler Brooks · Football Analyst',
-    purpose: 'Write football analysis from actual performance, team statistical contrasts, role, production, and meaningful development. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as football analysis.',
-  },
-  national: {
-    byline: 'Nicole Benton · National College Football Writer',
-    purpose: 'Frame the week inside the larger football season and career arc. Focus on team results, stakes, momentum, role, opportunity, and consequential developments without inventing outside reaction.',
-  },
-  'college-local': {
-    byline: 'Rachel Monroe · Campus Beat Writer',
-    purpose: 'Cover the college football program like a real local beat writer. The team and game are the default story; the tracked player becomes the focal point only when his role, playing time, performance, or a meaningful depth-chart event makes him newsworthy.',
-  },
-  'college-regional': {
-    byline: 'Anthony Carter · Regional College Football Writer',
-    purpose: 'Interpret the week through a regional college-football lens: game result, season trajectory, opponent context, depth-chart movement, development, conference/postseason implications, and program momentum. Do not default to a player profile.',
-  },
+  bolt: { byline: 'Rachel Monroe · Thunderbirds Beat Writer', purpose: 'Write like a real school beat reporter. Lead with the actual football development or recruiting news, explain why it matters, and keep game-interface mechanics out of the copy unless they represent a genuine public storyline.' },
+  local: { byline: 'Anthony Carter · Metro Detroit Prep Reporter', purpose: 'Tell the hometown story with a human sportswriting angle: development, opportunity, recruiting decisions, role changes, setbacks, and what comes next. Do not turn tracker values into the story.' },
+  recruiting: { byline: 'Marcus Grant · Recruiting Insider', purpose: 'Write a modern recruiting-insider story about offers, visits, preference movement, commitments, transfers, and decision pressure. Use recruiting mechanics only when they translate into a real recruiting development.' },
+  filmroom: { byline: 'Tyler Brooks · Football Analyst', purpose: 'Write football analysis from actual performance, team statistical contrasts, role, production, and meaningful development. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as football analysis.' },
+  national: { byline: 'Nicole Benton · National College Football Writer', purpose: 'Frame the week inside the larger football season and career arc. Focus on team results, stakes, momentum, role, opportunity, and consequential developments without inventing outside reaction.' },
+  'college-local': { byline: 'Rachel Monroe · Campus Beat Writer', purpose: 'Cover the college football program like a real local beat writer. The team and game are the default story; the tracked player becomes the focal point only when his role, playing time, performance, or a meaningful depth-chart event makes him newsworthy.' },
+  'college-regional': { byline: 'Anthony Carter · Regional College Football Writer', purpose: 'Interpret the week through a regional college-football lens: game result, season trajectory, opponent context, depth-chart movement, development, conference/postseason implications, and program momentum. Do not default to a player profile.' },
 });
 
 const profileFor = (article = {}) => EDITORIAL_PROFILES[article.outletId]
   || EDITORIAL_PROFILES[article.theme]
-  || {
-    byline: `${clean(article.outletName, 80) || 'DynastyHQ'} Staff`,
-    purpose: 'Write polished modern sports journalism with one clear football angle, useful context, realistic stakes, and a forward-looking close. Treat tracker mechanics as background only.',
-  };
+  || { byline: `${clean(article.outletName, 80) || 'DynastyHQ'} Staff`, purpose: 'Write polished modern sports journalism with one clear football angle, useful context, realistic stakes, and a forward-looking close. Treat tracker mechanics as background only.' };
 
 const factId = (fact, index) => fact.id || `${clean(fact.publicationId, 80) || 'career'}:${index}:${clean(fact.key, 140)}`;
 
@@ -57,10 +32,7 @@ const coverageStageFor = (state = {}, issue = {}) => {
 };
 
 const isHighSchoolLegacyFact = (key) => (
-  key.startsWith('highSchool.')
-  || key.startsWith('recruiting.profile.')
-  || key === 'profile.player.stars'
-  || key === 'profile.player.nationalQbRank'
+  key.startsWith('highSchool.') || key.startsWith('recruiting.profile.') || key === 'profile.player.stars' || key === 'profile.player.nationalQbRank'
 );
 
 const isMechanicalRtgFact = (key) => new Set([
@@ -82,19 +54,17 @@ const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' 
   if (!key) return 'exclude';
   if (coverageStage === 'college-player' && isHighSchoolLegacyFact(key)) return 'exclude';
   if (coverageStage === 'college-player' && !current && key.startsWith('recruiting.')) return 'exclude';
+  if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'exclude';
+  if (key === 'program.coverageTier' || key === 'player.coverageRelevance') return 'background-only';
   if (key.startsWith('program.') || key.startsWith('player.')) return fact.editorialUse || 'context';
   if (key.startsWith('game.')) return 'primary';
   if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
   if (key === 'weekly.note' && clean(fact.value, 500)) return 'primary';
   if (key === 'rtg.rank') return 'primary';
-  if (isMechanicalRtgFact(key)) return 'background-only';
+  if (isMechanicalRtgFact(key)) return coverageStage === 'high-school' ? 'context' : 'exclude';
   if (key.startsWith('highSchool.')) return coverageStage === 'high-school' ? 'primary' : 'exclude';
   if (key.startsWith('recruiting.')) return current ? 'primary' : 'context';
-  if (key.startsWith('coach.')) {
-    return ['coach.portalDepartures', 'coach.openScholarships', 'coach.classCommits', 'coach.portalAdditions'].includes(key)
-      ? 'primary'
-      : 'background-only';
-  }
+  if (key.startsWith('coach.')) return ['coach.portalDepartures', 'coach.openScholarships', 'coach.classCommits', 'coach.portalAdditions'].includes(key) ? 'primary' : 'background-only';
   if (key.startsWith('roster.')) return current ? 'context' : 'background-only';
   if (key.startsWith('profile.player.')) return 'context';
   if (key.startsWith('weekly.')) return 'context';
@@ -104,23 +74,24 @@ const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' 
 const sourceFactsFor = (state, issue, coverageContext = null) => {
   const publicationId = issue.publicationId || issue.id;
   const coverageStage = coverageStageFor(state, issue);
+  const omitPlayer = coverageStage === 'college-player' && coverageContext?.coverageDecision?.playerMentionPolicy === 'omit';
   const season = Math.max(1, Number(issue.season) || 1);
   const week = Math.max(0, Number(issue.week) || 0);
   const historicalPublicationIds = (state.weeklyUpdates || [])
     .filter((entry) => !matchesPublication(entry, publicationId))
     .filter((entry) => Number(entry.season || 1) === season)
     .filter((entry) => Number(entry.week ?? 1) <= week)
-    .filter((entry) => {
-      if (coverageStage !== 'college-player') return true;
-      return entry?.game?.stage !== 'high-school' && !entry?.game?.evaluation && !entry?.highSchoolEvaluation;
-    })
+    .filter((entry) => coverageStage !== 'college-player' || (entry?.game?.stage !== 'high-school' && !entry?.game?.evaluation && !entry?.highSchoolEvaluation))
     .slice(-3)
     .map((entry) => entry.id || entry.publicationId || entry.weekKey)
     .filter(Boolean);
   const allowedPublicationIds = new Set([publicationId, ...historicalPublicationIds]);
 
+  const keepPlayerFact = (key) => !(omitPlayer && (key === 'rtg.rank' || key.startsWith('player.') || key.startsWith('profile.player.') || key.startsWith('rtg.')));
+
   const ledgerFacts = (state.factLedger || [])
     .filter((fact) => fact?.verified && allowedPublicationIds.has(fact.publicationId))
+    .filter((fact) => keepPlayerFact(clean(fact.key, 180)))
     .filter((fact) => {
       const current = matchesPublication(fact, publicationId);
       return editorialUseFor(fact, { current, coverageStage }) !== 'exclude';
@@ -140,12 +111,10 @@ const sourceFactsFor = (state, issue, coverageContext = null) => {
     });
 
   const derivedFacts = coverageStage === 'college-player'
-    ? (coverageContext?.facts || []).map((fact, index) => ({ ...fact, id: factId(fact, ledgerFacts.length + index) }))
+    ? (coverageContext?.facts || []).filter((fact) => keepPlayerFact(clean(fact.key, 180))).map((fact, index) => ({ ...fact, id: factId(fact, ledgerFacts.length + index) }))
     : [];
   const byKeyAndPeriod = new Map();
-  [...ledgerFacts, ...derivedFacts].forEach((fact) => {
-    byKeyAndPeriod.set(`${fact.period}:${fact.key}`, fact);
-  });
+  [...ledgerFacts, ...derivedFacts].forEach((fact) => byKeyAndPeriod.set(`${fact.period}:${fact.key}`, fact));
   return [...byKeyAndPeriod.values()];
 };
 
@@ -171,7 +140,7 @@ const focusFactsForPlan = ({ plan, facts, fallback }) => {
   if (['program-first', 'season-first', 'game-first'].includes(plan.subjectPriority)) {
     selected = [...programFacts];
     if (!/omit/.test(plan.playerMentionPolicy || '')) selected.push(...playerFacts);
-  } else if (plan.subjectPriority === 'player-event' || plan.subjectPriority === 'player-and-game') {
+  } else if (plan.subjectPriority === 'player-event' || plan.subjectPriority === 'player-and-game' || plan.subjectPriority === 'game-and-player') {
     selected = [...playerFacts, ...programFacts];
   } else {
     selected = [...programFacts, ...playerFacts];
@@ -210,6 +179,11 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   if (!issue?.articles?.length) throw new Error('Choose a published newsroom edition first.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
+  if (coverageStage === 'college-player' && coverageContext?.coverageDecision?.articleCount < 1) {
+    const error = new Error('No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.');
+    error.code = 'NO_NEWSWORTHY_NEWSROOM';
+    throw error;
+  }
   const facts = sourceFactsFor(state, issue, coverageContext);
   if (!facts.length) throw new Error('This edition has no published football facts available for writing.');
 
@@ -234,8 +208,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     if (plan) {
       focusFacts = focusFactsForPlan({ plan, facts, fallback });
     } else {
-      const requestedFocus = [...new Set((entry.citedFactKeys || [])
-        .flatMap((key) => currentFactIdsByKey.get(key) || []))]
+      const requestedFocus = [...new Set((entry.citedFactKeys || []).flatMap((key) => currentFactIdsByKey.get(key) || []))]
         .map((id) => facts.find((fact) => fact.id === id))
         .filter((fact) => fact && fact.editorialUse !== 'background-only');
       focusFacts = requestedFocus.length ? requestedFocus : fallback;
@@ -251,6 +224,8 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       angle: clean(plan?.angle, 1000),
       subjectPriority: clean(plan?.subjectPriority, 80),
       playerMentionPolicy: clean(plan?.playerMentionPolicy, 80),
+      coverageTier: coverageContext?.coverageDecision?.tier || '',
+      targetWordRange: coverageContext?.coverageDecision?.newsroomWordRange || null,
       focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
     };
   }).filter((brief) => brief.focusFactIds.length);
@@ -267,10 +242,13 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     weekPhase: clean(issue.weekPhase, 80),
     careerPhase: clean(issue.careerPhase, 60),
     coverageStage,
+    coverageDecision: coverageContext?.coverageDecision || null,
+    storylineThreads: coverageContext?.storylineThreads || [],
     coveragePlan: coverageContext ? {
       program: coverageContext.program,
       playerRelevance: coverageContext.relevance,
-      editorialPrinciple: 'The team/game is the default story. The tracked player becomes the story only when football relevance makes him the story.',
+      playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
+      editorialPrinciple: 'The team/game is the default story. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
     } : null,
     player: {
       name: clean(state.player?.name, 120),
@@ -287,9 +265,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
 
 const normalizeCitations = (ids, payload) => {
   const factsById = new Map(payload.facts.map((fact) => [fact.id, fact]));
-  return [...new Set(Array.isArray(ids) ? ids : [])]
-    .map((id) => factsById.get(id)?.key)
-    .filter(Boolean);
+  return [...new Set(Array.isArray(ids) ? ids : [])].map((id) => factsById.get(id)?.key).filter(Boolean);
 };
 
 const normalizeImportance = (value) => {
@@ -302,10 +278,19 @@ const normalizeStoryFormat = (value) => {
   return ['news', 'feature', 'analysis', 'recruiting-intel', 'milestone', 'reaction'].includes(normalized) ? normalized : 'news';
 };
 
+const minimumArticleWords = (payload) => {
+  const tier = payload.coverageDecision?.tier;
+  if (tier === 'brief') return 160;
+  if (tier === 'major') return 240;
+  if (tier === 'career-defining') return 280;
+  return 220;
+};
+
 export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = '', generatedAt = new Date().toISOString() }) => {
   const briefsById = new Map(payload.articleBriefs.map((brief) => [brief.outletId, brief]));
   const generatedByOutlet = new Map((generated?.articles || []).map((entry) => [clean(entry.outletId, 80), entry]));
   if (generatedByOutlet.size !== payload.articleBriefs.length) throw new Error('The newsroom edition was incomplete. Please try writing it again.');
+  const minWords = minimumArticleWords(payload);
 
   const articles = payload.articleBriefs.map((requestedBrief) => {
     const entry = generatedByOutlet.get(requestedBrief.outletId);
@@ -315,7 +300,7 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     if (!brief) return null;
     const paragraphs = (entry.paragraphs || []).map((paragraph) => clean(paragraph, 2200)).filter(Boolean).slice(0, 8);
     const articleWords = paragraphs.reduce((total, paragraph) => total + wordCount(paragraph), 0);
-    if (paragraphs.length < 4 || articleWords < 220) return null;
+    if (paragraphs.length < 4 || articleWords < minWords) return null;
     const citedFactKeys = normalizeCitations(entry.citedFactIds, payload);
     if (!citedFactKeys.length) return null;
     const sectionHeadings = (entry.sectionHeadings || []).map((heading) => clean(heading, 100)).filter(Boolean).slice(0, 3);
@@ -346,11 +331,18 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       storyType: brief.storyType,
       subjectPriority: brief.subjectPriority,
       playerMentionPolicy: brief.playerMentionPolicy,
+      coverageTier: brief.coverageTier,
     };
   }).filter(Boolean);
 
   if (articles.length !== payload.articleBriefs.length) throw new Error('The newsroom edition was incomplete. Please try writing it again.');
-  return { articles, generatedAt, model: clean(model, 100) };
+  return {
+    articles,
+    generatedAt,
+    model: clean(model, 100),
+    coverageDecision: payload.coverageDecision || null,
+    storylineThreads: payload.storylineThreads || [],
+  };
 };
 
 export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => ({
@@ -375,6 +367,9 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
       editorialStatus: 'generated',
       editorialGeneratedAt: edition.generatedAt,
       editorialModel: edition.model,
+      coverageDecision: edition.coverageDecision || issue.coverageDecision || null,
+      storylineKeys: edition.coverageDecision?.storylineKeys || [],
+      storylineThreads: edition.storylineThreads || [],
       articles,
     };
   }),

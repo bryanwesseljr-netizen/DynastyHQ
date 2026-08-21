@@ -228,8 +228,8 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
 
   if (segments.length < 10) throw new Error('The podcast script was incomplete. Please try generating it again.');
   const transcriptWordCount = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
-  if (transcriptWordCount < 650 || transcriptWordCount > 950) {
-    throw new Error('The generated episode fell outside the five-to-six-minute script range. Please try again.');
+  if (transcriptWordCount < 500 || transcriptWordCount > 950) {
+    throw new Error('The generated episode fell outside the supported script range. Please try again.');
   }
 
   const citedFactKeys = [...new Set(segments.flatMap((segment) => segment.citedFactKeys))];

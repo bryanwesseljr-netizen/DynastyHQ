@@ -10,6 +10,7 @@ import { PODCAST_SHOW } from '../domain/podcastShow';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'podcast-humanized-audio-v3';
 const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+const matchesPublication = (entry, publicationId) => entry?.publicationId === publicationId || entry?.id === publicationId;
 
 const podcastStudioIsVisible = () => [...document.querySelectorAll('h1')]
   .some((heading) => String(heading.textContent || '').trim() === PODCAST_SHOW.name);
@@ -90,9 +91,7 @@ const PodcastHumanizedAudioPortal = () => {
       return undefined;
     }
     const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-    return onSnapshot(ref, (snapshot) => {
-      setCareer(snapshot.exists() ? snapshot.data() : null);
-    });
+    return onSnapshot(ref, (snapshot) => setCareer(snapshot.exists() ? snapshot.data() : null));
   }, [user]);
 
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
@@ -115,7 +114,6 @@ const PodcastHumanizedAudioPortal = () => {
     const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     const baselineRevision = Number(career?._sync?.revision) || 0;
     let latestEpisode = selectedEpisode;
-
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const snapshot = await getDoc(ref);
       if (snapshot.exists()) {
@@ -144,9 +142,7 @@ const PodcastHumanizedAudioPortal = () => {
       const revision = (Number(state?._sync?.revision) || 0) + 1;
       transaction.set(ref, {
         ...state,
-        podcastEpisodes: episodesNow.map((episode) => episode.publicationId === publicationId
-          ? patchedEpisode
-          : episode),
+        podcastEpisodes: episodesNow.map((episode) => episode.publicationId === publicationId ? patchedEpisode : episode),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
       });
       return patchedEpisode;
@@ -167,9 +163,32 @@ const PodcastHumanizedAudioPortal = () => {
       transaction.set(ref, {
         ...state,
         podcastEpisodes: episodesNow.map((episode, index) => index === existingIndex ? nextEpisode : episode),
+        newsroomIssues: (state.newsroomIssues || []).map((issue) => matchesPublication(issue, publicationId)
+          ? { ...issue, podcastCoverageStatus: 'scripted', podcastCoverageReason: '', podcastCoverageAt: new Date().toISOString() }
+          : issue),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
       });
       return nextEpisode;
+    });
+  };
+
+  const markNoEpisode = async (publicationId, reason) => {
+    if (!user || !db) return;
+    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
+      const state = snapshot.data();
+      const revision = (Number(state?._sync?.revision) || 0) + 1;
+      const now = new Date().toISOString();
+      transaction.set(ref, {
+        ...state,
+        podcastEpisodes: (state.podcastEpisodes || []).filter((episode) => episode.publicationId !== publicationId),
+        newsroomIssues: (state.newsroomIssues || []).map((issue) => matchesPublication(issue, publicationId)
+          ? { ...issue, podcastCoverageStatus: 'no-episode', podcastCoverageReason: reason, podcastCoverageAt: now }
+          : issue),
+        _sync: { revision, deviceId: DEVICE_ID, updatedAt: now },
+      });
     });
   };
 
@@ -193,17 +212,14 @@ const PodcastHumanizedAudioPortal = () => {
       const payload = buildPodcastGenerationPayload(latestState, publicationId);
       const idToken = await user.getIdToken();
       const generated = await generatePodcastScript({ idToken, payload, prepareAudio: false });
-      const normalized = normalizeGeneratedPodcast({
-        generated: generated.episode,
-        payload,
-        model: generated.model,
-      });
+      const normalized = normalizeGeneratedPodcast({ generated: generated.episode, payload, model: generated.model });
       const nextEpisode = {
         ...normalized,
         status: 'scripted',
         audioStatus: 'not-generated',
         audioModel: '',
         audioEngine: '',
+        audioContinuous: false,
         audioSegmentCount: 0,
         audioGeneratedAt: '',
         audioTranscriptFingerprint: '',
@@ -214,12 +230,22 @@ const PodcastHumanizedAudioPortal = () => {
       window.dispatchEvent(new CustomEvent('dynastyhq:podcast-script-generated', {
         detail: { publicationId, episode: nextEpisode, capturedAt },
       }));
-
       setMessageType('success');
-      setMessage('Fresh transcript saved. Review it in the Podcast page first; the old audio is now intentionally stale until you regenerate Humanized Audio.');
+      setMessage('Fresh transcript saved. Review it first; audio will stay stale until you separately regenerate Humanized Audio.');
     } catch (error) {
-      setMessageType('error');
-      setMessage(error?.message || 'The podcast transcript could not be regenerated. Your existing transcript was preserved.');
+      if (error?.code === 'NO_NEWSWORTHY_PODCAST') {
+        await markNoEpisode(publicationId, error.message);
+        setLiveEpisodes((current) => {
+          const next = { ...current };
+          delete next[publicationId];
+          return next;
+        });
+        setMessageType('success');
+        setMessage(error.message);
+      } else {
+        setMessageType('error');
+        setMessage(error?.message || 'The podcast transcript could not be regenerated. Your existing transcript was preserved.');
+      }
     } finally {
       setOperation('');
     }
@@ -247,26 +273,19 @@ const PodcastHumanizedAudioPortal = () => {
       const liveEpisode = liveEpisodes[publicationId] || null;
       const candidates = [settledEpisode, committedEpisode, liveEpisode].filter(Boolean);
       const renderEpisode = candidates.sort((a, b) => episodeTimestamp(b) - episodeTimestamp(a))[0] || null;
-
       if (!renderEpisode || !Array.isArray(renderEpisode.segments) || renderEpisode.segments.length < 8) {
         throw new Error('The newest saved podcast transcript could not be resolved for audio rendering.');
       }
 
       const fingerprint = transcriptFingerprint(renderEpisode);
       const idToken = await user.getIdToken();
-      setMessage('Rendering the newest transcript with Mark + Sarah…');
+      setMessage('Rendering one continuous Mark + Sarah conversation…');
       const rendered = await generateHumanizedPodcastMix({ idToken, episode: renderEpisode });
       if (!rendered.pieces?.length) throw new Error('The humanized renderer returned no playable audio.');
 
       const episodeId = renderEpisode.id || `podcast-${publicationId}`;
       await savePodcastAudioLocal(episodeId, rendered.pieces);
-      await savePodcastAudioCloud({
-        db,
-        appId,
-        userId: user.uid,
-        episodeId,
-        segments: rendered.pieces,
-      });
+      await savePodcastAudioCloud({ db, appId, userId: user.uid, episodeId, segments: rendered.pieces });
 
       const generatedAt = new Date().toISOString();
       await patchEpisodeStatus(publicationId, {
@@ -274,13 +293,14 @@ const PodcastHumanizedAudioPortal = () => {
         audioStatus: 'ready',
         audioModel: rendered.model || 'gemini-3.1-flash-tts-preview',
         audioEngine: rendered.engine || 'gemini-multispeaker-v3',
+        audioContinuous: Boolean(rendered.continuous),
         audioSegmentCount: rendered.pieces.length,
         audioGeneratedAt: generatedAt,
         audioTranscriptFingerprint: fingerprint,
       });
 
       setMessageType('success');
-      setMessage('Humanized Mark + Sarah mix is ready and bound to the newest transcript. The player will reload the new audio automatically.');
+      setMessage('Humanized Mark + Sarah mix is ready as one continuous episode and is bound to this exact transcript.');
     } catch (error) {
       try {
         await patchEpisodeStatus(publicationId, { audioStatus: previousAudioStatus });
@@ -308,9 +328,7 @@ const PodcastHumanizedAudioPortal = () => {
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-400">Podcast v3</p>
               <h3 className="text-sm font-black text-white">Script + Humanized Audio</h3>
             </div>
-            <button type="button" aria-label="Hide Podcast v3 controls" onClick={() => setDismissed(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white">
-              <X size={15} />
-            </button>
+            <button type="button" aria-label="Hide Podcast v3 controls" onClick={() => setDismissed(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white"><X size={15} /></button>
           </div>
           <p className="mt-1 text-[11px] leading-5 text-slate-400">Rewrite the grounded conversation first, review it, then render that exact saved transcript with Mark + Sarah.</p>
         </div>
@@ -318,9 +336,7 @@ const PodcastHumanizedAudioPortal = () => {
 
       {episodes.length > 1 && (
         <select value={selectedPublicationId} onChange={(event) => setSelectedPublicationId(event.target.value)} disabled={busy} className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 outline-none focus:border-cyan-400">
-          {[...episodes].reverse().map((episode) => (
-            <option key={episode.publicationId} value={episode.publicationId}>{episodeLabel(episode)}</option>
-          ))}
+          {[...episodes].reverse().map((episode) => <option key={episode.publicationId} value={episode.publicationId}>{episodeLabel(episode)}</option>)}
         </select>
       )}
 
@@ -335,7 +351,7 @@ const PodcastHumanizedAudioPortal = () => {
       </button>
 
       <div className="mt-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
-        <Sparkles size={11} /> Two-step workflow · transcript first · audio second
+        <Sparkles size={11} /> Two-step workflow · transcript first · continuous audio second
       </div>
 
       {message && (

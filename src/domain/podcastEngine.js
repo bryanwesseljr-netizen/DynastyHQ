@@ -48,7 +48,7 @@ const podcastUseFor = (fact, coverageStage) => {
   if (coverageStage === 'college-player' && key.startsWith('recruiting.')) return 'exclude';
   if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'exclude';
   if (coverageStage === 'coach' && (key.startsWith('rtg.') || key.startsWith('highSchool.') || key.startsWith('recruiting.profile.'))) return 'exclude';
-  if (key === 'player.coverageRelevance') return 'background-only';
+  if (key === 'player.coverageRelevance' || key === 'program.coverageTier') return 'background-only';
   if (key.startsWith('program.') || key.startsWith('player.')) return fact.editorialUse || 'context';
   if (key.startsWith('game.')) return 'primary';
   if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
@@ -71,8 +71,15 @@ const podcastUseFor = (fact, coverageStage) => {
 const factsForIssue = (state, issue, coverageStage, coverageContext = null) => {
   const publicationId = issue.publicationId || issue.id;
   const factsByKey = new Map();
+  const omitPlayer = coverageStage === 'college-player' && coverageContext?.coverageDecision?.playerMentionPolicy === 'omit';
+  const accept = (fact) => {
+    const key = text(fact?.key, 180);
+    if (omitPlayer && (key === 'rtg.rank' || key.startsWith('player.') || key.startsWith('profile.player.') || key.startsWith('rtg.'))) return false;
+    return true;
+  };
+
   (state.factLedger || []).forEach((fact) => {
-    if (!fact?.verified || fact.publicationId !== publicationId) return;
+    if (!fact?.verified || fact.publicationId !== publicationId || !accept(fact)) return;
     const editorialUse = podcastUseFor(fact, coverageStage);
     if (editorialUse === 'exclude') return;
     factsByKey.set(fact.key, {
@@ -84,6 +91,7 @@ const factsForIssue = (state, issue, coverageStage, coverageContext = null) => {
   });
   if (coverageStage === 'college-player') {
     (coverageContext?.facts || []).forEach((fact) => {
+      if (!accept(fact)) return;
       const editorialUse = podcastUseFor(fact, coverageStage);
       if (editorialUse === 'exclude') return;
       factsByKey.set(fact.key, {
@@ -102,42 +110,34 @@ const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) 
   const school = text(state.player?.college || state.player?.school, 160) || 'the program';
   const label = text(issue.label || issue.weekLabel, 160) || `Week ${Number(issue.week ?? 1)}`;
   const weekType = text(issue.weekType, 60).toLowerCase();
-  const weekPhase = text(issue.weekPhase, 80).toLowerCase();
   const relevance = coverageContext?.relevance;
+  const decision = coverageContext?.coverageDecision;
   const program = coverageContext?.program;
-  const hasPlayed = Number(program?.games) > 0;
 
   if (coverageStage === 'college-player' && (weekType.includes('bye') || !program?.currentGame)) {
-    const phaseAngle = weekPhase.includes('postseason')
-      ? 'postseason positioning, pressure, meaningful season trends, and the path ahead'
-      : weekPhase.includes('preseason')
-        ? 'the program entering the season, quarterback hierarchy, roster opportunity, and the football questions that actually matter before the opener'
-        : 'the most meaningful season trends, role evaluation, recovery when supported, and the next opportunity';
-    const playerAngle = relevance?.roleChanged
-      ? ` A real depth-chart change (${relevance.previousRole} to ${relevance.currentRole}) gives ${playerName} a legitimate QB-room segment.`
-      : relevance?.level === 'low'
-        ? ` ${playerName} is low-relevance this week and should not be forced into the conversation.`
-        : ' Mention the tracked player only to the extent his verified football role warrants it.';
-    const recordAngle = hasPlayed
-      ? ' The season record may be used briefly when it adds context, but it is not automatically a talking point.'
-      : ' Do not mention 0-0, describe the record as clean or fresh, or turn the fact that no game has been played into a storyline.';
+    const activeThreads = (decision?.storylineThreads || [])
+      .filter((thread) => thread.editorialUse !== 'background-only')
+      .map((thread) => thread.label)
+      .join(', ');
     return {
-      title: `${school} ${label}: the program outlook`,
-      summary: `Lead with ${school} and ${phaseAngle}.${recordAngle}${playerAngle}`,
+      title: `${school} ${label}: program update`,
+      summary: activeThreads
+        ? `Build the show around the real football development this week: ${activeThreads}. Keep the conversation program-first unless a player event explicitly earned attention.`
+        : `Use only the meaningful ${school} football development that made this week eligible for coverage. Do not turn the bye or unchanged player status into the subject.`,
     };
   }
 
   if (coverageStage === 'college-player') {
     const relevanceInstruction = relevance?.level === 'primary'
-      ? `${playerName} is a primary football storyline this week because his verified role/playing time warrants it, but the game result and team stakes still frame the episode.`
+      ? `${playerName} can be central because his verified role and game involvement make him part of the football story.`
       : relevance?.level === 'high'
-        ? `${playerName} deserves a meaningful secondary segment, not ownership of the whole show.`
+        ? `${playerName} can receive a meaningful secondary segment, but the game and program remain the frame.`
         : relevance?.level === 'developing'
-          ? `${playerName} may get a concise spotlight for a real role or opportunity development, while the game/program remain the main show.`
-          : `${playerName} is not a meaningful player storyline this week; do not manufacture a QB segment just because he is the tracked player.`;
+          ? `${playerName} can appear only for the specific role or opportunity event that changed this week.`
+          : 'Do not mention the tracked player this week; cover the game and program instead.';
     return {
       title: `${school} Week ${Number(issue.week ?? 0)}: the game and what it means`,
-      summary: `Discuss the actual ${school} game first: result, opponent, score, meaningful verified team/player statistics, the football consequence of the result, and what changes next. Use the season record or streak only when it adds real context, and do not repeat either as filler. ${relevanceInstruction}`,
+      summary: `Discuss the actual ${school} game first: result, opponent, score, meaningful supplied team/player statistics, the football consequence of the result, and what changed. Use record or streak only when it adds context. ${relevanceInstruction}`,
     };
   }
 
@@ -169,6 +169,11 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
   if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
+  if (coverageStage === 'college-player' && !coverageContext?.coverageDecision?.podcastEligible) {
+    const error = new Error('No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.');
+    error.code = 'NO_NEWSWORTHY_PODCAST';
+    throw error;
+  }
   const facts = factsForIssue(state, issue, coverageStage, coverageContext);
   const usableFacts = facts.filter((fact) => fact.editorialUse !== 'background-only');
   if (!usableFacts.length) throw new Error('The selected issue has no football facts available for a podcast.');
@@ -183,13 +188,16 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     weekPhase: text(issue.weekPhase, 80).toLowerCase(),
     careerPhase: text(issue.careerPhase, 40),
     coverageStage,
+    coverageDecision: coverageContext?.coverageDecision || null,
+    storylineThreads: coverageContext?.storylineThreads || [],
     coveragePlan: coverageContext ? {
       program: {
         ...coverageContext.program,
         record: coverageContext.program.recordEstablished ? coverageContext.program.record : '',
       },
       playerRelevance: coverageContext.relevance,
-      editorialPrinciple: 'Discuss the team/game first, rank verified facts by real football news value, and do not expand bookkeeping facts merely because they are available. Make the tracked player a focal point only when his football relevance warrants it.',
+      playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
+      editorialPrinciple: 'The team/game is the default subject. Use the shared coverage tier and active storyline threads. Do not repeat an established storyline unless something changed.',
     } : null,
     brief,
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
@@ -247,6 +255,9 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     week: payload.week,
     careerPhase: payload.careerPhase,
     coverageStage: payload.coverageStage,
+    coverageDecision: payload.coverageDecision || null,
+    storylineKeys: payload.coverageDecision?.storylineKeys || [],
+    storylineThreads: payload.storylineThreads || [],
     title: text(generated.title, 240) || payload.brief.title,
     summary: text(generated.summary, 700) || payload.brief.summary,
     generatedAt: new Date().toISOString(),

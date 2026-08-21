@@ -143,6 +143,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
   if (streakThreshold) { score += 2; reasons.push('sustained team streak became a storyline'); }
   if (postseason) { score += 2; reasons.push('postseason stakes'); }
   if (eventFacts.length) { score += Math.min(4, 2 + eventFacts.length); reasons.push('verified career/program event'); }
+  if (strongEvent) { score += 2; reasons.push('major transfer/portal/coaching event'); }
   if (weeklyNote) { score += 1; reasons.push('meaningful weekly football note'); }
 
   const hasAnyStory = resultKnown || roleEvent || appearanceEvent || postseason || eventFacts.length > 0 || Boolean(weeklyNote) || streakThreshold;

@@ -11,6 +11,7 @@ const request = async (url, { idToken, body }) => {
   if (!response.ok) {
     const error = new Error(payload.error || 'The podcast service did not respond.');
     error.status = response.status;
+    error.code = payload.code || '';
     throw error;
   }
   return payload;
@@ -95,11 +96,7 @@ const mp3FrameLength = (bytes, offset) => {
 
   const mpeg1Bitrates = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
   const mpeg2Bitrates = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0];
-  const sampleRates = {
-    3: [44100, 48000, 32000],
-    2: [22050, 24000, 16000],
-    0: [11025, 12000, 8000],
-  };
+  const sampleRates = { 3: [44100, 48000, 32000], 2: [22050, 24000, 16000], 0: [11025, 12000, 8000] };
   const bitrate = (versionBits === 3 ? mpeg1Bitrates : mpeg2Bitrates)[bitrateIndex];
   const sampleRate = sampleRates[versionBits]?.[sampleRateIndex];
   if (!bitrate || !sampleRate) return 0;
@@ -110,13 +107,9 @@ const findMp3Frames = (bytes) => {
   const frames = [];
   let offset = 0;
   if (bytes.length >= 10 && bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) {
-    const tagSize = ((bytes[6] & 0x7f) << 21)
-      | ((bytes[7] & 0x7f) << 14)
-      | ((bytes[8] & 0x7f) << 7)
-      | (bytes[9] & 0x7f);
+    const tagSize = ((bytes[6] & 0x7f) << 21) | ((bytes[7] & 0x7f) << 14) | ((bytes[8] & 0x7f) << 7) | (bytes[9] & 0x7f);
     offset = Math.min(bytes.length, 10 + tagSize);
   }
-
   while (offset + 4 <= bytes.length) {
     const length = mp3FrameLength(bytes, offset);
     if (length > 0 && offset + length <= bytes.length) {
@@ -132,9 +125,7 @@ const findMp3Frames = (bytes) => {
 const splitHumanizedMp3 = ({ audioBase64, segments }) => {
   const bytes = base64ToBytes(audioBase64);
   const frames = findMp3Frames(bytes);
-  if (frames.length < Math.max(segments.length * 8, 100)) {
-    throw new Error('The humanized podcast mix could not be divided into playable turns.');
-  }
+  if (frames.length < Math.max(segments.length * 8, 100)) throw new Error('The humanized podcast mix could not be divided into playable turns.');
 
   const weights = segments.map((segment) => Math.max(1, wordCount(segment?.text)));
   const totalWeight = weights.reduce((total, value) => total + value, 0);
@@ -154,16 +145,11 @@ const splitHumanizedMp3 = ({ audioBase64, segments }) => {
     const endFrame = boundaries[index + 1];
     const startByte = index === 0 ? 0 : frames[startFrame].start;
     const endByte = index === segments.length - 1 ? bytes.length : frames[endFrame].start;
-    return {
-      index,
-      data: bytesToBase64(bytes.subarray(startByte, endByte)),
-      mimeType: 'audio/mpeg',
-      hostId: segment.hostId,
-    };
+    return { index, data: bytesToBase64(bytes.subarray(startByte, endByte)), mimeType: 'audio/mpeg', hostId: segment.hostId };
   });
 };
 
-const prepareHumanizedMix = async ({ idToken, episode }) => {
+const renderHumanizedConversation = async ({ idToken, episode }) => {
   const segments = Array.isArray(episode?.segments) ? episode.segments : [];
   if (!segments.length) throw new Error('The podcast transcript is incomplete.');
   const rendered = await request('/api/synthesize-podcast-conversation', {
@@ -174,15 +160,16 @@ const prepareHumanizedMix = async ({ idToken, episode }) => {
         id: segment.id,
         hostId: segment.hostId,
         text: segment.text,
-        deliveryStyle: DELIVERY_STYLES.has(segment.deliveryStyle)
-          ? segment.deliveryStyle
-          : inferDeliveryStyle(segment.text),
+        deliveryStyle: DELIVERY_STYLES.has(segment.deliveryStyle) ? segment.deliveryStyle : inferDeliveryStyle(segment.text),
       })),
     },
   });
-  if (!/^audio\/(?:mp3|mpeg)$/i.test(rendered.mimeType || '')) {
-    throw new Error('The humanized podcast renderer returned an unsupported audio format.');
-  }
+  if (!/^audio\/(?:mp3|mpeg)$/i.test(rendered.mimeType || '')) throw new Error('The humanized podcast renderer returned an unsupported audio format.');
+  return { rendered, segments };
+};
+
+const prepareHumanizedMix = async ({ idToken, episode }) => {
+  const { rendered, segments } = await renderHumanizedConversation({ idToken, episode });
   const pieces = splitHumanizedMp3({ audioBase64: rendered.audioBase64, segments });
   pendingHumanizedMix = {
     pieces,
@@ -204,10 +191,7 @@ export const generatePodcastScript = async ({ idToken, payload, prepareAudio = t
     if (inspection.valid) break;
   }
 
-  if (!inspection?.valid) {
-    throw new Error(incompleteScriptMessage(inspection));
-  }
-
+  if (!inspection?.valid) throw new Error(incompleteScriptMessage(inspection));
   if (prepareAudio) await prepareHumanizedMix({ idToken, episode: generated.episode });
   return generated;
 };
@@ -219,23 +203,24 @@ export const synthesizePodcastSegment = ({ idToken, hostId, text, deliveryStyle 
     const model = pendingHumanizedMix.model;
     const engine = pendingHumanizedMix.engine;
     if (pendingHumanizedMix.cursor >= pendingHumanizedMix.pieces.length) pendingHumanizedMix = null;
-    return Promise.resolve({
-      audioBase64: piece.data,
-      mimeType: piece.mimeType,
-      model,
-      engine,
-      voice: 'Mark + Sarah',
-    });
+    return Promise.resolve({ audioBase64: piece.data, mimeType: piece.mimeType, model, engine, voice: 'Mark + Sarah' });
   }
-
   const delivery = DELIVERY_STYLES.has(deliveryStyle) ? deliveryStyle : inferDeliveryStyle(text);
   return request('/api/synthesize-podcast', { idToken, body: { hostId, text, delivery } });
 };
 
 export const generateHumanizedPodcastMix = async ({ idToken, episode }) => {
   pendingHumanizedMix = null;
-  const rendered = await prepareHumanizedMix({ idToken, episode });
-  const pieces = pendingHumanizedMix?.pieces ? [...pendingHumanizedMix.pieces] : [];
-  pendingHumanizedMix = null;
-  return { ...rendered, pieces };
+  const { rendered } = await renderHumanizedConversation({ idToken, episode });
+  return {
+    ...rendered,
+    pieces: [{
+      index: 0,
+      data: rendered.audioBase64,
+      mimeType: rendered.mimeType || 'audio/mpeg',
+      hostId: 'mark+sarah',
+      continuous: true,
+    }],
+    continuous: true,
+  };
 };

@@ -55,6 +55,7 @@ const replaceCollection = async (collectionRef, segments) => {
     data: segment.data,
     mimeType: segment.mimeType || 'audio/mpeg',
     hostId: segment.hostId || '',
+    continuous: Boolean(segment.continuous),
   })));
 };
 
@@ -95,4 +96,3 @@ export const podcastAudioBlob = (segments) => {
   });
   return new Blob(byteArrays, { type: 'audio/mpeg' });
 };
-

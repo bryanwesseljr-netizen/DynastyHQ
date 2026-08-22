@@ -136,29 +136,47 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
   const isBye = weekType.includes('bye') || !program.currentGame;
   const preseasonWithoutGames = weekPhase.includes('preseason') && program.games === 0;
   const playerPolicy = coverageDecision.playerMentionPolicy;
+  const reach = coverageDecision.audienceReach || {};
+  const school = program.school || 'the program';
   const plans = [];
 
   plans.push({
     outletId: 'college-local',
+    audience: 'local',
     storyType: isBye ? (preseasonWithoutGames ? 'program-brief' : 'program-update') : 'game-recap',
     angle: isBye
       ? preseasonWithoutGames
-        ? 'Cover only the strongest verified Cincinnati football development that actually created coverage this week. Do not default to quarterback hierarchy, backup-player development, 0-0, or the absence of a game.'
-        : 'Cover the strongest verified program development or established season pressure point. Do not manufacture a story from the bye itself or from unchanged player status.'
-      : 'Lead with the Cincinnati game: result, opponent, score, defining verified statistical contrasts, and what the result changes. The tracked player is central only when his football relevance warrants it.',
+        ? `Cover only the strongest verified ${school} football development that actually created coverage this week. Write with the familiarity of a local beat reporter, but do not default to quarterback hierarchy, backup-player development, 0-0, or the absence of a game.`
+        : 'Cover the strongest verified program development or established season pressure point. The local audience already follows the team closely, so lead with what actually changed instead of re-explaining the program.'
+      : `Lead with the ${school} game: result, opponent, score, defining verified statistical contrasts, and what the result changes. Write like a reporter who covers this team every day. The tracked player is central only when his football relevance warrants it.`,
     playerMentionPolicy: playerPolicy,
     subjectPriority: relevance.level === 'primary' ? 'game-and-player' : 'program-first',
   });
 
-  plans.push({
-    outletId: 'college-regional',
-    storyType: isBye ? 'season-context' : 'season-context',
-    angle: preseasonWithoutGames
-      ? 'Take a broader program view only if the verified football development has real regional value. Do not turn preseason bookkeeping or an unchanged backup role into a season-outlook feature.'
-      : `Place the current development in the larger season picture. ${program.recordEstablished ? `The ${program.record} record can appear once when it adds meaning.` : 'Do not mention a season record before a game has been played.'} Do not repeat a storyline simply because it remains true.`,
-    playerMentionPolicy: relevance.level === 'primary' ? 'important-secondary' : relevance.level === 'high' ? 'brief-secondary' : 'omit-unless-story-event',
-    subjectPriority: 'season-first',
-  });
+  if (reach.regionalEligible) {
+    plans.push({
+      outletId: 'college-regional',
+      audience: 'regional',
+      storyType: isBye ? 'regional-development' : 'regional-game-context',
+      angle: preseasonWithoutGames
+        ? 'Take a broader regional view only because the verified football development cleared a regional-interest threshold. Assume the reader follows college football in the region but not every detail of this program.'
+        : `Explain why this development matters beyond the home beat. Place it in the larger regional season picture without inventing conference standings, rankings or future stakes. ${program.recordEstablished ? `The ${program.record} record can appear when it adds meaning.` : 'Do not mention a season record before a game has been played.'}`,
+      playerMentionPolicy: relevance.level === 'primary' ? 'important-secondary' : relevance.level === 'high' ? 'brief-secondary' : 'omit-unless-story-event',
+      subjectPriority: 'season-first',
+    });
+  }
+
+  if (reach.nationalEligible) {
+    const reason = (reach.nationalReasons || []).find((entry) => !/remained below national-attention threshold/i.test(entry)) || 'verified national-scale football significance';
+    plans.push({
+      outletId: 'national',
+      audience: reach.nationalLead ? 'national-lead' : 'national',
+      storyType: reach.nationalLead ? 'national-headline' : 'national-analysis',
+      angle: `This assignment exists because the week earned national attention through ${reason}. Write for a neutral national college-football reader who does not follow ${school} every week. Open with the nationally meaningful development, quickly establish the necessary program context, and explain why the wider sport should care. Never manufacture national buzz, rankings, reaction or stakes that are not supplied.`,
+      playerMentionPolicy: relevance.level === 'primary' ? 'focal-only-if-part-of-national-story' : 'omit-unless-national-story-event',
+      subjectPriority: relevance.level === 'primary' ? 'shared-national-story' : 'program-first',
+    });
+  }
 
   const hasTeamAnalysis = Boolean(program.currentGame && (
     program.currentGame.teamTotalYards !== undefined
@@ -171,6 +189,7 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
   if (relevance.roleChanged) {
     plans.push({
       outletId: 'filmroom',
+      audience: 'analysis',
       storyType: 'qb-room-analysis',
       angle: `Use the verified depth-chart ${relevance.promoted ? 'promotion' : relevance.demoted ? 'demotion' : 'change'} (${relevance.previousRole} to ${relevance.currentRole}) as the player event. Explain what changed about role and opportunity without inventing practice performance, coach quotes, or promised snaps.${program.currentGame ? ' Keep the team result visible as context.' : ''}`,
       playerMentionPolicy: 'focal',
@@ -179,32 +198,13 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
   } else if (!isBye && (hasTeamAnalysis || relevance.didPlay)) {
     plans.push({
       outletId: 'filmroom',
+      audience: 'analysis',
       storyType: relevance.level === 'primary' || relevance.level === 'high' ? 'performance-analysis' : 'game-analysis',
       angle: relevance.level === 'primary' || relevance.level === 'high'
         ? 'Analyze the most meaningful verified performance evidence from the game. The quarterback can be central only because actual playing time and production justify it.'
         : 'Analyze the game through verified team-level statistical contrasts and the result. Do not manufacture tactical film observations or a backup-player angle.',
       playerMentionPolicy: relevance.level === 'primary' ? 'focal' : relevance.level === 'high' ? 'major-secondary' : 'omit-unless-evidence',
       subjectPriority: relevance.level === 'primary' ? 'player-and-game' : 'game-first',
-    });
-  }
-
-  const postseason = weekPhase.includes('postseason');
-  const streakBecameStory = program.streakCount >= 3 && program.previousStreakCount < 3;
-  const nationalWorthy = coverageDecision.tier === COVERAGE_TIERS.CAREER
-    || relevance.level === 'primary'
-    || postseason
-    || streakBecameStory;
-  if (nationalWorthy) {
-    plans.push({
-      outletId: 'national',
-      storyType: relevance.level === 'primary' ? 'player-program-arc' : 'program-trajectory',
-      angle: relevance.level === 'primary'
-        ? 'Frame the game and quarterback performance inside Cincinnati’s larger season. Keep the team result and stakes visible.'
-        : postseason
-          ? 'Take a national college-football view of Cincinnati’s postseason development without inventing rankings, bracket details, or outside reaction.'
-          : 'Use the newly meaningful sustained team streak or career-level event as the reason this Cincinnati development deserves wider attention.',
-      playerMentionPolicy: relevance.level === 'primary' ? 'focal-if-nationally-relevant' : 'omit-unless-story-event',
-      subjectPriority: relevance.level === 'primary' ? 'shared' : 'program-first',
     });
   }
 
@@ -249,6 +249,7 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
   const facts = [
     derivedFact({ publicationId, key: 'program.gamesPlayed', label: 'Games played', value: record.games, editorialUse: 'background-only' }),
     derivedFact({ publicationId, key: 'program.coverageTier', label: 'Editorial coverage tier', value: coverageDecision.tier, editorialUse: 'background-only' }),
+    derivedFact({ publicationId, key: 'program.audienceReach', label: 'Editorial audience reach', value: coverageDecision.audienceReach?.level || 'local', editorialUse: 'background-only' }),
   ];
   if (record.games > 0) {
     facts.push(derivedFact({ publicationId, key: 'program.seasonRecord', label: 'Team record', value: program.record, editorialUse: 'context' }));
@@ -268,6 +269,10 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
     if (teamScore !== null && opponentScore !== null) {
       facts.push(derivedFact({ publicationId, key: 'program.scoringMargin', label: 'Current game scoring margin', value: teamScore - opponentScore, editorialUse: 'context' }));
     }
+    const teamRank = finite(currentGame.teamRank);
+    const opponentRank = finite(currentGame.opponentRank);
+    if (teamRank !== null) facts.push(derivedFact({ publicationId, key: 'game.teamRank', label: 'Team ranking', value: teamRank, editorialUse: 'context' }));
+    if (opponentRank !== null) facts.push(derivedFact({ publicationId, key: 'game.opponentRank', label: 'Opponent ranking', value: opponentRank, editorialUse: 'primary' }));
     [
       ['teamTotalYards', 'opponentTotalYards', 'program.totalYards', 'Total yards'],
       ['teamFirstDowns', 'opponentFirstDowns', 'program.firstDowns', 'First downs'],

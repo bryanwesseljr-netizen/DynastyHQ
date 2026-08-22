@@ -11,6 +11,8 @@ const FACT_KEYS = [
   'game.result',
   'game.homeScore',
   'game.awayScore',
+  'game.teamRank',
+  'game.opponentRank',
   'game.passYds',
   'game.passTD',
   'game.rushYds',
@@ -213,6 +215,7 @@ Rules:
 - If text is cropped, obscured, or ambiguous, omit the fact instead of guessing.
 - Use the supplied tracked player and school only to identify which row belongs to the user's career. Do not treat supplied context as screenshot evidence.
 - game.homeScore means the tracked player's TEAM score and game.awayScore means the OPPONENT score, regardless of the real venue.
+- If an official team ranking is plainly visible next to the tracked team or opponent on the supplied game screen (for example #8, No. 8, or an equivalent clearly labeled rank), emit game.teamRank or game.opponentRank with the numeric rank only. A ranking is evidence only when visibly attached to the correct team in the screenshot. Never infer a ranking from a logo, matchup reputation, record, supplied career context, or outside knowledge, and never convert recruiting.teamRank into a game ranking.
 - On a postgame team-comparison or team-stats screen, use game.team* for the tracked player's team column and game.opponent* for the opposing team column, regardless of home/away venue. Extract only plainly labeled values for Total Yards/Total Offense, First Downs, Turnovers, Rushing Yards, and Passing Yards. Use teamTotalYards/opponentTotalYards, teamFirstDowns/opponentFirstDowns, teamTurnovers/opponentTurnovers, teamRushYds/opponentRushYds, and teamPassYds/opponentPassYds. Do not calculate these totals from individual players and do not guess which column belongs to which team if the headers are unclear. A single screenshot may contain both team context and the tracked player's stat line when both are clearly visible.
 - High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. A standard moment has two objectives: use objective1/objective2 and objective1Result/objective2Result, with Passed or Failed values. Its overall moment result is success when both pass, partial when one passes, and failed when neither passes. A scholarship challenge has one major objective: set type=scholarship, preserve the plainly visible school in scholarshipSchool, use objective1/objective1Result, omit objective2 fields, and use only success or failed for the overall result. Use type=standard for a plainly identified standard moment. Never treat a passed scholarship challenge as a verified offer; recruiting.offer=true requires a separate official offer screen. Preserve concise visible objective descriptions. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay. A user-selected guided upload slot is trusted routing metadata for the destination Moment number, but it is never evidence that an objective passed, failed, or existed.
 - For game.result, use W or L only when a final score and the tracked team are clear.

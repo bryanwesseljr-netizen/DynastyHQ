@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { buildProgramCoverageContext } from './programCoverage.js';
 import { buildNewsroomGenerationPayload } from './newsroomGeneration.js';
 import { resolveNewsroomPresentation } from './newsroomPresentation.js';
+import { normalizeScreenshotAnalysis } from './screenshotAnalysis.js';
 
 const issueFor = (week, extra = {}) => ({
   id: `season-1-week-${week}`,
@@ -163,6 +164,43 @@ test('nationally significant roster movement can earn national coverage from exp
   const context = buildProgramCoverageContext(state, issue);
   assert.equal(context.coverageDecision.audienceReach.nationalEligible, true);
   assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
+});
+
+test('visible game rankings survive screenshot normalization into game data and the fact ledger', () => {
+  const normalized = normalizeScreenshotAnalysis({
+    analysis: {
+      screenTypes: ['box_score'],
+      screenTitle: 'Game Summary',
+      summary: 'A final game screen with a visible ranked opponent.',
+      facts: [
+        {
+          key: 'game.opponentRank',
+          label: 'Opponent ranking',
+          value: '8',
+          confidence: 0.98,
+          evidence: 'No. 8 is visibly attached to the opponent name.',
+          schoolName: '',
+          subjectName: '',
+        },
+        {
+          key: 'game.teamRank',
+          label: 'Team ranking',
+          value: '21',
+          confidence: 0.97,
+          evidence: 'No. 21 is visibly attached to Cincinnati.',
+          schoolName: '',
+          subjectName: '',
+        },
+      ],
+    },
+    sourceId: 'rank-test',
+    fileName: 'ranked-game.png',
+  });
+
+  assert.equal(normalized.gamePatch.opponentRank, 8);
+  assert.equal(normalized.gamePatch.teamRank, 21);
+  assert.equal(normalized.facts.find((entry) => entry.key === 'game.opponentRank')?.value, 8);
+  assert.equal(normalized.facts.find((entry) => entry.key === 'game.teamRank')?.value, 21);
 });
 
 test('publication presentation changes by audience instead of recoloring one generic article', () => {

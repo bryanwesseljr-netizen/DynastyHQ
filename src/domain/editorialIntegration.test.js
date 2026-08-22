@@ -183,7 +183,7 @@ test('first college appearance elevates the tracked player without requiring a s
   assert.equal(context.coverageDecision.storylineKeys.includes('player:first-appearance'), true);
 });
 
-test('a newly established three-game streak gets wider program coverage once, not as routine bookkeeping', () => {
+test('a newly established three-game streak gets wider program coverage once without manufacturing national attention', () => {
   const games = [1, 2, 3].map((week) => game(week, 'W', false));
   const issue = makeIssue(3);
   const state = baseState({
@@ -198,7 +198,9 @@ test('a newly established three-game streak gets wider program coverage once, no
   assert.equal(context.program.previousStreakCount, 2);
   assert.equal(context.coverageDecision.tier, 'major');
   assert.equal(context.coverageDecision.storylineKeys.includes('program:winning-streak'), true);
-  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
+  assert.equal(context.coverageDecision.audienceReach.regionalEligible, true);
+  assert.equal(context.coverageDecision.audienceReach.nationalEligible, false);
+  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), false);
 });
 
 test('transfer and portal decisions are automatically major coverage events', () => {

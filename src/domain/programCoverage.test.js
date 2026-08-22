@@ -23,6 +23,15 @@ const update = (week, { rank = 'QB3', game = null } = {}) => ({
   rtgSnapshot: { rank },
 });
 
+const verifiedFact = (week, key, label, value) => ({
+  id: `fact-${week}-${key}`,
+  publicationId: `season-1-week-${week}`,
+  verified: true,
+  key,
+  label,
+  value,
+});
+
 const baseState = (weeklyUpdates = [], gameLogs = [], factLedger = []) => ({
   player: { name: 'Bryan Wessel', school: 'Cincinnati', college: 'Cincinnati', isCommitted: true },
   rtg: { rank: weeklyUpdates.at(-1)?.rtgSnapshot?.rank || 'QB3' },
@@ -31,7 +40,7 @@ const baseState = (weeklyUpdates = [], gameLogs = [], factLedger = []) => ({
   factLedger,
 });
 
-test('QB3 with no appearance remains program-first while a completed game earns standard coverage', () => {
+test('QB3 with no appearance remains program-first while a completed game earns standard regional coverage', () => {
   const game = {
     opponent: 'Opponent', result: 'W', homeScore: 27, awayScore: 20,
     passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false,
@@ -40,7 +49,12 @@ test('QB3 with no appearance remains program-first while a completed game earns 
   const state = baseState([
     update(0, { rank: 'QB3' }),
     update(1, { rank: 'QB3', game }),
-  ], [game]);
+  ], [game], [
+    verifiedFact(1, 'game.opponent', 'Opponent', 'Opponent'),
+    verifiedFact(1, 'game.result', 'Result', 'W'),
+    verifiedFact(1, 'game.homeScore', 'Cincinnati score', 27),
+    verifiedFact(1, 'game.awayScore', 'Opponent score', 20),
+  ]);
   const context = buildProgramCoverageContext(state, issue(1));
 
   assert.equal(context.relevance.level, 'low');
@@ -50,6 +64,8 @@ test('QB3 with no appearance remains program-first while a completed game earns 
   assert.equal(context.coverageDecision.podcastEligible, true);
   assert.equal(context.coverageDecision.articleCount, 2);
   assert.equal(context.coverageDecision.playerMentionPolicy, 'omit');
+  assert.equal(context.coverageDecision.audienceReach.regionalEligible, true);
+  assert.equal(context.coverageDecision.audienceReach.nationalEligible, false);
   assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
 });
 
@@ -73,6 +89,7 @@ test('QB3 to QB2 promotion creates a major quarterback-room story even without p
   assert.equal(qbStory?.storyType, 'qb-room-analysis');
   assert.equal(qbStory?.playerMentionPolicy, 'focal');
   assert.equal(context.coverageDecision.storylineKeys.includes('player-role:QB2'), true);
+  assert.equal(context.coverageDecision.audienceReach.nationalEligible, false);
 });
 
 test('QB1 with a meaningful appearance earns major player-and-program coverage', () => {
@@ -127,13 +144,17 @@ test('first appearance is a real storyline and is remembered as a thread', () =>
   assert.equal(context.coverageDecision.storylineKeys.includes('player:first-appearance'), true);
 });
 
-test('three-game team streak becomes a major program storyline when threshold is first crossed', () => {
+test('three-game team streak becomes a major regional program storyline when threshold is first crossed', () => {
   const games = [1, 2, 3].map((week) => ({
     opponent: `Opponent ${week}`, result: 'W', homeScore: 24 + week, awayScore: 17,
     passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false,
     season: 1, week,
   }));
-  const state = baseState(games.map((game) => update(game.week, { rank: 'QB3', game })), games);
+  const state = baseState(
+    games.map((game) => update(game.week, { rank: 'QB3', game })),
+    games,
+    [verifiedFact(3, 'game.result', 'Result', 'W')],
+  );
   const context = buildProgramCoverageContext(state, issue(3));
 
   assert.equal(context.relevance.level, 'low');
@@ -142,5 +163,7 @@ test('three-game team streak becomes a major program storyline when threshold is
   assert.equal(context.facts.find((fact) => fact.key === 'program.streak')?.editorialUse, 'primary');
   assert.equal(context.coverageDecision.tier, 'major');
   assert.equal(context.coverageDecision.storylineKeys.includes('program:winning-streak'), true);
-  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), true);
+  assert.equal(context.coverageDecision.audienceReach.regionalEligible, true);
+  assert.equal(context.coverageDecision.audienceReach.nationalEligible, false);
+  assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), false);
 });

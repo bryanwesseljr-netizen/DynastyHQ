@@ -7,15 +7,17 @@ import {
 
 test('assigns distinct editorial layouts and color identities by article beat', () => {
   const local = resolveNewsroomPresentation({ outletId: 'local', theme: 'local' });
+  const regional = resolveNewsroomPresentation({ audience: 'regional' });
   const recruiting = resolveNewsroomPresentation({ outletId: 'recruiting', theme: 'on3' });
   const filmroom = resolveNewsroomPresentation({ outletId: 'filmroom', theme: 'filmroom' });
   const national = resolveNewsroomPresentation({ outletId: 'national', theme: 'network' });
 
-  assert.equal(local.layout, 'community');
+  assert.equal(local.layout, 'local-beat');
+  assert.equal(regional.layout, 'regional-report');
   assert.equal(recruiting.layout, 'insider');
   assert.equal(filmroom.layout, 'analysis');
-  assert.equal(national.layout, 'network');
-  assert.equal(new Set([local.accent, recruiting.accent, filmroom.accent, national.accent]).size, 4);
+  assert.equal(national.layout, 'national-desk');
+  assert.equal(new Set([local.accent, regional.accent, recruiting.accent, filmroom.accent, national.accent]).size, 5);
   assert.equal(presentationVariables(recruiting)['--news-accent'], recruiting.accent);
 });
 
@@ -54,4 +56,3 @@ test('preserves generated headings, pull quote, and grounded sidebar modules', (
   assert.equal(extras.pullQuote, story.pullQuote);
   assert.deepEqual(extras.sidebars, story.sidebars);
 });
-

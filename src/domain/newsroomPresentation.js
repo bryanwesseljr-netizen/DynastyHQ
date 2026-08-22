@@ -9,39 +9,39 @@ const firstSentence = (value, maxLength = 210) => {
 
 const PRESENTATIONS = Object.freeze({
   broadsheet: {
-    layout: 'classic', category: 'School & Community', strapline: 'The official record of the season',
+    audience: 'school', layout: 'classic', category: 'School & Community', strapline: 'The official record of the season',
     accent: '#b7791f', accentStrong: '#8a570c', masthead: '#13202d', paper: '#f8f5ed', ink: '#17202a', muted: '#66717c', rule: '#d8d1c3',
     sectionHeadings: ['The week in focus', 'What it means from here'], sidebarTitle: 'Season notebook',
   },
   local: {
-    layout: 'community', category: 'Metro Detroit Sports', strapline: 'Local football. Local stakes.',
-    accent: '#c8202f', accentStrong: '#9d1622', masthead: '#102235', paper: '#fbfbfa', ink: '#151b23', muted: '#66707c', rule: '#d6dbe0',
-    sectionHeadings: ['The story behind the week', 'The road ahead'], sidebarTitle: 'Local storylines',
+    audience: 'local', layout: 'local-beat', category: 'Local Team Coverage', strapline: 'News. Analysis. Program focus.',
+    accent: '#c8102e', accentStrong: '#a40821', masthead: '#08090b', paper: '#ffffff', ink: '#111318', muted: '#62676f', rule: '#d5d7db',
+    sectionHeadings: ['What changed', 'Why it matters'], sidebarTitle: 'At a glance',
   },
   on3: {
-    layout: 'insider', category: 'Recruiting & Evaluation', strapline: 'Intel, movement and the decision ahead',
+    audience: 'recruiting', layout: 'insider', category: 'Recruiting & Evaluation', strapline: 'Intel, movement and the decision ahead',
     accent: '#f4b940', accentStrong: '#d89212', masthead: '#0b0c0f', paper: '#f5f3ee', ink: '#16171a', muted: '#66676d', rule: '#d9d4c9',
     sectionHeadings: ['Inside the recruitment', 'What evaluators watch next'], sidebarTitle: 'Recruiting intel',
   },
   filmroom: {
-    layout: 'analysis', category: 'Film & Performance', strapline: 'The numbers behind the next step',
+    audience: 'analysis', layout: 'analysis', category: 'Film & Performance', strapline: 'The evidence behind the football story',
     accent: '#2dd4bf', accentStrong: '#0f9f8f', masthead: '#071827', paper: '#eef4f4', ink: '#10202a', muted: '#607079', rule: '#cbd8d8',
-    sectionHeadings: ['What the performance shows', 'The next evaluation'], sidebarTitle: 'Analyst notebook',
+    sectionHeadings: ['What the performance shows', 'The next football question'], sidebarTitle: 'Analyst notebook',
   },
   national: {
-    layout: 'network', category: 'National College Football', strapline: 'The bigger picture of the journey',
-    accent: '#ef3340', accentStrong: '#bd1825', masthead: '#111722', paper: '#ffffff', ink: '#151a21', muted: '#68717e', rule: '#dfe3e8',
-    sectionHeadings: ['Why this week matters', 'Where the story goes next'], sidebarTitle: 'National perspective',
+    audience: 'national', layout: 'national-desk', category: 'National College Football', strapline: 'The stories that move the sport',
+    accent: '#e21b2d', accentStrong: '#b51222', masthead: '#0b1320', paper: '#ffffff', ink: '#10151d', muted: '#69717d', rule: '#dce0e5',
+    sectionHeadings: ['Why this matters nationally', 'What comes next'], sidebarTitle: 'National context',
   },
   network: {
-    layout: 'network', category: 'National College Football', strapline: 'The bigger picture of the journey',
-    accent: '#ef3340', accentStrong: '#bd1825', masthead: '#0b0d11', paper: '#ffffff', ink: '#14171c', muted: '#686f79', rule: '#dfe2e6',
-    sectionHeadings: ['Why this week matters', 'The national view'], sidebarTitle: 'National perspective',
+    audience: 'national', layout: 'national-desk', category: 'National College Football', strapline: 'The stories that move the sport',
+    accent: '#e21b2d', accentStrong: '#b51222', masthead: '#0b1320', paper: '#ffffff', ink: '#10151d', muted: '#69717d', rule: '#dce0e5',
+    sectionHeadings: ['Why this matters nationally', 'What comes next'], sidebarTitle: 'National context',
   },
   regional: {
-    layout: 'regional', category: 'Regional College Football', strapline: 'Programs, players and the race around the region',
-    accent: '#9f2432', accentStrong: '#791824', masthead: '#30141b', paper: '#faf6ef', ink: '#21191a', muted: '#746568', rule: '#ddcfd0',
-    sectionHeadings: ['Across the region', 'The stakes ahead'], sidebarTitle: 'Regional watch',
+    audience: 'regional', layout: 'regional-report', category: 'Regional College Football', strapline: 'The wider view across the region',
+    accent: '#8f2030', accentStrong: '#701725', masthead: '#22171b', paper: '#fbf8f2', ink: '#20191b', muted: '#71666a', rule: '#ddd3d3',
+    sectionHeadings: ['The regional view', 'Where the story goes next'], sidebarTitle: 'Regional watch',
   },
 });
 
@@ -82,11 +82,22 @@ const formatFor = (story = {}, presentation) => {
   if (presentation.layout === 'insider') return 'recruiting-intel';
   if (presentation.layout === 'analysis') return 'analysis';
   if (importanceFor(story) === 'career-defining') return 'milestone';
-  if (presentation.layout === 'network') return 'feature';
+  if (presentation.audience === 'national') return 'feature';
   return 'news';
 };
 
+const presentationForAudience = (story = {}) => {
+  const audience = clean(story.audience, 40).toLowerCase();
+  if (audience === 'local') return PRESENTATIONS.local;
+  if (audience === 'regional') return PRESENTATIONS.regional;
+  if (audience === 'national' || audience === 'national-lead') return { ...PRESENTATIONS.national, audience };
+  if (audience === 'analysis') return PRESENTATIONS.filmroom;
+  return null;
+};
+
 export const resolveNewsroomPresentation = (story = {}) => {
+  const audiencePresentation = presentationForAudience(story);
+  if (audiencePresentation) return audiencePresentation;
   const key = clean(story.theme || story.outletId, 60).toLowerCase();
   return PRESENTATIONS[key] || PRESENTATIONS.broadsheet;
 };
@@ -112,10 +123,12 @@ const normalizeSidebars = (sidebars = []) => (Array.isArray(sidebars) ? sidebars
   .filter((section) => section.title && section.items.length)
   .slice(0, 3);
 
-const moduleEyebrow = (layout, index) => {
-  if (layout === 'insider') return index === 0 ? 'Recruiting Intel' : 'Decision Watch';
-  if (layout === 'analysis') return index === 0 ? 'Film Note' : 'Development Point';
-  if (layout === 'network') return index === 0 ? 'Why It Matters' : 'National Context';
+const moduleEyebrow = (presentation, index) => {
+  if (presentation.layout === 'insider') return index === 0 ? 'Recruiting Intel' : 'Decision Watch';
+  if (presentation.layout === 'analysis') return index === 0 ? 'Film Note' : 'Development Point';
+  if (presentation.audience === 'national') return index === 0 ? 'Why It Matters' : 'National Context';
+  if (presentation.audience === 'regional') return index === 0 ? 'Regional View' : 'What Comes Next';
+  if (presentation.audience === 'local') return index === 0 ? 'At A Glance' : 'Beat Notebook';
   return 'Story Notebook';
 };
 
@@ -138,7 +151,7 @@ export const buildEditorialExtras = ({ story = {}, issue = {} }) => {
     ? generatedSidebars
     : [
       {
-        title: 'Edition snapshot',
+        title: presentation.sidebarTitle,
         items: [
           story.desk || presentation.category,
           `Season ${issue.season || 1} · Week ${issue.week || 0}`,
@@ -146,16 +159,16 @@ export const buildEditorialExtras = ({ story = {}, issue = {} }) => {
         ],
       },
       {
-        title: presentation.sidebarTitle,
+        title: presentation.audience === 'local' ? 'What it means' : presentation.sidebarTitle,
         items: fallbackStorylines.length ? fallbackStorylines : [clean(story.dek, 190)].filter(Boolean),
       },
     ];
 
   const importance = importanceFor(story, issue);
   const storyFormat = formatFor(story, presentation);
-  const modulePlacement = ['insider', 'analysis', 'network'].includes(presentation.layout) ? 'deck' : 'sidebar';
+  const modulePlacement = ['insider', 'analysis', 'national-desk'].includes(presentation.layout) ? 'deck' : 'sidebar';
   const modules = modulePlacement === 'deck'
-    ? sidebars.slice(0, 3).map((section, index) => ({ ...section, eyebrow: moduleEyebrow(presentation.layout, index) }))
+    ? sidebars.slice(0, 3).map((section, index) => ({ ...section, eyebrow: moduleEyebrow(presentation, index) }))
     : [];
   const sidebarsForAside = modulePlacement === 'sidebar' ? sidebars : [];
 
@@ -170,5 +183,15 @@ export const buildEditorialExtras = ({ story = {}, issue = {} }) => {
     importanceLabel: IMPORTANCE_LABELS[importance],
     storyFormat,
     formatLabel: FORMAT_LABELS[storyFormat],
+    audience: presentation.audience,
+    audienceLabel: presentation.audience === 'national-lead'
+      ? 'National Lead'
+      : presentation.audience === 'national'
+        ? 'National Desk'
+        : presentation.audience === 'regional'
+          ? 'Regional Desk'
+          : presentation.audience === 'local'
+            ? 'Local Beat'
+            : presentation.category,
   };
 };

@@ -20,6 +20,13 @@ export const COVERAGE_TIERS = Object.freeze({
   CAREER: 'career-defining',
 });
 
+export const AUDIENCE_REACH = Object.freeze({
+  LOCAL: 'local',
+  REGIONAL: 'regional',
+  NATIONAL: 'national',
+  NATIONAL_LEAD: 'national-lead',
+});
+
 const TIER_CONFIG = Object.freeze({
   'no-coverage': { articleCount: 0, podcastEligible: false, newsroomWordRange: null, podcastWordRange: null },
   brief: { articleCount: 1, podcastEligible: false, newsroomWordRange: { min: 180, max: 320 }, podcastWordRange: null },
@@ -30,6 +37,9 @@ const TIER_CONFIG = Object.freeze({
 
 const EVENT_PREFIX_RE = /^(milestone\.|award\.|transfer\.|portal\.|coach\.(?:job|hire|fired|promotion|championship))/i;
 const STRONG_EVENT_RE = /^(transfer\.|portal\.|coach\.(?:job|hire|fired|promotion|championship))/i;
+const NATIONAL_EVENT_KEY_RE = /^(award\.(?:heisman|national|allAmerican)|milestone\.(?:national|record|championship)|coach\.(?:hire|fired|job|championship))/i;
+const NATIONAL_SIGNAL_RE = /(?:\bcollege football playoff\b|\bcfp\b|national championship|national semifinal|conference championship|new year'?s six|\bny6\b|heisman|all[- ]american|national player of the year|national award|top[- ]?25|top[- ]?10|top[- ]?5|ranked opponent|ranked team|\bno\.?\s*#?\d{1,2}\b|#\d{1,2}\b|record[- ]setting|school record|conference record|national record)/i;
+const NATIONAL_ROSTER_RE = /(?:starting quarterback|starting qb|all[- ]american|heisman|national award|five[- ]star|5[- ]star|top[- ]?100|top[- ]?50|first[- ]team all|award winner|nationally ranked|national attention)/i;
 
 const currentEditorialFacts = (state, publicationId) => (state.factLedger || [])
   .filter((fact) => fact?.verified && publicationMatches(fact, publicationId));
@@ -51,6 +61,163 @@ const recentCoverageKeys = (state, publicationId, limit = 3) => {
 
 const currentWeeklyNote = (facts) => facts.find((fact) => fact.key === 'weekly.note' && clean(fact.value, 1000));
 const eventFactsFor = (facts) => facts.filter((fact) => EVENT_PREFIX_RE.test(clean(fact.key, 180)));
+
+const factText = (fact = {}) => clean(`${fact.key || ''} ${fact.label || ''} ${fact.value ?? ''}`, 1800);
+const relevantNationalFacts = (facts = []) => facts.filter((fact) => (
+  String(fact?.key || '').startsWith('game.')
+  || String(fact?.key || '').startsWith('milestone.')
+  || String(fact?.key || '').startsWith('award.')
+  || String(fact?.key || '').startsWith('transfer.')
+  || String(fact?.key || '').startsWith('portal.')
+  || String(fact?.key || '').startsWith('coach.')
+  || fact?.key === 'weekly.note'
+));
+
+const numberFact = (facts, key, fallback = null) => {
+  const exact = facts.find((fact) => clean(fact?.key, 180) === key);
+  const raw = exact?.value ?? fallback;
+  if (raw === '' || raw === null || raw === undefined) return null;
+  const parsed = Number(String(raw).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const priorNumberFact = (state, publicationId, key) => {
+  const candidate = [...(state.factLedger || [])]
+    .filter((fact) => fact?.verified && fact.key === key && !publicationMatches(fact, publicationId))
+    .reverse()
+    .find((fact) => fact.value !== '' && fact.value !== null && fact.value !== undefined);
+  if (!candidate) return null;
+  const parsed = Number(String(candidate.value).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const audienceReachFor = ({ state, issue, publicationId, program, relevance, facts, eventFacts, strongEvent }) => {
+  if (!facts.length) {
+    return {
+      level: AUDIENCE_REACH.LOCAL,
+      regionalEligible: false,
+      nationalEligible: false,
+      nationalLead: false,
+      regionalScore: 0,
+      nationalScore: 0,
+      reasons: [],
+      nationalReasons: [],
+    };
+  }
+
+  const result = clean(program?.currentGame?.result, 10);
+  const resultKnown = ['W', 'L'].includes(result);
+  const isWin = result === 'W';
+  const teamScore = Number(program?.currentGame?.homeScore);
+  const opponentScore = Number(program?.currentGame?.awayScore);
+  const scoringMargin = Number.isFinite(teamScore) && Number.isFinite(opponentScore) ? teamScore - opponentScore : null;
+  const teamRank = numberFact(facts, 'game.teamRank', program?.currentGame?.teamRank);
+  const opponentRank = numberFact(facts, 'game.opponentRank', program?.currentGame?.opponentRank);
+  const previousTeamRank = priorNumberFact(state, publicationId, 'game.teamRank');
+  const phase = clean(issue?.weekPhase, 120).toLowerCase();
+  const nationalFacts = relevantNationalFacts(facts);
+  const explicitNationalFacts = nationalFacts.filter((fact) => NATIONAL_SIGNAL_RE.test(factText(fact)));
+  const nationallySignificantRosterEvent = eventFacts.some((fact) => (
+    /^(transfer\.|portal\.)/i.test(clean(fact.key, 180)) && NATIONAL_ROSTER_RE.test(factText(fact))
+  ));
+  const nationalAwardOrProgramEvent = eventFacts.some((fact) => (
+    NATIONAL_EVENT_KEY_RE.test(clean(fact.key, 180)) || NATIONAL_SIGNAL_RE.test(factText(fact))
+  ));
+  const playoffOrTitleStage = /(?:college football playoff|\bcfp\b|national semifinal|national championship|conference championship)/i.test(phase)
+    || explicitNationalFacts.some((fact) => /(?:college football playoff|\bcfp\b|national semifinal|national championship|conference championship)/i.test(factText(fact)));
+  const majorCoachEvent = eventFacts.some((fact) => /^coach\.(?:hire|fired|job)/i.test(clean(fact.key, 180)));
+  const hugePlayerPerformance = Boolean(
+    relevance?.didPlay
+    && ((Number(relevance.totalYards) || 0) >= 500 || (Number(relevance.totalTouchdowns) || 0) >= 6)
+  );
+  const strongPlayerPerformance = Boolean(
+    relevance?.didPlay
+    && ((Number(relevance.totalYards) || 0) >= 400 || (Number(relevance.totalTouchdowns) || 0) >= 5)
+  );
+
+  let regionalScore = 0;
+  const regionalReasons = [];
+  if (resultKnown) { regionalScore += 2; regionalReasons.push('completed FBS game result'); }
+  if (relevance?.roleChanged && relevance?.starter) { regionalScore += 2; regionalReasons.push('starting-quarterback change'); }
+  else if (relevance?.roleChanged) { regionalScore += 1; regionalReasons.push('depth-chart movement'); }
+  if (eventFacts.length) { regionalScore += 2; regionalReasons.push('verified program/career event'); }
+  if (Number(program?.streakCount || 0) >= 4) { regionalScore += 1; regionalReasons.push('sustained program streak'); }
+  if (phase.includes('postseason')) { regionalScore += 2; regionalReasons.push('postseason setting'); }
+  if (teamRank && teamRank <= 25) { regionalScore += 1; regionalReasons.push('ranked team context'); }
+
+  let nationalScore = 0;
+  const nationalReasons = [];
+  if (isWin && opponentRank && opponentRank <= 25) {
+    nationalScore += opponentRank <= 10 ? 7 : 5;
+    nationalReasons.push(`win over No. ${opponentRank} opponent`);
+  }
+  if (isWin && opponentRank && opponentRank <= 25 && scoringMargin !== null && scoringMargin >= 14) {
+    nationalScore += 2;
+    nationalReasons.push('decisive ranked-opponent win');
+  }
+  if (playoffOrTitleStage) {
+    nationalScore += 6;
+    nationalReasons.push('playoff or championship-stage development');
+  }
+  if (majorCoachEvent) {
+    nationalScore += 5;
+    nationalReasons.push('major coaching news');
+  }
+  if (nationallySignificantRosterEvent) {
+    nationalScore += 5;
+    nationalReasons.push('nationally significant roster movement');
+  }
+  if (nationalAwardOrProgramEvent) {
+    nationalScore += 5;
+    nationalReasons.push('national award, record, or program milestone');
+  }
+  if (hugePlayerPerformance) {
+    nationalScore += 5;
+    nationalReasons.push('exceptional nationally notable individual performance');
+  } else if (strongPlayerPerformance && (opponentRank && opponentRank <= 25)) {
+    nationalScore += 2;
+    nationalReasons.push('major performance in ranked-opponent game');
+  }
+  if (teamRank && teamRank <= 15 && previousTeamRank && previousTeamRank > 15) {
+    nationalScore += 2;
+    nationalReasons.push('meaningful rise into the national rankings');
+  }
+  if (Number(program?.streakCount || 0) >= 8) {
+    nationalScore += 3;
+    nationalReasons.push('extended winning or losing streak with national-scale significance');
+  }
+  if (explicitNationalFacts.length && nationalScore < 5) {
+    nationalScore += 2;
+    nationalReasons.push('explicit verified national-context signal');
+  }
+  if (strongEvent && !nationallySignificantRosterEvent && !majorCoachEvent && !nationalAwardOrProgramEvent) {
+    nationalReasons.push('major career event remained below national-attention threshold');
+  }
+
+  const regionalEligible = regionalScore >= 2;
+  const nationalEligible = nationalScore >= 5;
+  const nationalLead = nationalScore >= 8;
+  const level = nationalLead
+    ? AUDIENCE_REACH.NATIONAL_LEAD
+    : nationalEligible
+      ? AUDIENCE_REACH.NATIONAL
+      : regionalEligible
+        ? AUDIENCE_REACH.REGIONAL
+        : AUDIENCE_REACH.LOCAL;
+
+  return {
+    level,
+    regionalEligible,
+    nationalEligible,
+    nationalLead,
+    regionalScore,
+    nationalScore,
+    reasons: regionalReasons,
+    nationalReasons,
+    teamRank,
+    opponentRank,
+  };
+};
 
 const storylineThreadsFor = ({ issue, program, relevance, eventFacts, recentKeys }) => {
   const threads = [];
@@ -150,6 +317,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
   const careerDefining = strongEvent && (postseason || relevance.level === 'primary' || eventFacts.length > 1);
   const tier = tierForScore({ score, careerDefining, hasAnyStory });
   const config = TIER_CONFIG[tier];
+  const audienceReach = audienceReachFor({ state, issue, publicationId, program, relevance, facts, eventFacts, strongEvent });
   const storylineThreads = storylineThreadsFor({ issue, program, relevance, eventFacts, recentKeys });
   const storylineKeys = storylineThreads.filter((thread) => thread.editorialUse !== 'background-only').map((thread) => thread.key);
   const playerMentionPolicy = relevance.level === 'primary'
@@ -170,6 +338,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
     newsroomWordRange: config.newsroomWordRange,
     podcastWordRange: config.podcastWordRange,
     playerMentionPolicy,
+    audienceReach,
     storylineKeys,
     storylineThreads,
     noCoverageReason: tier === COVERAGE_TIERS.NONE

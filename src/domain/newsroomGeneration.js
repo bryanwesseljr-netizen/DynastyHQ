@@ -11,10 +11,10 @@ const EDITORIAL_PROFILES = Object.freeze({
   bolt: { byline: 'Rachel Monroe · Thunderbirds Beat Writer', purpose: 'Write like a real school beat reporter. Lead with the actual football development or recruiting news, explain why it matters, and keep game-interface mechanics out of the copy unless they represent a genuine public storyline.' },
   local: { byline: 'Anthony Carter · Metro Detroit Prep Reporter', purpose: 'Tell the hometown story with a human sportswriting angle: development, opportunity, recruiting decisions, role changes, setbacks, and what comes next. Do not turn tracker values into the story.' },
   recruiting: { byline: 'Marcus Grant · Recruiting Insider', purpose: 'Write a modern recruiting story with an insider lens about offers, visits, preference movement, commitments, transfers, and decision pressure. Use recruiting mechanics only when they translate into a real recruiting development.' },
-  filmroom: { byline: 'Tyler Brooks · Football Analyst', purpose: 'Write football analysis from actual performance, team statistical contrasts, role, production, and meaningful development. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as football analysis.' },
-  national: { byline: 'Nicole Benton · National College Football Writer', purpose: 'Frame the week inside the larger football season and career arc. Focus on team results, stakes, momentum, role, opportunity, and consequential developments without inventing outside reaction.' },
-  'college-local': { byline: 'Rachel Monroe · Campus Beat Writer', purpose: 'Cover the college football program like a real local beat writer. The team and game are the default story; the tracked player becomes the focal point only when his role, playing time, performance, or a meaningful depth-chart event makes him newsworthy.' },
-  'college-regional': { byline: 'Anthony Carter · Regional College Football Writer', purpose: 'Interpret the week through a regional college-football lens: game result, season trajectory, opponent context, depth-chart movement, development, conference/postseason implications, and program momentum. Do not default to a player profile.' },
+  filmroom: { byline: 'Tyler Brooks · Football Analyst', purpose: 'Write football analysis from actual performance, team statistical contrasts, role, production, and meaningful development. Sound like a sharp analyst, not a stat dump. Never narrate ratings, progression currencies, meters, or tracker bookkeeping as football analysis.' },
+  national: { byline: 'Nicole Benton · National College Football Writer', purpose: 'Write for a neutral national college-football audience only because this assignment has already cleared the national-attention gate. Establish the nationally meaningful event immediately, supply only the program context a national reader needs, and explain why the wider sport should care without inventing buzz or outside reaction.' },
+  'college-local': { byline: 'Rachel Monroe · Campus Beat Writer', purpose: 'Write like an experienced local beat writer who covers this program every day. Use a strong football hook, concrete reporting-style detail from verified facts, short purposeful paragraphs, confident interpretation, and useful section breaks such as What Changed, Where It Fits, Why It Matters, or What Comes Next. The team and game are the default story; the tracked player becomes the focal point only when his role, playing time, performance, or a meaningful depth-chart event makes him newsworthy.' },
+  'college-regional': { byline: 'Anthony Carter · Regional College Football Writer', purpose: 'Write for readers who follow college football around the region but do not live inside this program every week. Explain the development efficiently, widen the lens to season/program significance, and distinguish what matters regionally from what is merely local. Do not default to a player profile and do not invent conference standings, rankings, or implications.' },
 });
 
 const profileFor = (article = {}) => EDITORIAL_PROFILES[article.outletId]
@@ -55,7 +55,7 @@ const editorialUseFor = (fact, { current = false, coverageStage = 'high-school' 
   if (coverageStage === 'college-player' && isHighSchoolLegacyFact(key)) return 'exclude';
   if (coverageStage === 'college-player' && !current && key.startsWith('recruiting.')) return 'exclude';
   if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'exclude';
-  if (key === 'program.coverageTier' || key === 'player.coverageRelevance') return 'background-only';
+  if (key === 'program.coverageTier' || key === 'program.audienceReach' || key === 'player.coverageRelevance') return 'background-only';
   if (key.startsWith('program.') || key.startsWith('player.')) return fact.editorialUse || 'context';
   if (key.startsWith('game.')) return 'primary';
   if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
@@ -126,7 +126,7 @@ const isPlayerPerformanceKey = (key) => [
 const programFact = (fact) => fact.key.startsWith('program.')
   || fact.key.startsWith('weekly.')
   || [
-    'game.opponent', 'game.result', 'game.homeScore', 'game.awayScore',
+    'game.opponent', 'game.result', 'game.homeScore', 'game.awayScore', 'game.teamRank', 'game.opponentRank',
     'game.teamTotalYards', 'game.opponentTotalYards', 'game.teamFirstDowns', 'game.opponentFirstDowns',
     'game.teamTurnovers', 'game.opponentTurnovers', 'game.teamRushYds', 'game.opponentRushYds',
     'game.teamPassYds', 'game.opponentPassYds', 'game.teamPossession', 'game.opponentPossession',
@@ -140,8 +140,10 @@ const focusFactsForPlan = ({ plan, facts, fallback }) => {
   if (['program-first', 'season-first', 'game-first'].includes(plan.subjectPriority)) {
     selected = [...programFacts];
     if (!/omit/.test(plan.playerMentionPolicy || '')) selected.push(...playerFacts);
-  } else if (plan.subjectPriority === 'player-event' || plan.subjectPriority === 'player-and-game' || plan.subjectPriority === 'game-and-player') {
+  } else if (['player-event', 'player-and-game', 'game-and-player'].includes(plan.subjectPriority)) {
     selected = [...playerFacts, ...programFacts];
+  } else if (plan.subjectPriority === 'shared-national-story') {
+    selected = [...programFacts, ...playerFacts];
   } else {
     selected = [...programFacts, ...playerFacts];
   }
@@ -155,12 +157,12 @@ const choosePlannedEntries = (issue, storyPlans = []) => {
   const used = new Set();
   const themeMatch = (plan) => {
     const desired = plan.outletId === 'national'
-      ? ['national']
+      ? ['national', 'network']
       : plan.outletId === 'filmroom'
         ? ['filmroom']
         : plan.outletId === 'college-local'
           ? ['local', 'broadsheet']
-          : ['regional', 'filmroom', 'local'];
+          : ['regional', 'local'];
     return entries.find((entry) => !used.has(entry) && desired.includes(clean(entry.theme, 60)));
   };
 
@@ -172,6 +174,16 @@ const choosePlannedEntries = (issue, storyPlans = []) => {
     used.add(entry);
     return [{ plan, entry, coverageOutletId: plan.outletId, order: index }];
   });
+};
+
+const targetWordRangeFor = (coverageDecision, plan = {}) => {
+  const base = coverageDecision?.newsroomWordRange || { min: 260, max: 460 };
+  const audience = clean(plan.audience, 40);
+  if (audience === 'national-lead') return { min: Math.max(520, base.min), max: Math.max(720, base.max) };
+  if (audience === 'national') return { min: Math.max(460, base.min), max: Math.max(650, base.max) };
+  if (audience === 'regional') return { min: Math.max(320, Math.min(base.min, 420)), max: Math.max(500, base.max) };
+  if (audience === 'local' && coverageDecision?.tier === 'standard') return { min: 360, max: 560 };
+  return base;
 };
 
 export const buildNewsroomGenerationPayload = (state, publicationId) => {
@@ -214,18 +226,21 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       focusFacts = requestedFocus.length ? requestedFocus : fallback;
     }
     return {
-      outletId: clean(entry.outletId || entry.id, 80),
+      outletId: clean(coverageOutletId || entry.outletId || entry.id, 80),
       outletName: clean(entry.outletName, 120),
       desk: clean(entry.desk, 100),
       theme: clean(entry.theme, 60),
+      audience: clean(plan?.audience, 40),
       byline: profile.byline,
       purpose: profile.purpose,
       storyType: clean(plan?.storyType, 80),
-      angle: clean(plan?.angle, 1000),
+      angle: clean(plan?.angle, 1400),
       subjectPriority: clean(plan?.subjectPriority, 80),
       playerMentionPolicy: clean(plan?.playerMentionPolicy, 80),
       coverageTier: coverageContext?.coverageDecision?.tier || '',
-      targetWordRange: coverageContext?.coverageDecision?.newsroomWordRange || null,
+      audienceReach: coverageContext?.coverageDecision?.audienceReach?.level || '',
+      nationalAttentionReasons: coverageContext?.coverageDecision?.audienceReach?.nationalReasons || [],
+      targetWordRange: coverageContext ? targetWordRangeFor(coverageContext.coverageDecision, plan) : null,
       activeStorylineKeys: coverageContext?.coverageDecision?.storylineKeys || [],
       focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
     };
@@ -252,10 +267,11 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       program: coverageContext.program,
       playerRelevance: coverageContext.relevance,
       coverageTier: coverageContext.coverageDecision.tier,
+      audienceReach: coverageContext.coverageDecision.audienceReach,
       targetWordRange: coverageContext.coverageDecision.newsroomWordRange,
       activeStorylineKeys: coverageContext.coverageDecision.storylineKeys,
       playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
-      editorialPrinciple: 'The team/game is the default story. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
+      editorialPrinciple: 'The team/game is the default story. Audience reach is earned separately from story importance. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
     } : null,
     player: {
       name: clean(state.player?.name, 120),
@@ -336,6 +352,8 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       generatedAt,
       articleModel: clean(model, 100),
       storyType: brief.storyType,
+      audience: brief.audience,
+      audienceReach: brief.audienceReach,
       subjectPriority: brief.subjectPriority,
       playerMentionPolicy: brief.playerMentionPolicy,
       coverageTier: brief.coverageTier,

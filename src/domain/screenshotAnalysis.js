@@ -91,6 +91,8 @@ const GAME_KEYS = new Set([
   'game.result',
   'game.homeScore',
   'game.awayScore',
+  'game.teamRank',
+  'game.opponentRank',
   'game.passYds',
   'game.passTD',
   'game.rushYds',
@@ -176,6 +178,8 @@ const RETENTION_KEYS = new Set([
 const NUMERIC_KEYS = new Set([
   'game.homeScore',
   'game.awayScore',
+  'game.teamRank',
+  'game.opponentRank',
   'game.passYds',
   'game.passTD',
   'game.rushYds',

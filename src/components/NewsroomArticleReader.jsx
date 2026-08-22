@@ -2,6 +2,7 @@ import { Clock3, Share2 } from 'lucide-react';
 import {
   buildEditorialExtras, presentationVariables, resolveNewsroomPresentation,
 } from '../domain/newsroomPresentation';
+import '../newsroom-v3.css';
 
 const formatPublishedDate = (value) => {
   if (!value) return '';
@@ -44,8 +45,6 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
   const shareDigitalEdition = async () => {
     if (typeof window === 'undefined') return;
 
-    // Owner mode: reuse DynastyHQ's existing public-share workflow so the link
-    // points at the read-only shared dynasty rather than a private owner session.
     const ownerShareButton = [...document.querySelectorAll('header.no-print button')]
       .find((button) => /get share link/i.test(button.textContent || ''));
     if (ownerShareButton) {
@@ -53,7 +52,6 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       return;
     }
 
-    // Read-only/public mode: share the already-public URL directly.
     const shareData = {
       title: `${story.headline} | ${story.outletName}`,
       text: story.dek || story.headline,
@@ -74,6 +72,7 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
     <article
       className="dhq-news-article"
       data-editorial-layout={presentation.layout}
+      data-audience={extras.audience}
       data-has-image={hasImage ? 'true' : 'false'}
       data-headline-size={headlineSize(story.headline)}
       data-story-importance={extras.importance}
@@ -81,9 +80,12 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       style={presentationVariables(presentation)}
     >
       <header className="dhq-news-masthead">
-        <div className="dhq-news-masthead__brand">{story.outletName}</div>
+        <div className="dhq-news-masthead__identity">
+          <div className="dhq-news-masthead__brand">{story.outletName}</div>
+          <div className="dhq-news-masthead__strapline">{presentation.strapline}</div>
+        </div>
         <div className="dhq-news-masthead__meta">
-          <span>{presentation.category}</span>
+          <span>{extras.audienceLabel}</span>
           <span aria-hidden="true">•</span>
           <span>{story.desk}</span>
         </div>

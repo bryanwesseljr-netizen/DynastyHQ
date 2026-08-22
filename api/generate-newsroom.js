@@ -6,6 +6,20 @@ export const config = { maxDuration: 60 };
 
 const text = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
 const COVERAGE_TIERS = new Set(['no-coverage', 'brief', 'standard', 'major', 'career-defining']);
+const AUDIENCE_LEVELS = new Set(['local', 'regional', 'national', 'national-lead']);
+
+const sanitizeAudienceReach = (raw = {}) => ({
+  level: AUDIENCE_LEVELS.has(raw.level) ? raw.level : 'local',
+  regionalEligible: Boolean(raw.regionalEligible),
+  nationalEligible: Boolean(raw.nationalEligible),
+  nationalLead: Boolean(raw.nationalLead),
+  regionalScore: Math.max(0, Math.min(20, Number(raw.regionalScore) || 0)),
+  nationalScore: Math.max(0, Math.min(20, Number(raw.nationalScore) || 0)),
+  teamRank: Number.isFinite(Number(raw.teamRank)) ? Number(raw.teamRank) : null,
+  opponentRank: Number.isFinite(Number(raw.opponentRank)) ? Number(raw.opponentRank) : null,
+  reasons: Array.isArray(raw.reasons) ? raw.reasons.slice(0, 8).map((entry) => text(entry, 180)).filter(Boolean) : [],
+  nationalReasons: Array.isArray(raw.nationalReasons) ? raw.nationalReasons.slice(0, 8).map((entry) => text(entry, 220)).filter(Boolean) : [],
+});
 
 const sanitizeCoverageDecision = (body = {}) => {
   const raw = body.coverageDecision || {};
@@ -20,6 +34,7 @@ const sanitizeCoverageDecision = (body = {}) => {
     playerMentionPolicy: text(raw.playerMentionPolicy, 80),
     storylineKeys: Array.isArray(raw.storylineKeys) ? raw.storylineKeys.slice(0, 12).map((key) => text(key, 160)).filter(Boolean) : [],
     newsroomWordRange: { min, max },
+    audienceReach: sanitizeAudienceReach(raw.audienceReach),
   };
 };
 
@@ -52,18 +67,24 @@ const validatePayload = (body = {}) => {
     const requestedRange = brief.targetWordRange || coverageDecision.newsroomWordRange || {};
     const min = Math.max(120, Math.min(700, Number(requestedRange.min) || 300));
     const max = Math.max(min, Math.min(800, Number(requestedRange.max) || 500));
+    const audience = ['local', 'regional', 'national', 'national-lead', 'analysis'].includes(brief.audience) ? brief.audience : '';
     return {
       outletId: text(brief.outletId, 80),
       outletName: text(brief.outletName, 120),
       desk: text(brief.desk, 100),
       theme: text(brief.theme, 60),
+      audience,
       byline: text(brief.byline, 160),
-      purpose: text(brief.purpose, 1200),
+      purpose: text(brief.purpose, 1400),
       storyType: text(brief.storyType, 80),
-      angle: text(brief.angle, 1400),
+      angle: text(brief.angle, 1600),
       subjectPriority: text(brief.subjectPriority, 80),
       playerMentionPolicy: text(brief.playerMentionPolicy, 80),
       coverageTier: text(brief.coverageTier || coverageDecision.tier, 40),
+      audienceReach: text(brief.audienceReach || coverageDecision.audienceReach.level, 40),
+      nationalAttentionReasons: Array.isArray(brief.nationalAttentionReasons)
+        ? brief.nationalAttentionReasons.slice(0, 8).map((entry) => text(entry, 220)).filter(Boolean)
+        : [],
       targetWordRange: { min, max },
       focusFactIds: [...new Set((brief.focusFactIds || []).map((id) => text(id, 260)).filter((id) => factIds.has(id)))],
     };
@@ -71,6 +92,10 @@ const validatePayload = (body = {}) => {
 
   if (!facts.length || !articleBriefs.length || new Set(articleBriefs.map((brief) => brief.outletId)).size !== articleBriefs.length) return null;
   if (coverageStage === 'college-player' && coverageDecision.articleCount > 0 && articleBriefs.length > coverageDecision.articleCount) return null;
+  if (coverageStage === 'college-player') {
+    const nationalAssigned = articleBriefs.some((brief) => brief.audience === 'national' || brief.audience === 'national-lead' || brief.outletId === 'national');
+    if (nationalAssigned && !coverageDecision.audienceReach.nationalEligible) return null;
+  }
 
   const relevance = body.coveragePlan?.playerRelevance || {};
   const program = body.coveragePlan?.program || {};
@@ -90,8 +115,9 @@ const validatePayload = (body = {}) => {
     coverageDecision,
     storylineThreads: sanitizeStorylineThreads(body),
     coveragePlan: body.coveragePlan ? {
-      editorialPrinciple: text(body.coveragePlan.editorialPrinciple, 500),
+      editorialPrinciple: text(body.coveragePlan.editorialPrinciple, 600),
       playerMentionPolicy: sharedPlayerPolicy,
+      audienceReach: sanitizeAudienceReach(body.coveragePlan.audienceReach || coverageDecision.audienceReach),
       program: {
         school: text(program.school, 160),
         record: programGames > 0 ? text(program.record, 40) : '',
@@ -173,10 +199,19 @@ Write believable modern sports journalism, never a player tracker, game-menu rec
 
 SHARED COVERAGE DECISION:
 - coverageDecision is binding. It determines how much coverage this week deserves.
+- Story importance and audience reach are separate. A development can be major to one player's career while remaining local news.
+- coverageDecision.audienceReach is binding. Never make a local or regional event sound nationally important merely because it is important inside this career.
 - A brief week gets one concise story. Standard weeks get normal coverage. Major/career-defining weeks can support more outlets and more depth.
 - Each article brief includes its own targetWordRange. Treat it as a target, never a quota. Do not pad.
 - storylineThreads marked changedThisWeek=true are fresh developments. Threads marked recentlyCovered or background-only are not new stories and should not be reintroduced as if they just happened.
 - A continuing role, record, streak, or status is not a new storyline merely because it remains true.
+
+AUDIENCE VOICES:
+- LOCAL: write like a veteran beat writer whose readers already know the program. Get to the football point quickly. Use specific verified detail, confident interpretation, natural section headings and a forward-looking close. Do not waste paragraphs explaining basic team identity or turning the copy into a fan blog.
+- REGIONAL: write for readers who follow college football around the region but may not follow this team every day. Establish the development, then widen the lens only as far as supplied facts support. Explain why this matters beyond the home beat without pretending it is a national story.
+- NATIONAL: a national assignment may appear only because the client-side national-attention gate cleared. Write for a neutral national college-football reader. Lead with the exact development that earned national relevance, provide only necessary program context, and explain why the wider sport should care. Do not profile a backup or ordinary roster move simply because the tracked career is important to DynastyHQ.
+- NATIONAL-LEAD: treat it like a prominent national digital sports story. The opening should feel consequential immediately, but remain factual and restrained. Big does not mean breathless.
+- ANALYSIS: use verified performance evidence and football consequences. Never invent film observations, scheme details, play calls or coaching intent.
 
 CENTRAL COLLEGE PHILOSOPHY:
 - The PROGRAM and GAME are the default story.
@@ -192,22 +227,32 @@ EDITORIAL SALIENCE:
 - Once games are played, record/streak are supporting context unless they have actually become consequential.
 - Do not inflate a neutral fact to sound positive or important.
 
+ARTICLE SHAPE:
+- Write like a polished digital sports publication: hook, football point, supporting evidence, interpretation, consequence/next question.
+- The first paragraph should state or reveal the actual story, not announce the article's agenda.
+- Vary paragraph length naturally. Avoid seven same-sized blocks that read like generated copy.
+- Section headings should sound editorial and specific to the story. Good patterns include Where It Fits, Why It Matters, What Changed, The Bigger Question, What Comes Next, or a story-specific phrase. Do not mechanically reuse the same headings every week.
+- Sidebars should feel like real editorial modules: At a Glance, What It Means, Game Snapshot, Regional Watch, National Context, Key Numbers, or What Comes Next. Use only supplied facts.
+- A profile-style sidebar is appropriate only when the person is genuinely part of the story. Never create an At a Glance player card just because a tracked player exists.
+
 ARTICLE BRIEFS:
-- storyType, angle, subjectPriority and playerMentionPolicy are binding assignments.
-- Different outlets should cover different legitimate angles, not duplicate the same story.
+- storyType, audience, angle, subjectPriority and playerMentionPolicy are binding assignments.
+- Different outlets should cover different legitimate angles, not duplicate the same story with synonyms.
 - If the player policy says omit, the player's identity in the packet is not permission to mention him.
+- A national brief's nationalAttentionReasons are internal justification for the assignment. Use the underlying supplied facts; never mention an attention score or editorial threshold to readers.
 
 FACT HIERARCHY:
 - primary: can drive a story when genuinely valuable.
 - context: supports a story; do not inventory it.
 - background-only: internal context. Never expose raw values or labels.
-- player.coverageRelevance and program.coverageTier are internal metadata only.
+- player.coverageRelevance, program.coverageTier and program.audienceReach are internal metadata only.
 
 ABSOLUTE READER-FACING BANS:
-- Never mention a ledger, database, tracker, snapshot, packet, fact key, screenshot, upload, AI, prompt, game UI, progression system, meter, currency, or missing field.
+- Never mention a ledger, database, tracker, snapshot, packet, fact key, screenshot, upload, AI, prompt, editorial threshold, coverage score, game UI, progression system, meter, currency, or missing field.
 - Never discuss OVR/overall rating, Coach Trust, Skill Points, Weekly Points, Energy, GPA, followers, brand tiers, NIL valuation, ability names, health/fitness/wear meters, draft projection, or similar game mechanics in college coverage.
 - Never explain that information was omitted because it was unsupported. Just omit it.
 - Never fabricate quotes, practice results, coach intentions, snap counts, injuries, depth-chart promises, tactics, formations, plays, rankings, weather, crowd reaction, locker-room scenes, future opponents, or outside opinions.
+- Rankings may be mentioned only when a supplied fact explicitly provides the ranking.
 
 FOOTBALL INTELLIGENCE WITHOUT INVENTION:
 - Explain why a supplied role change affects opportunity, why a turnover/yardage contrast shaped a game, what pressure/opportunity follows a result, and which real football question matters next.
@@ -241,11 +286,11 @@ COACHING:
 
 WRITING QUALITY:
 - Cold-open each article with the actual sports story, not an explanation of what the article will discuss.
-- Each outlet needs a distinct angle and cadence.
+- Each outlet needs a distinct angle, vocabulary and cadence.
 - Build around the strongest real idea, not every fact in the packet.
 - Write a headline of 5 to 10 words, active, with one clear angle, and no more than 75 characters.
 - The dek adds stakes rather than repeating the headline.
-- Section headings sound editorial, not like data fields.
+- Avoid canned phrases such as "the foundation is set," "the path is clear," "all eyes turn to," or "only time will tell" unless the language is genuinely earned and specific.
 - pullQuote is an unattributed editorial takeaway, not a fabricated person's quote.
 - One useful sidebar is enough on a concise story. By-the-numbers is only for real football/game statistics, never game mechanics.
 - Use a dateline only when a location is explicitly supplied; otherwise return an empty string.
@@ -289,11 +334,13 @@ export default async function handler(req, res) {
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const assignmentSummary = payload.articleBriefs
-      .map((brief) => `${brief.outletName}: ${brief.storyType || 'story'}, ${brief.targetWordRange.min}-${brief.targetWordRange.max} words, player policy ${brief.playerMentionPolicy || 'relevance-based'}`)
+      .map((brief) => `${brief.outletName}: ${brief.audience || 'general'} ${brief.storyType || 'story'}, ${brief.targetWordRange.min}-${brief.targetWordRange.max} words, player policy ${brief.playerMentionPolicy || 'relevance-based'}`)
       .join('; ');
     const storylineSummary = payload.storylineThreads.length
       ? payload.storylineThreads.map((thread) => `${thread.label}=${thread.status}${thread.changedThisWeek ? ' (changed this week)' : ''}${thread.recentlyCovered ? ' (recently covered)' : ''}`).join('; ')
       : 'none';
+    const reach = payload.coverageDecision?.audienceReach || {};
+    const reachSummary = `${reach.level || 'local'}; national eligible=${Boolean(reach.nationalEligible)}${reach.nationalReasons?.length ? `; national reasons=${reach.nationalReasons.join(', ')}` : ''}`;
 
     const response = await client.responses.create({
       model: MODEL,
@@ -306,7 +353,7 @@ export default async function handler(req, res) {
         role: 'user',
         content: [{
           type: 'input_text',
-          text: `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`,
+          text: `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`,
         }],
       }],
       text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },

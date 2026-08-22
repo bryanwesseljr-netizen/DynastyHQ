@@ -327,13 +327,16 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
       : relevance.level === 'developing'
         ? 'brief-only-for-player-event'
         : 'omit';
+  const articleCount = audienceReach.nationalEligible
+    ? Math.max(3, config.articleCount)
+    : config.articleCount;
 
   return {
     tier,
     rank: COVERAGE_ORDER[tier],
     score,
     reasons,
-    articleCount: config.articleCount,
+    articleCount,
     podcastEligible: config.podcastEligible,
     newsroomWordRange: config.newsroomWordRange,
     podcastWordRange: config.podcastWordRange,

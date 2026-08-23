@@ -21,6 +21,7 @@ import './light-mode-v7-dashboard-safe.css'
 import './navigation-order-v1.css'
 import './import-tile-sizing-v1.css'
 import './tile-fit-v2.css'
+import './milestone-card-layout-v1.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

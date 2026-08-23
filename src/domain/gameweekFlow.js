@@ -1,10 +1,11 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
-import { createWeekKey } from './weeklyEngine.js';
 
 const finite = (value, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
+
+const weekPublicationId = (season = 1, week = 1) => `season-${finite(season, 1)}-week-${Math.max(0, finite(week, 1))}`;
 
 const publicationMatches = (entry, publicationId, season, week) => (
   entry?.publicationId === publicationId
@@ -61,7 +62,7 @@ const setupForActiveWeek = (state = {}) => {
   return {
     season,
     week,
-    publicationId: createWeekKey(season, week),
+    publicationId: weekPublicationId(season, week),
     configured: setupMatches,
     label: setup.label || setup.customLabel || `Week ${week}`,
     type: String(setup.type || 'game').toLowerCase(),
@@ -76,7 +77,7 @@ const latestWrapUpWeek = (state = {}) => {
   const week = Math.max(0, finite(latest.week, 0));
   const currentSeason = finite(state.currentSeason, 1);
   const currentWeek = Math.max(0, finite(state.currentWeek, 1));
-  const publicationId = latest.publicationId || latest.weekKey || latest.id || createWeekKey(season, week);
+  const publicationId = latest.publicationId || latest.weekKey || latest.id || weekPublicationId(season, week);
   const closeEnoughToCurrent = season === currentSeason && currentWeek <= week + 1;
   if (!closeEnoughToCurrent) return null;
   return { entry: latest, season, week, publicationId, label: latest.label || latest.weekLabel || `Week ${week}` };
@@ -117,7 +118,7 @@ export const buildGameweekFlow = (state = {}) => {
       ? { label: 'Play + Log Week', target: 'agenda', detail: `Week ${activeWeek.week} is ready for verified postgame data.` }
       : { label: 'Set Up Week', target: 'agenda', detail: `Start by defining Week ${activeWeek.week}.` };
     return {
-      mode: 'active-week', activeWeek, wrapUp: null, finalized: null,
+      mode: 'active-week', activeWeek, wrapUp: null, finalized: finalized || null,
       steps: [setupStep, waitingStep, ...idle],
       completedRequired: setupStep.state === 'complete' ? 1 : 0,
       requiredCount: 5,

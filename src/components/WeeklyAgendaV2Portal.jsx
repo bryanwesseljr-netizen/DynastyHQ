@@ -4,10 +4,15 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import {
   CalendarDays,
+  CheckCircle2,
   Images,
   Loader2,
+  Map,
+  Medal,
   ScanLine,
+  Settings,
   ShieldCheck,
+  Trophy,
   Video,
 } from 'lucide-react';
 import { appId, auth, db } from '../firebase';
@@ -35,6 +40,7 @@ const findUniversalScannerInput = (root = document) => {
 
 const markAgendaStructure = (agenda) => {
   if (!agenda) return;
+  agenda.dataset.weeklyAgendaV2 = 'active';
 
   const scannerLabel = findByText(agenda, 'label', /choose weekly screenshots/i);
   if (scannerLabel) {
@@ -90,9 +96,9 @@ const WeeklyAgendaHeader = ({ career, stage }) => {
       <div className="dhq-agenda-v2-header__identity">
         <span className="dhq-agenda-v2-header__icon"><CalendarDays size={17} /></span>
         <div className="min-w-0">
-          <span className="dhq-agenda-v2-eyebrow">Weekly Agenda · {stageLabels[stage] || 'Career'}</span>
+          <span className="dhq-agenda-v2-eyebrow">Weekly Agenda Workspace · {stageLabels[stage] || 'Career'}</span>
           <h1>{setupLabel}</h1>
-          <p>{school} · {setupType}</p>
+          <p>{school} · {setupType} · streamlined workspace</p>
         </div>
       </div>
       <div className="dhq-agenda-v2-header__metrics">
@@ -104,7 +110,7 @@ const WeeklyAgendaHeader = ({ career, stage }) => {
   );
 };
 
-const AgendaQuickImport = ({ career, stage, agenda }) => {
+const AgendaQuickImport = ({ stage, agenda }) => {
   const screenshotInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -203,11 +209,37 @@ const AgendaQuickImport = ({ career, stage, agenda }) => {
   );
 };
 
+const navItems = [
+  { id: 'setup', label: 'Setup', Icon: CalendarDays, selector: '[data-week-setup-panel]' },
+  { id: 'import', label: 'Import', Icon: ScanLine, selector: '[data-agenda-quick-import]' },
+  { id: 'game', label: 'Game', Icon: Trophy, selector: '[data-agenda-card="1"]' },
+  { id: 'rtg', label: 'RTG / Program', Icon: Settings, selector: '[data-agenda-card="2"]' },
+  { id: 'recruiting', label: 'Recruiting', Icon: Map, selector: '[data-agenda-card="3"]' },
+  { id: 'media', label: 'Media', Icon: Medal, selector: '[data-agenda-card="4"]' },
+  { id: 'publish', label: 'Publish', Icon: CheckCircle2, selector: '.dhq-agenda-v2-actions' },
+];
+
+const AgendaNavigator = ({ agenda }) => (
+  <nav className="dhq-agenda-v2-nav" aria-label="Weekly Agenda sections" data-agenda-v2-navigator>
+    <div className="dhq-agenda-v2-nav__title">
+      <span>Jump to</span>
+      <strong>Weekly workspace</strong>
+    </div>
+    <div className="dhq-agenda-v2-nav__items">
+      {navItems.map(({ id, label, Icon, selector }) => (
+        <button key={id} type="button" onClick={() => agenda.querySelector(selector)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}>
+          <Icon size={12} /> {label}
+        </button>
+      ))}
+    </div>
+  </nav>
+);
+
 const WeeklyAgendaV2Portal = () => {
   const isReadOnly = new URLSearchParams(window.location.search).has('view');
   const [user, setUser] = useState(auth.currentUser);
   const [career, setCareer] = useState(null);
-  const [hosts, setHosts] = useState({ header: null, importer: null, agenda: null });
+  const [hosts, setHosts] = useState({ header: null, importer: null, navigator: null, agenda: null });
   const ownedNodes = useRef([]);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
@@ -226,7 +258,7 @@ const WeeklyAgendaV2Portal = () => {
     const ensure = () => {
       const agenda = document.querySelector('.dhq-weekly-agenda-workspace');
       if (!agenda) {
-        setHosts({ header: null, importer: null, agenda: null });
+        setHosts({ header: null, importer: null, navigator: null, agenda: null });
         return;
       }
       agenda.classList.add('dhq-weekly-agenda-v2');
@@ -251,10 +283,21 @@ const WeeklyAgendaV2Portal = () => {
       const anchor = flow?.parentElement === agenda ? flow : setup?.parentElement === agenda ? setup : headerHost;
       if (importerHost.parentElement !== agenda || anchor.nextElementSibling !== importerHost) anchor.after(importerHost);
 
+      let navigatorHost = document.getElementById('dhq-weekly-agenda-v2-nav-host');
+      if (!navigatorHost) {
+        navigatorHost = document.createElement('div');
+        navigatorHost.id = 'dhq-weekly-agenda-v2-nav-host';
+        ownedNodes.current.push(navigatorHost);
+      }
+      if (navigatorHost.parentElement !== agenda || importerHost.nextElementSibling !== navigatorHost) importerHost.after(navigatorHost);
+
       setHosts((current) => (
-        current.header === headerHost && current.importer === importerHost && current.agenda === agenda
+        current.header === headerHost
+        && current.importer === importerHost
+        && current.navigator === navigatorHost
+        && current.agenda === agenda
           ? current
-          : { header: headerHost, importer: importerHost, agenda }
+          : { header: headerHost, importer: importerHost, navigator: navigatorHost, agenda }
       ));
     };
 
@@ -269,12 +312,13 @@ const WeeklyAgendaV2Portal = () => {
   }, [isReadOnly]);
 
   const stage = useMemo(() => career ? deriveCareerStage(career) : null, [career]);
-  if (!career || !user || !hosts.agenda || !hosts.header || !hosts.importer) return null;
+  if (!career || !user || !hosts.agenda || !hosts.header || !hosts.importer || !hosts.navigator) return null;
 
   return (
     <>
       {createPortal(<WeeklyAgendaHeader career={career} stage={stage} />, hosts.header)}
-      {createPortal(<AgendaQuickImport career={career} stage={stage} agenda={hosts.agenda} />, hosts.importer)}
+      {createPortal(<AgendaQuickImport stage={stage} agenda={hosts.agenda} />, hosts.importer)}
+      {createPortal(<AgendaNavigator agenda={hosts.agenda} />, hosts.navigator)}
     </>
   );
 };

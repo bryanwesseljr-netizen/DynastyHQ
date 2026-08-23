@@ -1,0 +1,455 @@
+/* Cincinnati Enquirer-inspired regional edition.
+   The regional desk deliberately uses a print-newspaper composition that is
+   visually distinct from Bearcats Insider and the national digital desk. */
+
+.dhq-news-article[data-audience="regional"] {
+  overflow: hidden;
+  border: 2px solid #e6e2db;
+  border-radius: 1px;
+  background: #fffefa;
+  color: #111;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52);
+}
+
+.dhq-enquirer-masthead {
+  padding: 17px clamp(22px, 3vw, 34px) 0;
+  background: #fffefa;
+  color: #0b0b0b;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.dhq-enquirer-masthead__top {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(300px, 2.5fr) minmax(150px, 1fr);
+  align-items: center;
+  min-height: 88px;
+}
+
+.dhq-enquirer-name {
+  align-self: start;
+  padding-top: 2px;
+  font-size: clamp(1rem, 1.5vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.dhq-enquirer-sports {
+  border-inline: 1px solid #666;
+  padding: 0 18px 4px;
+  font-size: clamp(3.6rem, 8vw, 7rem);
+  font-weight: 500;
+  letter-spacing: -0.065em;
+  line-height: 0.78;
+  text-align: center;
+}
+
+.dhq-enquirer-beat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding-left: 18px;
+  font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+  line-height: 1.05;
+}
+
+.dhq-enquirer-beat strong {
+  color: #c41724;
+  font-weight: 800;
+}
+
+.dhq-enquirer-beat span {
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.dhq-enquirer-masthead__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 4px solid #c41724;
+  padding: 9px 0 8px;
+  font-size: clamp(0.68rem, 0.95vw, 0.82rem);
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+.dhq-enquirer-masthead__meta div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dhq-enquirer-masthead__meta i {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: #666;
+}
+
+.dhq-enquirer-headline-block {
+  padding: clamp(20px, 2.8vw, 32px) clamp(22px, 3vw, 34px) 12px;
+}
+
+.dhq-enquirer-headline-block h1 {
+  max-width: 1180px;
+  margin: 0;
+  color: #0b0b0b;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.5rem, 5.3vw, 5.2rem);
+  font-weight: 500;
+  letter-spacing: -0.048em;
+  line-height: 0.93;
+  text-wrap: balance;
+}
+
+.dhq-news-article[data-audience="regional"][data-headline-size="medium"] .dhq-enquirer-headline-block h1 {
+  font-size: clamp(2.35rem, 4.7vw, 4.6rem);
+}
+
+.dhq-news-article[data-audience="regional"][data-headline-size="long"] .dhq-enquirer-headline-block h1 {
+  font-size: clamp(2.15rem, 4.1vw, 3.95rem);
+  line-height: 0.97;
+}
+
+.dhq-enquirer-headline-block p {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: #333;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1rem, 1.45vw, 1.28rem);
+  line-height: 1.25;
+}
+
+.dhq-enquirer-headline-rule {
+  width: calc(100% - clamp(44px, 6vw, 68px));
+  height: 1px;
+  margin: 0 auto;
+  background: #3e3e3e;
+}
+
+.dhq-enquirer-main-grid {
+  display: grid;
+  grid-template-columns: minmax(185px, 0.72fr) minmax(0, 2.2fr) minmax(205px, 0.78fr);
+  gap: clamp(16px, 2vw, 24px);
+  align-items: start;
+  padding: 16px clamp(22px, 3vw, 34px) 18px;
+}
+
+.dhq-news-article[data-audience="regional"][data-has-image="false"] .dhq-enquirer-main-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.34fr);
+}
+
+.dhq-enquirer-lead-copy {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.91rem, 1.13vw, 1.02rem);
+  line-height: 1.28;
+}
+
+.dhq-enquirer-byline {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+  border-top: 1px solid #222;
+  padding-top: 8px;
+  line-height: 1.1;
+}
+
+.dhq-enquirer-byline strong {
+  font-size: 0.95rem;
+}
+
+.dhq-enquirer-byline span {
+  margin-top: 2px;
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.dhq-enquirer-lead-copy > div:first-of-type > p:first-of-type::first-letter {
+  float: left;
+  margin: 0.04em 0.06em 0 0;
+  font-size: 4.15em;
+  line-height: 0.72;
+}
+
+.dhq-enquirer-lead-copy p,
+.dhq-enquirer-lower-copy p {
+  margin: 0 0 0.82em;
+}
+
+.dhq-enquirer-lead-copy h2,
+.dhq-enquirer-lower-copy h2 {
+  margin: 1em 0 0.35em;
+  color: #111;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.08rem, 1.45vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.dhq-enquirer-hero {
+  margin: 0;
+}
+
+.dhq-enquirer-hero img {
+  display: block;
+  width: 100%;
+  height: clamp(360px, 42vw, 610px);
+  border: 1px solid #b8b5af;
+  object-fit: cover;
+  object-position: center;
+}
+
+.dhq-enquirer-hero figcaption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 2px 0;
+  color: #222;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.dhq-enquirer-photo-caption {
+  max-width: 76%;
+}
+
+.dhq-enquirer-photo-credit {
+  flex: 0 0 auto;
+  color: #666;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.55rem;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+  text-align: right;
+}
+
+.dhq-enquirer-sidebar {
+  position: relative;
+}
+
+.dhq-enquirer-sidebar section {
+  overflow: hidden;
+  border: 1px solid #b8b8b8;
+  border-top: 5px solid #c41724;
+  border-radius: 8px;
+  background: #fbfbfb;
+}
+
+.dhq-enquirer-sidebar h2 {
+  margin: 0;
+  padding: 13px 12px 8px;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(1rem, 1.45vw, 1.3rem);
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.dhq-enquirer-sidebar h2::after {
+  display: block;
+  height: 2px;
+  margin-top: 9px;
+  background: #c41724;
+  content: "";
+}
+
+.dhq-enquirer-sidebar ul {
+  margin: 0;
+  padding: 0 12px 11px;
+  list-style: none;
+}
+
+.dhq-enquirer-sidebar li {
+  border-bottom: 1px solid #aaa;
+  padding: 9px 0;
+  color: #171717;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.83rem;
+  line-height: 1.2;
+}
+
+.dhq-enquirer-sidebar li:last-child {
+  border-bottom: 0;
+}
+
+.dhq-enquirer-sidebar li::first-line {
+  color: #c41724;
+  font-weight: 800;
+}
+
+.dhq-enquirer-lower-copy {
+  column-count: 4;
+  column-gap: clamp(18px, 2vw, 28px);
+  column-rule: 1px solid #dedbd4;
+  padding: 4px clamp(22px, 3vw, 34px) 22px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.9rem, 1.06vw, 0.99rem);
+  line-height: 1.28;
+}
+
+.dhq-enquirer-lower-copy > div {
+  break-inside: avoid-column;
+}
+
+.dhq-enquirer-footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 clamp(22px, 3vw, 34px);
+  border-top: 2px solid #111;
+  padding: 12px 0 16px;
+  color: #161616;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.75rem, 1vw, 0.9rem);
+}
+
+.dhq-enquirer-footer__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-bottom: 4px solid #c41724;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-style: italic;
+  font-weight: 900;
+}
+
+.dhq-enquirer-footer strong {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.dhq-enquirer-footer button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #c41724;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: inherit;
+  font-style: italic;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dhq-enquirer-footer button:hover,
+.dhq-enquirer-footer button:focus-visible {
+  text-decoration: underline;
+}
+
+@media (max-width: 920px) {
+  .dhq-enquirer-masthead__top {
+    grid-template-columns: 1fr 2fr 1fr;
+    min-height: 70px;
+  }
+
+  .dhq-enquirer-sports {
+    font-size: clamp(3rem, 9vw, 5rem);
+  }
+
+  .dhq-enquirer-main-grid {
+    grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.8fr);
+  }
+
+  .dhq-enquirer-sidebar {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-enquirer-sidebar section {
+    border-radius: 4px;
+  }
+
+  .dhq-enquirer-lower-copy {
+    column-count: 3;
+  }
+}
+
+@media (max-width: 700px) {
+  .dhq-enquirer-masthead {
+    padding-inline: 16px;
+  }
+
+  .dhq-enquirer-masthead__top {
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+  }
+
+  .dhq-enquirer-name {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid #bbb;
+    padding-bottom: 5px;
+  }
+
+  .dhq-enquirer-sports {
+    border: 0;
+    padding: 0;
+    font-size: clamp(3rem, 17vw, 4.7rem);
+    text-align: left;
+  }
+
+  .dhq-enquirer-beat {
+    padding-left: 0;
+    font-size: 0.85rem;
+  }
+
+  .dhq-enquirer-masthead__meta {
+    align-items: flex-end;
+    font-size: 0.58rem;
+  }
+
+  .dhq-enquirer-headline-block {
+    padding-inline: 16px;
+  }
+
+  .dhq-enquirer-headline-block h1,
+  .dhq-news-article[data-audience="regional"][data-headline-size="medium"] .dhq-enquirer-headline-block h1,
+  .dhq-news-article[data-audience="regional"][data-headline-size="long"] .dhq-enquirer-headline-block h1 {
+    font-size: clamp(2.05rem, 10vw, 3.35rem);
+    line-height: 0.97;
+  }
+
+  .dhq-enquirer-headline-rule {
+    width: calc(100% - 32px);
+  }
+
+  .dhq-enquirer-main-grid,
+  .dhq-news-article[data-audience="regional"][data-has-image="false"] .dhq-enquirer-main-grid {
+    grid-template-columns: 1fr;
+    padding-inline: 16px;
+  }
+
+  .dhq-enquirer-hero {
+    grid-row: 1;
+  }
+
+  .dhq-enquirer-hero img {
+    height: min(72vw, 460px);
+  }
+
+  .dhq-enquirer-lead-copy {
+    font-size: 1rem;
+    line-height: 1.42;
+  }
+
+  .dhq-enquirer-lower-copy {
+    column-count: 1;
+    padding-inline: 16px;
+    font-size: 1rem;
+    line-height: 1.48;
+  }
+
+  .dhq-enquirer-footer {
+    flex-wrap: wrap;
+    margin-inline: 16px;
+  }
+}

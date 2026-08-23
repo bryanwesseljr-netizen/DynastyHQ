@@ -3,12 +3,17 @@ import {
   buildEditorialExtras, presentationVariables, resolveNewsroomPresentation,
 } from '../domain/newsroomPresentation';
 import '../newsroom-v3.css';
+import '../newsroom-local-bearcats.css';
+
+const LOCAL_OUTLET = 'Bearcats Insider';
+const LOCAL_AUTHOR = 'Justin Williams';
+const LOCAL_AUTHOR_ROLE = 'Senior Staff Writer, Bearcats Insider';
 
 const formatPublishedDate = (value) => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
 };
 
 const headingPositions = (paragraphCount, headingCount) => {
@@ -29,6 +34,8 @@ const headlineSize = (headline = '') => {
 const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => {
   const presentation = resolveNewsroomPresentation(story);
   const extras = buildEditorialExtras({ story, issue });
+  const isLocal = extras.audience === 'local';
+  const displayOutletName = isLocal ? LOCAL_OUTLET : story.outletName;
   const paragraphs = Array.isArray(story.paragraphs) ? story.paragraphs : [];
   const sectionAt = new Map(headingPositions(paragraphs.length, extras.sectionHeadings.length)
     .map((position, index) => [position, extras.sectionHeadings[index]]));
@@ -41,6 +48,8 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
     : currentMedia?.source === 'ai-generated'
       ? 'AI editorial illustration'
       : '';
+  const photoCaption = String(story.photoCaption || story.dek || '').trim();
+  const localAsideSections = isLocal ? extras.sidebarsForAside.slice(0, 1) : extras.sidebarsForAside;
 
   const shareDigitalEdition = async () => {
     if (typeof window === 'undefined') return;
@@ -53,7 +62,7 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
     }
 
     const shareData = {
-      title: `${story.headline} | ${story.outletName}`,
+      title: `${story.headline} | ${displayOutletName}`,
       text: story.dek || story.headline,
       url: window.location.href,
     };
@@ -79,51 +88,88 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       data-story-format={extras.storyFormat}
       style={presentationVariables(presentation)}
     >
-      <header className="dhq-news-masthead">
-        <div className="dhq-news-masthead__identity">
-          <div className="dhq-news-masthead__brand">{story.outletName}</div>
-          <div className="dhq-news-masthead__strapline">{presentation.strapline}</div>
-        </div>
-        <div className="dhq-news-masthead__meta">
-          <span>{extras.audienceLabel}</span>
-          <span aria-hidden="true">•</span>
-          <span>{story.desk}</span>
-        </div>
-      </header>
+      {isLocal ? (
+        <header className="dhq-news-masthead dhq-bearcats-masthead">
+          <div className="dhq-bearcats-mark" aria-hidden="true">
+            <span>C</span>
+            <i />
+          </div>
+          <div className="dhq-news-masthead__identity dhq-bearcats-identity">
+            <div className="dhq-bearcats-brand" aria-label="Bearcats Insider">
+              <span>BEARCATS</span>
+              <strong>INSIDER</strong>
+            </div>
+            <div className="dhq-news-masthead__strapline">YOUR SOURCE FOR CINCINNATI BEARCATS FOOTBALL</div>
+          </div>
+          <div className="dhq-bearcats-motto">
+            <span>NEWS. ANALYSIS.</span>
+            <strong>CINCINNATI TOUGH.</strong>
+          </div>
+        </header>
+      ) : (
+        <header className="dhq-news-masthead">
+          <div className="dhq-news-masthead__identity">
+            <div className="dhq-news-masthead__brand">{displayOutletName}</div>
+            <div className="dhq-news-masthead__strapline">{presentation.strapline}</div>
+          </div>
+          <div className="dhq-news-masthead__meta">
+            <span>{extras.audienceLabel}</span>
+            <span aria-hidden="true">•</span>
+            <span>{story.desk}</span>
+          </div>
+        </header>
+      )}
 
-      <div className="dhq-news-accent-rule" aria-hidden="true" />
+      {!isLocal && <div className="dhq-news-accent-rule" aria-hidden="true" />}
 
       <div className="dhq-news-lead">
         <div className="dhq-news-intro">
-          <div className="dhq-news-story-flags">
-            <span className="dhq-news-kicker">{story.kicker || presentation.category}</span>
-            <span className="dhq-news-impact-badge">{extras.importanceLabel}</span>
-            <span className="dhq-news-format-badge">{extras.formatLabel}</span>
-          </div>
+          {!isLocal && (
+            <div className="dhq-news-story-flags">
+              <span className="dhq-news-kicker">{story.kicker || presentation.category}</span>
+              <span className="dhq-news-impact-badge">{extras.importanceLabel}</span>
+              <span className="dhq-news-format-badge">{extras.formatLabel}</span>
+            </div>
+          )}
           <h1>{story.headline}</h1>
-          <p className="dhq-news-dek">{story.dek}</p>
-          <div className="dhq-news-byline">
-            <span>By {story.byline || `${story.outletName} Staff`}</span>
-            {story.dateline && <span>{story.dateline}</span>}
-            {publishedDate && <span>Published {publishedDate}</span>}
-            <span className="dhq-news-read-time"><Clock3 size={13} /> {readingMinutes} min read</span>
-          </div>
+          {!isLocal && <p className="dhq-news-dek">{story.dek}</p>}
+          {isLocal ? (
+            <div className="dhq-bearcats-byline-row">
+              <div className="dhq-bearcats-byline-copy">
+                <span>By</span>
+                <strong>{LOCAL_AUTHOR}</strong>
+                <i aria-hidden="true" />
+                <span>{LOCAL_AUTHOR_ROLE}</span>
+              </div>
+              {publishedDate && <time>{publishedDate}</time>}
+            </div>
+          ) : (
+            <div className="dhq-news-byline">
+              <span>By {story.byline || `${displayOutletName} Staff`}</span>
+              {story.dateline && <span>{story.dateline}</span>}
+              {publishedDate && <span>Published {publishedDate}</span>}
+              <span className="dhq-news-read-time"><Clock3 size={13} /> {readingMinutes} min read</span>
+            </div>
+          )}
         </div>
 
         {hasImage && (
           <figure className="dhq-news-hero">
             <img src={featureImage} alt={`Feature coverage for ${story.headline}`} />
-            {(photoCredit || currentMedia?.disclosure) && (
+            {(photoCaption || photoCredit || currentMedia?.disclosure) && (
               <figcaption>
-                <span>{photoCredit ? `Photo: ${photoCredit}` : ''}</span>
-                {currentMedia?.disclosure && <span>{currentMedia.disclosure}</span>}
+                {photoCaption && <span className="dhq-news-photo-caption">{photoCaption}</span>}
+                <span className="dhq-news-photo-credit">
+                  {photoCredit ? `Photo: ${photoCredit}` : ''}
+                  {currentMedia?.disclosure ? `${photoCredit ? ' · ' : ''}${currentMedia.disclosure}` : ''}
+                </span>
               </figcaption>
             )}
           </figure>
         )}
       </div>
 
-      {extras.modules.length > 0 && (
+      {!isLocal && extras.modules.length > 0 && (
         <section className="dhq-news-module-deck" aria-label="Story context">
           {extras.modules.map((module, moduleIndex) => (
             <section className="dhq-news-module" key={`${module.title}-${moduleIndex}`}>
@@ -137,13 +183,13 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
         </section>
       )}
 
-      <div className={`dhq-news-content-grid${extras.sidebarsForAside.length ? '' : ' dhq-news-content-grid--wide'}`}>
+      <div className={`dhq-news-content-grid${localAsideSections.length ? '' : ' dhq-news-content-grid--wide'}`}>
         <div className="dhq-news-copy">
           {paragraphs.map((paragraph, index) => (
             <div key={`${story.id}-${index}`}>
               {sectionAt.has(index) && <h2>{sectionAt.get(index)}</h2>}
               <p>{paragraph}</p>
-              {index === Math.min(2, paragraphs.length - 1) && extras.pullQuote && (
+              {!isLocal && index === Math.min(2, paragraphs.length - 1) && extras.pullQuote && (
                 <blockquote>
                   <span>Why it matters</span>
                   {extras.pullQuote}
@@ -153,9 +199,9 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
           ))}
         </div>
 
-        {extras.sidebarsForAside.length > 0 && (
+        {localAsideSections.length > 0 && (
           <aside className="dhq-news-sidebar" aria-label="Article context">
-            {extras.sidebarsForAside.map((section, sectionIndex) => (
+            {localAsideSections.map((section, sectionIndex) => (
               <section key={`${section.title}-${sectionIndex}`}>
                 <h2>{section.title}</h2>
                 <ul>
@@ -167,13 +213,21 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
         )}
       </div>
 
-      <footer className="dhq-news-footer">
-        <span>{story.outletName}</span>
-        <span>{presentation.strapline}</span>
-        <button type="button" className="dhq-news-share" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">
-          <Share2 size={13} /> Shareable digital edition
-        </button>
-      </footer>
+      {isLocal ? (
+        <footer className="dhq-bearcats-footer">
+          <span className="dhq-bearcats-footer__left"><b aria-hidden="true">C</b> BEARCATS FOOTBALL</span>
+          <span>CINCINNATI BEARCATS</span>
+          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">GOBEARCATS.COM</button>
+        </footer>
+      ) : (
+        <footer className="dhq-news-footer">
+          <span>{displayOutletName}</span>
+          <span>{presentation.strapline}</span>
+          <button type="button" className="dhq-news-share" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">
+            <Share2 size={13} /> Shareable digital edition
+          </button>
+        </footer>
+      )}
     </article>
   );
 };

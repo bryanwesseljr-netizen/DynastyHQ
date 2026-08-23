@@ -6,6 +6,7 @@ import CollegeCareerAgendaCardPortal from './components/CollegeCareerAgendaCardP
 import RtgStatusScannerPortal from './components/RtgStatusScannerPortal.jsx'
 import PodcastHumanizedAudioPortal from './components/PodcastHumanizedAudioPortal.jsx'
 import './index.css' // <-- Make sure this line is here!
+import './newsroom-bearcats-logo.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

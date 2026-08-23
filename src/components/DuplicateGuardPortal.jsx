@@ -31,16 +31,22 @@ const dedupeItems = (items, keyFor) => {
   });
 };
 
-const dashboardMilestoneKey = (row) => row.querySelector('strong')?.textContent || '';
+const exactCardKey = (element) => element.getAttribute('aria-label') || element.textContent;
+
+const isOneTimeCommitment = (value) => /\bcommits?\s+to\b|\bcommitment\s+to\b/i.test(String(value || ''));
+
+const dashboardMilestoneKey = (row) => {
+  const title = row.querySelector('strong')?.textContent || '';
+  return isOneTimeCommitment(title) ? `commitment:${title}` : exactCardKey(row);
+};
 
 const chronicleMilestoneKey = (button) => {
   const paragraphs = [...button.querySelectorAll('p')];
-  return paragraphs[1]?.textContent || button.querySelector('h3,strong')?.textContent || '';
+  const title = paragraphs[1]?.textContent || button.querySelector('h3,strong')?.textContent || '';
+  return isOneTimeCommitment(title) ? `commitment:${title}` : exactCardKey(button);
 };
 
 const schoolRowKey = (row) => row.querySelector('strong')?.textContent || row.textContent;
-
-const exactCardKey = (element) => element.getAttribute('aria-label') || element.textContent;
 
 const applySpecificRules = () => {
   document.querySelectorAll('[data-dashboard-card="milestones"] .dhq-v2-card__body').forEach((container) => {
@@ -109,24 +115,9 @@ const applyExactSiblingRule = () => {
   });
 };
 
-const dedupeNewsroomOptions = () => {
-  document.querySelectorAll('select[aria-label="Choose weekly newsroom edition"]').forEach((select) => {
-    const seen = new Set();
-    [...select.options].forEach((option) => {
-      const key = normalize(option.textContent);
-      if (!key) return;
-      const duplicate = seen.has(key);
-      option.hidden = duplicate;
-      option.disabled = duplicate;
-      if (!duplicate) seen.add(key);
-    });
-  });
-};
-
 const runDuplicateAudit = () => {
   applySpecificRules();
   applyExactSiblingRule();
-  dedupeNewsroomOptions();
 };
 
 const DuplicateGuardPortal = () => {

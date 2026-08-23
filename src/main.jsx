@@ -14,6 +14,7 @@ import './newsroom-bearcats-logo.css'
 import './weekly-agenda-v3-refinements.css'
 import './newsroom-polish-v4.css'
 import './podcast-polish-v4.css'
+import './chronicle-polish-v4.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

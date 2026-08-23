@@ -1,37 +1,81 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import App from '../App.jsx';
-import { auth } from '../firebase';
+import { appId, auth, db } from '../firebase';
 
 const AuthAwareApp = () => {
-  const [authSnapshot, setAuthSnapshot] = useState(() => ({
-    ready: false,
-    key: auth.currentUser?.uid || 'signed-out',
-  }));
+  const [authReady, setAuthReady] = useState(false);
+  const [ownerReady, setOwnerReady] = useState(false);
 
-  useEffect(() => onAuthStateChanged(auth, (user) => {
-    setAuthSnapshot({
-      ready: true,
-      key: user?.uid || 'signed-out',
+  useEffect(() => {
+    let unsubscribeOwner = () => {};
+    let revealFrameOne = null;
+    let revealFrameTwo = null;
+
+    const revealApp = () => {
+      if (revealFrameOne) cancelAnimationFrame(revealFrameOne);
+      if (revealFrameTwo) cancelAnimationFrame(revealFrameTwo);
+      // Let App's own Firestore listener process the same snapshot before the
+      // transition overlay is removed. Two frames keeps the UI stable without
+      // remounting the app or requiring a browser refresh.
+      revealFrameOne = requestAnimationFrame(() => {
+        revealFrameTwo = requestAnimationFrame(() => setOwnerReady(true));
+      });
+    };
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      unsubscribeOwner();
+      unsubscribeOwner = () => {};
+      setAuthReady(true);
+
+      if (!user || !db) {
+        setOwnerReady(true);
+        return;
+      }
+
+      setOwnerReady(false);
+      const ownerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+      let firstSnapshotHandled = false;
+      unsubscribeOwner = onSnapshot(
+        ownerRef,
+        () => {
+          if (firstSnapshotHandled) return;
+          firstSnapshotHandled = true;
+          revealApp();
+        },
+        () => {
+          if (firstSnapshotHandled) return;
+          firstSnapshotHandled = true;
+          revealApp();
+        },
+      );
     });
-  }), []);
 
-  if (!authSnapshot.ready) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-white">
-        <div
-          className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-amber-500"
-          role="status"
-          aria-label="Loading DynastyHQ"
-        />
-      </div>
-    );
-  }
+    return () => {
+      unsubscribeOwner();
+      unsubscribeAuth();
+      if (revealFrameOne) cancelAnimationFrame(revealFrameOne);
+      if (revealFrameTwo) cancelAnimationFrame(revealFrameTwo);
+    };
+  }, []);
 
-  // A successful login changes the key and remounts App from a clean signed-in
-  // state. That makes App wait for the owner's Firestore snapshot just like a
-  // normal authenticated page load instead of briefly rendering signed-out data.
-  return <App key={authSnapshot.key} />;
+  const transitionPending = !authReady || !ownerReady;
+
+  return (
+    <>
+      <App />
+      {transitionPending ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950 text-white" aria-live="polite">
+          <div
+            className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-amber-500"
+            role="status"
+            aria-label="Loading DynastyHQ"
+          />
+        </div>
+      ) : null}
+    </>
+  );
 };
 
 export default AuthAwareApp;

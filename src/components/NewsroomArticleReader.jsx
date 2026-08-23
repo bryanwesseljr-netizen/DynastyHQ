@@ -5,6 +5,7 @@ import {
 import '../newsroom-v3.css';
 import '../newsroom-local-bearcats.css';
 import '../newsroom-regional-enquirer.css';
+import '../newsroom-national-espn.css';
 
 const LOCAL_OUTLET = 'Bearcats Insider';
 const LOCAL_AUTHOR = 'Justin Williams';
@@ -12,6 +13,7 @@ const LOCAL_AUTHOR_ROLE = 'Senior Staff Writer, Bearcats Insider';
 const REGIONAL_OUTLET = 'Cincinnati Enquirer';
 const REGIONAL_AUTHOR = 'Alex Harrison';
 const REGIONAL_AUTHOR_ROLE = 'Senior Sports Writer';
+const NATIONAL_OUTLET = 'ESPN';
 
 const dateFrom = (value) => {
   if (!value) return null;
@@ -54,12 +56,31 @@ const headlineSize = (headline = '') => {
   return 'short';
 };
 
+const nationalSidebarParts = (item = '') => {
+  const text = String(item).trim();
+  const match = text.match(/(^|\s)(#?\d[\d,.]*(?:[-–]\d[\d,.]*)?%?)(?=\s|$|[,:;])/);
+  if (!match) return { value: '', detail: text };
+  const value = match[2];
+  const start = match.index + match[1].length;
+  const detail = `${text.slice(0, start)}${text.slice(start + value.length)}`
+    .replace(/^[\s|:;—–-]+|[\s|:;—–-]+$/g, '')
+    .replace(/\s{2,}/g, ' ');
+  return { value, detail: detail || text };
+};
+
 const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => {
   const presentation = resolveNewsroomPresentation(story);
   const extras = buildEditorialExtras({ story, issue });
   const isLocal = extras.audience === 'local';
   const isRegional = extras.audience === 'regional';
-  const displayOutletName = isLocal ? LOCAL_OUTLET : isRegional ? REGIONAL_OUTLET : story.outletName;
+  const isNational = extras.audience === 'national' || extras.audience === 'national-lead';
+  const displayOutletName = isLocal
+    ? LOCAL_OUTLET
+    : isRegional
+      ? REGIONAL_OUTLET
+      : isNational
+        ? NATIONAL_OUTLET
+        : story.outletName;
   const paragraphs = Array.isArray(story.paragraphs) ? story.paragraphs : [];
   const sectionAt = new Map(headingPositions(paragraphs.length, extras.sectionHeadings.length)
     .map((position, index) => [position, extras.sectionHeadings[index]]));
@@ -80,6 +101,7 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
   const photoCaption = String(story.photoCaption || story.dek || '').trim();
   const localAsideSections = isLocal ? extras.sidebarsForAside.slice(0, 1) : extras.sidebarsForAside;
   const regionalAsideSections = isRegional ? extras.sidebarsForAside.slice(0, 1) : [];
+  const nationalAsideSections = isNational ? extras.sidebars.slice(0, 2) : [];
   const regionalLeadCount = Math.min(2, paragraphs.length);
   const regionalLeadParagraphs = paragraphs.slice(0, regionalLeadCount);
   const regionalRemainingParagraphs = paragraphs.slice(regionalLeadCount);
@@ -151,6 +173,22 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
             <div><span>CINCINNATI.COM</span><i aria-hidden="true" /> <b>1B</b></div>
           </div>
         </header>
+      ) : isNational ? (
+        <header className="dhq-espn-masthead">
+          <div className="dhq-espn-globalbar">
+            <strong className="dhq-espn-logo" aria-label="ESPN">ESPN</strong>
+            <nav aria-label="National sports sections">
+              <span>NFL</span><span>NBA</span><span>MLB</span><b>NCAAF</b><span>NCAAB</span><span>Soccer</span>
+            </nav>
+            <span className="dhq-espn-globalbar__utility">Search &nbsp; ● &nbsp; Scores</span>
+          </div>
+          <div className="dhq-espn-collegebar">
+            <strong>◒ &nbsp; NCAAF</strong>
+            <nav aria-label="College football sections">
+              <span>Home</span><span>Scores</span><span>Rankings</span><span>Teams</span><span>Schedule</span><span>Standings</span><span>Stats</span>
+            </nav>
+          </div>
+        </header>
       ) : (
         <header className="dhq-news-masthead">
           <div className="dhq-news-masthead__identity">
@@ -165,9 +203,69 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
         </header>
       )}
 
-      {!isLocal && !isRegional && <div className="dhq-news-accent-rule" aria-hidden="true" />}
+      {!isLocal && !isRegional && !isNational && <div className="dhq-news-accent-rule" aria-hidden="true" />}
 
-      {isRegional ? (
+      {isNational ? (
+        <>
+          {hasImage && (
+            <figure className="dhq-espn-hero">
+              <img src={featureImage} alt={`Feature coverage for ${story.headline}`} />
+              {(photoCaption || photoCredit || currentMedia?.disclosure) && (
+                <figcaption>
+                  {photoCaption && <span>{photoCaption}</span>}
+                  <small>
+                    {photoCredit ? `Photo: ${photoCredit}` : ''}
+                    {currentMedia?.disclosure ? `${photoCredit ? ' · ' : ''}${currentMedia.disclosure}` : ''}
+                  </small>
+                </figcaption>
+              )}
+            </figure>
+          )}
+
+          <section className="dhq-espn-headline-block">
+            <p className="dhq-espn-kicker">NCAA FOOTBALL</p>
+            <h1>{story.headline}</h1>
+            {story.dek && <p className="dhq-espn-dek">{story.dek}</p>}
+            <div className="dhq-espn-byline">
+              <strong>By {story.byline || 'ESPN Staff Report'}</strong>
+              {publishedDate && <span>{publishedDate}</span>}
+              <span><Clock3 size={13} /> {readingMinutes} min read</span>
+            </div>
+          </section>
+
+          <div className="dhq-espn-body-grid">
+            <main className="dhq-espn-copy">
+              {paragraphs.map((paragraph, index) => (
+                <div key={`${story.id}-national-${index}`}>
+                  {sectionAt.has(index) && <h2>{sectionAt.get(index)}</h2>}
+                  <p>{paragraph}</p>
+                </div>
+              ))}
+            </main>
+
+            {nationalAsideSections.length > 0 && (
+              <aside className="dhq-espn-rail" aria-label="National story statistics and context">
+                {nationalAsideSections.map((section, sectionIndex) => (
+                  <section key={`${section.title}-${sectionIndex}`}>
+                    <h2>{section.title}</h2>
+                    <ul>
+                      {section.items.map((item, itemIndex) => {
+                        const parts = nationalSidebarParts(item);
+                        return (
+                          <li key={`${item}-${itemIndex}`}>
+                            {parts.value && <strong>{parts.value}</strong>}
+                            <span>{parts.detail}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ))}
+              </aside>
+            )}
+          </div>
+        </>
+      ) : isRegional ? (
         <>
           <section className="dhq-enquirer-headline-block">
             <h1>{story.headline}</h1>
@@ -339,6 +437,11 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
           <strong>BEARCAT NATION:</strong>
           <span>For the latest on Cincinnati football, recruiting and more, visit</span>
           <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">Cincinnati.com/bearcats</button>
+        </footer>
+      ) : isNational ? (
+        <footer className="dhq-espn-footer">
+          <strong>ESPN</strong><span>College Football</span>
+          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">Share story</button>
         </footer>
       ) : (
         <footer className="dhq-news-footer">

@@ -1,0 +1,235 @@
+/* DynastyHQ Newsroom polish v4
+   Keeps the existing publication identities intact while improving weekly
+   hierarchy, mobile reading comfort, and owner-tool placement. */
+
+/* Treat the Newsroom shell as a deliberate reading stack. When the weekly
+   coverage grid is present, it should appear before the owner-only photo
+   library so the newest edition remains the primary content. */
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > * {
+  margin-top: 0 !important;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section[aria-labelledby="weekly-coverage-title"] {
+  order: 1;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) {
+  order: 2;
+}
+
+/* The first newsroom card is the visual lead for the selected weekly edition.
+   The remaining outlets still keep equal access and their own publication skin. */
+@media (min-width: 768px) {
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child {
+    grid-column: 1 / -1;
+    min-height: 205px !important;
+    padding: 22px 24px;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__headline {
+    max-width: 900px;
+    font-size: clamp(1.55rem, 2.3vw, 2rem);
+    line-height: 1.06;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__dek {
+    max-width: 820px;
+  }
+}
+
+.dhq-newsroom-story-card__headline,
+.dhq-news-article :where(h1, h2) {
+  overflow-wrap: anywhere;
+}
+
+.dhq-newsroom-story-card {
+  isolation: isolate;
+}
+
+.dhq-newsroom-story-card::after {
+  position: absolute;
+  z-index: -1;
+  right: -48px;
+  bottom: -70px;
+  width: 190px;
+  height: 190px;
+  border: 1px solid color-mix(in srgb, var(--news-accent) 24%, transparent);
+  border-radius: 999px;
+  content: "";
+  opacity: 0.7;
+}
+
+/* Article chrome should support the story, not overpower it. */
+.dhq-news-article {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+.dhq-news-article :where(.dhq-news-copy, .dhq-espn-copy, .dhq-enquirer-lead-copy, .dhq-enquirer-lower-copy) p {
+  text-wrap: pretty;
+}
+
+.dhq-news-hero img,
+.dhq-espn-hero img,
+.dhq-enquirer-hero img {
+  max-width: 100%;
+}
+
+/* Make article-to-article navigation feel like a compact section rail. */
+.dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] {
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"]::-webkit-scrollbar {
+  display: none;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] > button {
+  scroll-snap-align: start;
+}
+
+/* Owner media tools remain available, but visually read as secondary utilities. */
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) {
+  border-color: rgba(71, 85, 105, 0.48) !important;
+  background: rgba(2, 8, 15, 0.58) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24) !important;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) > div:first-child {
+  padding: 14px 16px !important;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) > div:first-child h2 {
+  font-size: 1rem !important;
+  letter-spacing: 0.02em;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) > div:first-child p:last-child {
+  max-width: 900px;
+  margin-top: 4px !important;
+  font-size: 0.68rem !important;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) {
+    gap: 10px;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] {
+    padding: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] > div:first-child {
+    margin-bottom: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card {
+    min-height: 0 !important;
+    padding: 15px !important;
+  }
+
+  .dhq-newsroom-story-card__outlet {
+    font-size: 0.55rem !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  .dhq-newsroom-story-card__headline {
+    margin-top: 10px !important;
+    font-size: 1.05rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .dhq-newsroom-story-card__dek {
+    margin-top: 8px !important;
+    font-size: 0.76rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .dhq-newsroom-story-card__action {
+    padding-top: 12px !important;
+    font-size: 0.62rem !important;
+  }
+
+  /* Publication pages read full-bleed on phones while copy retains safe gutters. */
+  .dhq-news-article {
+    width: calc(100% + 0px);
+    border-radius: 5px;
+  }
+
+  .dhq-news-article .dhq-news-hero {
+    margin-inline: 0 !important;
+  }
+
+  .dhq-news-article .dhq-news-hero figcaption,
+  .dhq-espn-hero figcaption,
+  .dhq-enquirer-hero figcaption {
+    flex-direction: column;
+    gap: 4px;
+    padding-inline: 16px !important;
+    text-align: left !important;
+  }
+
+  .dhq-news-article .dhq-news-content-grid {
+    padding-inline: 16px !important;
+  }
+
+  .dhq-news-article .dhq-news-copy {
+    font-size: 1rem !important;
+    line-height: 1.68 !important;
+  }
+
+  /* Keep mobile headlines editorial, but not billboard-sized. */
+  .dhq-news-article[data-audience="local"] .dhq-news-intro h1,
+  .dhq-news-article[data-audience="local"][data-headline-size="medium"] .dhq-news-intro h1,
+  .dhq-news-article[data-audience="local"][data-headline-size="long"] .dhq-news-intro h1 {
+    font-size: clamp(1.55rem, 7.2vw, 2.05rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-headline-block h1,
+  .dhq-news-article[data-audience="regional"][data-headline-size="medium"] .dhq-enquirer-headline-block h1,
+  .dhq-news-article[data-audience="regional"][data-headline-size="long"] .dhq-enquirer-headline-block h1 {
+    font-size: clamp(1.72rem, 8.2vw, 2.5rem) !important;
+    line-height: 1 !important;
+  }
+
+  .dhq-news-article[data-audience="national"] .dhq-espn-headline-block h1,
+  .dhq-news-article[data-audience="national-lead"] .dhq-espn-headline-block h1 {
+    font-size: clamp(1.75rem, 8.4vw, 2.55rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-lead-copy,
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-lower-copy,
+  .dhq-news-article[data-audience="national"] .dhq-espn-copy,
+  .dhq-news-article[data-audience="national-lead"] .dhq-espn-copy {
+    font-size: 1rem !important;
+    line-height: 1.62 !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] {
+    padding: 6px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] > button {
+    min-height: 36px;
+    padding: 7px 10px !important;
+    font-size: 0.64rem;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) > div:first-child {
+    padding: 12px 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:has(+ section[aria-labelledby="weekly-coverage-title"]) > div:first-child p:last-child {
+    display: none;
+  }
+}

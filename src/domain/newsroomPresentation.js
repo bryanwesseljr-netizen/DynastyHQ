@@ -86,8 +86,22 @@ const formatFor = (story = {}, presentation) => {
   return 'news';
 };
 
+const canonicalPublicationAudience = (story = {}) => {
+  const outletId = clean(story.outletId || story.id, 80).toLowerCase();
+  const outletName = clean(story.outletName, 160).toLowerCase();
+
+  // Publication identity outranks legacy slot metadata. Older saved editions can carry
+  // a stale theme/audience from the slot that was reused for a newer assignment.
+  if (outletId === 'college-local' || outletName === 'bearcats insider') return 'local';
+  if (outletId === 'college-regional' || outletName === 'cincinnati enquirer') return 'regional';
+  if (outletId === 'national') {
+    return clean(story.audience, 40).toLowerCase() === 'national-lead' ? 'national-lead' : 'national';
+  }
+  return clean(story.audience, 40).toLowerCase();
+};
+
 const presentationForAudience = (story = {}) => {
-  const audience = clean(story.audience, 40).toLowerCase();
+  const audience = canonicalPublicationAudience(story);
   if (audience === 'local') return PRESENTATIONS.local;
   if (audience === 'regional') return PRESENTATIONS.regional;
   if (audience === 'national' || audience === 'national-lead') return { ...PRESENTATIONS.national, audience };

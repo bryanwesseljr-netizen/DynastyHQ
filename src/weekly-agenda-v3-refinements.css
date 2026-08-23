@@ -1,0 +1,281 @@
+/* Weekly Agenda progressive-disclosure refinements */
+
+.dhq-agenda-v3-step__active {
+  display: none;
+}
+
+.dhq-agenda-v3-import-card.is-summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-color: rgba(16, 185, 129, .2);
+  background: rgba(16, 185, 129, .025);
+}
+
+.dhq-agenda-v3-import-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.dhq-agenda-v3-import-summary__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, .09);
+  color: #6ee7b7;
+}
+
+.dhq-agenda-v3-import-summary strong {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dhq-agenda-v3-import-summary small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.dhq-agenda-v3-summary-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid rgba(16, 185, 129, .24);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, .065);
+  color: #a7f3d0;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.dhq-agenda-v3-summary-button:hover:not(:disabled) {
+  border-color: rgba(52, 211, 153, .46);
+  background: rgba(16, 185, 129, .1);
+}
+
+.dhq-agenda-v3-summary-button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.dhq-agenda-v3-rtg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, .12);
+  border-radius: 10px;
+  background: rgba(17, 19, 24, .93);
+}
+
+.dhq-agenda-v3-rtg-row__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.dhq-agenda-v3-rtg-dot {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, .08);
+  color: #6ee7b7;
+}
+
+.dhq-agenda-v3-rtg-row strong {
+  display: inline;
+  margin-left: 5px;
+  color: #d1fae5;
+  font-size: 9px;
+  font-weight: 820;
+}
+
+.dhq-agenda-v3-rtg-row small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+/* RTG details can open without forcing the full Week Setup form open. */
+.dhq-weekly-agenda-v2.dhq-agenda-v2-rtg-open [data-week-setup-panel] {
+  display: block !important;
+  overflow: hidden;
+}
+
+.dhq-weekly-agenda-v2.dhq-agenda-v2-rtg-open [data-rtg-status-scanner] {
+  display: block !important;
+  border-top: 0 !important;
+  padding-top: 12px !important;
+}
+
+.dhq-weekly-agenda-v2.dhq-agenda-v2-rtg-open:not(.dhq-agenda-v2-setup-open) [data-week-setup-panel] > :not([data-rtg-status-scanner]) {
+  display: none !important;
+}
+
+/* The legacy action buttons remain mounted for their handlers but the user sees one guided action bar. */
+.dhq-weekly-agenda-v2 .dhq-agenda-v2-actions {
+  display: none !important;
+}
+
+#dhq-weekly-agenda-v3-actions-host {
+  position: sticky;
+  bottom: 8px;
+  z-index: 85;
+  margin: 10px 0;
+}
+
+.dhq-agenda-v3-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 10px 9px 13px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 10px;
+  background: rgba(10, 12, 16, .94);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .26);
+  backdrop-filter: blur(16px);
+}
+
+.dhq-agenda-v3-action-bar > div:first-child > strong {
+  display: block;
+  margin-top: 2px;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.dhq-agenda-v3-action-bar > div:first-child > small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.dhq-agenda-v3-action-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.dhq-agenda-v3-action-buttons button {
+  min-height: 38px;
+  border-radius: 7px;
+  padding: 0 13px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.dhq-agenda-v3-action-buttons .is-secondary {
+  border: 1px solid rgba(96, 165, 250, .24);
+  background: rgba(30, 64, 175, .16);
+  color: #bfdbfe;
+}
+
+.dhq-agenda-v3-action-buttons .is-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(52, 211, 153, .28);
+  background: #059669;
+  color: #fff;
+}
+
+.dhq-agenda-v3-action-buttons .is-primary:hover {
+  background: #10b981;
+}
+
+.dhq-weekly-agenda-v2 .dhq-agenda-v3-applied-ready {
+  margin: 10px 0 !important;
+  padding: 11px 13px !important;
+  border-radius: 10px !important;
+}
+
+@media (max-width: 760px) {
+  .dhq-agenda-v3-step.is-active {
+    min-width: 94px;
+    border-color: rgba(96, 165, 250, .34);
+  }
+
+  .dhq-agenda-v3-step.is-active .dhq-agenda-v3-step__compact {
+    display: none;
+  }
+
+  .dhq-agenda-v3-step.is-active .dhq-agenda-v3-step__active {
+    display: inline;
+  }
+
+  .dhq-agenda-v3-import-card.is-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dhq-agenda-v3-summary-button {
+    width: 100%;
+  }
+
+  .dhq-agenda-v3-action-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dhq-agenda-v3-action-buttons {
+    width: 100%;
+  }
+
+  .dhq-agenda-v3-action-buttons button {
+    flex: 1 1 auto;
+  }
+
+  #dhq-weekly-agenda-v3-actions-host {
+    bottom: 5px;
+  }
+}
+
+@media (max-width: 520px) {
+  .dhq-agenda-v3-rtg-row {
+    align-items: flex-start;
+  }
+
+  .dhq-agenda-v3-rtg-row small {
+    max-width: 220px;
+  }
+
+  .dhq-agenda-v3-action-buttons {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dhq-agenda-v3-action-buttons .is-primary {
+    min-width: 0;
+  }
+}

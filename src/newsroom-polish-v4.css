@@ -1,0 +1,359 @@
+/* DynastyHQ Newsroom polish v4
+   A visible hierarchy pass for the weekly Newsroom home plus mobile reading
+   refinements. Publication-specific article skins remain intact. */
+
+/* ---------- NEWSROOM HOME HIERARCHY ---------- */
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > * {
+  margin-top: 0 !important;
+}
+
+/* Press-room controls stay first and become a compact masthead rather than a
+   full competing dashboard card. */
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > div:first-child {
+  order: 0;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+  border-radius: 10px !important;
+  background:
+    linear-gradient(100deg, rgba(10, 29, 48, 0.94), rgba(3, 12, 21, 0.82)) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Weekly journalism always comes before owner utilities. */
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section[aria-labelledby="weekly-coverage-title"] {
+  order: 1;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  border-radius: 12px !important;
+  background:
+    linear-gradient(180deg, rgba(5, 14, 23, 0.96), rgba(2, 8, 15, 0.9)) !important;
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.42) !important;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] > div:first-child {
+  position: relative;
+  margin: -16px -16px 16px !important;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.62);
+  padding: 17px 18px 15px !important;
+  background:
+    linear-gradient(90deg, rgba(30, 64, 175, 0.16), transparent 48%),
+    rgba(2, 8, 15, 0.72);
+}
+
+.dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] > div:first-child::after {
+  position: absolute;
+  right: 18px;
+  bottom: 13px;
+  color: rgba(148, 163, 184, 0.34);
+  content: "LATEST EDITION";
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] #weekly-coverage-title {
+  font-size: clamp(1.25rem, 2vw, 1.65rem) !important;
+  letter-spacing: -0.015em;
+  text-transform: none !important;
+}
+
+/* Career Photo Library is deliberately secondary. This selector does not rely
+   on :has(), so it is stable on the user's Android browser as well. */
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]) {
+  order: 2;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]):has(.dhq-newsroom-story-card) {
+  order: 1;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]) > div:first-child {
+  padding: 13px 15px !important;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]) > div:first-child h2 {
+  font-size: 0.95rem !important;
+  letter-spacing: 0.02em;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]) > div:first-child p:last-child {
+  max-width: 920px;
+  margin-top: 4px !important;
+  font-size: 0.68rem !important;
+  line-height: 1.45;
+}
+
+/* ---------- LEAD STORY ---------- */
+.dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card {
+  min-height: 152px !important;
+  border-radius: 9px !important;
+}
+
+.dhq-newsroom-story-card__headline,
+.dhq-news-article :where(h1, h2) {
+  overflow-wrap: anywhere;
+}
+
+.dhq-newsroom-story-card {
+  isolation: isolate;
+}
+
+.dhq-newsroom-story-card::after {
+  position: absolute;
+  z-index: -1;
+  right: -54px;
+  bottom: -78px;
+  width: 205px;
+  height: 205px;
+  border: 1px solid color-mix(in srgb, var(--news-accent) 28%, transparent);
+  border-radius: 999px;
+  content: "";
+  opacity: 0.8;
+}
+
+@media (min-width: 768px) {
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child {
+    grid-column: 1 / -1;
+    min-height: 255px !important;
+    border-width: 1px;
+    padding: 28px 30px !important;
+    background:
+      radial-gradient(circle at 84% 25%, color-mix(in srgb, var(--news-accent) 30%, transparent), transparent 32%),
+      linear-gradient(118deg, color-mix(in srgb, var(--news-masthead) 97%, #111827), color-mix(in srgb, var(--news-masthead) 84%, #020617)) !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__outlet::after {
+    margin-left: 10px;
+    border: 1px solid color-mix(in srgb, var(--news-accent) 54%, transparent);
+    border-radius: 999px;
+    padding: 3px 7px;
+    color: #fff;
+    content: "LEAD STORY";
+    font-size: 0.52rem;
+    letter-spacing: 0.14em;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__headline {
+    max-width: 880px;
+    margin-top: 22px !important;
+    font-size: clamp(2rem, 3.4vw, 2.75rem) !important;
+    line-height: 1.01 !important;
+    letter-spacing: -0.035em;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__dek {
+    max-width: 780px;
+    margin-top: 14px !important;
+    font-size: 0.9rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__action {
+    font-size: 0.68rem !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:not(:first-child) {
+    padding: 16px 18px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:not(:first-child) .dhq-newsroom-story-card__headline {
+    margin-top: 10px !important;
+    font-size: 1.05rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:not(:first-child) .dhq-newsroom-story-card__dek {
+    margin-top: 7px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:not(:first-child) .dhq-newsroom-story-card__action {
+    padding-top: 10px !important;
+    font-size: 0.62rem !important;
+  }
+}
+
+/* ---------- ARTICLE READING ---------- */
+.dhq-news-article {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+.dhq-news-article :where(.dhq-news-copy, .dhq-espn-copy, .dhq-enquirer-lead-copy, .dhq-enquirer-lower-copy) p {
+  text-wrap: pretty;
+}
+
+.dhq-news-hero img,
+.dhq-espn-hero img,
+.dhq-enquirer-hero img {
+  max-width: 100%;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] {
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"]::-webkit-scrollbar {
+  display: none;
+}
+
+.dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] > button {
+  scroll-snap-align: start;
+}
+
+/* ---------- MOBILE ---------- */
+@media (max-width: 760px) {
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) {
+    gap: 9px;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > div:first-child {
+    padding: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] {
+    padding: 13px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] > div:first-child {
+    margin: -13px -13px 12px !important;
+    padding: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] > div:first-child::after {
+    display: none;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] #weekly-coverage-title {
+    font-size: 1.2rem !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card {
+    min-height: 0 !important;
+    padding: 15px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child {
+    border-color: color-mix(in srgb, var(--news-accent) 70%, #475569) !important;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__outlet::after {
+    margin-left: 7px;
+    border: 1px solid color-mix(in srgb, var(--news-accent) 45%, transparent);
+    border-radius: 999px;
+    padding: 2px 6px;
+    color: #fff;
+    content: "LEAD";
+    font-size: 0.48rem;
+    letter-spacing: 0.12em;
+  }
+
+  .dhq-newsroom-story-card__outlet {
+    font-size: 0.55rem !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  .dhq-newsroom-story-card__headline {
+    margin-top: 9px !important;
+    font-size: 1.04rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] .dhq-newsroom-story-card:first-child .dhq-newsroom-story-card__headline {
+    font-size: 1.3rem !important;
+    line-height: 1.06 !important;
+  }
+
+  .dhq-newsroom-story-card__dek {
+    margin-top: 7px !important;
+    font-size: 0.75rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .dhq-newsroom-story-card__action {
+    padding-top: 11px !important;
+    font-size: 0.61rem !important;
+  }
+
+  /* Publication pages read full-bleed on phones while copy retains safe gutters. */
+  .dhq-news-article {
+    border-radius: 5px;
+  }
+
+  .dhq-news-article .dhq-news-hero {
+    margin-inline: 0 !important;
+  }
+
+  .dhq-news-article .dhq-news-hero figcaption,
+  .dhq-espn-hero figcaption,
+  .dhq-enquirer-hero figcaption {
+    flex-direction: column;
+    gap: 4px;
+    padding-inline: 16px !important;
+    text-align: left !important;
+  }
+
+  .dhq-news-article .dhq-news-content-grid {
+    padding-inline: 16px !important;
+  }
+
+  .dhq-news-article .dhq-news-copy {
+    font-size: 1rem !important;
+    line-height: 1.68 !important;
+  }
+
+  .dhq-news-article[data-audience="local"] .dhq-news-intro h1,
+  .dhq-news-article[data-audience="local"][data-headline-size="medium"] .dhq-news-intro h1,
+  .dhq-news-article[data-audience="local"][data-headline-size="long"] .dhq-news-intro h1 {
+    font-size: clamp(1.55rem, 7.2vw, 2.05rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-headline-block h1,
+  .dhq-news-article[data-audience="regional"][data-headline-size="medium"] .dhq-enquirer-headline-block h1,
+  .dhq-news-article[data-audience="regional"][data-headline-size="long"] .dhq-enquirer-headline-block h1 {
+    font-size: clamp(1.72rem, 8.2vw, 2.5rem) !important;
+    line-height: 1 !important;
+  }
+
+  .dhq-news-article[data-audience="national"] .dhq-espn-headline-block h1,
+  .dhq-news-article[data-audience="national-lead"] .dhq-espn-headline-block h1 {
+    font-size: clamp(1.75rem, 8.4vw, 2.55rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-lead-copy,
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-lower-copy,
+  .dhq-news-article[data-audience="national"] .dhq-espn-copy,
+  .dhq-news-article[data-audience="national-lead"] .dhq-espn-copy {
+    font-size: 1rem !important;
+    line-height: 1.62 !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] {
+    padding: 6px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] nav[aria-label="Weekly newsroom articles"] > button {
+    min-height: 36px;
+    padding: 7px 10px !important;
+    font-size: 0.64rem;
+  }
+
+  /* Media library is still available below the stories, but its intro is kept
+     intentionally compact on small screens. */
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]) > div:first-child {
+    padding: 11px 13px !important;
+  }
+
+  .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section:not([aria-labelledby="weekly-coverage-title"]) > div:first-child p:last-child {
+    display: none;
+  }
+}

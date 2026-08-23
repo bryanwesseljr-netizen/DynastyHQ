@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, RefreshCw, Sparkles, Volume2, X } from 'lucide-react';
+import { ChevronDown, FileText, Loader2, RefreshCw, Sparkles, Volume2 } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
@@ -44,11 +44,11 @@ const PodcastHumanizedAudioPortal = () => {
   const [user, setUser] = useState(auth.currentUser || null);
   const [career, setCareer] = useState(null);
   const [visible, setVisible] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [selectedPublicationId, setSelectedPublicationId] = useState('');
   const [operation, setOperation] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
-  const [dismissed, setDismissed] = useState(false);
   const [liveEpisodes, setLiveEpisodes] = useState({});
 
   const busy = Boolean(operation);
@@ -58,7 +58,11 @@ const PodcastHumanizedAudioPortal = () => {
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   useEffect(() => {
-    const check = () => setVisible(podcastStudioIsVisible());
+    const check = () => {
+      const nextVisible = podcastStudioIsVisible();
+      setVisible(nextVisible);
+      if (!nextVisible) setExpanded(false);
+    };
     check();
     const observer = new MutationObserver(check);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -326,7 +330,31 @@ const PodcastHumanizedAudioPortal = () => {
     }
   };
 
-  if (!visible || dismissed || !user || !issues.length) return null;
+  if (!visible || !user || !issues.length) return null;
+
+  if (!expanded) {
+    const minimizedLabel = busy
+      ? (audioBusy ? 'Rendering audio…' : 'Writing transcript…')
+      : (selectedEpisode?.audioStatus === 'ready' ? 'Podcast tools' : 'Script + audio');
+
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        aria-label="Open Script + Humanized Audio controls"
+        className="fixed bottom-3 right-3 z-[120] flex max-w-[calc(100vw-1.5rem)] items-center gap-2.5 rounded-full border border-cyan-400/35 bg-slate-950/95 px-3 py-2.5 text-left shadow-2xl shadow-slate-950/70 backdrop-blur-xl transition hover:border-cyan-300 hover:bg-slate-900 sm:bottom-4 sm:right-4"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/10 text-cyan-300">
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Volume2 size={15} />}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[8px] font-black uppercase tracking-[0.18em] text-cyan-400">Podcast v3</span>
+          <span className="block truncate text-[10px] font-black text-white sm:text-[11px]">{minimizedLabel}</span>
+        </span>
+        <span className="ml-1 hidden rounded-full border border-slate-700 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-slate-400 sm:inline">Open</span>
+      </button>
+    );
+  }
 
   return (
     <aside className="fixed bottom-5 right-5 z-[120] w-[min(390px,calc(100vw-2rem))] rounded-2xl border border-cyan-400/35 bg-slate-950/95 p-4 shadow-2xl shadow-slate-950/70 backdrop-blur-xl">
@@ -340,7 +368,7 @@ const PodcastHumanizedAudioPortal = () => {
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-400">Podcast v3</p>
               <h3 className="text-sm font-black text-white">Script + Humanized Audio</h3>
             </div>
-            <button type="button" aria-label="Hide Podcast v3 controls" onClick={() => setDismissed(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white"><X size={15} /></button>
+            <button type="button" aria-label="Minimize Podcast v3 controls" onClick={() => setExpanded(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white"><ChevronDown size={16} /></button>
           </div>
           <p className="mt-1 text-[11px] leading-5 text-slate-400">Choose a newsroom week. DynastyHQ decides whether it deserves a show, then keeps transcript writing and audio rendering separate.</p>
         </div>

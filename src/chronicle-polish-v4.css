@@ -1,0 +1,254 @@
+/* DynastyHQ Career Chronicle polish v4
+   Preserve archive logic while making the page read like a career history,
+   especially on mobile where the timeline becomes a compact browse rail. */
+
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) {
+  max-width: 1180px !important;
+  gap: 12px !important;
+}
+
+/* Career identity should establish context without dominating the archive. */
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child {
+  border-radius: 18px !important;
+  padding: 18px 20px !important;
+  background:
+    radial-gradient(circle at 85% 25%, rgba(59, 130, 246, 0.14), transparent 32%),
+    linear-gradient(120deg, rgba(2, 8, 15, 0.96), rgba(10, 18, 29, 0.94)) !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child h2 {
+  margin-top: 4px !important;
+  font-size: clamp(1.7rem, 3vw, 2.55rem) !important;
+  line-height: 1 !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child h2 + p {
+  max-width: 720px !important;
+  margin-top: 7px !important;
+  font-size: 0.78rem !important;
+  line-height: 1.55 !important;
+}
+
+/* Summary stats act as a quiet index, not four competing dashboard cards. */
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 {
+  gap: 8px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 > div {
+  padding: 12px 13px !important;
+  border-radius: 11px !important;
+  background: rgba(8, 15, 25, 0.82) !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 > div > p:last-child {
+  margin-top: 5px !important;
+  font-size: 1.25rem !important;
+}
+
+/* Turning points are the emotional top layer of the career archive. */
+.dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 {
+  border-radius: 16px !important;
+  padding: 16px !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 158, 11, 0.08), transparent 28%),
+    rgba(8, 15, 25, 0.90) !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 > div.mt-4 {
+  gap: 8px !important;
+  margin-top: 12px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 button {
+  border-radius: 11px !important;
+  padding: 12px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 button:first-child {
+  border-color: rgba(245, 158, 11, 0.42) !important;
+  background: rgba(69, 40, 6, 0.26) !important;
+}
+
+/* Search and filters should remain available but visually secondary. */
+.dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 {
+  padding: 12px !important;
+  border-radius: 12px !important;
+  background: rgba(8, 15, 25, 0.78) !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 input,
+.dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 select {
+  min-height: 38px;
+}
+
+/* Desktop timeline/detail hierarchy. */
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] {
+  gap: 14px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child > div.space-y-3 {
+  gap: 8px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child button {
+  border-radius: 11px !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article {
+  border-radius: 16px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div:first-child {
+  padding: 18px 20px !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div:first-child h2 {
+  font-size: clamp(1.35rem, 2.4vw, 2rem) !important;
+  overflow-wrap: anywhere;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div.space-y-6 {
+  gap: 16px !important;
+  padding: 18px 20px !important;
+}
+
+@media (max-width: 700px) {
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) {
+    gap: 9px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child {
+    padding: 14px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child > div {
+    gap: 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child h2 {
+    font-size: 1.55rem !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child h2 + p {
+    font-size: 0.72rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child .rounded-xl {
+    padding: 10px 12px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 {
+    grid-template-columns: repeat(4, minmax(105px, 1fr)) !important;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 > div {
+    min-width: 105px;
+    scroll-snap-align: start;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 {
+    padding: 13px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 > div.mt-4 {
+    display: flex !important;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 > div.mt-4::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 button {
+    min-width: min(82vw, 280px);
+    scroll-snap-align: start;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 > div.grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 7px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 label {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 select:last-child {
+    grid-column: 1 / -1;
+  }
+
+  /* The timeline becomes a horizontal career-moments rail instead of forcing
+     the user through a tall list before reaching the selected story. */
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child {
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-right: 0 !important;
+    padding-bottom: 3px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child > div.absolute {
+    display: none !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child > div.space-y-3 {
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child button {
+    min-width: min(82vw, 285px);
+    padding: 12px 13px !important;
+    padding-left: 38px !important;
+    scroll-snap-align: start;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child button > span.absolute {
+    left: 11px !important;
+    top: 15px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div:first-child {
+    padding: 15px !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div:first-child h2 {
+    font-size: 1.4rem !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div:first-child h2 + p {
+    font-size: 0.78rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div.space-y-6 {
+    gap: 13px !important;
+    padding: 15px !important;
+  }
+}

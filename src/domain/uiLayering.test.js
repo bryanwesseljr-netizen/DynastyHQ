@@ -8,6 +8,8 @@ const newsroomEmptyStateSourceUrl = new URL('../components/NewsroomEmptyState.js
 const newsroomMediaSourceUrl = new URL('../components/NewsroomMediaManager.jsx', import.meta.url);
 const podcastStudioSourceUrl = new URL('../components/PodcastStudio.jsx', import.meta.url);
 const commandCenterSourceUrl = new URL('../components/CareerCommandCenter.jsx', import.meta.url);
+const dashboardV2SourceUrl = new URL('../components/CareerDashboardV2.jsx', import.meta.url);
+const dashboardV2StylesUrl = new URL('../dashboard-v2.css', import.meta.url);
 const playerRecruitingSourceUrl = new URL('../components/PlayerRecruitingWorkspace.jsx', import.meta.url);
 const globalStylesUrl = new URL('../index.css', import.meta.url);
 
@@ -179,58 +181,53 @@ test('weekly agenda milestone recorder is a standalone full-width horizontal car
   assert.match(milestoneSource, /sm:col-span-2/);
 });
 
-test('the homepage mirrors the compact command-center dashboard without duplicate briefs', async () => {
-  const source = await readFile(commandCenterSourceUrl, 'utf8');
+test('the homepage uses the stage-aware dashboard v2 without duplicating workspace-level detail', async () => {
+  const [wrapperSource, dashboardSource, dashboardStyles] = await Promise.all([
+    readFile(commandCenterSourceUrl, 'utf8'),
+    readFile(dashboardV2SourceUrl, 'utf8'),
+    readFile(dashboardV2StylesUrl, 'utf8'),
+  ]);
+
+  assert.match(wrapperSource, /export \{ default \} from '\.\/CareerDashboardV2';/);
+  assert.match(dashboardSource, /id="dynastyhq-command-center"/);
+  assert.match(dashboardSource, /dhq-home-banner dhq-v2-identity/);
+  assert.match(dashboardSource, /data-dashboard-version="2"/);
+  assert.match(dashboardSource, /data-dashboard-modules=\{model\.moduleIds\.join\(','\)\}/);
+  assert.match(dashboardSource, /buildDashboardV2\(state\)/);
+  assert.match(dashboardSource, /stage === CAREER_STAGES\.HIGH_SCHOOL/);
+  assert.match(dashboardSource, /stage === CAREER_STAGES\.COLLEGE/);
+  assert.match(dashboardSource, /stage === CAREER_STAGES\.OC/);
+  assert.match(dashboardSource, /stage === CAREER_STAGES\.HC/);
 
   for (const title of [
-    'Current Phase',
-    'Season Snapshot',
-    'Your Profile',
-    'Road to Glory',
-    'Career Timeline',
+    'Player Snapshot',
+    'Current Week',
+    'Season Performance',
+    'Recent Results',
+    'Latest Coverage',
+    'Career Milestones',
+    'Program Snapshot',
+    'Offensive Performance',
+    'Team Performance',
+    'Trophy Case',
     'Career Journey',
-    'Newsroom',
-    'Recruiting Board',
-    'Podcast',
-    'Recent Schedule',
-    'Verified Career Detail',
   ]) {
-    assert.match(source, new RegExp(title));
+    assert.match(dashboardSource, new RegExp(title));
   }
-  assert.match(source, /Your hub for recruiting, development, and legacy\./);
-  assert.match(source, /Track every decision\. Build your legacy\. Make history\./);
-  assert.ok(source.indexOf('Current Phase') < source.indexOf('Season Snapshot'));
-  assert.ok(source.indexOf('Season Snapshot') < source.indexOf('Your Profile'));
-  assert.ok(source.indexOf('Road to Glory') < source.indexOf('Career Timeline'));
-  assert.ok(source.indexOf('Career Timeline') < source.indexOf('Career Journey'));
-  assert.ok(source.indexOf('<DashboardCard title="Newsroom"') < source.indexOf('<DashboardCard title="Recruiting Board"'));
-  assert.ok(source.indexOf('<DashboardCard title="Recruiting Board"') < source.indexOf('<DashboardCard title="Podcast"'));
-  assert.ok(source.indexOf('<DashboardCard title="Podcast"') < source.indexOf('<DashboardCard title="Recent Schedule"'));
-  assert.doesNotMatch(source, /Dynasty Central/);
-  assert.doesNotMatch(source, /Quick Actions/);
-  assert.doesNotMatch(source, /Open Gridiron Grind|Open Gridiron Podcast/);
-  assert.equal((source.match(/actionLabel="Open Newsroom"/g) || []).length, 1);
-  assert.equal((source.match(/actionLabel="Listen to Podcast"/g) || []).length, 1);
-  assert.equal((source.match(/actionLabel="Open Recruit Command Center"/g) || []).length, 1);
-  assert.match(source, /actionLabel=\{showFullSchedule \? 'Show Compact Schedule' : 'View Schedule'\}/);
-  assert.match(source, /Player headshot placeholder/);
-  assert.match(source, /Drop photo/);
-  assert.match(source, /type="file"/);
-  assert.match(source, /accept="image\/png,image\/jpeg,image\/webp"/);
-  assert.match(source, /onProfileHeadshotUpload/);
-  assert.match(source, /Edit Profile/);
-  assert.match(source, /Edit Player Profile/);
-  assert.match(source, /onProfileSave/);
-  assert.match(source, /role="dialog"/);
-  assert.match(source, /aria-modal="true"/);
-  assert.match(source, /Save Profile/);
-  assert.match(source, /Change .* headshot/);
-  assert.match(source, /Remove .* headshot/);
-  assert.match(source, /group-hover\/headshot:opacity-100/);
-  assert.doesNotMatch(source, /Saving….*Replace/);
-  assert.match(source, /<details open/);
-  assert.doesNotMatch(source, /View full snapshot|Career profile|View RTG career|View history/);
-  assert.doesNotMatch(source, /dynastyhq-player-wessel|Wessel, number 2/);
+
+  assert.match(dashboardSource, /CareerTransitionPanel/);
+  assert.match(dashboardSource, /accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(dashboardSource, /onProfileHeadshotUpload/);
+  assert.match(dashboardSource, /Edit Player Profile/);
+  assert.match(dashboardSource, /onProfileSave/);
+  assert.match(dashboardSource, /role="dialog"/);
+  assert.match(dashboardSource, /aria-modal="true"/);
+  assert.match(dashboardSource, /Save Profile/);
+  assert.doesNotMatch(dashboardSource, /Dynasty Central|Quick Actions/);
+
+  assert.match(dashboardStyles, /\.dhq-v2-grid \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(dashboardStyles, /@media \(max-width: 720px\)[\s\S]*?\.dhq-v2-grid \{ grid-template-columns: 1fr/);
+  assert.match(dashboardStyles, /Keep the proven Gameweek Flow, but make its dashboard presentation compact/);
 });
 
 test('schema v12 keeps an unpublished newsroom factual and empty', async () => {

@@ -95,10 +95,15 @@ const applySpecificRules = () => {
 };
 
 const GENERIC_CONTAINER_SELECTOR = [
+  '#dynastyhq-command-center .dhq-v2-grid',
   '#dynastyhq-command-center [data-dashboard-card] .grid',
   '#dynastyhq-command-center [data-dashboard-card] .divide-y',
+  '.dhq-weekly-agenda-v2 .grid',
+  '.dhq-weekly-agenda-v2 .divide-y',
   '.dhq-page-main[data-active-tab="recruiting"] .grid',
   '.dhq-page-main[data-active-tab="recruiting"] .divide-y',
+  '.dhq-page-main[data-active-tab="newsroom"] .grid',
+  '.dhq-page-main[data-active-tab="newsroom"] .divide-y',
   '.dhq-page-main[data-active-tab="podcast"] .grid',
   '.dhq-page-main[data-active-tab="podcast"] .divide-y',
   '.dhq-page-main[data-active-tab="chronicle"] .grid',

@@ -17,10 +17,18 @@ const iconForOutlet = (outletId) => ({
   national: BookOpen,
 }[outletId] || Newspaper);
 
+const publicationLabelForStory = (story = {}) => {
+  const presentation = resolveNewsroomPresentation(story);
+  if (presentation.audience === 'local') return 'Bearcats Insider';
+  if (presentation.audience === 'regional') return 'Cincinnati Enquirer';
+  if (presentation.audience === 'national' || presentation.audience === 'national-lead') return 'ESPN';
+  return story.outletName;
+};
+
 const tabsForIssue = (issue) => (issue?.articles || []).map((story) => ({
   theme: story.theme || story.outletId,
   outletId: story.outletId,
-  label: story.outletName,
+  label: publicationLabelForStory(story),
   icon: iconForOutlet(story.outletId),
 }));
 

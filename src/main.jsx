@@ -18,6 +18,7 @@ import './chronicle-polish-v4.css'
 import './light-mode-v5-compat.css'
 import './light-mode-v7-dashboard-safe.css'
 import './navigation-order-v1.css'
+import './import-tile-sizing-v1.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

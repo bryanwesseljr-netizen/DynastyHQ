@@ -35,9 +35,18 @@ export const commitmentIdentity = (entry = {}) => {
   return institution ? `commitment:${institution}` : '';
 };
 
+const genericMilestoneIdentity = (entry = {}) => {
+  const title = normalize(entry.title || entry.achievement || entry.label || entry.name);
+  if (!title) return '';
+  const season = Number(entry.season) || 0;
+  const type = normalize(entry.type || 'milestone') || 'milestone';
+  return `milestone:${season}:${type}:${title}`;
+};
+
 const milestoneIdentity = (entry = {}) => (
   commitmentIdentity(entry)
   || (clean(entry.milestoneKey) ? `milestone-key:${clean(entry.milestoneKey)}` : '')
+  || genericMilestoneIdentity(entry)
 );
 
 export const dedupeCareerMilestones = (entries = []) => {

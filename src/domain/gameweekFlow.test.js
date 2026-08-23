@@ -51,6 +51,7 @@ test('quiet preseason week becomes a one-click finalization instead of fake cont
   assert.equal(flow.podcastRequired, false);
   assert.equal(flow.steps.find((step) => step.id === 'newsroom').optional, true);
   assert.equal(flow.steps.find((step) => step.id === 'podcast').optional, true);
+  assert.equal(flow.steps.find((step) => step.id === 'logged').label, 'Week Logged');
   assert.equal(flow.canFinalize, true);
   assert.equal(flow.nextAction.label, 'Finalize Week');
 });
@@ -80,12 +81,13 @@ test('active Week 0 keeps its real preseason identity', () => {
   assert.equal(flow.nextAction.label, 'Set Up Week');
 });
 
-test('portal exposes one smart action, five-step progress, quiet-week skips, and explicit unlock', async () => {
+test('portal wires smart action, progress, finalization persistence, and explicit unlock', async () => {
   const source = await readFile(new URL('../components/GameweekFlowPortal.jsx', import.meta.url), 'utf8');
   assert.match(source, /Smart Next Action/);
   assert.match(source, /Gameweek Flow/);
-  assert.match(source, /Finalize Week/);
-  assert.match(source, /Not needed/);
+  assert.match(source, /ProgressDots/);
+  assert.match(source, /onFinalize/);
+  assert.match(source, /onUnlock/);
+  assert.match(source, /weekFinalizations/);
   assert.match(source, /Unlock/);
-  assert.match(source, /Week Logged/);
 });

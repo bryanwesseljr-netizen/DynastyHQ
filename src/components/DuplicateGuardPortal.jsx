@@ -65,8 +65,11 @@ const chronicleMilestoneKey = (button) => {
 const schoolRowKey = (row) => row.querySelector('strong')?.textContent || row.textContent;
 
 const applySpecificRules = () => {
-  document.querySelectorAll('[data-dashboard-card="milestones"] .dhq-v2-card__body').forEach((container) => {
-    dedupeItems([...container.querySelectorAll('.dhq-v2-list-row')], dashboardMilestoneKey);
+  // Dashboard milestone/list rows are intentionally discovered by structure,
+  // not a card id, so the guard survives card renames or stage-specific shells.
+  document.querySelectorAll('.dhq-v2-card__body').forEach((container) => {
+    const milestoneRows = [...container.querySelectorAll('.dhq-v2-list-row')];
+    if (milestoneRows.length > 1) dedupeItems(milestoneRows, dashboardMilestoneKey);
   });
 
   document.querySelectorAll('[data-dashboard-card="recent-results"] .dhq-v2-card__body').forEach((container) => {

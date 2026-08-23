@@ -9,6 +9,7 @@ import CollegeCareerAgendaCardPortal from './components/CollegeCareerAgendaCardP
 import RtgStatusScannerPortal from './components/RtgStatusScannerPortal.jsx'
 import CoachRecruitingWorkspaceV2Portal from './components/CoachRecruitingWorkspaceV2Portal.jsx'
 import PodcastHumanizedAudioPortal from './components/PodcastHumanizedAudioPortal.jsx'
+import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
 import './index.css' // <-- Make sure this line is here!
 import './newsroom-bearcats-logo.css'
 import './weekly-agenda-v3-refinements.css'
@@ -32,5 +33,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <RtgStatusScannerPortal />
     <CoachRecruitingWorkspaceV2Portal />
     <PodcastHumanizedAudioPortal />
+    <DuplicateGuardPortal />
   </React.StrictMode>,
 )

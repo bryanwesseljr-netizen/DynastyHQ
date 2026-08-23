@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+const previousDisplay = new WeakMap();
+
 const normalize = (value) => String(value || '')
   .replace(/\u00a0/g, ' ')
   .replace(/\s+/g, ' ')
@@ -9,11 +11,25 @@ const normalize = (value) => String(value || '')
 const setDuplicateState = (element, duplicate) => {
   if (!element) return;
   if (duplicate) {
+    if (element.dataset.dhqDisplayDuplicate !== 'true') {
+      previousDisplay.set(element, {
+        value: element.style.getPropertyValue('display'),
+        priority: element.style.getPropertyPriority('display'),
+      });
+    }
     element.dataset.dhqDisplayDuplicate = 'true';
     element.hidden = true;
-  } else if (element.dataset.dhqDisplayDuplicate === 'true') {
+    element.style.setProperty('display', 'none', 'important');
+    return;
+  }
+
+  if (element.dataset.dhqDisplayDuplicate === 'true') {
     delete element.dataset.dhqDisplayDuplicate;
     element.hidden = false;
+    const prior = previousDisplay.get(element);
+    if (prior?.value) element.style.setProperty('display', prior.value, prior.priority || '');
+    else element.style.removeProperty('display');
+    previousDisplay.delete(element);
   }
 };
 
@@ -138,10 +154,7 @@ const DuplicateGuardPortal = () => {
     return () => {
       observer.disconnect();
       if (frame) window.cancelAnimationFrame(frame);
-      document.querySelectorAll('[data-dhq-display-duplicate="true"]').forEach((element) => {
-        delete element.dataset.dhqDisplayDuplicate;
-        element.hidden = false;
-      });
+      document.querySelectorAll('[data-dhq-display-duplicate="true"]').forEach((element) => setDuplicateState(element, false));
     };
   }, []);
 

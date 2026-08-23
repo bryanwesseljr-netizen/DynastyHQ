@@ -9,10 +9,21 @@ const LOCAL_OUTLET = 'Bearcats Insider';
 const LOCAL_AUTHOR = 'Justin Williams';
 const LOCAL_AUTHOR_ROLE = 'Senior Staff Writer, Bearcats Insider';
 
-const formatPublishedDate = (value) => {
-  if (!value) return '';
+const dateFrom = (value) => {
+  if (!value) return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatPublishedDate = (value) => {
+  const date = dateFrom(value);
+  if (!date) return '';
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+};
+
+const formatLocalPublishedDate = (value) => {
+  const date = dateFrom(value);
+  if (!date) return '';
   return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
 };
 
@@ -39,7 +50,8 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
   const paragraphs = Array.isArray(story.paragraphs) ? story.paragraphs : [];
   const sectionAt = new Map(headingPositions(paragraphs.length, extras.sectionHeadings.length)
     .map((position, index) => [position, extras.sectionHeadings[index]]));
-  const publishedDate = formatPublishedDate(issue.publishedAt || issue.editorialGeneratedAt);
+  const dateValue = issue.publishedAt || issue.editorialGeneratedAt;
+  const publishedDate = isLocal ? formatLocalPublishedDate(dateValue) : formatPublishedDate(dateValue);
   const readingMinutes = story.readingMinutes
     || Math.max(2, Math.round(paragraphs.join(' ').split(/\s+/).filter(Boolean).length / 225));
   const hasImage = Boolean(featureImage);

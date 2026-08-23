@@ -15,6 +15,7 @@ import './weekly-agenda-v3-refinements.css'
 import './newsroom-polish-v4.css'
 import './podcast-polish-v4.css'
 import './chronicle-polish-v4.css'
+import './light-mode-v5-compat.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

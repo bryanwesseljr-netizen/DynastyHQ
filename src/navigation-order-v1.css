@@ -1,0 +1,12 @@
+/* Keep the most-used weekly workflow directly beside Dashboard on desktop.
+   Mobile already renders Weekly Agenda second through the React nav ordering. */
+@media (min-width: 1200px) {
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Dashboard"] { order: 0; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Weekly Agenda"] { order: 1; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Recruiting Board"] { order: 2; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="The Newsroom"] { order: 3; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Gridiron Grind Podcast"] { order: 4; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Chronicle"] { order: 5; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Legacy"] { order: 6; }
+  .dhq-primary-nav > .dhq-primary-nav-item[title="Settings"] { order: 7; }
+}

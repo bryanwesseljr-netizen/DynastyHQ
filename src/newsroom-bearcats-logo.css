@@ -1,0 +1,57 @@
+/* Shared Cincinnati Bearcats mark supplied by the DynastyHQ owner.
+   Keep publication branding distinct: this replaces only intentional team-logo slots. */
+
+.dhq-bearcats-mark {
+  background-image: url('./assets/bearcats-mark.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.dhq-bearcats-mark > span,
+.dhq-bearcats-mark > i {
+  display: none !important;
+}
+
+.dhq-bearcats-footer__left b {
+  display: inline-block;
+  width: 28px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 0 !important;
+  background-image: url('./assets/bearcats-mark.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0;
+  text-indent: -9999px;
+}
+
+.dhq-enquirer-footer__mark {
+  display: inline-block;
+  width: 27px;
+  height: 31px;
+  flex: 0 0 auto;
+  background-image: url('./assets/bearcats-mark.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0;
+  text-indent: -9999px;
+}
+
+@media (max-width: 680px) {
+  .dhq-bearcats-footer__left b {
+    width: 24px;
+    height: 28px;
+  }
+
+  .dhq-enquirer-footer__mark {
+    width: 23px;
+    height: 27px;
+  }
+}

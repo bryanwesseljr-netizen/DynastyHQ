@@ -1,0 +1,105 @@
+.dhq-agenda-v2-nav {
+  position: sticky;
+  top: 8px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  background: rgba(10, 12, 16, 0.92);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(16px);
+}
+
+.dhq-agenda-v2-nav__title {
+  display: flex;
+  min-width: 110px;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dhq-agenda-v2-nav__title span {
+  color: #64748b;
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-agenda-v2-nav__title strong {
+  color: #f8fafc;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.dhq-agenda-v2-nav__items {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dhq-agenda-v2-nav__items::-webkit-scrollbar { display: none; }
+
+.dhq-agenda-v2-nav__items button {
+  display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(255,255,255,.025);
+  color: #94a3b8;
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.dhq-agenda-v2-nav__items button:hover {
+  border-color: rgba(96, 165, 250, .35);
+  background: rgba(96, 165, 250, .05);
+  color: #f8fafc;
+}
+
+.dhq-weekly-agenda-v2[data-weekly-agenda-v2="active"] {
+  position: relative;
+}
+
+.dhq-weekly-agenda-v2[data-weekly-agenda-v2="active"]::before {
+  content: "STREAMLINED WEEKLY WORKSPACE";
+  display: block;
+  width: max-content;
+  margin: 0 0 7px 2px;
+  color: #60a5fa;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+@media (max-width: 820px) {
+  .dhq-agenda-v2-nav {
+    position: static;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dhq-agenda-v2-nav__title {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .dhq-agenda-v2-nav__items {
+    justify-content: flex-start;
+  }
+}

@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
+import AuthAwareApp from './components/AuthAwareApp.jsx'
 import WeekSetupPortal from './components/WeekSetupPortal.jsx'
 import GameweekFlowPortal from './components/GameweekFlowPortal.jsx'
 import QuickImportPortal from './components/QuickImportPortal.jsx'
@@ -15,10 +15,12 @@ import './weekly-agenda-v3-refinements.css'
 import './newsroom-polish-v4.css'
 import './podcast-polish-v4.css'
 import './chronicle-polish-v4.css'
+import './light-mode-v5-compat.css'
+import './light-mode-v7-dashboard-safe.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <AuthAwareApp />
     <WeekSetupPortal />
     <GameweekFlowPortal />
     <QuickImportPortal />

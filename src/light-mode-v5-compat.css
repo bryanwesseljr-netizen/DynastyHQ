@@ -1,0 +1,414 @@
+/* DynastyHQ light-mode compatibility v5
+   Loaded after the v2/v4 polish styles so light mode wins the cascade.
+   Presentation only: no workflow or data behavior changes. */
+
+html[data-dhq-theme="light"] {
+  --dhq-v5-card: #ffffff;
+  --dhq-v5-soft: #f8fafc;
+  --dhq-v5-inset: #f1f5f9;
+  --dhq-v5-rule: #cbd5e1;
+  --dhq-v5-rule-soft: #dbe3ec;
+  --dhq-v5-ink: #0f172a;
+  --dhq-v5-muted: #64748b;
+  --dhq-v5-blue: #1d4ed8;
+  --dhq-v5-blue-soft: #eff6ff;
+  --dhq-v5-green: #166534;
+  --dhq-v5-green-soft: #ecfdf5;
+  --dhq-v5-amber: #92400e;
+  --dhq-v5-amber-soft: #fffbeb;
+  --dhq-v5-red-soft: #fef2f2;
+}
+
+/* --------------------------------------------------------------------------
+   WEEKLY AGENDA v3
+   -------------------------------------------------------------------------- */
+html[data-dhq-theme="light"] .dhq-weekly-agenda-v2 :is(
+  .dhq-agenda-v3-header,
+  .dhq-agenda-v3-control-card,
+  .dhq-agenda-v3-import-card,
+  .dhq-agenda-v3-tools-card,
+  .dhq-agenda-v3-rtg-row,
+  [data-week-setup-panel],
+  .dhq-postgame-review,
+  [data-agenda-card]
+),
+html[data-dhq-theme="light"] .dhq-agenda-v3-action-bar {
+  border-color: var(--dhq-v5-rule) !important;
+  background: var(--dhq-v5-card) !important;
+  background-image: none !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .08) !important;
+  color: var(--dhq-v5-ink) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-header h1,
+html[data-dhq-theme="light"] .dhq-agenda-v3-control-card strong,
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-copy > strong,
+html[data-dhq-theme="light"] .dhq-agenda-v3-tools-card > div:first-child > strong,
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-summary strong,
+html[data-dhq-theme="light"] .dhq-agenda-v3-action-bar > div:first-child > strong {
+  color: var(--dhq-v5-ink) !important;
+}
+
+html[data-dhq-theme="light"] :is(
+  .dhq-agenda-v3-eyebrow,
+  .dhq-agenda-v3-label,
+  .dhq-agenda-v3-header p,
+  .dhq-agenda-v3-control-card small,
+  .dhq-agenda-v3-import-copy > small,
+  .dhq-agenda-v3-tools-card > div:first-child > small,
+  .dhq-agenda-v3-import-summary small,
+  .dhq-agenda-v3-action-bar > div:first-child > small,
+  .dhq-agenda-v3-rtg-row small,
+  .dhq-agenda-v3-safety
+) {
+  color: var(--dhq-v5-muted) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-header__icon {
+  border-color: #bfdbfe !important;
+  background: var(--dhq-v5-blue-soft) !important;
+  color: #2563eb !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-step {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-soft) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-step > span {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-step strong {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-step.is-done {
+  border-color: #bbf7d0 !important;
+  background: var(--dhq-v5-green-soft) !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-step.is-done > span {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-step.is-done strong {
+  color: var(--dhq-v5-green) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-step.is-active {
+  border-color: #93c5fd !important;
+  background: var(--dhq-v5-blue-soft) !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-step.is-active > span {
+  background: #2563eb !important;
+  color: #fff !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-step.is-active strong {
+  color: #1e40af !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-text-button,
+html[data-dhq-theme="light"] .dhq-agenda-v3-tools-actions button {
+  border-color: var(--dhq-v5-rule) !important;
+  background: var(--dhq-v5-soft) !important;
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-tools-actions button.is-active {
+  border-color: #93c5fd !important;
+  background: var(--dhq-v5-blue-soft) !important;
+  color: #1e40af !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-button {
+  border-color: #bfdbfe !important;
+  background: #f8fbff !important;
+  color: #2563eb !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-button:hover:not(:disabled) {
+  border-color: #60a5fa !important;
+  background: var(--dhq-v5-blue-soft) !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-button strong {
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-button small {
+  color: var(--dhq-v5-muted) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-card.is-summary {
+  border-color: #bbf7d0 !important;
+  background: var(--dhq-v5-green-soft) !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-import-summary__icon,
+html[data-dhq-theme="light"] .dhq-agenda-v3-rtg-dot {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-summary-button {
+  border-color: #86efac !important;
+  background: #f0fdf4 !important;
+  color: var(--dhq-v5-green) !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-rtg-row strong {
+  color: var(--dhq-v5-green) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-v2 [data-week-setup-panel] > div:first-child,
+html[data-dhq-theme="light"] .dhq-weekly-agenda-v2 .dhq-postgame-review > div:first-child {
+  background: var(--dhq-v5-soft) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-weekly-agenda-v2 :is(input, select, textarea) {
+  border-color: var(--dhq-v5-rule) !important;
+  background: #fff !important;
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] .dhq-weekly-agenda-v2 :is(input, textarea)::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-agenda-v3-action-buttons .is-secondary {
+  border-color: #bfdbfe !important;
+  background: var(--dhq-v5-blue-soft) !important;
+  color: #1e40af !important;
+}
+html[data-dhq-theme="light"] .dhq-agenda-v3-action-buttons .is-primary {
+  border-color: #059669 !important;
+  background: #059669 !important;
+  color: #fff !important;
+}
+
+/* Keep the two import choices contained inside their own tiles. */
+.dhq-agenda-v3-import-actions,
+.dhq-agenda-v3-import-button,
+.dhq-agenda-v3-import-button span {
+  min-width: 0;
+}
+.dhq-agenda-v3-import-button {
+  overflow: hidden;
+  padding-inline: 9px !important;
+}
+.dhq-agenda-v3-import-button span {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.dhq-agenda-v3-import-button strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 7px !important;
+  letter-spacing: 0 !important;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+@media (min-width: 900px) {
+  .dhq-agenda-v3-import-card:not(.is-summary) {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, .95fr) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   RECRUITING + PODCAST + CHRONICLE utility surfaces
+   -------------------------------------------------------------------------- */
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is(section, article, aside, details, form, div, button)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is(section, article, aside, details, form, div, button)[class*="bg-slate-8"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is(section, article, aside, details, form, div)[class*="bg-[#"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is(section, article, aside, details, form, div)[class*="bg-black/"] {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-card) !important;
+  background-image: none !important;
+  color: var(--dhq-v5-ink) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is(input, select, textarea)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is(input, select, textarea)[class*="bg-slate-8"] {
+  border-color: var(--dhq-v5-rule) !important;
+  background: #fff !important;
+  color: var(--dhq-v5-ink) !important;
+}
+
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: var(--dhq-v5-ink) !important;
+  text-shadow: none !important;
+}
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-slate-700"]) {
+  color: var(--dhq-v5-muted) !important;
+}
+
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) [class*="bg-blue-950/"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) [class*="bg-blue-500/"] {
+  background: var(--dhq-v5-blue-soft) !important;
+  background-image: none !important;
+}
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) [class*="bg-emerald-950/"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) [class*="bg-emerald-500/"] {
+  background: var(--dhq-v5-green-soft) !important;
+  background-image: none !important;
+}
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) [class*="bg-amber-950/"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) [class*="bg-amber-500/"] {
+  background: var(--dhq-v5-amber-soft) !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) button[class*="bg-blue-6"],
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) button[class*="bg-emerald-6"] {
+  color: #fff !important;
+}
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) button[class*="bg-blue-6"] *,
+html[data-dhq-theme="light"] :is(
+  main[data-active-tab="recruiting"],
+  main[data-active-tab="podcast"],
+  main[data-active-tab="chronicle"]
+) button[class*="bg-emerald-6"] * {
+  color: inherit !important;
+}
+
+/* Podcast v4 used late !important gradients; explicitly return them to day mode. */
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="podcast"] > div:not(.pointer-events-none) > header:first-child,
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance],
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance] .shadow-inner {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-card) !important;
+  background-image: none !important;
+  color: var(--dhq-v5-ink) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .08) !important;
+}
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance] .shadow-inner {
+  background: var(--dhq-v5-soft) !important;
+}
+
+/* Chronicle v4 also paints custom dark surfaces after the old light stylesheet. */
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child,
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 > div,
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20,
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="chronicle"] section.rounded-xl.border.border-slate-700\/60.bg-slate-900\/85 {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-card) !important;
+  background-image: none !important;
+  color: var(--dhq-v5-ink) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .07) !important;
+}
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="chronicle"] section.border-amber-500\/20 button:first-child {
+  border-color: #f3d58a !important;
+  background: var(--dhq-v5-amber-soft) !important;
+}
+
+/* --------------------------------------------------------------------------
+   NEWSROOM chrome only. Publication article/story identities stay intact.
+   -------------------------------------------------------------------------- */
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > div:first-child,
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > section[aria-labelledby="weekly-coverage-title"] {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-card) !important;
+  background-image: none !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .08) !important;
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="newsroom"] section[aria-labelledby="weekly-coverage-title"] > div:first-child {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-soft) !important;
+  background-image: none !important;
+}
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="newsroom"] #weekly-coverage-title,
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > div:first-child :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] .dhq-page-main[data-active-tab="newsroom"] > div:not(.pointer-events-none) > div:first-child :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"]) {
+  color: var(--dhq-v5-muted) !important;
+}
+
+/* Podcast v3 floating tool participates in the selected theme too. */
+html[data-dhq-theme="light"] button[aria-label="Open Script + Humanized Audio controls"],
+html[data-dhq-theme="light"] aside:has(button[aria-label="Minimize Podcast v3 controls"]) {
+  border-color: #a5d8e8 !important;
+  background: rgba(255, 255, 255, .97) !important;
+  background-image: none !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .14) !important;
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] button[aria-label="Open Script + Humanized Audio controls"] [class~="text-white"],
+html[data-dhq-theme="light"] aside:has(button[aria-label="Minimize Podcast v3 controls"]) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] aside:has(button[aria-label="Minimize Podcast v3 controls"]) :is([class*="bg-slate-9"], [class*="bg-slate-8"]) {
+  border-color: var(--dhq-v5-rule-soft) !important;
+  background: var(--dhq-v5-soft) !important;
+  color: var(--dhq-v5-ink) !important;
+}
+html[data-dhq-theme="light"] aside:has(button[aria-label="Minimize Podcast v3 controls"]) select {
+  border-color: var(--dhq-v5-rule) !important;
+  background: #fff !important;
+  color: var(--dhq-v5-ink) !important;
+}

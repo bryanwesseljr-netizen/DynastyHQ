@@ -1,0 +1,204 @@
+/* DynastyHQ dashboard light-mode compatibility v7
+   Narrow, component-scoped overrides only. No layout, visibility, opacity, or
+   portal lifecycle rules are changed here. */
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 {
+  --dhq-v2-bg: #f8fafc;
+  --dhq-v2-card: #ffffff;
+  --dhq-v2-card-soft: #f8fafc;
+  --dhq-v2-border: #dbe3ec;
+  --dhq-v2-border-strong: #cbd5e1;
+  --dhq-v2-text: #0f172a;
+  --dhq-v2-muted: #475569;
+  --dhq-v2-subtle: #64748b;
+  --dhq-v2-gold: #a16207;
+  --dhq-v2-blue: #2563eb;
+}
+
+/* Core dashboard surfaces */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-identity,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .08) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__header {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-identity h1,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__header h2,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-stat strong,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-current-week h3,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-coverage h3,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-result-row strong,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-list-row strong,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-school-row strong,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-feature-row strong,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-trophy strong {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-eyebrow,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-identity__main p,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__header p,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-stat span,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-current-week p,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-coverage p,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-kicker,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-empty,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-feature-row span,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-trophy span,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__header,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__header strong {
+  color: #64748b !important;
+}
+
+/* Small stat and status surfaces */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-stat {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-player-snapshot > div:first-child {
+  border-color: #efd59a !important;
+  background: #fffaf0 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-player-snapshot > div:first-child strong {
+  color: #a16207 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-player-snapshot > div:first-child span,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-player-snapshot > div:first-child small {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-week-number {
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-week-number span {
+  color: #64748b !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-week-number strong {
+  color: #1e3a8a !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__action {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-headshot {
+  border-color: #cbd5e1 !important;
+  background: #f1f5f9 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-headshot button {
+  border-color: #cbd5e1 !important;
+  background: rgba(255,255,255,.96) !important;
+  color: #334155 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-feature-row {
+  border-top-color: #e2e8f0 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-result-row span:not(.dhq-v2-result-badge),
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-list-row span,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-school-row small {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-list-icon,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-trophy {
+  border-color: #efd59a !important;
+  background: #fffaf0 !important;
+  color: #a16207 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__step {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__step.is-complete {
+  border-color: #bbf7d0 !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__step.is-active {
+  border-color: #efd59a !important;
+  background: #fffaf0 !important;
+  color: #a16207 !important;
+}
+
+/* Quick Import portal: explicit pieces only. */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] .dhq-v2-card__body > div:first-child {
+  border-color: #bfdbfe !important;
+  background: #f8fbff !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] .dhq-v2-card__body > div:first-child .text-slate-300,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] button .text-slate-100 {
+  color: #0f172a !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] .text-slate-500,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] .text-slate-600 {
+  color: #64748b !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] .dhq-v2-card__body > div.mt-3.grid > button {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+/* Smart Next Action portal: only its two known card surfaces. */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] > div {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .08) !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] > div > div > div:last-child {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard h2,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard .text-slate-200,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard .text-slate-300 {
+  color: #0f172a !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard .text-slate-400,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard .text-slate-500,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard .text-slate-600 {
+  color: #64748b !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard .bg-slate-900 {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+}
+
+/* Profile editor */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal {
+  background: rgba(15,23,42,.38) !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__panel {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__header,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__footer {
+  border-color: #e2e8f0 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__header h2 {
+  color: #0f172a !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__grid input,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__grid select {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}

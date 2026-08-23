@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
+import AuthAwareApp from './components/AuthAwareApp.jsx'
 import WeekSetupPortal from './components/WeekSetupPortal.jsx'
 import GameweekFlowPortal from './components/GameweekFlowPortal.jsx'
 import QuickImportPortal from './components/QuickImportPortal.jsx'
@@ -20,7 +20,7 @@ import './light-mode-v7-dashboard-safe.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <AuthAwareApp />
     <WeekSetupPortal />
     <GameweekFlowPortal />
     <QuickImportPortal />

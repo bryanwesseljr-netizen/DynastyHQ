@@ -4,10 +4,14 @@ import {
 } from '../domain/newsroomPresentation';
 import '../newsroom-v3.css';
 import '../newsroom-local-bearcats.css';
+import '../newsroom-regional-enquirer.css';
 
 const LOCAL_OUTLET = 'Bearcats Insider';
 const LOCAL_AUTHOR = 'Justin Williams';
 const LOCAL_AUTHOR_ROLE = 'Senior Staff Writer, Bearcats Insider';
+const REGIONAL_OUTLET = 'Cincinnati Enquirer';
+const REGIONAL_AUTHOR = 'Alex Harrison';
+const REGIONAL_AUTHOR_ROLE = 'Senior Sports Writer';
 
 const dateFrom = (value) => {
   if (!value) return null;
@@ -25,6 +29,14 @@ const formatLocalPublishedDate = (value) => {
   const date = dateFrom(value);
   if (!date) return '';
   return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
+};
+
+const formatRegionalPublishedDate = (value) => {
+  const date = dateFrom(value);
+  if (!date) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  }).format(date);
 };
 
 const headingPositions = (paragraphCount, headingCount) => {
@@ -46,12 +58,17 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
   const presentation = resolveNewsroomPresentation(story);
   const extras = buildEditorialExtras({ story, issue });
   const isLocal = extras.audience === 'local';
-  const displayOutletName = isLocal ? LOCAL_OUTLET : story.outletName;
+  const isRegional = extras.audience === 'regional';
+  const displayOutletName = isLocal ? LOCAL_OUTLET : isRegional ? REGIONAL_OUTLET : story.outletName;
   const paragraphs = Array.isArray(story.paragraphs) ? story.paragraphs : [];
   const sectionAt = new Map(headingPositions(paragraphs.length, extras.sectionHeadings.length)
     .map((position, index) => [position, extras.sectionHeadings[index]]));
   const dateValue = issue.publishedAt || issue.editorialGeneratedAt;
-  const publishedDate = isLocal ? formatLocalPublishedDate(dateValue) : formatPublishedDate(dateValue);
+  const publishedDate = isLocal
+    ? formatLocalPublishedDate(dateValue)
+    : isRegional
+      ? formatRegionalPublishedDate(dateValue)
+      : formatPublishedDate(dateValue);
   const readingMinutes = story.readingMinutes
     || Math.max(2, Math.round(paragraphs.join(' ').split(/\s+/).filter(Boolean).length / 225));
   const hasImage = Boolean(featureImage);
@@ -62,6 +79,10 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       : '';
   const photoCaption = String(story.photoCaption || story.dek || '').trim();
   const localAsideSections = isLocal ? extras.sidebarsForAside.slice(0, 1) : extras.sidebarsForAside;
+  const regionalAsideSections = isRegional ? extras.sidebarsForAside.slice(0, 1) : [];
+  const regionalLeadCount = Math.min(2, paragraphs.length);
+  const regionalLeadParagraphs = paragraphs.slice(0, regionalLeadCount);
+  const regionalRemainingParagraphs = paragraphs.slice(regionalLeadCount);
 
   const shareDigitalEdition = async () => {
     if (typeof window === 'undefined') return;
@@ -118,6 +139,18 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
             <strong>CINCINNATI TOUGH.</strong>
           </div>
         </header>
+      ) : isRegional ? (
+        <header className="dhq-enquirer-masthead">
+          <div className="dhq-enquirer-masthead__top">
+            <div className="dhq-enquirer-name">Cincinnati Enquirer</div>
+            <div className="dhq-enquirer-sports">SPORTS</div>
+            <div className="dhq-enquirer-beat"><strong>BEARCATS</strong><span>FOOTBALL</span></div>
+          </div>
+          <div className="dhq-enquirer-masthead__meta">
+            {publishedDate && <time>{publishedDate.toUpperCase()}</time>}
+            <div><span>CINCINNATI.COM</span><i aria-hidden="true" /> <b>1B</b></div>
+          </div>
+        </header>
       ) : (
         <header className="dhq-news-masthead">
           <div className="dhq-news-masthead__identity">
@@ -132,104 +165,180 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
         </header>
       )}
 
-      {!isLocal && <div className="dhq-news-accent-rule" aria-hidden="true" />}
+      {!isLocal && !isRegional && <div className="dhq-news-accent-rule" aria-hidden="true" />}
 
-      <div className="dhq-news-lead">
-        <div className="dhq-news-intro">
-          {!isLocal && (
-            <div className="dhq-news-story-flags">
-              <span className="dhq-news-kicker">{story.kicker || presentation.category}</span>
-              <span className="dhq-news-impact-badge">{extras.importanceLabel}</span>
-              <span className="dhq-news-format-badge">{extras.formatLabel}</span>
-            </div>
-          )}
-          <h1>{story.headline}</h1>
-          {!isLocal && <p className="dhq-news-dek">{story.dek}</p>}
-          {isLocal ? (
-            <div className="dhq-bearcats-byline-row">
-              <div className="dhq-bearcats-byline-copy">
-                <span>By</span>
-                <strong>{LOCAL_AUTHOR}</strong>
-                <i aria-hidden="true" />
-                <span>{LOCAL_AUTHOR_ROLE}</span>
+      {isRegional ? (
+        <>
+          <section className="dhq-enquirer-headline-block">
+            <h1>{story.headline}</h1>
+            {story.dek && <p>{story.dek}</p>}
+          </section>
+          <div className="dhq-enquirer-headline-rule" aria-hidden="true" />
+
+          <section className="dhq-enquirer-main-grid">
+            <div className="dhq-enquirer-lead-copy">
+              <div className="dhq-enquirer-byline">
+                <strong>By {REGIONAL_AUTHOR}</strong>
+                <span>{REGIONAL_AUTHOR_ROLE}</span>
               </div>
-              {publishedDate && <time>{publishedDate}</time>}
+              {regionalLeadParagraphs.map((paragraph, index) => (
+                <div key={`${story.id}-regional-lead-${index}`}>
+                  {sectionAt.has(index) && <h2>{sectionAt.get(index)}</h2>}
+                  <p>{paragraph}</p>
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="dhq-news-byline">
-              <span>By {story.byline || `${displayOutletName} Staff`}</span>
-              {story.dateline && <span>{story.dateline}</span>}
-              {publishedDate && <span>Published {publishedDate}</span>}
-              <span className="dhq-news-read-time"><Clock3 size={13} /> {readingMinutes} min read</span>
-            </div>
-          )}
-        </div>
 
-        {hasImage && (
-          <figure className="dhq-news-hero">
-            <img src={featureImage} alt={`Feature coverage for ${story.headline}`} />
-            {(photoCaption || photoCredit || currentMedia?.disclosure) && (
-              <figcaption>
-                {photoCaption && <span className="dhq-news-photo-caption">{photoCaption}</span>}
-                <span className="dhq-news-photo-credit">
-                  {photoCredit ? `Photo: ${photoCredit}` : ''}
-                  {currentMedia?.disclosure ? `${photoCredit ? ' · ' : ''}${currentMedia.disclosure}` : ''}
-                </span>
-              </figcaption>
+            {hasImage && (
+              <figure className="dhq-enquirer-hero">
+                <img src={featureImage} alt={`Feature coverage for ${story.headline}`} />
+                {(photoCaption || photoCredit || currentMedia?.disclosure) && (
+                  <figcaption>
+                    {photoCaption && <span className="dhq-enquirer-photo-caption">{photoCaption}</span>}
+                    <span className="dhq-enquirer-photo-credit">
+                      {photoCredit ? photoCredit.toUpperCase() : ''}
+                      {currentMedia?.disclosure ? `${photoCredit ? ' · ' : ''}${currentMedia.disclosure}` : ''}
+                    </span>
+                  </figcaption>
+                )}
+              </figure>
             )}
-          </figure>
-        )}
-      </div>
 
-      {!isLocal && extras.modules.length > 0 && (
-        <section className="dhq-news-module-deck" aria-label="Story context">
-          {extras.modules.map((module, moduleIndex) => (
-            <section className="dhq-news-module" key={`${module.title}-${moduleIndex}`}>
-              <p className="dhq-news-module__eyebrow">{module.eyebrow}</p>
-              <h2>{module.title}</h2>
-              <ul>
-                {module.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
-              </ul>
+            {regionalAsideSections.length > 0 && (
+              <aside className="dhq-enquirer-sidebar" aria-label="Article context">
+                {regionalAsideSections.map((section, sectionIndex) => (
+                  <section key={`${section.title}-${sectionIndex}`}>
+                    <h2>{section.title || 'At a Glance'}</h2>
+                    <ul>
+                      {section.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
+                    </ul>
+                  </section>
+                ))}
+              </aside>
+            )}
+          </section>
+
+          {regionalRemainingParagraphs.length > 0 && (
+            <section className="dhq-enquirer-lower-copy">
+              {regionalRemainingParagraphs.map((paragraph, index) => {
+                const originalIndex = index + regionalLeadCount;
+                return (
+                  <div key={`${story.id}-regional-rest-${originalIndex}`}>
+                    {sectionAt.has(originalIndex) && <h2>{sectionAt.get(originalIndex)}</h2>}
+                    <p>{paragraph}</p>
+                  </div>
+                );
+              })}
             </section>
-          ))}
-        </section>
-      )}
-
-      <div className={`dhq-news-content-grid${localAsideSections.length ? '' : ' dhq-news-content-grid--wide'}`}>
-        <div className="dhq-news-copy">
-          {paragraphs.map((paragraph, index) => (
-            <div key={`${story.id}-${index}`}>
-              {sectionAt.has(index) && <h2>{sectionAt.get(index)}</h2>}
-              <p>{paragraph}</p>
-              {!isLocal && index === Math.min(2, paragraphs.length - 1) && extras.pullQuote && (
-                <blockquote>
-                  <span>Why it matters</span>
-                  {extras.pullQuote}
-                </blockquote>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="dhq-news-lead">
+            <div className="dhq-news-intro">
+              {!isLocal && (
+                <div className="dhq-news-story-flags">
+                  <span className="dhq-news-kicker">{story.kicker || presentation.category}</span>
+                  <span className="dhq-news-impact-badge">{extras.importanceLabel}</span>
+                  <span className="dhq-news-format-badge">{extras.formatLabel}</span>
+                </div>
+              )}
+              <h1>{story.headline}</h1>
+              {!isLocal && <p className="dhq-news-dek">{story.dek}</p>}
+              {isLocal ? (
+                <div className="dhq-bearcats-byline-row">
+                  <div className="dhq-bearcats-byline-copy">
+                    <span>By</span>
+                    <strong>{LOCAL_AUTHOR}</strong>
+                    <i aria-hidden="true" />
+                    <span>{LOCAL_AUTHOR_ROLE}</span>
+                  </div>
+                  {publishedDate && <time>{publishedDate}</time>}
+                </div>
+              ) : (
+                <div className="dhq-news-byline">
+                  <span>By {story.byline || `${displayOutletName} Staff`}</span>
+                  {story.dateline && <span>{story.dateline}</span>}
+                  {publishedDate && <span>Published {publishedDate}</span>}
+                  <span className="dhq-news-read-time"><Clock3 size={13} /> {readingMinutes} min read</span>
+                </div>
               )}
             </div>
-          ))}
-        </div>
 
-        {localAsideSections.length > 0 && (
-          <aside className="dhq-news-sidebar" aria-label="Article context">
-            {localAsideSections.map((section, sectionIndex) => (
-              <section key={`${section.title}-${sectionIndex}`}>
-                <h2>{section.title}</h2>
-                <ul>
-                  {section.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
-                </ul>
-              </section>
-            ))}
-          </aside>
-        )}
-      </div>
+            {hasImage && (
+              <figure className="dhq-news-hero">
+                <img src={featureImage} alt={`Feature coverage for ${story.headline}`} />
+                {(photoCaption || photoCredit || currentMedia?.disclosure) && (
+                  <figcaption>
+                    {photoCaption && <span className="dhq-news-photo-caption">{photoCaption}</span>}
+                    <span className="dhq-news-photo-credit">
+                      {photoCredit ? `Photo: ${photoCredit}` : ''}
+                      {currentMedia?.disclosure ? `${photoCredit ? ' · ' : ''}${currentMedia.disclosure}` : ''}
+                    </span>
+                  </figcaption>
+                )}
+              </figure>
+            )}
+          </div>
+
+          {!isLocal && extras.modules.length > 0 && (
+            <section className="dhq-news-module-deck" aria-label="Story context">
+              {extras.modules.map((module, moduleIndex) => (
+                <section className="dhq-news-module" key={`${module.title}-${moduleIndex}`}>
+                  <p className="dhq-news-module__eyebrow">{module.eyebrow}</p>
+                  <h2>{module.title}</h2>
+                  <ul>
+                    {module.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
+                  </ul>
+                </section>
+              ))}
+            </section>
+          )}
+
+          <div className={`dhq-news-content-grid${localAsideSections.length ? '' : ' dhq-news-content-grid--wide'}`}>
+            <div className="dhq-news-copy">
+              {paragraphs.map((paragraph, index) => (
+                <div key={`${story.id}-${index}`}>
+                  {sectionAt.has(index) && <h2>{sectionAt.get(index)}</h2>}
+                  <p>{paragraph}</p>
+                  {!isLocal && index === Math.min(2, paragraphs.length - 1) && extras.pullQuote && (
+                    <blockquote>
+                      <span>Why it matters</span>
+                      {extras.pullQuote}
+                    </blockquote>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {localAsideSections.length > 0 && (
+              <aside className="dhq-news-sidebar" aria-label="Article context">
+                {localAsideSections.map((section, sectionIndex) => (
+                  <section key={`${section.title}-${sectionIndex}`}>
+                    <h2>{section.title}</h2>
+                    <ul>
+                      {section.items.map((item, itemIndex) => <li key={`${item}-${itemIndex}`}>{item}</li>)}
+                    </ul>
+                  </section>
+                ))}
+              </aside>
+            )}
+          </div>
+        </>
+      )}
 
       {isLocal ? (
         <footer className="dhq-bearcats-footer">
           <span className="dhq-bearcats-footer__left"><b aria-hidden="true">C</b> BEARCATS FOOTBALL</span>
           <span>CINCINNATI BEARCATS</span>
           <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">GOBEARCATS.COM</button>
+        </footer>
+      ) : isRegional ? (
+        <footer className="dhq-enquirer-footer">
+          <span className="dhq-enquirer-footer__mark" aria-hidden="true">C</span>
+          <strong>BEARCAT NATION:</strong>
+          <span>For the latest on Cincinnati football, recruiting and more, visit</span>
+          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">Cincinnati.com/bearcats</button>
         </footer>
       ) : (
         <footer className="dhq-news-footer">

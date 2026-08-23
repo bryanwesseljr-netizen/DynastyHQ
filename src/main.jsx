@@ -7,6 +7,7 @@ import QuickImportPortal from './components/QuickImportPortal.jsx'
 import WeeklyAgendaV2Portal from './components/WeeklyAgendaV2Portal.jsx'
 import CollegeCareerAgendaCardPortal from './components/CollegeCareerAgendaCardPortal.jsx'
 import RtgStatusScannerPortal from './components/RtgStatusScannerPortal.jsx'
+import CoachRecruitingWorkspaceV2Portal from './components/CoachRecruitingWorkspaceV2Portal.jsx'
 import PodcastHumanizedAudioPortal from './components/PodcastHumanizedAudioPortal.jsx'
 import './index.css' // <-- Make sure this line is here!
 import './newsroom-bearcats-logo.css'
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <WeeklyAgendaV2Portal />
     <CollegeCareerAgendaCardPortal />
     <RtgStatusScannerPortal />
+    <CoachRecruitingWorkspaceV2Portal />
     <PodcastHumanizedAudioPortal />
   </React.StrictMode>,
 )

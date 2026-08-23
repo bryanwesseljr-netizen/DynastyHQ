@@ -5,14 +5,14 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Images,
   Loader2,
-  Map,
-  Medal,
+  PenLine,
   ScanLine,
-  Settings,
   ShieldCheck,
-  Trophy,
+  Sparkles,
   Video,
 } from 'lucide-react';
 import { appId, auth, db } from '../firebase';
@@ -30,6 +30,12 @@ const stageLabels = {
   [CAREER_STAGES.RETIRED]: 'Legacy',
 };
 
+const phaseLabels = {
+  preseason: 'Preseason',
+  regular: 'Regular Season',
+  postseason: 'Postseason',
+};
+
 const findByText = (root, selector, matcher) => [...(root?.querySelectorAll(selector) || [])]
   .find((element) => matcher.test((element.textContent || '').trim()));
 
@@ -38,22 +44,30 @@ const findUniversalScannerInput = (root = document) => {
   return label?.querySelector('input[type="file"]') || null;
 };
 
+const markTopLevelContaining = (agenda, matcher, className) => {
+  const candidate = [...agenda.querySelectorAll('h1,h2,h3,h4,p,span,label')]
+    .find((element) => matcher.test((element.textContent || '').trim()));
+  if (!candidate) return null;
+  let node = candidate;
+  while (node?.parentElement && node.parentElement !== agenda) node = node.parentElement;
+  if (node?.parentElement === agenda) node.classList.add(className);
+  return node;
+};
+
 const markAgendaStructure = (agenda) => {
   if (!agenda) return;
   agenda.dataset.weeklyAgendaV2 = 'active';
 
   const scannerLabel = findByText(agenda, 'label', /choose weekly screenshots/i);
   if (scannerLabel) {
-    let node = scannerLabel.parentElement;
-    while (node && node !== agenda) {
-      const heading = node.querySelector?.('h2');
-      if (/universal scanner/i.test(heading?.textContent || '')) {
-        node.classList.add('dhq-agenda-v2-legacy-scanner');
-        break;
-      }
-      node = node.parentElement;
-    }
+    let node = scannerLabel;
+    while (node?.parentElement && node.parentElement !== agenda) node = node.parentElement;
+    if (node?.parentElement === agenda) node.classList.add('dhq-agenda-v2-legacy-scanner');
   }
+
+  markTopLevelContaining(agenda, /college game week command center/i, 'dhq-agenda-v2-duplicate-block');
+  markTopLevelContaining(agenda, /faster weekly entry/i, 'dhq-agenda-v2-duplicate-block');
+  markTopLevelContaining(agenda, /postgame\s*[·•-]\s*postgame scanner/i, 'dhq-agenda-v2-duplicate-block');
 
   const publishButton = findByText(
     agenda,
@@ -70,7 +84,7 @@ const handoffFilesToScanner = async (files, agenda) => {
   const selected = [...(files || [])];
   if (!selected.length) return;
   const input = findUniversalScannerInput(agenda);
-  if (!input) throw new Error('The Universal Scanner is not ready yet. Reload Weekly Agenda and try again.');
+  if (!input) throw new Error('The Weekly Agenda scanner is not ready yet. Reload the page and try again.');
   if (typeof DataTransfer === 'undefined') {
     throw new Error('This browser cannot hand files to the scanner automatically. Use the screenshot chooser in Weekly Agenda instead.');
   }
@@ -83,39 +97,49 @@ const handoffFilesToScanner = async (files, agenda) => {
   }, 500);
 };
 
-const WeeklyAgendaHeader = ({ career, stage }) => {
-  const setup = career?.currentWeekSetup || {};
-  const week = career?.currentWeek ?? setup.week ?? 1;
-  const season = career?.currentSeason || 1;
-  const school = career?.player?.college || career?.player?.school || career?.coach?.currentSchool || 'Current program';
-  const setupType = setup.type === 'bye' ? 'Bye Week' : 'Game Week';
-  const setupLabel = setup.label || setup.customLabel || `Week ${week}`;
-
-  return (
-    <section className="dhq-agenda-v2-header" data-weekly-agenda-v2-header>
-      <div className="dhq-agenda-v2-header__identity">
-        <span className="dhq-agenda-v2-header__icon"><CalendarDays size={17} /></span>
-        <div className="min-w-0">
-          <span className="dhq-agenda-v2-eyebrow">Weekly Agenda Workspace · {stageLabels[stage] || 'Career'}</span>
-          <h1>{setupLabel}</h1>
-          <p>{school} · {setupType} · streamlined workspace</p>
-        </div>
+const WorkflowSteps = ({ setupReady }) => (
+  <div className="dhq-agenda-v3-steps" aria-label="Weekly workflow">
+    {[
+      ['1', 'Setup', setupReady ? 'done' : 'active'],
+      ['2', 'Import', setupReady ? 'active' : 'waiting'],
+      ['3', 'Review', 'waiting'],
+      ['4', 'Publish', 'waiting'],
+    ].map(([number, label, state]) => (
+      <div key={label} className={`dhq-agenda-v3-step is-${state}`}>
+        <span>{state === 'done' ? <CheckCircle2 size={12} /> : number}</span>
+        <strong>{label}</strong>
       </div>
-      <div className="dhq-agenda-v2-header__metrics">
-        <div><span>Season</span><strong>{season}</strong></div>
-        <div><span>Week</span><strong>{week}</strong></div>
-        <div><span>Stage</span><strong>{stage === CAREER_STAGES.COLLEGE ? (career?.rtg?.rank || 'Player') : (stageLabels[stage] || 'Career')}</strong></div>
-      </div>
-    </section>
-  );
-};
+    ))}
+  </div>
+);
 
-const AgendaQuickImport = ({ stage, agenda }) => {
+const WeeklyAgendaShell = ({
+  career,
+  stage,
+  agenda,
+  setupOpen,
+  manualOpen,
+  moreOpen,
+  onToggleSetup,
+  onToggleManual,
+  onToggleMore,
+}) => {
   const screenshotInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
   const [message, setMessage] = useState(null);
+
+  const setup = career?.currentWeekSetup || {};
+  const week = Number(setup.week ?? career?.currentWeek ?? 1);
+  const season = Number(career?.currentSeason || 1);
+  const school = career?.player?.college || career?.player?.school || career?.coach?.currentSchool || 'Current program';
+  const role = stage === CAREER_STAGES.COLLEGE
+    ? (career?.rtg?.rank || 'Player')
+    : (stageLabels[stage] || 'Career');
+  const setupReady = setup.week !== undefined && setup.week !== null;
+  const setupType = setup.type === 'bye' ? 'Bye Week' : 'Game Week';
+  const phase = phaseLabels[setup.phase] || 'Regular Season';
   const isHighSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
 
   const importScreens = async (files) => {
@@ -127,7 +151,7 @@ const AgendaQuickImport = ({ stage, agenda }) => {
     try {
       await handoffFilesToScanner(selected, agenda);
     } catch (error) {
-      setMessage({ type: 'error', text: error?.message || 'Screenshot import failed.' });
+      setMessage(error?.message || 'Screenshot import failed.');
     } finally {
       setBusy(false);
     }
@@ -145,7 +169,7 @@ const AgendaQuickImport = ({ stage, agenda }) => {
       setStatus({ percent: 100, frames: frames.length });
       await handoffFilesToScanner(frames, agenda);
     } catch (error) {
-      setMessage({ type: 'error', text: error?.message || 'Menu Video Import failed. Your saved career was not changed.' });
+      setMessage(error?.message || 'Menu Video Import failed. Your saved career was not changed.');
       setStatus(null);
     } finally {
       setBusy(false);
@@ -159,87 +183,99 @@ const AgendaQuickImport = ({ stage, agenda }) => {
   };
 
   return (
-    <section className="dhq-agenda-v2-import" data-agenda-quick-import>
-      <div className="dhq-agenda-v2-import__copy">
-        <span className="dhq-agenda-v2-eyebrow"><ScanLine size={12} /> Quick Import</span>
-        <h2>{isHighSchool ? 'Use the guided evaluation scanner' : 'Bring the week in before you type it'}</h2>
-        <p>{isHighSchool
-          ? 'Playable Moments need their exact slots, so High School keeps the guided screenshot workflow.'
-          : 'Use one screenshot, several screenshots, or a short menu recording. Everything still goes through the same review desk before anything can be applied.'}</p>
-      </div>
-
-      {isHighSchool ? (
-        <button type="button" onClick={openGuidedImport} className="dhq-agenda-v2-import__single">
-          <Images size={15} /> Open guided import
-        </button>
-      ) : (
-        <div className="dhq-agenda-v2-import__actions">
-          <button type="button" disabled={busy} onClick={() => screenshotInputRef.current?.click()}>
-            {busy && !status ? <Loader2 size={17} className="animate-spin" /> : <Images size={17} />}
-            <span><strong>Screenshots</strong><small>One or several</small></span>
-          </button>
-          <button type="button" disabled={busy} onClick={() => videoInputRef.current?.click()}>
-            {busy && status ? <Loader2 size={17} className="animate-spin" /> : <Video size={17} />}
-            <span><strong>Menu Video</strong><small>Up to 2 minutes</small></span>
-          </button>
-          <input ref={screenshotInputRef} type="file" accept="image/*" multiple className="hidden" disabled={busy} onChange={(event) => {
-            importScreens(event.target.files);
-            event.target.value = '';
-          }} />
-          <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/*" className="hidden" disabled={busy} onChange={(event) => {
-            importVideo(event.target.files?.[0]);
-            event.target.value = '';
-          }} />
+    <div className="dhq-agenda-v3-shell" data-weekly-agenda-v3-shell>
+      <section className="dhq-agenda-v3-header">
+        <div className="dhq-agenda-v3-header__identity">
+          <span className="dhq-agenda-v3-header__icon"><CalendarDays size={18} /></span>
+          <div className="min-w-0">
+            <span className="dhq-agenda-v3-eyebrow">Weekly Agenda · {stageLabels[stage] || 'Career'}</span>
+            <h1>Season {season} · Week {week}</h1>
+            <p>{school} · {role}</p>
+          </div>
         </div>
-      )}
+        <WorkflowSteps setupReady={setupReady} />
+      </section>
 
-      {!isHighSchool ? (
-        <div className="dhq-agenda-v2-import__safety"><ShieldCheck size={12} /> Nothing changes until you review and apply the extracted facts.</div>
-      ) : null}
+      <section className="dhq-agenda-v3-control-grid">
+        <div className="dhq-agenda-v3-control-card">
+          <div className="dhq-agenda-v3-control-card__icon is-amber"><CalendarDays size={16} /></div>
+          <div className="min-w-0 flex-1">
+            <span className="dhq-agenda-v3-label">Week setup</span>
+            <strong>{setupReady ? `${setupType} · ${phase}` : 'Setup needed'}</strong>
+            <small>{setupReady ? (setup.label || setup.customLabel || `Week ${week}`) : 'Define the week before playing.'}</small>
+          </div>
+          <button type="button" onClick={onToggleSetup} className="dhq-agenda-v3-text-button">
+            {setupOpen ? 'Hide' : setupReady ? 'Edit' : 'Open'} {setupOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+
+        <div className="dhq-agenda-v3-import-card">
+          <div className="dhq-agenda-v3-import-copy">
+            <span className="dhq-agenda-v3-label"><ScanLine size={12} /> Quick Import</span>
+            <strong>{isHighSchool ? 'Guided evaluation import' : 'Bring in the postgame data'}</strong>
+            <small>{isHighSchool ? 'Use the Playable Moment slots.' : 'Screenshots remain available; video is optional.'}</small>
+          </div>
+          {isHighSchool ? (
+            <button type="button" onClick={openGuidedImport} className="dhq-agenda-v3-import-button is-wide">
+              <Images size={15} /> Guided Import
+            </button>
+          ) : (
+            <div className="dhq-agenda-v3-import-actions">
+              <button type="button" disabled={busy} onClick={() => screenshotInputRef.current?.click()} className="dhq-agenda-v3-import-button">
+                {busy && !status ? <Loader2 size={15} className="animate-spin" /> : <Images size={15} />}
+                <span><strong>Screenshots</strong><small>1 or several</small></span>
+              </button>
+              <button type="button" disabled={busy} onClick={() => videoInputRef.current?.click()} className="dhq-agenda-v3-import-button">
+                {busy && status ? <Loader2 size={15} className="animate-spin" /> : <Video size={15} />}
+                <span><strong>Menu Video</strong><small>Up to 2 min</small></span>
+              </button>
+              <input ref={screenshotInputRef} type="file" accept="image/*" multiple className="hidden" disabled={busy} onChange={(event) => {
+                importScreens(event.target.files);
+                event.target.value = '';
+              }} />
+              <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/*" className="hidden" disabled={busy} onChange={(event) => {
+                importVideo(event.target.files?.[0]);
+                event.target.value = '';
+              }} />
+            </div>
+          )}
+        </div>
+
+        <div className="dhq-agenda-v3-tools-card">
+          <div>
+            <span className="dhq-agenda-v3-label"><Sparkles size={12} /> Only open what you need</span>
+            <strong>Manual corrections stay out of the way</strong>
+            <small>Use the scanner first. Open the old fields only when something is missing or needs a correction.</small>
+          </div>
+          <div className="dhq-agenda-v3-tools-actions">
+            <button type="button" onClick={onToggleManual} className={manualOpen ? 'is-active' : ''}><PenLine size={13} /> {manualOpen ? 'Hide Manual Fields' : 'Manual Entry'}</button>
+            <button type="button" onClick={onToggleMore} className={moreOpen ? 'is-active' : ''}><ShieldCheck size={13} /> {moreOpen ? 'Hide Milestone' : 'Milestone'}</button>
+          </div>
+        </div>
+      </section>
 
       {status ? (
-        <div className="dhq-agenda-v2-import__progress">
+        <div className="dhq-agenda-v3-progress">
           <div><span>Finding useful menu screens…</span><strong>{status.frames} frame{status.frames === 1 ? '' : 's'}</strong></div>
-          <div className="dhq-agenda-v2-import__track"><span style={{ width: `${status.percent}%` }} /></div>
+          <div><span style={{ width: `${status.percent}%` }} /></div>
         </div>
       ) : null}
 
-      {message ? <p className="dhq-agenda-v2-import__message">{message.text}</p> : null}
-    </section>
+      {message ? <p className="dhq-agenda-v3-message">{message}</p> : null}
+
+      <div className="dhq-agenda-v3-safety"><ShieldCheck size={12} /> Nothing is written to the career until the extracted facts are reviewed and applied.</div>
+    </div>
   );
 };
-
-const navItems = [
-  { id: 'setup', label: 'Setup', Icon: CalendarDays, selector: '[data-week-setup-panel]' },
-  { id: 'import', label: 'Import', Icon: ScanLine, selector: '[data-agenda-quick-import]' },
-  { id: 'game', label: 'Game', Icon: Trophy, selector: '[data-agenda-card="1"]' },
-  { id: 'rtg', label: 'RTG / Program', Icon: Settings, selector: '[data-agenda-card="2"]' },
-  { id: 'recruiting', label: 'Recruiting', Icon: Map, selector: '[data-agenda-card="3"]' },
-  { id: 'media', label: 'Media', Icon: Medal, selector: '[data-agenda-card="4"]' },
-  { id: 'publish', label: 'Publish', Icon: CheckCircle2, selector: '.dhq-agenda-v2-actions' },
-];
-
-const AgendaNavigator = ({ agenda }) => (
-  <nav className="dhq-agenda-v2-nav" aria-label="Weekly Agenda sections" data-agenda-v2-navigator>
-    <div className="dhq-agenda-v2-nav__title">
-      <span>Jump to</span>
-      <strong>Weekly workspace</strong>
-    </div>
-    <div className="dhq-agenda-v2-nav__items">
-      {navItems.map(({ id, label, Icon, selector }) => (
-        <button key={id} type="button" onClick={() => agenda.querySelector(selector)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}>
-          <Icon size={12} /> {label}
-        </button>
-      ))}
-    </div>
-  </nav>
-);
 
 const WeeklyAgendaV2Portal = () => {
   const isReadOnly = new URLSearchParams(window.location.search).has('view');
   const [user, setUser] = useState(auth.currentUser);
   const [career, setCareer] = useState(null);
-  const [hosts, setHosts] = useState({ header: null, importer: null, navigator: null, agenda: null });
+  const [hosts, setHosts] = useState({ shell: null, agenda: null });
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const ownedNodes = useRef([]);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
@@ -253,52 +289,37 @@ const WeeklyAgendaV2Portal = () => {
     return onSnapshot(careerRef, (snapshot) => setCareer(snapshot.exists() ? snapshot.data() : null));
   }, [isReadOnly, user]);
 
+  const stage = useMemo(() => career ? deriveCareerStage(career) : null, [career]);
+  const setupReady = career?.currentWeekSetup?.week !== undefined && career?.currentWeekSetup?.week !== null;
+
+  useEffect(() => {
+    if (!career) return;
+    if (!setupReady) setSetupOpen(true);
+    if (stage === CAREER_STAGES.HIGH_SCHOOL) setManualOpen(true);
+  }, [career?.currentWeek, setupReady, stage]);
+
   useEffect(() => {
     if (isReadOnly) return undefined;
     const ensure = () => {
       const agenda = document.querySelector('.dhq-weekly-agenda-workspace');
       if (!agenda) {
-        setHosts({ header: null, importer: null, navigator: null, agenda: null });
+        setHosts({ shell: null, agenda: null });
         return;
       }
       agenda.classList.add('dhq-weekly-agenda-v2');
       markAgendaStructure(agenda);
 
-      let headerHost = document.getElementById('dhq-weekly-agenda-v2-header-host');
-      if (!headerHost) {
-        headerHost = document.createElement('div');
-        headerHost.id = 'dhq-weekly-agenda-v2-header-host';
-        ownedNodes.current.push(headerHost);
+      let shellHost = document.getElementById('dhq-weekly-agenda-v3-shell-host');
+      if (!shellHost) {
+        shellHost = document.createElement('div');
+        shellHost.id = 'dhq-weekly-agenda-v3-shell-host';
+        ownedNodes.current.push(shellHost);
       }
-      if (headerHost.parentElement !== agenda || agenda.firstElementChild !== headerHost) agenda.prepend(headerHost);
+      if (shellHost.parentElement !== agenda || agenda.firstElementChild !== shellHost) agenda.prepend(shellHost);
 
-      let importerHost = document.getElementById('dhq-weekly-agenda-v2-import-host');
-      if (!importerHost) {
-        importerHost = document.createElement('div');
-        importerHost.id = 'dhq-weekly-agenda-v2-import-host';
-        ownedNodes.current.push(importerHost);
-      }
-      const flow = document.getElementById('dhq-gameweek-flow-agenda');
-      const setup = document.getElementById('dhq-week-setup-portal');
-      const anchor = flow?.parentElement === agenda ? flow : setup?.parentElement === agenda ? setup : headerHost;
-      if (importerHost.parentElement !== agenda || anchor.nextElementSibling !== importerHost) anchor.after(importerHost);
-
-      let navigatorHost = document.getElementById('dhq-weekly-agenda-v2-nav-host');
-      if (!navigatorHost) {
-        navigatorHost = document.createElement('div');
-        navigatorHost.id = 'dhq-weekly-agenda-v2-nav-host';
-        ownedNodes.current.push(navigatorHost);
-      }
-      if (navigatorHost.parentElement !== agenda || importerHost.nextElementSibling !== navigatorHost) importerHost.after(navigatorHost);
-
-      setHosts((current) => (
-        current.header === headerHost
-        && current.importer === importerHost
-        && current.navigator === navigatorHost
-        && current.agenda === agenda
-          ? current
-          : { header: headerHost, importer: importerHost, navigator: navigatorHost, agenda }
-      ));
+      setHosts((current) => current.shell === shellHost && current.agenda === agenda
+        ? current
+        : { shell: shellHost, agenda });
     };
 
     ensure();
@@ -311,15 +332,32 @@ const WeeklyAgendaV2Portal = () => {
     };
   }, [isReadOnly]);
 
-  const stage = useMemo(() => career ? deriveCareerStage(career) : null, [career]);
-  if (!career || !user || !hosts.agenda || !hosts.header || !hosts.importer || !hosts.navigator) return null;
+  useEffect(() => {
+    const agenda = hosts.agenda;
+    if (!agenda) return undefined;
+    agenda.classList.toggle('dhq-agenda-v2-setup-open', setupOpen);
+    agenda.classList.toggle('dhq-agenda-v2-manual-open', manualOpen);
+    agenda.classList.toggle('dhq-agenda-v2-more-open', moreOpen);
+    return () => {
+      agenda.classList.remove('dhq-agenda-v2-setup-open', 'dhq-agenda-v2-manual-open', 'dhq-agenda-v2-more-open');
+    };
+  }, [hosts.agenda, setupOpen, manualOpen, moreOpen]);
 
-  return (
-    <>
-      {createPortal(<WeeklyAgendaHeader career={career} stage={stage} />, hosts.header)}
-      {createPortal(<AgendaQuickImport stage={stage} agenda={hosts.agenda} />, hosts.importer)}
-      {createPortal(<AgendaNavigator agenda={hosts.agenda} />, hosts.navigator)}
-    </>
+  if (!career || !user || !hosts.agenda || !hosts.shell) return null;
+
+  return createPortal(
+    <WeeklyAgendaShell
+      career={career}
+      stage={stage}
+      agenda={hosts.agenda}
+      setupOpen={setupOpen}
+      manualOpen={manualOpen}
+      moreOpen={moreOpen}
+      onToggleSetup={() => setSetupOpen((value) => !value)}
+      onToggleManual={() => setManualOpen((value) => !value)}
+      onToggleMore={() => setMoreOpen((value) => !value)}
+    />,
+    hosts.shell,
   );
 };
 

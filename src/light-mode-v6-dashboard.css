@@ -1,0 +1,228 @@
+/* DynastyHQ dashboard light-mode compatibility v6
+   Loaded after all dashboard/polish styles so the v2 command center follows
+   the selected light theme without changing any dashboard behavior. */
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 {
+  --dhq-v2-bg: #f8fafc;
+  --dhq-v2-card: #ffffff;
+  --dhq-v2-card-soft: #f8fafc;
+  --dhq-v2-border: #dbe3ec;
+  --dhq-v2-border-strong: #cbd5e1;
+  --dhq-v2-text: #0f172a;
+  --dhq-v2-muted: #475569;
+  --dhq-v2-subtle: #64748b;
+  --dhq-v2-gold: #b7791f;
+  --dhq-v2-blue: #2563eb;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 :is(
+  .dhq-v2-identity,
+  .dhq-v2-card,
+  .dhq-v2-journey,
+  .dhq-v2-modal__panel
+) {
+  border-color: var(--dhq-v2-border-strong) !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .08) !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__header,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__header,
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__footer {
+  border-color: #e2e8f0 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 :is(
+  .dhq-v2-identity h1,
+  .dhq-v2-card__header h2,
+  .dhq-v2-stat strong,
+  .dhq-v2-current-week h3,
+  .dhq-v2-coverage h3,
+  .dhq-v2-result-row strong,
+  .dhq-v2-list-row strong,
+  .dhq-v2-school-row strong,
+  .dhq-v2-feature-row strong,
+  .dhq-v2-trophy strong,
+  .dhq-v2-modal__header h2
+) {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 :is(
+  .dhq-v2-eyebrow,
+  .dhq-v2-identity__main p,
+  .dhq-v2-card__header p,
+  .dhq-v2-stat span,
+  .dhq-v2-player-snapshot > div:first-child span,
+  .dhq-v2-player-snapshot > div:first-child small,
+  .dhq-v2-week-number span,
+  .dhq-v2-current-week p,
+  .dhq-v2-coverage p,
+  .dhq-v2-kicker,
+  .dhq-v2-result-row span:not(.dhq-v2-result-badge),
+  .dhq-v2-list-row span,
+  .dhq-v2-school-row small,
+  .dhq-v2-feature-row span,
+  .dhq-v2-empty,
+  .dhq-v2-trophy span,
+  .dhq-v2-journey__header,
+  .dhq-v2-journey__header strong,
+  .dhq-v2-modal__header span,
+  .dhq-v2-modal__grid label > span
+) {
+  color: #64748b !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-stat {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-player-snapshot > div:first-child {
+  border-color: #efd59a !important;
+  background: #fffaf0 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-player-snapshot > div:first-child strong {
+  color: #a16207 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-week-number {
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-week-number strong {
+  color: #1e3a8a !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__action {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-card__action:hover {
+  border-color: #d7ae54 !important;
+  background: #fffaf0 !important;
+  color: #664609 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-headshot {
+  border-color: #cbd5e1 !important;
+  background: #f1f5f9 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-headshot button {
+  border-color: #cbd5e1 !important;
+  background: rgba(255, 255, 255, .94) !important;
+  color: #334155 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-feature-row {
+  border-color: #e2e8f0 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-result-badge {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-result-badge.is-win {
+  border-color: #86efac !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-result-badge.is-loss {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-list-icon {
+  background: #fff7e6 !important;
+  color: #a16207 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-trophy {
+  border-color: #efd59a !important;
+  background: #fffaf0 !important;
+  color: #a16207 !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__step {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__step.is-complete {
+  border-color: #bbf7d0 !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-journey__step.is-active {
+  border-color: #efd59a !important;
+  background: #fffaf0 !important;
+  color: #a16207 !important;
+}
+
+/* Quick Import is portaled into the dashboard grid and uses Tailwind dark
+   utility classes inside the v2 card. Normalize only those dark utility
+   surfaces while preserving blue/amber status accents. */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] :is(button, div)[class*="bg-black/"],
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] :is(button, div)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] :is(button, div)[class*="bg-slate-8"] {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: #0f172a !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 [data-quick-import] :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-slate-700"]) {
+  color: #64748b !important;
+}
+
+/* Smart Next Action / Gameweek Flow is a portal with its own late dark styles. */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] > div {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .08) !important;
+  color: #0f172a !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] :is(div, section, aside)[class*="bg-slate-9"],
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] :is(div, section, aside)[class*="bg-slate-8"],
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] :is(div, section, aside)[class*="bg-black/"] {
+  border-color: #dbe3ec !important;
+  background: #f8fafc !important;
+  background-image: none !important;
+}
+
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"]) {
+  color: #0f172a !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 #dhq-gameweek-flow-dashboard section[data-gameweek-flow="dashboard"] :is([class~="text-slate-400"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-slate-700"]) {
+  color: #64748b !important;
+}
+
+/* Dashboard profile editor follows light mode too. */
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal {
+  background: rgba(15, 23, 42, .38) !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__grid :is(input, select) {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__footer button:not(.primary):not(.danger),
+html[data-dhq-theme="light"] .dhq-dashboard-v2 .dhq-v2-modal__header button {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Activity, BookOpen, GraduationCap, ShieldCheck, Trophy } from 'lucide-react';
+import { Activity, BookOpen, GraduationCap, ShieldCheck } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
@@ -147,13 +147,16 @@ const CollegeCareerAgendaCardPortal = () => {
   }, []);
 
   useEffect(() => {
+    const appRoot = document.getElementById('root');
+    if (!appRoot) return undefined;
+
     const findTarget = () => {
-      const next = document.querySelector('[data-agenda-card="3"]');
+      const next = appRoot.querySelector('[data-agenda-card="3"]');
       setTarget((current) => current === next ? current : next);
     };
     findTarget();
     const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(appRoot, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
 

@@ -5,6 +5,7 @@ import test from 'node:test';
 const mainUrl = new URL('../main.jsx', import.meta.url);
 const fitUrl = new URL('../tile-fit-v2.css', import.meta.url);
 const duplicateGuardUrl = new URL('../components/DuplicateGuardPortal.jsx', import.meta.url);
+const collegeAgendaPortalUrl = new URL('../components/CollegeCareerAgendaCardPortal.jsx', import.meta.url);
 
 test('sitewide fit rules are consolidated into one loaded layer', async () => {
   const [main, fit] = await Promise.all([
@@ -27,4 +28,13 @@ test('duplicate display auditing watches only the DynastyHQ app root', async () 
   assert.match(source, /observer\.observe\(appRoot, \{ childList: true, subtree: true, characterData: true \}\)/);
   assert.doesNotMatch(source, /observer\.observe\(document\.body/);
   assert.match(source, /appRoot\.querySelectorAll\('\[data-dhq-display-duplicate="true"\]'\)/);
+});
+
+test('college agenda enhancement discovers its portal host only inside DynastyHQ', async () => {
+  const source = await readFile(collegeAgendaPortalUrl, 'utf8');
+
+  assert.match(source, /const appRoot = document\.getElementById\('root'\)/);
+  assert.match(source, /appRoot\.querySelector\('\[data-agenda-card="3"\]'\)/);
+  assert.match(source, /observer\.observe\(appRoot, \{ childList: true, subtree: true \}\)/);
+  assert.doesNotMatch(source, /observer\.observe\(document\.body/);
 });

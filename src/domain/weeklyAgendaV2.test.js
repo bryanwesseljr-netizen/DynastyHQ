@@ -3,19 +3,23 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const mainUrl = new URL('../main.jsx', import.meta.url);
+const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const portalUrl = new URL('../components/WeeklyAgendaV2Portal.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-agenda-v2.css', import.meta.url);
 const appUrl = new URL('../App.jsx', import.meta.url);
 
 test('weekly agenda v2 mounts without replacing the existing weekly engine', async () => {
-  const [main, portal, app] = await Promise.all([
+  const [main, ownerEnhancements, portal, app] = await Promise.all([
     readFile(mainUrl, 'utf8'),
+    readFile(ownerEnhancementsUrl, 'utf8'),
     readFile(portalUrl, 'utf8'),
     readFile(appUrl, 'utf8'),
   ]);
 
-  assert.match(main, /import WeeklyAgendaV2Portal from '\.\/components\/WeeklyAgendaV2Portal\.jsx'/);
-  assert.match(main, /<WeeklyAgendaV2Portal \/>/);
+  assert.match(main, /import OwnerEnhancements from '\.\/components\/OwnerEnhancements\.jsx'/);
+  assert.match(main, /<OwnerEnhancements \/>/);
+  assert.match(ownerEnhancements, /import WeeklyAgendaV2Portal from '\.\/WeeklyAgendaV2Portal\.jsx'/);
+  assert.match(ownerEnhancements, /<WeeklyAgendaV2Portal \/>/);
   assert.match(portal, /document\.querySelector\('\.dhq-weekly-agenda-workspace'\)/);
   assert.match(portal, /findUniversalScannerInput/);
   assert.match(portal, /input\.dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/);

@@ -135,10 +135,13 @@
     setTimeout(apply, 0);
   }, true);
 
-  new MutationObserver(apply).observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
+  const appRoot = document.getElementById('root');
+  if (appRoot) {
+    new MutationObserver(apply).observe(appRoot, {
+      childList: true,
+      subtree: true,
+    });
+  }
 
   apply();
 })();

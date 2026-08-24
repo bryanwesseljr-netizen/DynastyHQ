@@ -150,6 +150,9 @@ const runDuplicateAudit = () => {
 
 const DuplicateGuardPortal = () => {
   useEffect(() => {
+    const appRoot = document.getElementById('root');
+    if (!appRoot) return undefined;
+
     let frame = 0;
     const schedule = () => {
       if (frame) return;
@@ -161,12 +164,14 @@ const DuplicateGuardPortal = () => {
 
     runDuplicateAudit();
     const observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    // Keep the guard inside DynastyHQ. Preview-toolbar and other document-level
+    // mutations should never trigger a full duplicate audit of the app.
+    observer.observe(appRoot, { childList: true, subtree: true, characterData: true });
 
     return () => {
       observer.disconnect();
       if (frame) window.cancelAnimationFrame(frame);
-      document.querySelectorAll('[data-dhq-display-duplicate="true"]').forEach((element) => setDuplicateState(element, false));
+      appRoot.querySelectorAll('[data-dhq-display-duplicate="true"]').forEach((element) => setDuplicateState(element, false));
     };
   }, []);
 

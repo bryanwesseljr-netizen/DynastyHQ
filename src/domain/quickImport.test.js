@@ -5,6 +5,7 @@ import { frameDifference, shouldKeepMenuFrame } from '../services/menuVideoFrame
 
 const quickImportSourceUrl = new URL('../components/QuickImportPortal.jsx', import.meta.url);
 const mainSourceUrl = new URL('../main.jsx', import.meta.url);
+const ownerEnhancementsSourceUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const videoSourceUrl = new URL('../services/menuVideoFrames.js', import.meta.url);
 
 test('menu-video frame selection keeps changed screens and periodically samples similar menus', () => {
@@ -17,14 +18,17 @@ test('menu-video frame selection keeps changed screens and periodically samples 
 });
 
 test('dashboard quick import keeps screenshots first-class and adds optional local menu-video extraction', async () => {
-  const [source, mainSource, videoSource] = await Promise.all([
+  const [source, mainSource, ownerEnhancementsSource, videoSource] = await Promise.all([
     readFile(quickImportSourceUrl, 'utf8'),
     readFile(mainSourceUrl, 'utf8'),
+    readFile(ownerEnhancementsSourceUrl, 'utf8'),
     readFile(videoSourceUrl, 'utf8'),
   ]);
 
-  assert.match(mainSource, /import QuickImportPortal from '\.\/components\/QuickImportPortal\.jsx'/);
-  assert.match(mainSource, /<QuickImportPortal \/>/);
+  assert.match(mainSource, /import OwnerEnhancements from '\.\/components\/OwnerEnhancements\.jsx'/);
+  assert.match(mainSource, /<OwnerEnhancements \/>/);
+  assert.match(ownerEnhancementsSource, /import QuickImportPortal from '\.\/QuickImportPortal\.jsx'/);
+  assert.match(ownerEnhancementsSource, /<QuickImportPortal \/>/);
   assert.match(source, /One or several · always supported/);
   assert.match(source, /Menu Video/);
   assert.match(source, /accept="image\/\*" multiple/);

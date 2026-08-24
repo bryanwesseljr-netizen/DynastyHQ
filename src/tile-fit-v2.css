@@ -128,6 +128,12 @@
   overflow: hidden !important;
 }
 
+/* Preserved from the retired import-tile sizing layer. */
+[data-dashboard-card="quick-import"] .dhq-v2-card__body > .mt-3.grid button > svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
 [data-dashboard-card="quick-import"] .dhq-v2-card__body > .mt-3.grid button > span {
   min-width: 0 !important;
   flex: 1 1 auto !important;
@@ -171,6 +177,40 @@
 .dhq-v2-trophy strong {
   white-space: normal !important;
   text-overflow: clip !important;
+}
+
+/* Career Milestones readability is now part of the dashboard fit contract. */
+.dhq-v2-list-row > .min-w-0.flex-1 {
+  display: flex !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
+}
+
+.dhq-v2-list-row > .min-w-0.flex-1 > strong {
+  display: block !important;
+  width: 100% !important;
+  line-height: 1.3 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.dhq-v2-list-row > .min-w-0.flex-1 > span {
+  display: block !important;
+  width: 100% !important;
+  line-height: 1.25 !important;
+  opacity: .92;
+}
+
+@media (max-width: 600px) {
+  .dhq-v2-list-row {
+    align-items: flex-start !important;
+    padding-block: 10px !important;
+  }
+
+  .dhq-v2-list-row > .min-w-0.flex-1 {
+    gap: 5px !important;
+  }
 }
 
 /* --------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -48,7 +49,15 @@ const PublicShareGuard = () => {
     };
   }, []);
 
-  return null;
+  return (
+    <div className="dhq-public-view-badge no-print" role="status" aria-label="View-only shared career">
+      <span className="dhq-public-view-badge__icon"><ShieldCheck size={14} /></span>
+      <span>
+        <strong>View-only shared career</strong>
+        <small>Shared career snapshot · owner tools are disabled</small>
+      </span>
+    </div>
+  );
 };
 
 export default PublicShareGuard;

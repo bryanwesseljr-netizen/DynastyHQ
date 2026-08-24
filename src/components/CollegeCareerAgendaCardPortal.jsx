@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Activity, BookOpen, GraduationCap, ShieldCheck, Trophy } from 'lucide-react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { appId, auth, db } from '../firebase';
+import { Activity, BookOpen, GraduationCap, ShieldCheck } from 'lucide-react';
+import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const hasValue = (value) => value !== '' && value !== null && value !== undefined;
 const numberValue = (value) => {
@@ -123,37 +121,20 @@ const CollegeCareerCard = ({ state }) => {
 };
 
 const CollegeCareerAgendaCardPortal = () => {
-  const [careerState, setCareerState] = useState(null);
+  const { career: careerState } = useOwnerCareer();
   const [target, setTarget] = useState(null);
 
   useEffect(() => {
-    let stopSnapshot = null;
-    const stopAuth = onAuthStateChanged(auth, (user) => {
-      stopSnapshot?.();
-      stopSnapshot = null;
-      if (!user || !db) {
-        setCareerState(null);
-        return;
-      }
-      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-      stopSnapshot = onSnapshot(ref, (snapshot) => {
-        setCareerState(snapshot.exists() ? snapshot.data() : null);
-      });
-    });
-    return () => {
-      stopSnapshot?.();
-      stopAuth();
-    };
-  }, []);
+    const appRoot = document.getElementById('root');
+    if (!appRoot) return undefined;
 
-  useEffect(() => {
     const findTarget = () => {
-      const next = document.querySelector('[data-agenda-card="3"]');
+      const next = appRoot.querySelector('[data-agenda-card="3"]');
       setTarget((current) => current === next ? current : next);
     };
     findTarget();
     const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(appRoot, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
 

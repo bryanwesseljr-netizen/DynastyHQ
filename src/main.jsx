@@ -23,17 +23,23 @@ import './import-tile-sizing-v1.css'
 import './tile-fit-v2.css'
 import './milestone-card-layout-v1.css'
 
+const isPublicShareView = new URLSearchParams(window.location.search).has('view')
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthAwareApp />
-    <WeekSetupPortal />
-    <GameweekFlowPortal />
-    <QuickImportPortal />
-    <WeeklyAgendaV2Portal />
-    <CollegeCareerAgendaCardPortal />
-    <RtgStatusScannerPortal />
-    <CoachRecruitingWorkspaceV2Portal />
-    <PodcastHumanizedAudioPortal />
+    {!isPublicShareView ? (
+      <>
+        <WeekSetupPortal />
+        <GameweekFlowPortal />
+        <QuickImportPortal />
+        <WeeklyAgendaV2Portal />
+        <CollegeCareerAgendaCardPortal />
+        <RtgStatusScannerPortal />
+        <CoachRecruitingWorkspaceV2Portal />
+        <PodcastHumanizedAudioPortal />
+      </>
+    ) : null}
     <DuplicateGuardPortal />
   </React.StrictMode>,
 )

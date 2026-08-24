@@ -1,0 +1,236 @@
+/* DynastyHQ sitewide compact-tile fit pass.
+   Loaded last so compact cards/buttons stay readable without shrinking normal page copy. */
+
+/* Safe sizing primitives for all app workspaces. */
+.dhq-page-main :where([class*="grid"]) > *,
+.dhq-page-main :where(button, [role="button"]),
+.dhq-page-main :where(.rounded, .rounded-md, .rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl) {
+  min-width: 0;
+}
+
+.dhq-page-main :where(button, [role="button"]) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.dhq-page-main :where(button, [role="button"]) :where(span, strong, small, p) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Rounded action tiles are allowed to grow vertically instead of clipping text. */
+.dhq-page-main button[class*="rounded"] {
+  height: auto;
+  white-space: normal !important;
+}
+
+/* --------------------------------------------------------------------------
+   WEEKLY AGENDA QUICK IMPORT
+   Give the two primary import choices more room first; scale text only as a
+   fallback. This replaces clipping/ellipsis with contained, readable labels.
+   -------------------------------------------------------------------------- */
+@media (min-width: 1101px) {
+  .dhq-agenda-v3-import-card:not(.is-summary) {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr) !important;
+  }
+}
+
+.dhq-agenda-v3-import-actions {
+  grid-template-columns: repeat(2, minmax(140px, 1fr)) !important;
+  gap: 7px !important;
+}
+
+.dhq-agenda-v3-import-button {
+  min-width: 0 !important;
+  min-height: 52px !important;
+  gap: 6px !important;
+  padding: 7px 9px !important;
+  overflow: hidden !important;
+}
+
+.dhq-agenda-v3-import-button > svg {
+  width: 13px !important;
+  height: 13px !important;
+  flex: 0 0 auto !important;
+}
+
+.dhq-agenda-v3-import-button > span {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: visible !important;
+}
+
+.dhq-agenda-v3-import-button strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  font-size: clamp(6.25px, .55vw, 7.25px) !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.08 !important;
+  text-overflow: clip !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+.dhq-agenda-v3-import-button small {
+  display: block !important;
+  margin-top: 3px !important;
+  overflow: visible !important;
+  font-size: clamp(6px, .5vw, 7px) !important;
+  line-height: 1.15 !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 1100px) {
+  .dhq-agenda-v3-import-card:not(.is-summary) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dhq-agenda-v3-import-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 460px) {
+  .dhq-agenda-v3-import-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dhq-agenda-v3-import-button strong {
+    font-size: 7px !important;
+  }
+
+  .dhq-agenda-v3-import-button small {
+    font-size: 6.5px !important;
+  }
+}
+
+/* Workflow step labels can use two lines on narrow layouts instead of ellipsis. */
+.dhq-agenda-v3-step strong {
+  overflow: visible !important;
+  line-height: 1.12 !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+/* --------------------------------------------------------------------------
+   DASHBOARD
+   -------------------------------------------------------------------------- */
+[data-dashboard-card="quick-import"] .dhq-v2-card__body > .mt-3.grid button {
+  min-width: 0 !important;
+  min-height: 62px !important;
+  gap: 8px !important;
+  padding: 9px 12px !important;
+  overflow: hidden !important;
+}
+
+[data-dashboard-card="quick-import"] .dhq-v2-card__body > .mt-3.grid button > span {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: visible !important;
+}
+
+[data-dashboard-card="quick-import"] .dhq-v2-card__body > .mt-3.grid button strong {
+  display: block !important;
+  overflow: visible !important;
+  font-size: clamp(7px, .65vw, 8px) !important;
+  letter-spacing: .01em !important;
+  line-height: 1.12 !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+[data-dashboard-card="quick-import"] .dhq-v2-card__body > .mt-3.grid button small {
+  display: block !important;
+  overflow: visible !important;
+  font-size: clamp(6.5px, .58vw, 7.5px) !important;
+  line-height: 1.22 !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+.dhq-v2-stat span {
+  overflow: visible !important;
+  line-height: 1.15 !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.dhq-v2-card__action,
+.dhq-v2-feature-row strong,
+.dhq-v2-trophy strong {
+  overflow-wrap: anywhere;
+}
+
+.dhq-v2-feature-row strong,
+.dhq-v2-trophy strong {
+  white-space: normal !important;
+  text-overflow: clip !important;
+}
+
+/* --------------------------------------------------------------------------
+   RECRUITING — player and coach modes
+   -------------------------------------------------------------------------- */
+.dhq-page-main[data-active-tab="recruiting"] :where(.grid.grid-cols-3, .grid.grid-cols-4, .grid.sm\:grid-cols-4) > div,
+[data-coach-recruiting-v2] :where(.grid.grid-cols-2, .grid.sm\:grid-cols-4) > div {
+  min-width: 0;
+}
+
+.dhq-page-main[data-active-tab="recruiting"] :where(.grid.grid-cols-3, .grid.grid-cols-4) > div > p:first-child,
+[data-coach-recruiting-v2] .grid.grid-cols-2 > div > p:first-child {
+  line-height: 1.15 !important;
+  letter-spacing: .02em !important;
+  overflow-wrap: anywhere;
+  white-space: normal !important;
+}
+
+[data-coach-recruiting-v2] :where(button, span.rounded, span[class*="rounded"]) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal !important;
+}
+
+/* --------------------------------------------------------------------------
+   NEWSROOM / PODCAST / CHRONICLE / LEGACY / SETTINGS
+   These pages already have responsive layouts; make their compact chips,
+   summary tiles and action buttons wrap inside their own borders instead of
+   forcing the container wider.
+   -------------------------------------------------------------------------- */
+.dhq-page-main[data-active-tab="newsroom"] :where(.dhq-newsroom-story-card__outlet, .dhq-newsroom-story-card__headline, .dhq-newsroom-story-card__action),
+.dhq-page-main[data-active-tab="podcast"] :where(button, label, .rounded-lg, .rounded-xl, .rounded-2xl),
+.dhq-page-main[data-active-tab="chronicle"] :where(button, .rounded-lg, .rounded-xl, .rounded-2xl),
+.dhq-page-main[data-active-tab="legacy"] :where(button, .rounded-lg, .rounded-xl, .rounded-2xl),
+.dhq-page-main[data-active-tab="settings"] :where(button, .rounded-lg, .rounded-xl, .rounded-2xl) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.dhq-newsroom-story-card__outlet,
+.dhq-newsroom-story-card__headline,
+.dhq-newsroom-story-card__action {
+  white-space: normal !important;
+}
+
+.dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > section.grid.grid-cols-2 > div > p:first-child {
+  line-height: 1.15 !important;
+  overflow-wrap: anywhere;
+  white-space: normal !important;
+}
+
+/* Small-screen safety: when a tile row becomes too narrow, stack instead of
+   forcing text to clip. */
+@media (max-width: 560px) {
+  .dhq-page-main[data-active-tab="recruiting"] .grid.grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  [data-coach-recruiting-v2] .grid.grid-cols-2.sm\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

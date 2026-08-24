@@ -1,37 +1,57 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import App from '../App.jsx';
 import { auth } from '../firebase';
 
 const AuthAwareApp = () => {
-  const [authSnapshot, setAuthSnapshot] = useState(() => ({
-    ready: false,
-    key: auth.currentUser?.uid || 'signed-out',
-  }));
+  const [authReady, setAuthReady] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const initialAuthResolvedRef = useRef(false);
+  const previousUserIdRef = useRef(auth.currentUser?.uid || null);
 
   useEffect(() => onAuthStateChanged(auth, (user) => {
-    setAuthSnapshot({
-      ready: true,
-      key: user?.uid || 'signed-out',
-    });
+    const nextUserId = user?.uid || null;
+
+    // The first auth callback is Firebase restoring the persisted session.
+    // Let App handle that normal startup path without forcing a reload.
+    if (!initialAuthResolvedRef.current) {
+      initialAuthResolvedRef.current = true;
+      previousUserIdRef.current = nextUserId;
+      setAuthReady(true);
+      return;
+    }
+
+    const previousUserId = previousUserIdRef.current;
+    previousUserIdRef.current = nextUserId;
+
+    // App historically starts correctly when Firebase restores an existing
+    // session, but the in-page signed-out -> signed-in transition can render
+    // before the owner's Firestore save is ready. Restart that one transition
+    // automatically so it follows the proven persisted-session startup path.
+    if (!previousUserId && nextUserId) {
+      setTransitioning(true);
+      window.location.reload();
+      return;
+    }
+
+    setAuthReady(true);
+    setTransitioning(false);
   }), []);
 
-  if (!authSnapshot.ready) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-white">
-        <div
-          className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-amber-500"
-          role="status"
-          aria-label="Loading DynastyHQ"
-        />
-      </div>
-    );
-  }
-
-  // A successful login changes the key and remounts App from a clean signed-in
-  // state. That makes App wait for the owner's Firestore snapshot just like a
-  // normal authenticated page load instead of briefly rendering signed-out data.
-  return <App key={authSnapshot.key} />;
+  return (
+    <>
+      <App />
+      {(!authReady || transitioning) ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950 text-white" aria-live="polite">
+          <div
+            className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-amber-500"
+            role="status"
+            aria-label="Loading DynastyHQ"
+          />
+        </div>
+      ) : null}
+    </>
+  );
 };
 
 export default AuthAwareApp;

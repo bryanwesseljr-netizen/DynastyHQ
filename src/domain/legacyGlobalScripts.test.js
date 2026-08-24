@@ -5,12 +5,14 @@ import test from 'node:test';
 const indexUrl = new URL('../../index.html', import.meta.url);
 const duplicateGuardUrl = new URL('../components/DuplicateGuardPortal.jsx', import.meta.url);
 const dashboardUrl = new URL('../components/CareerDashboardV2.jsx', import.meta.url);
+const newsroomImmersiveUrl = new URL('../../public/newsroom-immersive.js', import.meta.url);
 
 test('the app shell no longer boots redundant global repair observers', async () => {
-  const [index, duplicateGuard, dashboard] = await Promise.all([
+  const [index, duplicateGuard, dashboard, newsroomImmersive] = await Promise.all([
     readFile(indexUrl, 'utf8'),
     readFile(duplicateGuardUrl, 'utf8'),
     readFile(dashboardUrl, 'utf8'),
+    readFile(newsroomImmersiveUrl, 'utf8'),
   ]);
 
   assert.doesNotMatch(index, /\/experience-fixes\.js/);
@@ -26,4 +28,9 @@ test('the app shell no longer boots redundant global repair observers', async ()
   // final-polish.js V1 `.dhq-dashboard-card` profile tagger is unnecessary.
   assert.match(dashboard, /className=\{`dhq-v2-card/);
   assert.doesNotMatch(dashboard, /dhq-dashboard-card/);
+
+  // The remaining Newsroom compatibility observer stays inside DynastyHQ.
+  assert.match(newsroomImmersive, /const appRoot = document\.getElementById\('root'\)/);
+  assert.match(newsroomImmersive, /new MutationObserver\(apply\)\.observe\(appRoot/);
+  assert.doesNotMatch(newsroomImmersive, /observe\(document\.documentElement/);
 });

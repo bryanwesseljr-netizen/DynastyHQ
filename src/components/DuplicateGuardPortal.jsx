@@ -67,6 +67,8 @@ const schoolRowKey = (row) => row.querySelector('strong')?.textContent || row.te
 const applySpecificRules = () => {
   // Dashboard milestone/list rows are intentionally discovered by structure,
   // not a card id, so the guard survives card renames or stage-specific shells.
+  // This semantic pass runs AFTER the generic exact-text audit so one-time
+  // milestones cannot be re-shown just because their week metadata differs.
   document.querySelectorAll('.dhq-v2-card__body').forEach((container) => {
     const milestoneRows = [...container.querySelectorAll('.dhq-v2-list-row')];
     if (milestoneRows.length > 1) dedupeItems(milestoneRows, dashboardMilestoneKey);
@@ -140,8 +142,10 @@ const applyExactSiblingRule = () => {
 };
 
 const runDuplicateAudit = () => {
-  applySpecificRules();
+  // Exact-text cleanup goes first. Semantic rules go last so they remain
+  // authoritative when two logical duplicates carry different metadata.
   applyExactSiblingRule();
+  applySpecificRules();
 };
 
 const DuplicateGuardPortal = () => {

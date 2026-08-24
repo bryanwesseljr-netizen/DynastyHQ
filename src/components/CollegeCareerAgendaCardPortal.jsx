@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Activity, BookOpen, GraduationCap, ShieldCheck } from 'lucide-react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { appId, auth, db } from '../firebase';
+import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const hasValue = (value) => value !== '' && value !== null && value !== undefined;
 const numberValue = (value) => {
@@ -123,28 +121,8 @@ const CollegeCareerCard = ({ state }) => {
 };
 
 const CollegeCareerAgendaCardPortal = () => {
-  const [careerState, setCareerState] = useState(null);
+  const { career: careerState } = useOwnerCareer();
   const [target, setTarget] = useState(null);
-
-  useEffect(() => {
-    let stopSnapshot = null;
-    const stopAuth = onAuthStateChanged(auth, (user) => {
-      stopSnapshot?.();
-      stopSnapshot = null;
-      if (!user || !db) {
-        setCareerState(null);
-        return;
-      }
-      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-      stopSnapshot = onSnapshot(ref, (snapshot) => {
-        setCareerState(snapshot.exists() ? snapshot.data() : null);
-      });
-    });
-    return () => {
-      stopSnapshot?.();
-      stopAuth();
-    };
-  }, []);
 
   useEffect(() => {
     const appRoot = document.getElementById('root');

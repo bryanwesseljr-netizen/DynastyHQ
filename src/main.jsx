@@ -10,6 +10,7 @@ import RtgStatusScannerPortal from './components/RtgStatusScannerPortal.jsx'
 import CoachRecruitingWorkspaceV2Portal from './components/CoachRecruitingWorkspaceV2Portal.jsx'
 import PodcastHumanizedAudioPortal from './components/PodcastHumanizedAudioPortal.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
+import PublicShareGuard from './components/PublicShareGuard.jsx'
 import './index.css' // <-- Make sure this line is here!
 import './newsroom-bearcats-logo.css'
 import './weekly-agenda-v3-refinements.css'
@@ -39,7 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <CoachRecruitingWorkspaceV2Portal />
         <PodcastHumanizedAudioPortal />
       </>
-    ) : null}
+    ) : <PublicShareGuard />}
     <DuplicateGuardPortal />
   </React.StrictMode>,
 )

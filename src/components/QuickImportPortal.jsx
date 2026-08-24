@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
 import {
   ArrowRight,
   Camera,
@@ -11,9 +9,9 @@ import {
   ShieldCheck,
   Video,
 } from 'lucide-react';
-import { appId, auth, db } from '../firebase';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter';
 import { extractMenuVideoFrames } from '../services/menuVideoFrames';
+import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const MAX_SCREENSHOTS = 12;
 
@@ -187,31 +185,20 @@ const QuickImportCard = ({ career, stage }) => {
 };
 
 const QuickImportPortal = () => {
-  const isReadOnly = new URLSearchParams(window.location.search).has('view');
-  const [user, setUser] = useState(auth.currentUser);
-  const [career, setCareer] = useState(null);
+  const { user, career } = useOwnerCareer();
   const [target, setTarget] = useState(null);
 
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
-
   useEffect(() => {
-    if (isReadOnly || !user || !db) {
-      setCareer(null);
-      return undefined;
-    }
-    const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-    return onSnapshot(careerRef, (snapshot) => setCareer(snapshot.exists() ? snapshot.data() : null));
-  }, [isReadOnly, user]);
+    const appRoot = document.getElementById('root');
+    if (!appRoot) return undefined;
 
-  useEffect(() => {
-    if (isReadOnly) return undefined;
     const ensure = () => {
-      const grid = document.querySelector('#dynastyhq-command-center .dhq-v2-grid');
+      const grid = appRoot.querySelector('#dynastyhq-command-center .dhq-v2-grid');
       if (!grid) {
         setTarget(null);
         return;
       }
-      let host = document.getElementById('dhq-quick-import-card-host');
+      let host = appRoot.querySelector('#dhq-quick-import-card-host');
       if (!host) {
         host = document.createElement('div');
         host.id = 'dhq-quick-import-card-host';
@@ -222,12 +209,12 @@ const QuickImportPortal = () => {
     };
     ensure();
     const observer = new MutationObserver(ensure);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(appRoot, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
-      document.getElementById('dhq-quick-import-card-host')?.remove();
+      appRoot.querySelector('#dhq-quick-import-card-host')?.remove();
     };
-  }, [isReadOnly]);
+  }, []);
 
   const stage = useMemo(() => career ? deriveCareerStage(career) : null, [career]);
   if (!target || !career || !user || stage === CAREER_STAGES.RETIRED) return null;

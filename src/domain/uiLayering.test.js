@@ -140,8 +140,12 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   assert.match(globalStyles, /data-active-tab="podcast"/);
   assert.match(globalStyles, /data-active-tab="settings"/);
   assert.match(globalStyles, /data-active-tab="trophies"/);
-  assert.match(playerRecruitingSource, /dhq-player-recruiting-workspace/);
-  assert.match(globalStyles, /\.dhq-player-recruiting-workspace/);
+  assert.match(playerRecruitingSource, /relative z-10 mx-auto max-w-6xl space-y-3 pb-20 animate-in fade-in/);
+  assert.match(playerRecruitingSource, /relative z-10 mx-auto max-w-7xl space-y-3 pb-20 animate-in fade-in/);
+  assert.match(playerRecruitingSource, /grid grid-cols-3 gap-2/);
+  assert.match(playerRecruitingSource, /grid grid-cols-4 gap-2/);
+  assert.match(playerRecruitingSource, /md:grid-cols-\[minmax\(0,1\.2fr\)_minmax\(0,1fr\)_minmax\(0,1fr\)_auto\]/);
+  assert.match(playerRecruitingSource, /grid gap-2 border-t border-slate-800 p-4 sm:grid-cols-5/);
   assert.match(appSource, /dhq-weekly-agenda-workspace/);
   assert.match(appSource, /dhq-agenda-game-log-drawer/);
   assert.match(globalStyles, /\.dhq-weekly-agenda-grid/);
@@ -155,9 +159,6 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
   for (const cardNumber of ['2', '3', '4']) {
     assert.ok(appSource.indexOf(`data-agenda-card="${cardNumber}"`) > agendaSideStackIndex);
   }
-  assert.match(playerRecruitingSource, /dhq-five-game-timeline/);
-  assert.match(playerRecruitingSource, /dhq-five-game-grid/);
-  assert.match(globalStyles, /grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
 });
 
 test('weekly agenda milestone recorder is a standalone full-width horizontal card below cards 1-4', async () => {

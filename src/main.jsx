@@ -14,9 +14,7 @@ import './chronicle-polish-v4.css'
 import './light-mode-v5-compat.css'
 import './light-mode-v7-dashboard-safe.css'
 import './navigation-order-v1.css'
-import './import-tile-sizing-v1.css'
 import './tile-fit-v2.css'
-import './milestone-card-layout-v1.css'
 import './public-share-v1.css'
 
 const viewContext = resolveViewContext(window.location.search)

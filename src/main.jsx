@@ -1,16 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AuthAwareApp from './components/AuthAwareApp.jsx'
-import WeekSetupPortal from './components/WeekSetupPortal.jsx'
-import GameweekFlowPortal from './components/GameweekFlowPortal.jsx'
-import QuickImportPortal from './components/QuickImportPortal.jsx'
-import WeeklyAgendaV2Portal from './components/WeeklyAgendaV2Portal.jsx'
-import CollegeCareerAgendaCardPortal from './components/CollegeCareerAgendaCardPortal.jsx'
-import RtgStatusScannerPortal from './components/RtgStatusScannerPortal.jsx'
-import CoachRecruitingWorkspaceV2Portal from './components/CoachRecruitingWorkspaceV2Portal.jsx'
-import PodcastHumanizedAudioPortal from './components/PodcastHumanizedAudioPortal.jsx'
+import OwnerEnhancements from './components/OwnerEnhancements.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
 import PublicShareGuard from './components/PublicShareGuard.jsx'
+import { resolveViewContext } from './domain/viewMode.js'
 import './index.css' // <-- Make sure this line is here!
 import './newsroom-bearcats-logo.css'
 import './weekly-agenda-v3-refinements.css'
@@ -23,24 +17,14 @@ import './navigation-order-v1.css'
 import './import-tile-sizing-v1.css'
 import './tile-fit-v2.css'
 import './milestone-card-layout-v1.css'
+import './public-share-v1.css'
 
-const isPublicShareView = new URLSearchParams(window.location.search).has('view')
+const viewContext = resolveViewContext(window.location.search)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthAwareApp />
-    {!isPublicShareView ? (
-      <>
-        <WeekSetupPortal />
-        <GameweekFlowPortal />
-        <QuickImportPortal />
-        <WeeklyAgendaV2Portal />
-        <CollegeCareerAgendaCardPortal />
-        <RtgStatusScannerPortal />
-        <CoachRecruitingWorkspaceV2Portal />
-        <PodcastHumanizedAudioPortal />
-      </>
-    ) : <PublicShareGuard />}
+    {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
     <DuplicateGuardPortal />
   </React.StrictMode>,
 )

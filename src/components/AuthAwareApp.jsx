@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import App from '../App.jsx';
 import { auth } from '../firebase';
+import { resolveViewContext } from '../domain/viewMode.js';
 
 const AuthAwareApp = () => {
-  const isPublicShareView = new URLSearchParams(window.location.search).has('view');
+  const viewContext = resolveViewContext(window.location.search);
+  const isPublicShareView = viewContext.isPublicShare;
   const [authReady, setAuthReady] = useState(isPublicShareView);
   const [transitioning, setTransitioning] = useState(false);
   const initialAuthResolvedRef = useRef(false);
@@ -13,7 +15,7 @@ const AuthAwareApp = () => {
   useEffect(() => {
     // Public share links are intentionally auth-independent. The read-only
     // App loader owns that lifecycle, so do not let owner auth restoration or
-    // login-transition reload logic interfere with a ?view= session.
+    // login-transition reload logic interfere with a shared-view session.
     if (isPublicShareView) return undefined;
 
     return onAuthStateChanged(auth, (user) => {

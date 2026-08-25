@@ -161,9 +161,10 @@ export const getNewsroomArticlePhotoPreferences = (article = {}) => {
     article.headline,
     article.dek,
     article.imageSceneOverride,
+    article.sceneOverride,
   ].filter(Boolean).join(' ').toLowerCase();
 
-  const scene = normalizeNewsroomSceneTag(article.imageSceneOverride || '');
+  const scene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   if (scene === 'celebration') return [NEWSROOM_PHOTO_TYPES.CELEBRATION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.GENERAL];
   if (scene === 'sideline' || scene === 'tough-loss') return [NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL];
   if (scene === 'tunnel') return [NEWSROOM_PHOTO_TYPES.TUNNEL, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.ACTION];
@@ -200,7 +201,7 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
   const typeIndex = preferences.indexOf(getNewsroomPhotoType(asset));
   score += typeIndex >= 0 ? Math.max(0, 60 - (typeIndex * 12)) : 0;
 
-  const requestedScene = normalizeNewsroomSceneTag(article.imageSceneOverride || '');
+  const requestedScene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   const assetScene = normalizeNewsroomSceneTag(asset.sceneTag || asset.generatedFrom?.scene || '');
   if (requestedScene && requestedScene !== 'auto' && assetScene) {
     score += assetScene === requestedScene ? 45 : -12;
@@ -373,7 +374,7 @@ export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] })
       groundingStatus: article.groundingStatus,
       citedFactKeys: article.citedFactKeys || [],
     },
-    sceneOverride: cleanText(article.imageSceneOverride || 'auto', 60).toLowerCase() || 'auto',
+    sceneOverride: cleanText(article.imageSceneOverride || article.sceneOverride || 'auto', 60).toLowerCase() || 'auto',
     references,
   };
 };

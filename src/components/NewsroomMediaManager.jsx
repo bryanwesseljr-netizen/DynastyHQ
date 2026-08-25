@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Check, FolderOpen, ImagePlus, Loader2, Sparkles, Trash2, Upload, X,
+  Check, FolderOpen, ImagePlus, Loader2, Sparkles, Tags, Trash2, Upload, X,
 } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
@@ -8,6 +8,7 @@ import CustomNewsroomPhotoCreator from './CustomNewsroomPhotoCreator.jsx';
 import EditorialPhotoDirectorControl from './EditorialPhotoDirectorControl.jsx';
 import NewsroomReferenceRoleSelect from './NewsroomReferenceRoleSelect.jsx';
 import VisualPlayerProfileEditor from './VisualPlayerProfileEditor.jsx';
+import { resolveNewsroomTeamIdentity } from '../domain/newsroomConferenceContext.js';
 import {
   getNewsroomPhotoType,
   NEWSROOM_PHOTO_TYPES,
@@ -183,6 +184,52 @@ const NewsroomMediaManager = ({
     }
   };
 
+  const tagCurrentTeam = async (asset) => {
+    const owner = auth?.currentUser;
+    if (!owner || !db || !asset?.id) {
+      setTypeMessage('Sign in as the DynastyHQ owner to tag the active team.');
+      return;
+    }
+    setTypeBusyId(asset.id);
+    setTypeMessage('');
+    try {
+      const masterRef = doc(db, 'artifacts', appId, 'users', owner.uid, 'hq_data', 'main');
+      let savedTeam = '';
+      let savedConference = '';
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(masterRef);
+        if (!snapshot.exists()) throw new Error('The DynastyHQ master save could not be found.');
+        const data = snapshot.data();
+        savedTeam = String(data.player?.college || data.player?.school || '').trim();
+        if (!savedTeam) throw new Error('Set the active school/program before tagging this photo.');
+        const identity = resolveNewsroomTeamIdentity({
+          state: data,
+          teamName: savedTeam,
+          dynastySeason: Math.max(1, Number(issue?.season || data.currentSeason) || 1),
+        });
+        savedConference = identity?.primaryConference || '';
+        const library = Array.isArray(data.newsroomMediaLibrary) ? data.newsroomMediaLibrary : [];
+        const nextLibrary = library.map((entry) => entry.id !== asset.id ? entry : {
+          ...entry,
+          teamTag: savedTeam,
+          conferenceTag: savedConference,
+        });
+        const remoteRevision = Number(data?._sync?.revision) || 0;
+        transaction.update(masterRef, {
+          newsroomMediaLibrary: nextLibrary,
+          '_sync.revision': remoteRevision + 1,
+          '_sync.deviceId': data?._sync?.deviceId || 'newsroom-team-tagger',
+          '_sync.updatedAt': new Date().toISOString(),
+        });
+      });
+      setTypeMessage(`Tagged for ${savedTeam}${savedConference ? ` · ${savedConference}` : ''}. Photo QA can now validate this structured identity against the active Dynasty season.`);
+    } catch (error) {
+      setTypeMessage(error?.message || 'The active team tag could not be saved.');
+    } finally {
+      setTypeBusyId('');
+    }
+  };
+
   return (
     <section className="border-t border-slate-700 bg-slate-950 p-4 text-slate-100">
       {!lockerOnly && (
@@ -254,6 +301,7 @@ const NewsroomMediaManager = ({
                   <div className="flex flex-wrap gap-1">
                     <span className={`inline-flex rounded border px-1.5 py-0.5 text-[7px] font-black uppercase ${getNewsroomMediaFolder(asset) === issueFolder ? 'border-blue-400/40 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-500'}`}>{newsroomMediaFolderLabel(getNewsroomMediaFolder(asset))}</span>
                     <span className="inline-flex rounded border border-slate-700 px-1.5 py-0.5 text-[7px] font-black uppercase text-slate-400">{photoTypeLabel(asset)}</span>
+                    {asset.teamTag && <span className="inline-flex rounded border border-emerald-500/30 px-1.5 py-0.5 text-[7px] font-black uppercase text-emerald-300">{asset.teamTag}</span>}
                   </div>
                 </div>
               </button>
@@ -302,6 +350,12 @@ const NewsroomMediaManager = ({
                       <p className="min-w-0 truncate text-[9px] font-bold text-slate-300" title={asset.fileName}>{asset.fileName}</p>
                       {asset.origin === 'ai-generated' && <span className="shrink-0 text-[7px] font-black uppercase text-violet-300">AI</span>}
                     </div>
+                    {(asset.teamTag || asset.conferenceTag) && (
+                      <div className="flex flex-wrap gap-1">
+                        {asset.teamTag && <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[7px] font-black uppercase text-emerald-300">{asset.teamTag}</span>}
+                        {asset.conferenceTag && <span className="rounded border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[7px] font-black uppercase text-violet-300">{asset.conferenceTag}</span>}
+                      </div>
+                    )}
                     <label className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
                       Career folder
                       <select
@@ -326,6 +380,11 @@ const NewsroomMediaManager = ({
                         </select>
                       </label>
                     )}
+                    {!asset.isReference && (
+                      <button type="button" disabled={controlsBusy || typeBusyId === asset.id} onClick={() => tagCurrentTeam(asset)} className="flex w-full items-center justify-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 py-1.5 text-[8px] font-black uppercase tracking-wider text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40">
+                        {typeBusyId === asset.id ? <Loader2 size={10} className="animate-spin" /> : <Tags size={10} />} Tag Current Team
+                      </button>
+                    )}
                     <NewsroomReferenceRoleSelect asset={asset} disabled={controlsBusy || typeBusyId === asset.id} />
                     <label className="flex cursor-pointer items-center gap-2 text-[9px] font-bold text-slate-300">
                       <input type="checkbox" disabled={controlsBusy} checked={Boolean(asset.isReference)} onChange={(event) => onToggleReference(asset, event.target.checked)} className="accent-amber-500" /> Approved reference
@@ -340,7 +399,7 @@ const NewsroomMediaManager = ({
           <label className="mt-4 flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-950/70 p-3">
             <input type="checkbox" disabled={controlsBusy} checked={autoAssignLibrary} onChange={(event) => onSetAutoAssignLibrary(event.target.checked)} className="mt-0.5 accent-blue-500" />
             <span>
-              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose smart library photos</span>
+              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose library photos · smart matching</span>
               <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. DynastyHQ locks the article to its career folder, ranks eligible photos by Director scene and article theme, prefers fresh images, and avoids same-edition duplicates. If the correct folder has no eligible photo, it leaves the article photo empty instead of borrowing from another career stage.</span>
             </span>
           </label>

@@ -49,7 +49,7 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
   const lines = [
     'Create 4 distinct photorealistic editorial college-football photographs that could realistically accompany the fictional sports-news article below.',
     'Use the verified article information only to understand the game, teams, storyline, result, setting, and football situation.',
-    'Do not attempt to recreate or reference a pre-existing created-player appearance, player-profile image, face, hairstyle, body type, jersey number, accessories, throwing hand, equipment personalization, or other character-specific visual details.',
+    'Do not attempt to recreate or reference a pre-existing created-player appearance, player-profile image, face, hairstyle, body type, personalized jersey number, accessories, throwing hand, equipment personalization, or other character-specific visual details.',
     'Players should look like believable anonymous college football athletes appropriate for their positions and teams. A player name appearing in article text is story context only and must not be treated as a likeness instruction.',
     '',
     'Verified Story Context',
@@ -90,10 +90,15 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
 
   lines.push('Create four noticeably different professional sports-photography interpretations of the supported scene. Vary camera position, moment, framing, lens feel, player arrangement, and background action while remaining consistent with the verified events.');
   lines.push('Use realistic college-football uniforms and equipment, authentic stadium lighting, natural player anatomy and body language, believable sideline/crowd/field detail, realistic depth of field and telephoto compression, photographic motion blur where appropriate, natural fabric and equipment wear, and composition suitable for a major sports publication.');
-  lines.push('Use believable uniform colors appropriate to the named program when that identity is known from the story context. Keep uncertain logos, jersey text, signage, and stadium-specific details visually generic rather than inventing them.');
+  lines.push('MANDATORY UNIFORM AUTHENTICITY: visible football jerseys must include clear, believable jersey numbers in the normal real-world locations. Do not leave visible jerseys blank or numberless. Use realistic numbers appropriate to the players and positions, but do not copy a personalized DynastyHQ player number unless that number is independently verified by the story context.');
+  lines.push('MANDATORY BACK NAMEPLATES: whenever the back of a jersey is visible enough to read, include a properly placed, legible surname/nameplate above the number in the style a real college uniform would use. If the verified story provides a player surname, that surname may be used as text without attempting to match the player\'s likeness. Otherwise use a plausible generic surname rather than leaving the nameplate blank.');
+  lines.push(team
+    ? `MANDATORY FRONT TEAM TEXT: whenever the front of a ${team} jersey is visible enough to read, render the authentic real-world team/program wordmark or jersey-front text normally used by ${team} for that uniform style. Spell it correctly, place it naturally, and make it look sewn/printed into the uniform rather than like an overlay.`
+    : 'MANDATORY FRONT TEAM TEXT: whenever the front of a team jersey is visible enough to read, include the authentic real-world team/program wordmark or jersey-front text appropriate to that team and uniform style. Spell it correctly, place it naturally, and make it look sewn/printed into the uniform rather than like an overlay.');
+  lines.push('Uniform lettering, numbers, nameplates, trim, colors, logo placement, and proportions should look like real college-football equipment. Do not invent fake school names or misspell team identifiers.');
   lines.push('Avoid cinematic fantasy effects, promotional-poster composition, video-game-render appearance, exaggerated HDR, artificial text overlays, or overly staged poses.');
-  lines.push('Accuracy rules: depict only events supported by the verified article context. Do not invent touchdowns, celebrations, trophies, injuries, weather, scores, opponents, uniforms, stadium features, or outcomes that contradict the supplied information. If a specific visual detail is unknown, keep it generic rather than inventing it.');
-  lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, jersey-name text, signage, or other readable text in the image.');
+  lines.push('Accuracy rules: depict only events supported by the verified article context. Do not invent touchdowns, celebrations, trophies, injuries, weather, scores, opponents, stadium features, or outcomes that contradict the supplied information. If a non-uniform visual detail is unknown, keep it generic rather than inventing it.');
+  lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, or unrelated signage. Readable jersey numbers, back nameplates, and authentic jersey-front team text are required uniform details and are the exception to this no-overlay/no-extra-text rule.');
   lines.push('Do not reproduce the likeness of a real athlete or attempt to match a previously created DynastyHQ player. The goal is an authentic fictional editorial sports photograph, not a portrait of a specific created player.');
 
   if (forbidden.length) {
@@ -101,6 +106,6 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     forbidden.forEach((entry) => lines.push(`- ${entry}`));
   }
 
-  lines.push('Final quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, and restrained photographic color grading.');
+  lines.push('Final quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, restrained photographic color grading, and accurate readable uniform numbers/nameplates/team text wherever visible.');
   return lines.join('\n');
 };

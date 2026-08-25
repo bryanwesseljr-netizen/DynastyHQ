@@ -8,6 +8,7 @@ import CollegeCareerAgendaCardPortal from './CollegeCareerAgendaCardPortal.jsx';
 import RtgStatusScannerPortal from './RtgStatusScannerPortal.jsx';
 import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal.jsx';
 import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
+import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 
 const OwnerEnhancements = () => (
@@ -21,6 +22,7 @@ const OwnerEnhancements = () => (
     <CollegeCareerAgendaCardPortal />
     <RtgStatusScannerPortal />
     <CoachRecruitingWorkspaceV2Portal />
+    <EditorialPhotoDirectorPortal />
     <PodcastHumanizedAudioPortal />
   </OwnerCareerProvider>
 );

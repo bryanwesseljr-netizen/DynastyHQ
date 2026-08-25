@@ -128,7 +128,8 @@ export const buildNewsroomImageGenerationContext = ({
   verifiedFacts = [],
   sceneOverride,
 } = {}) => {
-  const director = directNewsroomImage({ state, issue, article, verifiedFacts, sceneOverride });
+  const effectiveSceneOverride = sceneOverride || article.imageSceneOverride || 'auto';
+  const director = directNewsroomImage({ state, issue, article, verifiedFacts, sceneOverride: effectiveSceneOverride });
   const visualProfile = normalizePlayerVisualProfile(state.player?.visualProfile || {});
   const visualProfileDirectives = buildVisualProfileDirectives(visualProfile, director.subject);
   const references = selectNewsroomImageReferences({ state, issue, subject: director.subject, limit: 4 });

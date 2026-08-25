@@ -1,8 +1,8 @@
-import { CAREER_SCHEMA_VERSION } from './weeklyEngine';
-import { DEFAULT_PLAYER_RECRUITING } from './playerRecruiting';
-import { DEFAULT_CAREER_TRANSITIONS } from './careerTransitions';
-import { DEFAULT_COLLEGE_NEWSROOM } from './collegeNewsroom';
-import { DEFAULT_PLAYER_VISUAL_PROFILE } from './playerVisualProfile';
+import { CAREER_SCHEMA_VERSION } from './weeklyEngine.js';
+import { DEFAULT_PLAYER_RECRUITING } from './playerRecruiting.js';
+import { DEFAULT_CAREER_TRANSITIONS } from './careerTransitions.js';
+import { DEFAULT_COLLEGE_NEWSROOM } from './collegeNewsroom.js';
+import { DEFAULT_PLAYER_VISUAL_PROFILE } from './playerVisualProfile.js';
 
 export const DEFAULT_CAREER_STATE = {
   schemaVersion: CAREER_SCHEMA_VERSION,

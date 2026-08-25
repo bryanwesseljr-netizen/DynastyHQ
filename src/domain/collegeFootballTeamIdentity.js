@@ -6,8 +6,65 @@ const normalizeTeamKey = (value) => String(value || '')
   .replace(/\s+/g, ' ')
   .trim();
 
+export const COLLEGE_FOOTBALL_CONFERENCES = Object.freeze([
+  'ACC',
+  'Big 12',
+  'Big Ten',
+  'SEC',
+  'American Conference',
+  'Conference USA',
+  'MAC',
+  'Mountain West',
+  'Pac-12',
+  'Sun Belt',
+  'Independent',
+]);
+
+const CONFERENCE_ALIASES = Object.freeze({
+  acc: 'ACC',
+  'atlantic coast conference': 'ACC',
+  'big 12': 'Big 12',
+  big12: 'Big 12',
+  b12: 'Big 12',
+  'big ten': 'Big Ten',
+  big10: 'Big Ten',
+  b1g: 'Big Ten',
+  sec: 'SEC',
+  'southeastern conference': 'SEC',
+  american: 'American Conference',
+  'american conference': 'American Conference',
+  'american athletic conference': 'American Conference',
+  aac: 'American Conference',
+  'conference usa': 'Conference USA',
+  cusa: 'Conference USA',
+  'c usa': 'Conference USA',
+  mac: 'MAC',
+  'mid american conference': 'MAC',
+  'mountain west': 'Mountain West',
+  'mountain west conference': 'Mountain West',
+  mw: 'Mountain West',
+  'pac 12': 'Pac-12',
+  pac12: 'Pac-12',
+  'pac-12': 'Pac-12',
+  'sun belt': 'Sun Belt',
+  'sun belt conference': 'Sun Belt',
+  sbc: 'Sun Belt',
+  independent: 'Independent',
+  'fbs independent': 'Independent',
+});
+
+export const normalizeCollegeFootballConference = (value) => {
+  const key = String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!key) return '';
+  return CONFERENCE_ALIASES[key] || '';
+};
+
 // Canonical real-world FBS football alignment for the 2026 season.
-// This is intentionally structured data so image prompts never have to guess a team's conference.
+// This remains the fallback when a DynastyHQ save has no custom realignment override.
 const CONFERENCE_TEAMS_2026 = Object.freeze({
   ACC: [
     'Boston College', 'California', 'Clemson', 'Duke', 'Florida State', 'Georgia Tech',
@@ -56,9 +113,6 @@ const CONFERENCE_TEAMS_2026 = Object.freeze({
   ],
 });
 
-// Exact conference-patch language used by the copied ChatGPT image prompt.
-// visualDescription is intentionally concrete so an image model has a recognizable target,
-// rather than only a conference name that it may confuse with an old affiliation.
 const CONFERENCE_PATCH_METADATA = Object.freeze({
   ACC: Object.freeze({
     conferencePatchLabel: 'ACC conference patch',
@@ -102,6 +156,12 @@ const CONFERENCE_PATCH_METADATA = Object.freeze({
   }),
 });
 
+export const getConferencePatchMetadata = (conferenceName) => {
+  const conference = normalizeCollegeFootballConference(conferenceName);
+  if (!conference || conference === 'Independent') return null;
+  return CONFERENCE_PATCH_METADATA[conference] || null;
+};
+
 const EXTRA_ALIASES = Object.freeze({
   cal: 'California',
   'miami fl': 'Miami',
@@ -124,7 +184,7 @@ const EXTRA_ALIASES = Object.freeze({
   'middle tennessee state': 'Middle Tennessee',
   mtsu: 'Middle Tennessee',
   'sam houston state': 'Sam Houston',
-  'massachusetts': 'UMass',
+  massachusetts: 'UMass',
   'northern illinois': 'NIU',
   'northern illinois university': 'NIU',
   'hawai i': 'Hawaii',
@@ -138,7 +198,6 @@ const EXTRA_ALIASES = Object.freeze({
   'southern miss': 'Southern Miss',
 });
 
-// Old affiliations that an image model must never reuse for these teams in a 2026 image.
 const FORBIDDEN_LEGACY_PATCHES = Object.freeze({
   Cincinnati: [
     'American Athletic Conference patch',
@@ -185,30 +244,41 @@ const teamConferenceLookup = (() => {
   return lookup;
 })();
 
-export const getCollegeFootballTeamIdentity = (teamName) => {
+export const getCollegeFootballTeamIdentity = (teamName, {
+  conferenceOverride = '',
+  dynastySeason = null,
+} = {}) => {
   const key = normalizeTeamKey(teamName);
   if (!key) return null;
   const entry = teamConferenceLookup.get(key);
-  if (!entry) return null;
+  const canonicalTeam = entry?.team || String(teamName || '').trim();
+  if (!canonicalTeam) return null;
 
-  const primaryConference = entry.primaryConference;
-  const patchMeta = primaryConference === 'Independent'
-    ? null
-    : CONFERENCE_PATCH_METADATA[primaryConference] || null;
-  const forbiddenLegacyPatches = FORBIDDEN_LEGACY_PATCHES[entry.team] || [];
+  const realWorldConference = entry?.primaryConference || '';
+  const overrideConference = normalizeCollegeFootballConference(conferenceOverride);
+  const primaryConference = overrideConference || realWorldConference;
+  if (!primaryConference) return null;
+
+  const patchMeta = getConferencePatchMetadata(primaryConference);
+  const forbiddenLegacyPatches = [...(FORBIDDEN_LEGACY_PATCHES[canonicalTeam] || [])];
+  if (overrideConference && realWorldConference && overrideConference !== realWorldConference) {
+    const fallbackPatch = getConferencePatchMetadata(realWorldConference);
+    if (fallbackPatch?.conferencePatchLabel) forbiddenLegacyPatches.push(fallbackPatch.conferencePatchLabel);
+    forbiddenLegacyPatches.push(`${realWorldConference} conference branding`);
+  }
 
   return {
-    team: entry.team,
+    team: canonicalTeam,
     primaryConference,
     conferencePatchLabel: patchMeta?.conferencePatchLabel || '',
     conferencePatchVisual: patchMeta?.conferencePatchVisual || '',
-    forbiddenLegacyPatches,
-    seasonBasis: 2026,
-
-    // Backward-compatible aliases for existing callers/tests.
+    forbiddenLegacyPatches: [...new Set(forbiddenLegacyPatches)],
+    seasonBasis: overrideConference ? Math.max(1, Number(dynastySeason) || 1) : 2026,
+    identitySource: overrideConference ? 'save-override' : 'real-world-2026',
+    realWorldConference,
     conference: primaryConference,
     conferencePatch: patchMeta?.conferencePatchLabel || '',
-    legacyConferenceMarks: forbiddenLegacyPatches,
+    legacyConferenceMarks: [...new Set(forbiddenLegacyPatches)],
   };
 };
 

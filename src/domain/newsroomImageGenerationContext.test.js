@@ -86,9 +86,10 @@ test('builds a player generation context from verified facts, permanent profile,
   ]);
   assert.ok(context.references.every((entry) => !entry.assetId.includes('old-hs')));
   assert.equal(context.playerContext.jerseyNumber, '6');
+  assert.equal(context.playerContext.team, 'Cincinnati');
 });
 
-test('team-first coverage excludes player identity/full-body references and player visual directives', () => {
+test('team-first coverage excludes player personalization but preserves team identity for uniforms and conference patches', () => {
   const teamArticle = {
     ...article,
     id: 'regional',
@@ -102,6 +103,9 @@ test('team-first coverage excludes player identity/full-body references and play
   assert.equal(context.references.some((entry) => entry.role === NEWSROOM_REFERENCE_ROLES.IDENTITY), false);
   assert.equal(context.references.some((entry) => entry.role === NEWSROOM_REFERENCE_ROLES.FULL_BODY), false);
   assert.ok(context.references.some((entry) => entry.role === NEWSROOM_REFERENCE_ROLES.TEAM_STYLE));
+  assert.equal(context.playerContext.team, 'Cincinnati');
+  assert.equal(context.playerContext.position, '');
+  assert.equal(context.playerContext.jerseyNumber, '');
 });
 
 test('reference selection remains useful before the Visual Profile has been re-saved', () => {

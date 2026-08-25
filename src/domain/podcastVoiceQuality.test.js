@@ -4,8 +4,10 @@ import {
   DEFAULT_MARK_VOICE,
   DEFAULT_SARAH_VOICE,
   MAX_PERFORMANCE_WORDS,
+  MIN_GEMINI_CALL_SPACING_MS,
   TARGET_PERFORMANCE_WORDS,
   buildPerformancePrompt,
+  parseGeminiRetryDelayMs,
   partitionSegments,
 } from '../../api/synthesize-podcast-conversation.js';
 
@@ -56,4 +58,26 @@ test('performance prompt explicitly asks for human inflection, speaker switching
   assert.match(prompt, /Do not gradually fade, whisper, muffle/i);
   assert.match(prompt, /Do not create a fade-in or fade-out/i);
   assert.doesNotMatch(prompt, /Delivery should be plain, calm/i);
+});
+
+test('paces chunked Gemini TTS calls below the free-tier burst ceiling', () => {
+  assert.ok(MIN_GEMINI_CALL_SPACING_MS >= 6000);
+});
+
+test('honors Gemini quota retry hints from headers, RetryInfo, and error text', () => {
+  assert.equal(parseGeminiRetryDelayMs({
+    response: { headers: { get: (name) => name === 'retry-after' ? '12' : null } },
+  }), 12_000);
+
+  assert.equal(parseGeminiRetryDelayMs({
+    body: {
+      error: {
+        details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '18.25s' }],
+      },
+    },
+  }), 18_250);
+
+  assert.equal(parseGeminiRetryDelayMs({
+    message: 'Quota exceeded. Please retry in 18.261147622s.',
+  }), 18_262);
 });

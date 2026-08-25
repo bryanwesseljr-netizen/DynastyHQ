@@ -78,7 +78,7 @@ const EditorialPhotoDirectorControl = ({
     try {
       await navigator.clipboard.writeText(result.chatGptPrompt);
       setMessageType('success');
-      setMessage('Photo Director prompt copied. It requests four grounded variations in ChatGPT.');
+      setMessage('Photo Director prompt copied. It requests four grounded, generic editorial variations in ChatGPT.');
     } catch {
       setMessageType('error');
       setMessage('Clipboard access was blocked. Try again from a secure browser tab.');
@@ -91,7 +91,7 @@ const EditorialPhotoDirectorControl = ({
     try {
       await navigator.clipboard.writeText(result.chatGptPrompt);
       setMessageType('success');
-      setMessage('Prompt copied. Paste it into the ChatGPT tab and attach any matching reference photos you want to use.');
+      setMessage('Prompt copied. Paste it into ChatGPT to generate four general editorial variations. Player appearance/profile details are not included.');
     } catch {
       setMessageType('error');
       setMessage(tab ? 'ChatGPT opened, but clipboard access was blocked. Use Copy Photo Prompt and paste manually.' : 'Your browser blocked the new tab and clipboard access.');
@@ -150,7 +150,7 @@ const EditorialPhotoDirectorControl = ({
         </button>
       </div>
 
-      <p className="mt-3 text-[9px] leading-relaxed text-slate-500">Copy Photo Prompt is the recommended workflow when you want several choices: DynastyHQ builds the grounded brief, ChatGPT can create multiple variations, and you upload the winners back to the Career Photo Library. No image-generation credit is used just to build or copy this prompt.</p>
+      <p className="mt-3 text-[9px] leading-relaxed text-slate-500">Copy Photo Prompt is the recommended workflow when you want several choices: DynastyHQ builds a grounded but general editorial brief, ChatGPT can create multiple variations, and you upload the winners back to the Career Photo Library. The copied ChatGPT prompt does not include your Visual Player Profile, jersey number, appearance, accessories, throwing hand, or Reference Locker identity details. No image-generation credit is used just to build or copy this prompt.</p>
 
       {message && <p className={`mt-3 rounded-lg border px-3 py-2 text-[10px] font-bold ${messageType === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>{message}</p>}
     </section>

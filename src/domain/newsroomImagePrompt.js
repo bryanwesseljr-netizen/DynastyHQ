@@ -30,11 +30,13 @@ const verifiedContextLines = (details = {}) => {
     .map(([key, label]) => `${label}: ${clean(details[key], 160)}`);
 };
 
-const referenceLines = (references = []) => boundedList(references, 4, 2400).length
-  ? references.slice(0, 4).map((entry, index) => (
-      `Reference ${index + 1} — ${clean(entry.roleLabel || entry.role || 'General reference', 80)}: ${clean(entry.instruction || 'Use only as a visual reference without copying its pose or background.', 520)}`
+const referenceLines = (references = []) => (
+  (Array.isArray(references) ? references : [])
+    .slice(0, 4)
+    .map((entry, index) => (
+      `Reference ${index + 1} — ${clean(entry?.roleLabel || entry?.role || 'General reference', 80)}: ${clean(entry?.instruction || 'Use only as a visual reference without copying its pose or background.', 520)}`
     ))
-  : [];
+);
 
 export const buildGroundedNewsroomImagePrompt = ({
   issue = {},

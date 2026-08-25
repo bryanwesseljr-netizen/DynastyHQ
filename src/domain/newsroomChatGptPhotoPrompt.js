@@ -1,3 +1,5 @@
+import { getCollegeFootballTeamIdentity } from './collegeFootballTeamIdentity.js';
+
 const clean = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
 
 const boundedList = (values, maxItems = 12, maxLength = 500) => (
@@ -40,6 +42,7 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
   const playerContext = generationContext.playerContext || {};
   const subject = clean(director.subject || 'team', 40).toLowerCase();
   const team = clean(playerContext.team, 120);
+  const teamIdentity = getCollegeFootballTeamIdentity(team);
   const position = clean(director.position || playerContext.position, 40);
   const verified = verifiedContextLines(director.verifiedDetails || {});
   const mechanics = boundedList(director.mechanics, 8, 420);
@@ -58,6 +61,7 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     `Verified article headline: ${clean(article.headline, 400)}`,
     `Verified article summary: ${clean(article.dek, 800)}`,
     team ? `Team/program: ${team}.` : '',
+    teamIdentity ? `Current 2026 football conference: ${teamIdentity.conference}.` : '',
     subject === 'player' && position
       ? `Generic featured subject: an anonymous ${position} for ${team || 'the featured team'}.`
       : subject === 'coach'
@@ -95,10 +99,22 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
   lines.push(team
     ? `MANDATORY FRONT TEAM TEXT: whenever the front of a ${team} jersey is visible enough to read, render the authentic real-world team/program wordmark or jersey-front text normally used by ${team} for that uniform style. Spell it correctly, place it naturally, and make it look sewn/printed into the uniform rather than like an overlay.`
     : 'MANDATORY FRONT TEAM TEXT: whenever the front of a team jersey is visible enough to read, include the authentic real-world team/program wordmark or jersey-front text appropriate to that team and uniform style. Spell it correctly, place it naturally, and make it look sewn/printed into the uniform rather than like an overlay.');
-  lines.push('Uniform lettering, numbers, nameplates, trim, colors, logo placement, and proportions should look like real college-football equipment. Do not invent fake school names or misspell team identifiers.');
+
+  if (teamIdentity?.conference === 'Independent') {
+    lines.push(`MANDATORY CONFERENCE ACCURACY: ${teamIdentity.team} is an FBS independent for the 2026 season. Do not invent or add a conference jersey patch.`);
+  } else if (teamIdentity?.conferencePatch) {
+    lines.push(`MANDATORY CONFERENCE PATCH: ${teamIdentity.team} is a ${teamIdentity.conference} football member for the 2026 season. Any visible standard game jersey must use the current ${teamIdentity.conferencePatch} conference patch/mark in the realistic jersey location, scale, orientation, and color treatment. Do not substitute an older or unrelated conference patch.`);
+    if (teamIdentity.legacyConferenceMarks?.length) {
+      lines.push(`OUTDATED PATCHES FORBIDDEN FOR ${teamIdentity.team.toUpperCase()}: do not use ${teamIdentity.legacyConferenceMarks.join(', ')} conference branding. The current ${teamIdentity.conferencePatch} patch/mark is authoritative.`);
+    }
+  } else if (team) {
+    lines.push(`CONFERENCE ACCURACY: if ${team} is shown in a standard college game uniform with a conference patch, use only the team\'s current real-world 2026 football conference mark. Never guess from an older conference affiliation.`);
+  }
+
+  lines.push('Uniform lettering, numbers, nameplates, trim, colors, logos, conference patch placement, and proportions should look like real college-football equipment. Do not invent fake school names, fake conference marks, or misspell team identifiers.');
   lines.push('Avoid cinematic fantasy effects, promotional-poster composition, video-game-render appearance, exaggerated HDR, artificial text overlays, or overly staged poses.');
   lines.push('Accuracy rules: depict only events supported by the verified article context. Do not invent touchdowns, celebrations, trophies, injuries, weather, scores, opponents, stadium features, or outcomes that contradict the supplied information. If a non-uniform visual detail is unknown, keep it generic rather than inventing it.');
-  lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, or unrelated signage. Readable jersey numbers, back nameplates, and authentic jersey-front team text are required uniform details and are the exception to this no-overlay/no-extra-text rule.');
+  lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, or unrelated signage. Readable jersey numbers, back nameplates, authentic jersey-front team text, and the correct conference patch are required uniform details and are the exception to this no-overlay/no-extra-text rule.');
   lines.push('Do not reproduce the likeness of a real athlete or attempt to match a previously created DynastyHQ player. The goal is an authentic fictional editorial sports photograph, not a portrait of a specific created player.');
 
   if (forbidden.length) {
@@ -106,6 +122,6 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     forbidden.forEach((entry) => lines.push(`- ${entry}`));
   }
 
-  lines.push('Final quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, restrained photographic color grading, and accurate readable uniform numbers/nameplates/team text wherever visible.');
+  lines.push('Final quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, restrained photographic color grading, accurate readable uniform numbers/nameplates/team text wherever visible, and the correct current conference patch/mark for the team.');
   return lines.join('\n');
 };

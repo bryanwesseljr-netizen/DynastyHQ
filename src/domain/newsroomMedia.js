@@ -1,4 +1,5 @@
 import { getFrontPageMediaAssetIds, removeFrontPageMediaAsset } from './postgameFrontPage.js';
+import { removeVisualProfileReference } from './playerVisualProfile.js';
 import {
   getNewsroomIssueFolder,
   getNewsroomMediaFolder,
@@ -228,21 +229,24 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
   });
 };
 
-export const removeNewsroomMediaAsset = (state, assetId) => ({
-  ...state,
-  newsroomMediaLibrary: (state.newsroomMediaLibrary || []).filter((asset) => asset.id !== assetId),
-  newsroomIssues: (state.newsroomIssues || []).map((issue) => ({
-    ...issue,
-    articles: (issue.articles || []).map((article) => article.mediaAssetId !== assetId ? article : {
-      ...article,
-      mediaAssetId: '',
-      mediaSource: '',
-      mediaDisclosure: '',
-      mediaAutoAssigned: false,
-    }),
-  })),
-  postgameFrontPages: removeFrontPageMediaAsset(state.postgameFrontPages || [], assetId),
-});
+export const removeNewsroomMediaAsset = (state, assetId) => {
+  const nextState = removeVisualProfileReference(state, assetId);
+  return {
+    ...nextState,
+    newsroomMediaLibrary: (nextState.newsroomMediaLibrary || []).filter((asset) => asset.id !== assetId),
+    newsroomIssues: (nextState.newsroomIssues || []).map((issue) => ({
+      ...issue,
+      articles: (issue.articles || []).map((article) => article.mediaAssetId !== assetId ? article : {
+        ...article,
+        mediaAssetId: '',
+        mediaSource: '',
+        mediaDisclosure: '',
+        mediaAutoAssigned: false,
+      }),
+    })),
+    postgameFrontPages: removeFrontPageMediaAsset(nextState.postgameFrontPages || [], assetId),
+  };
+};
 
 export const setNewsroomReferenceStatus = (library = [], assetId, isReference, referenceLabel = '') => (
   library.map((asset) => asset.id !== assetId ? asset : {
@@ -294,6 +298,7 @@ export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] })
       groundingStatus: article.groundingStatus,
       citedFactKeys: article.citedFactKeys || [],
     },
+    sceneOverride: cleanText(article.sceneOverride || 'auto', 60).toLowerCase() || 'auto',
     references,
   };
 };

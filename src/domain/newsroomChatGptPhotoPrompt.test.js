@@ -60,14 +60,14 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.match(prompt, /Jersey numbers are mandatory/i);
   assert.match(prompt, /last-name nameplate/i);
   assert.match(prompt, /front of a Cincinnati jersey/i);
-  assert.match(prompt, /Authoritative 2026 conference: Big 12/i);
+  assert.match(prompt, /Resolved conference for this Dynasty season: Big 12/i);
   assert.match(prompt, /PRIMARY TEAM TEAM IDENTITY \/ UNIFORM AUTHENTICITY — HARD CONSTRAINTS/i);
   assert.match(prompt, /PRIMARY CONFERENCE: Big 12/i);
   assert.match(prompt, /REQUIRED CONFERENCE PATCH: Big 12 Conference patch/i);
   assert.match(prompt, /REQUIRED PATCH VISUAL: the official Big 12 Conference stylized "XII" logo\/mark/i);
   assert.match(prompt, /FORBIDDEN PATCHES \/ LEGACY BRANDING: American Athletic Conference patch; AAC patch; American\/AAC star-A conference logo/i);
   assert.match(prompt, /ZERO-TOLERANCE RULE/i);
-  assert.match(prompt, /CINCINNATI — EXPLICIT PATCH OVERRIDE/i);
+  assert.match(prompt, /CINCINNATI — EXPLICIT BIG 12 PATCH CHECK/i);
   assert.match(prompt, /REQUIRED CONFERENCE PATCH: Big 12/i);
   assert.match(prompt, /American Conference patch/i);
   assert.match(prompt, /FINAL CINCINNATI ASSERTION: Cincinnati = Big 12/i);
@@ -142,4 +142,41 @@ test('opponent patch guidance changes with the verified opponent', () => {
   assert.match(prompt, /TEAM NAME: Michigan/i);
   assert.match(prompt, /PRIMARY CONFERENCE: Big Ten/i);
   assert.match(prompt, /Big Ten "B1G" wordmark\/logo/i);
+});
+
+test('save-specific realignment overrides Cincinnati Big 12 prompt logic instead of fighting it', () => {
+  const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
+    issue: { season: 4, week: 2 },
+    article: { headline: 'Bearcats open a new conference era', dek: 'Cincinnati begins SEC play in this dynasty universe.' },
+    generationContext: {
+      director: {
+        subject: 'team',
+        verifiedDetails: {},
+        mechanics: [],
+        styleDirectives: [],
+        forbiddenDetails: [],
+      },
+      playerContext: { team: 'Cincinnati' },
+      conferenceContext: {
+        dynastySeason: 4,
+        teamIdentity: {
+          team: 'Cincinnati',
+          primaryConference: 'SEC',
+          conferencePatchLabel: 'SEC conference patch',
+          conferencePatchVisual: 'the official SEC circular "SEC" conference mark/logo',
+          forbiddenLegacyPatches: ['American Athletic Conference patch', 'AAC patch', 'Big 12 Conference patch', 'Big 12 conference branding'],
+          identitySource: 'save-override',
+          realWorldConference: 'Big 12',
+        },
+      },
+    },
+  });
+
+  assert.match(prompt, /PRIMARY CONFERENCE: SEC/i);
+  assert.match(prompt, /DYNASTY SAVE OVERRIDE: Cincinnati is assigned to SEC/i);
+  assert.match(prompt, /real-world 2026 fallback of Big 12/i);
+  assert.match(prompt, /REQUIRED CONFERENCE PATCH: SEC conference patch/i);
+  assert.match(prompt, /Big 12 Conference patch/i);
+  assert.doesNotMatch(prompt, /CINCINNATI — EXPLICIT BIG 12 PATCH CHECK/i);
+  assert.doesNotMatch(prompt, /FINAL CINCINNATI ASSERTION: Cincinnati = Big 12/i);
 });

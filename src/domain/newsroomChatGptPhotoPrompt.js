@@ -36,6 +36,7 @@ const verifiedContextLines = (details = {}) => {
 const conferencePatchRules = (identity, roleLabel = 'Team') => {
   if (!identity) return [];
   const label = clean(roleLabel, 80) || 'Team';
+  const saveOverride = identity.identitySource === 'save-override';
 
   if (identity.primaryConference === 'Independent') {
     return [
@@ -43,6 +44,9 @@ const conferencePatchRules = (identity, roleLabel = 'Team') => {
       `- TEAM NAME: ${identity.team}`,
       '- PRIMARY CONFERENCE: FBS Independent',
       '- REQUIRED CONFERENCE PATCH: NONE',
+      saveOverride
+        ? '- DYNASTY SAVE OVERRIDE: this independent status comes from the active DynastyHQ save and overrides the real-world 2026 fallback.'
+        : '- SOURCE: current real-world 2026 football alignment fallback because this save has no custom conference override for the team.',
       '- HARD RULE: do not place any conference logo, conference wordmark, or conference patch on this team\'s jersey.',
     ];
   }
@@ -53,9 +57,12 @@ const conferencePatchRules = (identity, roleLabel = 'Team') => {
     `- PRIMARY CONFERENCE: ${identity.primaryConference}`,
     `- REQUIRED CONFERENCE PATCH: ${identity.conferencePatchLabel}`,
     `- REQUIRED PATCH VISUAL: ${identity.conferencePatchVisual}`,
+    saveOverride
+      ? `- DYNASTY SAVE OVERRIDE: ${identity.team} is assigned to ${identity.primaryConference} in this DynastyHQ save for the applicable Dynasty season. This save-specific alignment is authoritative and overrides the real-world 2026 fallback${identity.realWorldConference ? ` of ${identity.realWorldConference}` : ''}.`
+      : '- SOURCE: current real-world 2026 football alignment fallback because this save has no custom conference override for the team.',
     `- THIS IS NOT OPTIONAL: when a real ${identity.team} game jersey would show its conference patch and that patch area is visible in the photograph, render ${identity.conferencePatchVisual} and no other conference mark.`,
-    `- DO NOT GUESS FROM OLD UNIFORMS OR PRIOR SEASONS. The conference assignment above is authoritative for the 2026 football season and overrides historical visual associations.`,
-    `- DO NOT SUBSTITUTE A GENERIC, SIMILAR, OR DIFFERENT CONFERENCE LOGO. A wrong conference patch makes the image factually incorrect.`,
+    '- DO NOT GUESS FROM OLD UNIFORMS, PRIOR REAL-WORLD SEASONS, OR MODEL MEMORY. The resolved conference assignment above is authoritative for this DynastyHQ story.',
+    '- DO NOT SUBSTITUTE A GENERIC, SIMILAR, OR DIFFERENT CONFERENCE LOGO. A wrong conference patch makes the image factually incorrect.',
   ];
 
   if (identity.forbiddenLegacyPatches?.length) {
@@ -75,14 +82,17 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
 } = {}) => {
   const director = generationContext.director || {};
   const playerContext = generationContext.playerContext || {};
+  const conferenceContext = generationContext.conferenceContext || {};
   const verifiedDetails = director.verifiedDetails || {};
   const subject = clean(director.subject || 'team', 40).toLowerCase();
   const team = clean(playerContext.team, 120);
   const opponent = clean(verifiedDetails.opponent, 120);
-  const teamIdentity = getCollegeFootballTeamIdentity(team);
-  const opponentIdentity = opponent && opponent.toLowerCase() !== team.toLowerCase()
-    ? getCollegeFootballTeamIdentity(opponent)
-    : null;
+  const teamIdentity = conferenceContext.teamIdentity || getCollegeFootballTeamIdentity(team);
+  const opponentIdentity = conferenceContext.opponentIdentity || (
+    opponent && opponent.toLowerCase() !== team.toLowerCase()
+      ? getCollegeFootballTeamIdentity(opponent)
+      : null
+  );
   const position = clean(director.position || playerContext.position, 40);
   const verified = verifiedContextLines(verifiedDetails);
   const mechanics = boundedList(director.mechanics, 8, 420);
@@ -94,6 +104,7 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     '',
     'CRITICAL TEAM-IDENTITY INSTRUCTION',
     'The structured team/conference metadata below is authoritative and MUST override model memory, historical uniforms, old conference affiliations, training-data associations, or guesses.',
+    'A DynastyHQ save-specific conference override has higher priority than the real-world 2026 fallback.',
     'Uniform authenticity is a factual requirement, not a stylistic preference. An image with the wrong team wordmark, conference patch, jersey number treatment, or nameplate is a failed image and must be corrected before output.',
     '',
   ];
@@ -104,15 +115,14 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     conferencePatchRules(opponentIdentity, 'Opponent').forEach((entry) => lines.push(entry));
   }
 
-  if (teamIdentity?.team === 'Cincinnati') {
+  if (teamIdentity?.team === 'Cincinnati' && teamIdentity.primaryConference === 'Big 12') {
     lines.push('');
-    lines.push('CINCINNATI — EXPLICIT PATCH OVERRIDE');
+    lines.push('CINCINNATI — EXPLICIT BIG 12 PATCH CHECK');
     lines.push('- TEAM NAME: Cincinnati Bearcats');
-    lines.push('- PRIMARY CONFERENCE: Big 12 Conference');
+    lines.push('- RESOLVED CONFERENCE: Big 12 Conference');
     lines.push('- REQUIRED CONFERENCE PATCH: Big 12');
     lines.push('- REQUIRED PATCH VISUAL: the official Big 12 stylized "XII" conference logo/mark.');
     lines.push('- FORBIDDEN: American Athletic Conference patch; AAC patch; American Conference patch; American/AAC star-A logo; any star-shaped American/AAC conference mark.');
-    lines.push('- NEVER use Cincinnati\'s former American/AAC conference branding. Cincinnati must be visually treated as a Big 12 football program in every generated image.');
     lines.push('- If a Cincinnati jersey conference-patch area is visible, the patch must read visually as Big 12/XII. A star-A/AAC/American mark is always wrong.');
   }
 
@@ -120,12 +130,14 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     '',
     'Verified Story Context',
     `Dynasty season ${Math.max(1, Number(issue.season) || 1)}, Week ${Math.max(1, Number(issue.week) || 1)}.`,
-    'Real-world uniform/conference metadata basis: 2026 college football alignment.',
+    teamIdentity?.identitySource === 'save-override'
+      ? 'Conference metadata basis: save-specific DynastyHQ conference override for this Dynasty season, with real-world 2026 alignment only as fallback.'
+      : 'Conference metadata basis: real-world 2026 college-football alignment because this save has no applicable custom conference override.',
     article.outletName || article.desk ? `Publication: ${[clean(article.outletName, 120), clean(article.desk, 120)].filter(Boolean).join(' — ')}.` : '',
     `Verified article headline: ${clean(article.headline, 400)}`,
     `Verified article summary: ${clean(article.dek, 800)}`,
     team ? `Team/program: ${team}.` : '',
-    teamIdentity ? `Authoritative 2026 conference: ${teamIdentity.primaryConference}.` : '',
+    teamIdentity ? `Resolved conference for this Dynasty season: ${teamIdentity.primaryConference}.` : '',
     subject === 'player' && position
       ? `Generic featured subject: an anonymous ${position} for ${team || 'the featured team'}.`
       : subject === 'coach'
@@ -147,12 +159,12 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
   }
 
   lines.push('', 'Uniform Authenticity Requirements', 'UNIFORM AUTHENTICITY IS MANDATORY.');
-  lines.push(`- Use authentic real-world ${team || 'team'} football uniform identity appropriate to the scene.`);
+  lines.push(`- Use authentic ${team || 'team'} football uniform identity appropriate to the resolved Dynasty conference context and the scene.`);
   lines.push('- Jersey numbers are mandatory anywhere a jersey is visibly shown. Do not leave game jerseys blank or numberless.');
   lines.push('- If the back of a jersey is visible enough to read, include a properly placed realistic last-name nameplate above the number.');
   lines.push(team
-    ? `- If the front of a ${team} jersey is visible enough to read, use the authentic team/program wordmark or jersey-front text that belongs on that real uniform style. Spell it correctly and integrate it naturally into the fabric.`
-    : '- If the front of a team jersey is visible enough to read, use the authentic team/program wordmark or jersey-front text that belongs on that real uniform style.');
+    ? `- If the front of a ${team} jersey is visible enough to read, use the authentic team/program wordmark or jersey-front text that belongs on that uniform style. Spell it correctly and integrate it naturally into the fabric.`
+    : '- If the front of a team jersey is visible enough to read, use the authentic team/program wordmark or jersey-front text that belongs on that uniform style.');
   lines.push('- Numbers, nameplates, team text, logos, and conference patches must look physically sewn/printed/applied to the uniform, never like floating text or graphic overlays.');
   lines.push('- Conference patch rules above have higher priority than generic uniform styling. Never trade conference accuracy for aesthetics.');
 
@@ -185,8 +197,8 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
   if (teamIdentity) {
     lines.push(`FINAL PRIMARY-TEAM PATCH ASSERTION: ${teamIdentity.team} = ${teamIdentity.primaryConference}; required patch = ${teamIdentity.conferencePatchLabel || 'none'}. Any other conference patch is incorrect.`);
   }
-  if (teamIdentity?.team === 'Cincinnati') {
-    lines.push('FINAL CINCINNATI ASSERTION: Cincinnati = Big 12. Required jersey conference mark = Big 12 stylized XII. American/AAC/star-A conference branding must not appear anywhere on a Cincinnati uniform.');
+  if (teamIdentity?.team === 'Cincinnati' && teamIdentity.primaryConference === 'Big 12') {
+    lines.push('FINAL CINCINNATI ASSERTION: Cincinnati = Big 12 for this resolved Dynasty context. Required jersey conference mark = Big 12 stylized XII. American/AAC/star-A conference branding must not appear anywhere on a Cincinnati uniform.');
   }
   lines.push('Final photographic quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, restrained photographic color grading, and accurate readable uniform details wherever visible.');
   return lines.filter(Boolean).join('\n');

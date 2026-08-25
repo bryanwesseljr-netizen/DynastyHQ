@@ -116,6 +116,9 @@ export const DEFAULT_CAREER_STATE = {
   newsroomMediaLibrary: [],
   newsroomMediaSettings: {
     autoAssignLibrary: true,
+    smartRecommendations: true,
+    requirePhotoQaApproval: true,
+    conferenceOverrides: {},
   },
   retentionBoard: [],
   podcastEpisodes: [],

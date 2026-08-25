@@ -1,4 +1,10 @@
 import { getFrontPageMediaAssetIds, removeFrontPageMediaAsset } from './postgameFrontPage.js';
+import { removeVisualProfileReference } from './playerVisualProfile.js';
+import {
+  getNewsroomIssueFolder,
+  getNewsroomMediaFolder,
+  normalizeNewsroomMediaFolder,
+} from './newsroomMediaFolders.js';
 
 const cleanText = (value, maxLength = 180) => String(value || '').trim().slice(0, maxLength);
 
@@ -51,6 +57,8 @@ export const createNewsroomMediaAsset = ({
   isReference = false,
   referenceLabel = '',
   photoType = '',
+  careerFolder = '',
+  allowAutoAssign = false,
   generatedFrom = null,
 }) => {
   const assetId = cleanText(id, 120);
@@ -73,6 +81,8 @@ export const createNewsroomMediaAsset = ({
     isReference: Boolean(isReference),
     referenceLabel: safeReferenceLabel,
     photoType: normalizeNewsroomPhotoType(photoType || inferPhotoTypeFromText(`${safeReferenceLabel} ${safeFileName}`)),
+    careerFolder: normalizeNewsroomMediaFolder(careerFolder),
+    allowAutoAssign: Boolean(allowAutoAssign),
     generatedFrom: generatedFrom ? {
       publicationId: cleanText(generatedFrom.publicationId, 120),
       articleId: cleanText(generatedFrom.articleId, 120),
@@ -90,6 +100,7 @@ export const assignNewsroomMedia = ({ issues = [], publicationId, articleId, ass
       mediaAssetId: asset.id,
       mediaSource: asset.origin,
       mediaDisclosure: asset.origin === NEWSROOM_MEDIA_ORIGINS.AI ? 'AI-generated editorial image' : '',
+      mediaAutoAssigned: false,
     }),
   })
 );
@@ -102,6 +113,7 @@ export const clearNewsroomMediaAssignment = ({ issues = [], publicationId, artic
       mediaAssetId: '',
       mediaSource: '',
       mediaDisclosure: '',
+      mediaAutoAssigned: false,
     }),
   })
 );
@@ -117,48 +129,18 @@ const articlePhotoPreferences = (article = {}) => {
   ].filter(Boolean).join(' ').toLowerCase();
 
   if (/recruit|signing|commit|offer|scholarship|visit|prospect/.test(text)) {
-    return [
-      NEWSROOM_PHOTO_TYPES.RECRUITING,
-      NEWSROOM_PHOTO_TYPES.PORTRAIT,
-      NEWSROOM_PHOTO_TYPES.ACTION,
-      NEWSROOM_PHOTO_TYPES.GENERAL,
-      NEWSROOM_PHOTO_TYPES.CELEBRATION,
-    ];
+    return [NEWSROOM_PHOTO_TYPES.RECRUITING, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.CELEBRATION];
   }
   if (/film|scheme|analysis|breakdown|evaluation|scouting/.test(text)) {
-    return [
-      NEWSROOM_PHOTO_TYPES.ACTION,
-      NEWSROOM_PHOTO_TYPES.GENERAL,
-      NEWSROOM_PHOTO_TYPES.PORTRAIT,
-      NEWSROOM_PHOTO_TYPES.RECRUITING,
-      NEWSROOM_PHOTO_TYPES.CELEBRATION,
-    ];
+    return [NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.RECRUITING, NEWSROOM_PHOTO_TYPES.CELEBRATION];
   }
   if (/champ|award|victory|win\b|touchdown|milestone|celebrat/.test(text)) {
-    return [
-      NEWSROOM_PHOTO_TYPES.CELEBRATION,
-      NEWSROOM_PHOTO_TYPES.ACTION,
-      NEWSROOM_PHOTO_TYPES.GENERAL,
-      NEWSROOM_PHOTO_TYPES.PORTRAIT,
-      NEWSROOM_PHOTO_TYPES.RECRUITING,
-    ];
+    return [NEWSROOM_PHOTO_TYPES.CELEBRATION, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.RECRUITING];
   }
   if (/profile|spotlight|feature|future|watch|inside|journey|story/.test(text)) {
-    return [
-      NEWSROOM_PHOTO_TYPES.PORTRAIT,
-      NEWSROOM_PHOTO_TYPES.ACTION,
-      NEWSROOM_PHOTO_TYPES.GENERAL,
-      NEWSROOM_PHOTO_TYPES.RECRUITING,
-      NEWSROOM_PHOTO_TYPES.CELEBRATION,
-    ];
+    return [NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.RECRUITING, NEWSROOM_PHOTO_TYPES.CELEBRATION];
   }
-  return [
-    NEWSROOM_PHOTO_TYPES.ACTION,
-    NEWSROOM_PHOTO_TYPES.GENERAL,
-    NEWSROOM_PHOTO_TYPES.CELEBRATION,
-    NEWSROOM_PHOTO_TYPES.PORTRAIT,
-    NEWSROOM_PHOTO_TYPES.RECRUITING,
-  ];
+  return [NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.CELEBRATION, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.RECRUITING];
 };
 
 const stableAsset = (assets = []) => assets[0];
@@ -168,7 +150,7 @@ const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
   const recentIssues = issues.slice(Math.max(0, end - 2), end);
   return new Set(recentIssues.flatMap((issue) => (
     (issue.articles || [])
-      .filter((article) => article.mediaSource === NEWSROOM_MEDIA_ORIGINS.UPLOAD)
+      .filter((article) => article.mediaSource === NEWSROOM_MEDIA_ORIGINS.UPLOAD || article.mediaAutoAssigned)
       .map((article) => article.mediaAssetId)
       .filter(Boolean)
   )));
@@ -176,20 +158,17 @@ const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
 
 const chooseSmartLibraryPhoto = ({ candidates, article, usedThisEdition, recentlyUsed }) => {
   const preferences = articlePhotoPreferences(article);
-  const currentId = article.mediaSource === NEWSROOM_MEDIA_ORIGINS.UPLOAD ? article.mediaAssetId : '';
+  const currentId = article.mediaAssetId || '';
   const available = candidates.filter((asset) => !usedThisEdition.has(asset.id));
   const editionPool = available.length ? available : candidates;
 
   for (const photoType of preferences) {
     const typed = editionPool.filter((asset) => getNewsroomPhotoType(asset) === photoType);
     if (!typed.length) continue;
-
     const fresh = typed.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
     if (fresh.length) return stableAsset(fresh);
-
     const notCurrent = typed.filter((asset) => asset.id !== currentId);
     if (notCurrent.length) return stableAsset(notCurrent);
-
     return stableAsset(typed);
   }
 
@@ -200,64 +179,74 @@ const chooseSmartLibraryPhoto = ({ candidates, article, usedThisEdition, recentl
 };
 
 export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
+  const targetIndex = issues.findIndex((issue) => issue.publicationId === publicationId || issue.id === publicationId);
+  if (targetIndex < 0) return issues;
+
+  const targetIssue = issues[targetIndex];
+  const targetFolder = getNewsroomIssueFolder(targetIssue);
   const candidates = mediaLibrary.filter((asset) => (
-    asset?.origin === NEWSROOM_MEDIA_ORIGINS.UPLOAD
+    (asset?.origin === NEWSROOM_MEDIA_ORIGINS.UPLOAD || asset?.allowAutoAssign === true)
     && !asset.isReference
     && asset.id
     && asset.downloadUrl
+    && getNewsroomMediaFolder(asset) === targetFolder
   ));
-
   if (!candidates.length) return issues;
 
-  const targetIndex = issues.findIndex((issue) => issue.publicationId === publicationId || issue.id === publicationId);
+  const assetById = new Map(mediaLibrary.map((entry) => [entry?.id, entry]));
   const recentlyUsed = recentLibraryAssignments(issues, targetIndex);
 
   return issues.map((issue) => {
     if (issue.publicationId !== publicationId && issue.id !== publicationId) return issue;
     const usedThisEdition = new Set();
-
     return {
       ...issue,
       articles: (issue.articles || []).map((article) => {
-        // Auto-assignment fills empty slots only. Manual, uploaded, and AI assignments remain locked until the user clears them.
-        if (article.mediaAssetId) {
+        const currentAsset = article.mediaAssetId ? assetById.get(article.mediaAssetId) : null;
+        const currentMatchesFolder = currentAsset && getNewsroomMediaFolder(currentAsset) === targetFolder;
+
+        if (article.mediaAssetId && article.mediaAutoAssigned !== true) {
+          usedThisEdition.add(article.mediaAssetId);
+          return article;
+        }
+        if (article.mediaAssetId && article.mediaAutoAssigned === true && currentMatchesFolder) {
           usedThisEdition.add(article.mediaAssetId);
           return article;
         }
 
-        const asset = chooseSmartLibraryPhoto({
-          candidates,
-          article,
-          usedThisEdition,
-          recentlyUsed,
-        });
+        const asset = chooseSmartLibraryPhoto({ candidates, article, usedThisEdition, recentlyUsed });
         if (!asset) return article;
         usedThisEdition.add(asset.id);
         return {
           ...article,
           mediaAssetId: asset.id,
           mediaSource: asset.origin,
-          mediaDisclosure: '',
+          mediaDisclosure: asset.origin === NEWSROOM_MEDIA_ORIGINS.AI ? 'AI-generated editorial image' : '',
+          mediaAutoAssigned: true,
         };
       }),
     };
   });
 };
 
-export const removeNewsroomMediaAsset = (state, assetId) => ({
-  ...state,
-  newsroomMediaLibrary: (state.newsroomMediaLibrary || []).filter((asset) => asset.id !== assetId),
-  newsroomIssues: (state.newsroomIssues || []).map((issue) => ({
-    ...issue,
-    articles: (issue.articles || []).map((article) => article.mediaAssetId !== assetId ? article : {
-      ...article,
-      mediaAssetId: '',
-      mediaSource: '',
-      mediaDisclosure: '',
-    }),
-  })),
-  postgameFrontPages: removeFrontPageMediaAsset(state.postgameFrontPages || [], assetId),
-});
+export const removeNewsroomMediaAsset = (state, assetId) => {
+  const nextState = removeVisualProfileReference(state, assetId);
+  return {
+    ...nextState,
+    newsroomMediaLibrary: (nextState.newsroomMediaLibrary || []).filter((asset) => asset.id !== assetId),
+    newsroomIssues: (nextState.newsroomIssues || []).map((issue) => ({
+      ...issue,
+      articles: (issue.articles || []).map((article) => article.mediaAssetId !== assetId ? article : {
+        ...article,
+        mediaAssetId: '',
+        mediaSource: '',
+        mediaDisclosure: '',
+        mediaAutoAssigned: false,
+      }),
+    })),
+    postgameFrontPages: removeFrontPageMediaAsset(nextState.postgameFrontPages || [], assetId),
+  };
+};
 
 export const setNewsroomReferenceStatus = (library = [], assetId, isReference, referenceLabel = '') => (
   library.map((asset) => asset.id !== assetId ? asset : {
@@ -268,10 +257,11 @@ export const setNewsroomReferenceStatus = (library = [], assetId, isReference, r
 );
 
 export const setNewsroomPhotoType = (library = [], assetId, photoType) => (
-  library.map((asset) => asset.id !== assetId ? asset : {
-    ...asset,
-    photoType: normalizeNewsroomPhotoType(photoType),
-  })
+  library.map((asset) => asset.id !== assetId ? asset : { ...asset, photoType: normalizeNewsroomPhotoType(photoType) })
+);
+
+export const setNewsroomMediaFolder = (library = [], assetId, careerFolder) => (
+  library.map((asset) => asset.id !== assetId ? asset : { ...asset, careerFolder: normalizeNewsroomMediaFolder(careerFolder) })
 );
 
 export const resolveNewsroomMedia = ({ article, mediaLibrary = [], fallbackUrl = '' }) => {
@@ -285,17 +275,12 @@ export const resolveNewsroomMedia = ({ article, mediaLibrary = [], fallbackUrl =
 };
 
 export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] }) => {
-  if (!issue || !article || article.groundingStatus !== 'verified') {
-    throw new Error('Only a verified published article can generate an editorial image.');
-  }
+  if (!issue || !article || article.groundingStatus !== 'verified') throw new Error('Only a verified published article can generate an editorial image.');
+  const targetFolder = getNewsroomIssueFolder(issue);
   const references = mediaLibrary
-    .filter((asset) => asset.isReference && asset.downloadUrl)
+    .filter((asset) => asset.isReference && asset.downloadUrl && getNewsroomMediaFolder(asset) === targetFolder)
     .slice(0, 4)
-    .map((asset) => ({
-      assetId: asset.id,
-      imageUrl: asset.downloadUrl,
-      label: asset.referenceLabel || asset.fileName || 'Approved reference',
-    }));
+    .map((asset) => ({ assetId: asset.id, imageUrl: asset.downloadUrl, label: asset.referenceLabel || asset.fileName || 'Approved reference' }));
 
   return {
     issue: {
@@ -313,17 +298,16 @@ export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] })
       groundingStatus: article.groundingStatus,
       citedFactKeys: article.citedFactKeys || [],
     },
+    sceneOverride: cleanText(article.sceneOverride || 'auto', 60).toLowerCase() || 'auto',
     references,
   };
 };
 
 export const buildPublicNewsroomMediaLibrary = ({ issues = [], frontPages = [], mediaLibrary = [] }) => {
-  const assignedIds = new Set(
-    [
-      ...issues.flatMap((issue) => (issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean)),
-      ...getFrontPageMediaAssetIds(frontPages),
-    ],
-  );
+  const assignedIds = new Set([
+    ...issues.flatMap((issue) => (issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean)),
+    ...getFrontPageMediaAssetIds(frontPages),
+  ]);
   return mediaLibrary
     .filter((asset) => assignedIds.has(asset.id))
     .map((asset) => ({
@@ -333,6 +317,7 @@ export const buildPublicNewsroomMediaLibrary = ({ issues = [], frontPages = [], 
       mimeType: asset.mimeType,
       origin: asset.origin,
       photoType: getNewsroomPhotoType(asset),
+      careerFolder: getNewsroomMediaFolder(asset),
       createdAt: asset.createdAt,
     }));
 };

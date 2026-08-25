@@ -1,4 +1,10 @@
 import { json, verifyFirebaseUser } from './_auth.js';
+import {
+  fetchUserImageContextState,
+  findStoredNewsroomPacket,
+} from './_userImageContext.js';
+import { buildNewsroomImageGenerationContext } from '../src/domain/newsroomImageGenerationContext.js';
+import { buildGroundedNewsroomImagePrompt } from '../src/domain/newsroomImagePrompt.js';
 
 const MODEL = process.env.OPENAI_NEWSROOM_IMAGE_MODEL || 'gpt-image-2';
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images';
@@ -23,22 +29,14 @@ const validReferenceUrl = (value) => {
   }
 };
 
-const createPrompt = ({ issue, article, references }) => {
-  const referenceDirection = references.length
-    ? `Use the approved reference images only to preserve the subject's facial identity, age, build, uniform, jersey number, equipment, and handedness. Do not copy their backgrounds. Reference labels: ${references.map((entry) => entry.label).join('; ')}.`
-    : 'Create an atmospheric football editorial scene without a recognizable real person as the central subject.';
-
-  return [
-    'Create one photorealistic 3:2 editorial sports photograph for a fictional DynastyHQ college-football newsroom.',
-    `Publication: Season ${issue.season}, Week ${issue.week}. Outlet: ${article.outletName}, ${article.desk}.`,
-    `Verified article headline: ${article.headline}`,
-    `Verified article summary: ${article.dek}`,
-    referenceDirection,
-    'Match only what the verified headline and summary support. Do not invent a score, ranking, award, injury, opponent logo, quote, venue, weather condition, or specific play outcome.',
-    'Do not render headlines, captions, watermarks, statistics, brand marks, or readable text inside the image.',
-    'Natural stadium lighting, authentic sideline detail, believable sports-photo composition, restrained color grading, no poster graphics.',
-  ].join('\n');
-};
+const sanitizeReference = (entry = {}) => ({
+  assetId: text(entry.assetId, 120),
+  imageUrl: text(entry.imageUrl, 2400),
+  label: text(entry.label, 120) || 'Approved reference',
+  role: text(entry.role, 40) || 'general',
+  roleLabel: text(entry.roleLabel, 80) || 'General reference',
+  instruction: text(entry.instruction, 520) || 'Use only as a general visual reference without copying the original pose or background.',
+});
 
 const openAiRequest = async (path, body) => {
   const response = await fetch(`${OPENAI_IMAGE_URL}/${path}`, {
@@ -75,33 +73,76 @@ export default async function handler(req, res) {
   }
   if (!user) return json(res, 401, { error: 'Sign in before generating a newsroom image.' });
 
-  const issue = req.body?.issue || {};
-  const article = req.body?.article || {};
-  if (article.groundingStatus !== 'verified' || !(article.citedFactKeys || []).length) {
+  const requestedIssue = req.body?.issue || {};
+  const requestedArticle = req.body?.article || {};
+  const requestedPublicationId = text(requestedIssue.publicationId || requestedIssue.id, 120);
+  const requestedArticleId = text(requestedArticle.id, 120);
+  const requestedSceneOverride = text(req.body?.sceneOverride || 'auto', 60).toLowerCase() || 'auto';
+  if (!requestedPublicationId || !requestedArticleId) {
+    return json(res, 400, { error: 'The verified article packet is incomplete.' });
+  }
+
+  let ownerState = null;
+  let sourceIssue = requestedIssue;
+  let sourceArticle = requestedArticle;
+  let generationContext = {};
+  try {
+    ownerState = await fetchUserImageContextState({
+      authorization: req.headers.authorization,
+      uid: user.localId,
+    });
+    const stored = findStoredNewsroomPacket({
+      state: ownerState,
+      publicationId: requestedPublicationId,
+      articleId: requestedArticleId,
+    });
+    if (stored.issue) sourceIssue = stored.issue;
+    if (stored.article) sourceArticle = stored.article;
+    generationContext = buildNewsroomImageGenerationContext({
+      state: ownerState,
+      issue: sourceIssue,
+      article: sourceArticle,
+      sceneOverride: requestedSceneOverride,
+    });
+  } catch (error) {
+    console.warn('Photo Director owner context could not be loaded; using verified request fallback.', error?.message || error);
+    ownerState = null;
+    generationContext = {};
+  }
+
+  if (sourceArticle.groundingStatus !== 'verified' || !(sourceArticle.citedFactKeys || []).length) {
     return json(res, 400, { error: 'Only a verified article with cited facts can generate an image.' });
   }
 
   const safeIssue = {
-    publicationId: text(issue.publicationId, 120),
-    season: Math.max(1, Number(issue.season) || 1),
-    week: Math.max(1, Number(issue.week) || 1),
+    publicationId: text(sourceIssue.publicationId || sourceIssue.id || requestedPublicationId, 120),
+    season: Math.max(1, Number(sourceIssue.season) || Number(requestedIssue.season) || 1),
+    week: Math.max(1, Number(sourceIssue.week) || Number(requestedIssue.week) || 1),
   };
   const safeArticle = {
-    id: text(article.id, 120),
-    outletName: text(article.outletName, 120),
-    desk: text(article.desk, 120),
-    headline: text(article.headline, 400),
-    dek: text(article.dek, 800),
+    id: text(sourceArticle.id || requestedArticleId, 120),
+    outletName: text(sourceArticle.outletName, 120),
+    desk: text(sourceArticle.desk, 120),
+    headline: text(sourceArticle.headline, 400),
+    dek: text(sourceArticle.dek, 800),
   };
   if (!safeIssue.publicationId || !safeArticle.id || !safeArticle.headline || !safeArticle.dek) {
     return json(res, 400, { error: 'The verified article packet is incomplete.' });
   }
 
-  const references = (Array.isArray(req.body?.references) ? req.body.references : [])
+  const referenceSource = ownerState
+    ? generationContext.references || []
+    : (Array.isArray(req.body?.references) ? req.body.references : []);
+  const references = referenceSource
     .filter((entry) => validReferenceUrl(entry?.imageUrl))
     .slice(0, 4)
-    .map((entry) => ({ imageUrl: entry.imageUrl, label: text(entry.label, 120) || 'Approved reference' }));
-  const prompt = createPrompt({ issue: safeIssue, article: safeArticle, references });
+    .map(sanitizeReference);
+  const prompt = buildGroundedNewsroomImagePrompt({
+    issue: safeIssue,
+    article: safeArticle,
+    generationContext,
+    references,
+  });
 
   try {
     const common = {
@@ -127,10 +168,14 @@ export default async function handler(req, res) {
       imageBase64,
       mimeType: 'image/jpeg',
       model: MODEL,
-      referenceAssetIds: references.length
-        ? req.body.references.filter((entry) => validReferenceUrl(entry?.imageUrl)).slice(0, 4).map((entry) => text(entry.assetId, 120))
-        : [],
+      referenceAssetIds: references.map((entry) => entry.assetId).filter(Boolean),
       disclosure: 'AI-generated editorial image',
+      directorPreset: generationContext.director?.preset || '',
+      directorSubject: generationContext.director?.subject || '',
+      sceneOverride: requestedSceneOverride,
+      visualProfileApplied: Boolean(generationContext.visualProfileDirectives?.length),
+      referenceRoles: references.map((entry) => entry.role),
+      contextSource: ownerState ? 'owner-save' : 'request-fallback',
     });
   } catch (error) {
     console.error('OpenAI newsroom image generation failed', error);

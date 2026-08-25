@@ -1,4 +1,8 @@
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import {
+  chunkPodcastAudioForStorage,
+  reassemblePodcastAudioFromStorage,
+} from '../domain/podcastAudioChunks.js';
 
 const DB_NAME = 'DynastyHQPodcastDB';
 const STORE_NAME = 'episodeAudio';
@@ -50,8 +54,13 @@ const publicCollection = (db, appId, ownerId, episodeId) => collection(
 const replaceCollection = async (collectionRef, segments) => {
   const existing = await getDocs(collectionRef);
   await Promise.all(existing.docs.map((entry) => deleteDoc(entry.ref)));
-  await Promise.all(segments.map((segment, index) => setDoc(doc(collectionRef, `segment_${index}`), {
-    index,
+
+  const storedSegments = chunkPodcastAudioForStorage(segments);
+  await Promise.all(storedSegments.map((segment) => setDoc(doc(collectionRef, `segment_${segment.index}`), {
+    index: segment.index,
+    segmentIndex: segment.segmentIndex,
+    chunkIndex: segment.chunkIndex,
+    chunkCount: segment.chunkCount,
     data: segment.data,
     mimeType: segment.mimeType || 'audio/mpeg',
     hostId: segment.hostId || '',
@@ -62,9 +71,7 @@ const replaceCollection = async (collectionRef, segments) => {
 const loadCollection = async (collectionRef) => {
   const snapshot = await getDocs(collectionRef);
   if (snapshot.empty) return null;
-  return snapshot.docs
-    .map((entry) => entry.data())
-    .sort((a, b) => a.index - b.index);
+  return reassemblePodcastAudioFromStorage(snapshot.docs.map((entry) => entry.data()));
 };
 
 export const savePodcastAudioCloud = ({ db, appId, userId, episodeId, segments }) => (

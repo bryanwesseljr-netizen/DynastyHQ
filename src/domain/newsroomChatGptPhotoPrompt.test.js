@@ -1,0 +1,145 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { buildGeneralChatGptNewsroomPhotoPrompt } from './newsroomChatGptPhotoPrompt.js';
+
+test('ChatGPT editorial prompt keeps story context but strips created-player personalization', () => {
+  const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
+    issue: { season: 2, week: 4 },
+    article: {
+      outletName: 'Bearcats Insider',
+      desk: 'Game Desk',
+      headline: 'Quarterback delivers a strong afternoon',
+      dek: 'Verified production supports a player-focused feature.',
+    },
+    generationContext: {
+      director: {
+        subject: 'player',
+        position: 'QB',
+        presetLabel: 'QB Pocket Action',
+        scene: 'live game action from a believable passing pocket',
+        emotionalTone: 'focused, composed, decisive',
+        reason: 'The verified passing production supports a quarterback action image.',
+        verifiedDetails: { passYds: 268, passTD: 2, didPlay: true },
+        mechanics: ['Use a believable football grip with anatomically correct fingers and wrist alignment.'],
+        throwingHandConstraints: ['The quarterback is LEFT-HANDED and must throw with the left arm.'],
+        styleDirectives: ['photorealistic editorial college-football photography'],
+        forbiddenDetails: ['specific injury or medical condition'],
+      },
+      visualProfileDirectives: [
+        'Throwing hand: left',
+        'Helmet: black helmet with black facemask',
+        'Right hand: white glove',
+      ],
+      playerContext: {
+        position: 'QB',
+        jerseyNumber: '6',
+        team: 'Cincinnati',
+      },
+      references: [
+        {
+          role: 'identity',
+          roleLabel: 'Face / identity',
+          instruction: 'Preserve facial identity exactly.',
+        },
+      ],
+    },
+  });
+
+  assert.match(prompt, /Create 4 distinct photorealistic editorial college-football photographs/);
+  assert.match(prompt, /Cincinnati/);
+  assert.match(prompt, /anonymous QB/);
+  assert.match(prompt, /Passing yards: 268/);
+  assert.match(prompt, /QB Pocket Action/);
+  assert.match(prompt, /believable football grip/);
+  assert.match(prompt, /do not attempt to recreate or reference a pre-existing created-player appearance/i);
+  assert.match(prompt, /not a portrait of a specific created player/i);
+
+  assert.match(prompt, /CRITICAL TEAM-IDENTITY INSTRUCTION/i);
+  assert.match(prompt, /UNIFORM AUTHENTICITY IS MANDATORY/i);
+  assert.match(prompt, /Jersey numbers are mandatory/i);
+  assert.match(prompt, /last-name nameplate/i);
+  assert.match(prompt, /front of a Cincinnati jersey/i);
+  assert.match(prompt, /Authoritative 2026 conference: Big 12/i);
+  assert.match(prompt, /PRIMARY TEAM TEAM IDENTITY \/ UNIFORM AUTHENTICITY — HARD CONSTRAINTS/i);
+  assert.match(prompt, /PRIMARY CONFERENCE: Big 12/i);
+  assert.match(prompt, /REQUIRED CONFERENCE PATCH: Big 12 Conference patch/i);
+  assert.match(prompt, /REQUIRED PATCH VISUAL: the official Big 12 Conference stylized "XII" logo\/mark/i);
+  assert.match(prompt, /FORBIDDEN PATCHES \/ LEGACY BRANDING: American Athletic Conference patch; AAC patch; American\/AAC star-A conference logo/i);
+  assert.match(prompt, /ZERO-TOLERANCE RULE/i);
+  assert.match(prompt, /CINCINNATI — EXPLICIT PATCH OVERRIDE/i);
+  assert.match(prompt, /REQUIRED CONFERENCE PATCH: Big 12/i);
+  assert.match(prompt, /American Conference patch/i);
+  assert.match(prompt, /FINAL CINCINNATI ASSERTION: Cincinnati = Big 12/i);
+
+  assert.doesNotMatch(prompt, /jersey number 6/i);
+  assert.doesNotMatch(prompt, /LEFT-HANDED/);
+  assert.doesNotMatch(prompt, /Throwing hand: left/);
+  assert.doesNotMatch(prompt, /white glove/i);
+  assert.doesNotMatch(prompt, /black facemask/i);
+  assert.doesNotMatch(prompt, /Face \/ identity/);
+  assert.doesNotMatch(prompt, /Preserve facial identity exactly/);
+  assert.doesNotMatch(prompt, /Permanent Visual Player Profile/);
+});
+
+test('team-first prompt retains Cincinnati identity and validates the known opponent conference too', () => {
+  const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
+    issue: { season: 1, week: 7 },
+    article: {
+      outletName: 'College Football Daily',
+      desk: 'National',
+      headline: 'Bearcats rebound with a complete team win',
+      dek: 'The verified result supports a broader program-focused image.',
+    },
+    generationContext: {
+      director: {
+        subject: 'team',
+        presetLabel: 'Signature Win',
+        scene: 'authentic postgame team energy after a verified win',
+        emotionalTone: 'confident but natural',
+        verifiedDetails: { result: 'W 31-20', opponent: 'Houston' },
+        mechanics: [],
+        styleDirectives: [],
+        forbiddenDetails: [],
+      },
+      playerContext: { team: 'Cincinnati', jerseyNumber: '6' },
+      visualProfileDirectives: ['Right hand: white glove'],
+    },
+  });
+
+  assert.match(prompt, /team\/program or football scene rather than a personalized created player/i);
+  assert.match(prompt, /Result: W 31-20/);
+  assert.match(prompt, /Opponent: Houston/);
+  assert.match(prompt, /PRIMARY TEAM TEAM IDENTITY \/ UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /TEAM NAME: Cincinnati/i);
+  assert.match(prompt, /official Big 12 Conference stylized "XII" logo\/mark/i);
+  assert.match(prompt, /OPPONENT TEAM IDENTITY \/ UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /TEAM NAME: Houston/i);
+  assert.match(prompt, /PRIMARY CONFERENCE: Big 12/i);
+  assert.match(prompt, /last-name nameplate/i);
+  assert.doesNotMatch(prompt, /white glove/i);
+  assert.doesNotMatch(prompt, /jersey number 6/i);
+  assert.doesNotMatch(prompt, /Do not render.*jersey-name text/i);
+});
+
+test('opponent patch guidance changes with the verified opponent', () => {
+  const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
+    issue: { season: 1, week: 1 },
+    article: { headline: 'Opening test', dek: 'Cincinnati faces a Big Ten opponent.' },
+    generationContext: {
+      director: {
+        subject: 'team',
+        verifiedDetails: { opponent: 'Michigan' },
+        mechanics: [],
+        styleDirectives: [],
+        forbiddenDetails: [],
+      },
+      playerContext: { team: 'Cincinnati' },
+    },
+  });
+
+  assert.match(prompt, /OPPONENT TEAM IDENTITY \/ UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /TEAM NAME: Michigan/i);
+  assert.match(prompt, /PRIMARY CONFERENCE: Big Ten/i);
+  assert.match(prompt, /Big Ten "B1G" wordmark\/logo/i);
+});

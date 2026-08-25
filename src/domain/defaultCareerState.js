@@ -2,6 +2,7 @@ import { CAREER_SCHEMA_VERSION } from './weeklyEngine';
 import { DEFAULT_PLAYER_RECRUITING } from './playerRecruiting';
 import { DEFAULT_CAREER_TRANSITIONS } from './careerTransitions';
 import { DEFAULT_COLLEGE_NEWSROOM } from './collegeNewsroom';
+import { DEFAULT_PLAYER_VISUAL_PROFILE } from './playerVisualProfile';
 
 export const DEFAULT_CAREER_STATE = {
   schemaVersion: CAREER_SCHEMA_VERSION,
@@ -18,6 +19,7 @@ export const DEFAULT_CAREER_STATE = {
     archetype: '',
     nationalQbRank: '',
     headshot: '',
+    visualProfile: DEFAULT_PLAYER_VISUAL_PROFILE,
     isCommitted: false,
     college: '',
   },

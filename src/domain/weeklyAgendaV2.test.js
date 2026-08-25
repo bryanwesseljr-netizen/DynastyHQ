@@ -20,7 +20,10 @@ test('weekly agenda v2 mounts without replacing the existing weekly engine', asy
   assert.match(main, /<OwnerEnhancements \/>/);
   assert.match(ownerEnhancements, /import WeeklyAgendaV2Portal from '\.\/WeeklyAgendaV2Portal\.jsx'/);
   assert.match(ownerEnhancements, /<WeeklyAgendaV2Portal \/>/);
-  assert.match(portal, /document\.querySelector\('\.dhq-weekly-agenda-workspace'\)/);
+  assert.match(portal, /const appRoot = document\.getElementById\('root'\)/);
+  assert.match(portal, /appRoot\.querySelector\('\.dhq-weekly-agenda-workspace'\)/);
+  assert.match(portal, /observer\.observe\(appRoot, \{ childList: true, subtree: true \}\)/);
+  assert.doesNotMatch(portal, /observer\.observe\(document\.body/);
   assert.match(portal, /findUniversalScannerInput/);
   assert.match(portal, /input\.dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/);
   assert.match(app, /const analyzeScreenshotFiles = async/);

@@ -55,18 +55,22 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.match(prompt, /do not attempt to recreate or reference a pre-existing created-player appearance/i);
   assert.match(prompt, /not a portrait of a specific created player/i);
 
+  assert.match(prompt, /CRITICAL TEAM-IDENTITY INSTRUCTION/i);
   assert.match(prompt, /UNIFORM AUTHENTICITY IS MANDATORY/i);
   assert.match(prompt, /Jersey numbers are mandatory/i);
   assert.match(prompt, /last-name nameplate/i);
   assert.match(prompt, /front of a Cincinnati jersey/i);
   assert.match(prompt, /Authoritative 2026 conference: Big 12/i);
-  assert.match(prompt, /PRIMARY TEAM CONFERENCE IDENTITY — AUTHORITATIVE 2026 DATA/i);
-  assert.match(prompt, /REQUIRED jersey conference patch: Big 12 Conference patch/i);
-  assert.match(prompt, /EXACT VISUAL TARGET: the official Big 12 Conference stylized "XII" logo\/mark/i);
-  assert.match(prompt, /FORBIDDEN LEGACY PATCHES: American Athletic Conference patch; AAC patch; American\/AAC star-A conference logo/i);
-  assert.match(prompt, /CINCINNATI PATCH CHECK — NON-NEGOTIABLE/i);
-  assert.match(prompt, /only acceptable conference mark on a visible Cincinnati jersey is the official Big 12 Conference stylized "XII" mark\/logo/i);
-  assert.match(prompt, /wrong or legacy conference patch is a failed image/i);
+  assert.match(prompt, /PRIMARY TEAM TEAM IDENTITY \/ UNIFORM AUTHENTICITY — HARD CONSTRAINTS/i);
+  assert.match(prompt, /PRIMARY CONFERENCE: Big 12/i);
+  assert.match(prompt, /REQUIRED CONFERENCE PATCH: Big 12 Conference patch/i);
+  assert.match(prompt, /REQUIRED PATCH VISUAL: the official Big 12 Conference stylized "XII" logo\/mark/i);
+  assert.match(prompt, /FORBIDDEN PATCHES \/ LEGACY BRANDING: American Athletic Conference patch; AAC patch; American\/AAC star-A conference logo/i);
+  assert.match(prompt, /ZERO-TOLERANCE RULE/i);
+  assert.match(prompt, /CINCINNATI — EXPLICIT PATCH OVERRIDE/i);
+  assert.match(prompt, /REQUIRED CONFERENCE PATCH: Big 12/i);
+  assert.match(prompt, /American Conference patch/i);
+  assert.match(prompt, /FINAL CINCINNATI ASSERTION: Cincinnati = Big 12/i);
 
   assert.doesNotMatch(prompt, /jersey number 6/i);
   assert.doesNotMatch(prompt, /LEFT-HANDED/);
@@ -106,12 +110,12 @@ test('team-first prompt retains Cincinnati identity and validates the known oppo
   assert.match(prompt, /team\/program or football scene rather than a personalized created player/i);
   assert.match(prompt, /Result: W 31-20/);
   assert.match(prompt, /Opponent: Houston/);
-  assert.match(prompt, /PRIMARY TEAM CONFERENCE IDENTITY/i);
-  assert.match(prompt, /Team: Cincinnati/);
+  assert.match(prompt, /PRIMARY TEAM TEAM IDENTITY \/ UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /TEAM NAME: Cincinnati/i);
   assert.match(prompt, /official Big 12 Conference stylized "XII" logo\/mark/i);
-  assert.match(prompt, /OPPONENT CONFERENCE IDENTITY/i);
-  assert.match(prompt, /Team: Houston/);
-  assert.match(prompt, /Primary football conference: Big 12/i);
+  assert.match(prompt, /OPPONENT TEAM IDENTITY \/ UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /TEAM NAME: Houston/i);
+  assert.match(prompt, /PRIMARY CONFERENCE: Big 12/i);
   assert.match(prompt, /last-name nameplate/i);
   assert.doesNotMatch(prompt, /white glove/i);
   assert.doesNotMatch(prompt, /jersey number 6/i);
@@ -134,8 +138,8 @@ test('opponent patch guidance changes with the verified opponent', () => {
     },
   });
 
-  assert.match(prompt, /OPPONENT CONFERENCE IDENTITY/i);
-  assert.match(prompt, /Team: Michigan/);
-  assert.match(prompt, /Primary football conference: Big Ten/i);
+  assert.match(prompt, /OPPONENT TEAM IDENTITY \/ UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /TEAM NAME: Michigan/i);
+  assert.match(prompt, /PRIMARY CONFERENCE: Big Ten/i);
   assert.match(prompt, /Big Ten "B1G" wordmark\/logo/i);
 });

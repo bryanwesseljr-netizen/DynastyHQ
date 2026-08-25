@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Loader2, UserRoundCog } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Loader2, UserRoundCog } from 'lucide-react';
 import { doc, getDoc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
 import {
@@ -29,6 +29,7 @@ const FIELD_GROUPS = [
 
 const VisualPlayerProfileEditor = ({ mediaLibrary = [] }) => {
   const [profile, setProfile] = useState(() => normalizePlayerVisualProfile(DEFAULT_PLAYER_VISUAL_PROFILE));
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -111,77 +112,92 @@ const VisualPlayerProfileEditor = ({ mediaLibrary = [] }) => {
   };
 
   return (
-    <section className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-4" aria-labelledby="visual-player-profile-title">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+    <section className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-950/10" aria-labelledby="visual-player-profile-title">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-controls="visual-player-profile-content"
+        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+      >
+        <div className="min-w-0">
           <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300"><UserRoundCog size={14} /> AI Photo Identity</p>
           <h3 id="visual-player-profile-title" className="mt-1 text-sm font-black uppercase text-white">Visual Player Profile</h3>
-          <p className="mt-1 max-w-2xl text-[10px] leading-relaxed text-slate-500">Permanent appearance and equipment details for editorial AI photos. Leave anything unknown blank—DynastyHQ should not turn an empty field into a specific visual claim.</p>
+          {!open && <p className="mt-1 text-[9px] text-slate-500">Permanent appearance, equipment, and identity reference settings.</p>}
         </div>
-        <div className="shrink-0 rounded-lg border border-cyan-500/20 bg-slate-950/60 px-3 py-2 text-[9px] font-bold text-cyan-100">
-          {approvedReferenceIds.length} approved {approvedReferenceIds.length === 1 ? 'reference' : 'references'}
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-lg border border-cyan-500/20 bg-slate-950/60 px-3 py-2 text-[9px] font-bold text-cyan-100">
+            {approvedReferenceIds.length} approved {approvedReferenceIds.length === 1 ? 'reference' : 'references'}
+          </span>
+          {open ? <ChevronDown size={17} className="text-cyan-300" /> : <ChevronRight size={17} className="text-cyan-300" />}
         </div>
-      </div>
+      </button>
 
-      {loading ? (
-        <p className="mt-4 flex items-center gap-2 text-[10px] font-bold text-slate-400"><Loader2 size={13} className="animate-spin" /> Loading visual profile…</p>
-      ) : (
-        <>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-            <label className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
-              Throwing hand
-              <select
-                value={profile.throwingHand}
-                onChange={(event) => updateField('throwingHand', event.target.value)}
-                className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-bold normal-case tracking-normal text-slate-200 outline-none focus:border-cyan-500"
-              >
-                <option value="">Unknown / not applicable</option>
-                <option value="left">Left</option>
-                <option value="right">Right</option>
-              </select>
-            </label>
-            {FIELD_GROUPS[0].map((field) => (
-              <label key={field.key} className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
-                {field.label}
-                <input value={profile[field.key]} onChange={(event) => updateField(field.key, event.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
+      {open && (
+        <div id="visual-player-profile-content" className="border-t border-cyan-500/10 px-4 pb-4 pt-3">
+          <p className="max-w-2xl text-[10px] leading-relaxed text-slate-500">Permanent appearance and equipment details for editorial AI photos. Leave anything unknown blank—DynastyHQ should not turn an empty field into a specific visual claim.</p>
+
+          {loading ? (
+            <p className="mt-4 flex items-center gap-2 text-[10px] font-bold text-slate-400"><Loader2 size={13} className="animate-spin" /> Loading visual profile…</p>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                <label className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
+                  Throwing hand
+                  <select
+                    value={profile.throwingHand}
+                    onChange={(event) => updateField('throwingHand', event.target.value)}
+                    className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-bold normal-case tracking-normal text-slate-200 outline-none focus:border-cyan-500"
+                  >
+                    <option value="">Unknown / not applicable</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                </label>
+                {FIELD_GROUPS[0].map((field) => (
+                  <label key={field.key} className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
+                    {field.label}
+                    <input value={profile[field.key]} onChange={(event) => updateField(field.key, event.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                {FIELD_GROUPS[1].map((field) => (
+                  <label key={field.key} className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
+                    {field.label}
+                    <input value={profile[field.key]} onChange={(event) => updateField(field.key, event.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                {FIELD_GROUPS[2].map((field) => (
+                  <label key={field.key} className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
+                    {field.label}
+                    <input value={profile[field.key]} onChange={(event) => updateField(field.key, event.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
+                  </label>
+                ))}
+              </div>
+
+              <label className="mt-3 block text-[8px] font-black uppercase tracking-wider text-slate-500">
+                Additional appearance details
+                <textarea value={profile.additionalDetails} onChange={(event) => updateField('additionalDetails', event.target.value)} rows={2} placeholder="Any durable visual detail not covered above. Do not enter weekly stats or story facts here." className="mt-1 w-full resize-y rounded border border-slate-700 bg-slate-950 px-3 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
               </label>
-            ))}
-          </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-            {FIELD_GROUPS[1].map((field) => (
-              <label key={field.key} className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
-                {field.label}
-                <input value={profile[field.key]} onChange={(event) => updateField(field.key, event.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
-              </label>
-            ))}
-          </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button type="button" disabled={saving} onClick={save} className="flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-cyan-500 disabled:cursor-wait disabled:opacity-50">
+                  {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                  {saving ? 'Saving…' : 'Save Visual Profile'}
+                </button>
+                <p className="text-[9px] leading-relaxed text-slate-600">Approved Reference Locker photos are linked when you save; the Photo Director decides which typed references belong in a specific generation request.</p>
+              </div>
+            </>
+          )}
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-            {FIELD_GROUPS[2].map((field) => (
-              <label key={field.key} className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
-                {field.label}
-                <input value={profile[field.key]} onChange={(event) => updateField(field.key, event.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
-              </label>
-            ))}
-          </div>
-
-          <label className="mt-3 block text-[8px] font-black uppercase tracking-wider text-slate-500">
-            Additional appearance details
-            <textarea value={profile.additionalDetails} onChange={(event) => updateField('additionalDetails', event.target.value)} rows={2} placeholder="Any durable visual detail not covered above. Do not enter weekly stats or story facts here." className="mt-1 w-full resize-y rounded border border-slate-700 bg-slate-950 px-3 py-2 text-[10px] font-medium normal-case tracking-normal text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-500" />
-          </label>
-
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button type="button" disabled={saving} onClick={save} className="flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-cyan-500 disabled:cursor-wait disabled:opacity-50">
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-              {saving ? 'Saving…' : 'Save Visual Profile'}
-            </button>
-            <p className="text-[9px] leading-relaxed text-slate-600">Approved Reference Locker photos are linked when you save; Stage 3 will decide which typed references belong in a specific generation request.</p>
-          </div>
-        </>
+          {message && <p className={`mt-3 rounded-lg border px-3 py-2 text-[10px] font-bold ${messageType === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>{message}</p>}
+        </div>
       )}
-
-      {message && <p className={`mt-3 rounded-lg border px-3 py-2 text-[10px] font-bold ${messageType === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>{message}</p>}
     </section>
   );
 };

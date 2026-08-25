@@ -49,7 +49,7 @@ const EditorialPhotoDirectorControl = ({
     let cancelled = false;
     const load = async () => {
       const owner = auth?.currentUser;
-      if (!owner || !article?.id || !issue) return;
+      if (!owner || !article?.id || !requestPayload.issue.publicationId) return;
       setLoading(true);
       setMessage('');
       try {
@@ -68,10 +68,13 @@ const EditorialPhotoDirectorControl = ({
     };
     load();
     return () => { cancelled = true; };
-  }, [article?.id, issue, requestPayload]);
+  }, [article?.id, requestPayload]);
+
+  const director = result?.director || {};
+  const sceneRejected = sceneOverride !== 'auto' && Boolean(director.overrideRejectedReason);
 
   const copyPrompt = async () => {
-    if (!result?.chatGptPrompt) return;
+    if (!result?.chatGptPrompt || sceneRejected) return;
     try {
       await navigator.clipboard.writeText(result.chatGptPrompt);
       setMessageType('success');
@@ -83,7 +86,7 @@ const EditorialPhotoDirectorControl = ({
   };
 
   const openChatGpt = async () => {
-    if (!result?.chatGptPrompt) return;
+    if (!result?.chatGptPrompt || sceneRejected) return;
     const tab = window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer');
     try {
       await navigator.clipboard.writeText(result.chatGptPrompt);
@@ -96,14 +99,13 @@ const EditorialPhotoDirectorControl = ({
   };
 
   const generateInDynastyHq = () => {
-    if (!onGenerate || !article) return;
+    if (!onGenerate || !article || sceneRejected) return;
     onGenerate({
       issue,
       article: { ...article, sceneOverride },
     });
   };
 
-  const director = result?.director || {};
   const subjectLabel = director.position
     ? `${director.position} ${titleCaseSubject(director.subject)}`
     : titleCaseSubject(director.subject);
@@ -116,7 +118,8 @@ const EditorialPhotoDirectorControl = ({
           <h3 id="editorial-photo-director-title" className="mt-1 text-sm font-black uppercase text-white">
             {loading ? 'AI Photo Director is reading the verified story…' : `AI selected: ${director.presetLabel || 'Editorial Feature'}${director.subject ? ` — ${subjectLabel}` : ''}`}
           </h3>
-          {!loading && director.reason && <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-400">Because: {director.reason}</p>}
+          {!loading && director.reason && !sceneRejected && <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-400">Because: {director.reason}</p>}
+          {!loading && sceneRejected && <p className="mt-1 max-w-3xl rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[10px] font-bold leading-relaxed text-red-300">Scene not available: {director.overrideRejectedReason} Choose Auto or another supported scene.</p>}
         </div>
 
         <label className="shrink-0 text-[8px] font-black uppercase tracking-wider text-slate-500">
@@ -133,16 +136,16 @@ const EditorialPhotoDirectorControl = ({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" disabled={loading || !result?.chatGptPrompt} onClick={copyPrompt} className="flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white hover:bg-violet-500 disabled:opacity-40">
+        <button type="button" disabled={loading || sceneRejected || !result?.chatGptPrompt} onClick={copyPrompt} className="flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white hover:bg-violet-500 disabled:opacity-40">
           {loading ? <Loader2 size={13} className="animate-spin" /> : <Copy size={13} />} Copy Photo Prompt
         </button>
-        <button type="button" disabled={loading || !result?.chatGptPrompt} onClick={openChatGpt} className="flex items-center gap-2 rounded-lg border border-violet-400/40 bg-violet-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
+        <button type="button" disabled={loading || sceneRejected || !result?.chatGptPrompt} onClick={openChatGpt} className="flex items-center gap-2 rounded-lg border border-violet-400/40 bg-violet-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
           <ExternalLink size={13} /> Open ChatGPT
         </button>
         <button type="button" disabled={busy || !mediaCount} onClick={onUseLibrary} className="flex items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-blue-200 hover:bg-blue-500/20 disabled:opacity-40">
           <Images size={13} /> Use Library Photo ({mediaCount})
         </button>
-        <button type="button" disabled={busy || loading || !result || article?.groundingStatus !== 'verified'} onClick={generateInDynastyHq} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-300 hover:border-violet-500/50 hover:text-violet-200 disabled:opacity-40">
+        <button type="button" disabled={busy || loading || sceneRejected || !result || article?.groundingStatus !== 'verified'} onClick={generateInDynastyHq} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-300 hover:border-violet-500/50 hover:text-violet-200 disabled:opacity-40">
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Generate in DynastyHQ
         </button>
       </div>

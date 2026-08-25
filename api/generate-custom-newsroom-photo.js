@@ -2,6 +2,7 @@ import { json, verifyFirebaseUser } from './_auth.js';
 
 const MODEL = process.env.OPENAI_NEWSROOM_IMAGE_MODEL || 'gpt-image-2';
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images';
+const MAX_REFERENCE_BYTES = 12_000_000;
 const allowedReferenceHosts = new Set([
   'firebasestorage.googleapis.com',
   'storage.googleapis.com',
@@ -25,7 +26,14 @@ const validReferenceUrl = (value) => {
   }
 };
 
-const openAiRequest = async (path, body) => {
+const openAiError = (payload, status) => {
+  const error = new Error(payload?.error?.message || 'OpenAI image generation failed.');
+  error.status = status;
+  error.code = payload?.error?.code;
+  return error;
+};
+
+const openAiJsonRequest = async (path, body) => {
   const response = await fetch(`${OPENAI_IMAGE_URL}/${path}`, {
     method: 'POST',
     headers: {
@@ -35,12 +43,45 @@ const openAiRequest = async (path, body) => {
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(payload?.error?.message || 'OpenAI image generation failed.');
-    error.status = response.status;
-    error.code = payload?.error?.code;
-    throw error;
-  }
+  if (!response.ok) throw openAiError(payload, response.status);
+  return payload;
+};
+
+const fetchReferenceBlob = async (reference, index) => {
+  const response = await fetch(reference.imageUrl);
+  if (!response.ok) throw new Error(`Approved reference ${index + 1} could not be loaded.`);
+  const contentLength = Number(response.headers.get('content-length')) || 0;
+  if (contentLength > MAX_REFERENCE_BYTES) throw new Error(`Approved reference ${index + 1} is too large.`);
+  const blob = await response.blob();
+  if (!String(blob.type || '').startsWith('image/')) throw new Error(`Approved reference ${index + 1} is not a supported image.`);
+  if (blob.size > MAX_REFERENCE_BYTES) throw new Error(`Approved reference ${index + 1} is too large.`);
+  return blob;
+};
+
+const openAiEditRequest = async (common, references) => {
+  const form = new FormData();
+  form.set('model', common.model);
+  form.set('prompt', common.prompt);
+  form.set('n', String(common.n));
+  form.set('quality', common.quality);
+  form.set('size', common.size);
+  form.set('output_format', common.output_format);
+  form.set('output_compression', String(common.output_compression));
+  form.set('moderation', common.moderation);
+
+  const blobs = await Promise.all(references.map(fetchReferenceBlob));
+  blobs.forEach((blob, index) => {
+    const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+    form.append('image[]', blob, `approved-reference-${index + 1}.${extension}`);
+  });
+
+  const response = await fetch(`${OPENAI_IMAGE_URL}/edits`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: form,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw openAiError(payload, response.status);
   return payload;
 };
 
@@ -94,12 +135,8 @@ export default async function handler(req, res) {
       moderation: 'auto',
     };
     const result = references.length
-      ? await openAiRequest('edits', {
-          ...common,
-          images: references.map((entry) => ({ image_url: entry.imageUrl })),
-          input_fidelity: 'high',
-        })
-      : await openAiRequest('generations', common);
+      ? await openAiEditRequest(common, references)
+      : await openAiJsonRequest('generations', common);
 
     const imageBase64 = result?.data?.[0]?.b64_json;
     if (!imageBase64) return json(res, 502, { error: 'The image model returned no usable image.' });
@@ -115,10 +152,11 @@ export default async function handler(req, res) {
     if (error?.code === 'moderation_blocked') {
       return json(res, 422, { error: 'That image request was blocked by a safety check. Adjust the prompt or approved references and try again.' });
     }
-    return json(res, error?.status === 429 ? 429 : 502, {
-      error: error?.status === 429
+    const status = Number(error?.status) === 429 ? 429 : 502;
+    return json(res, status, {
+      error: status === 429
         ? 'Custom image generation is temporarily busy. Try again shortly.'
-        : 'The custom newsroom photo could not be generated. Nothing was added to your library.',
+        : (error?.message || 'The custom newsroom photo could not be generated. Nothing was added to your library.'),
     });
   }
 }

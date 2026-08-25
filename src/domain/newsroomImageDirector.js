@@ -328,7 +328,7 @@ const autoCandidates = ({ state, issue, article, factsByKey, subject, positionKe
     const rankedWin = opponentRank !== null && opponentRank >= 1 && opponentRank <= 25;
     const majorWin = ['major', 'career-defining'].includes(importance);
     if (rankedWin || majorWin) {
-      candidates.push(candidate(NEWSROOM_IMAGE_PRESETS.POSTGAME_SIGNATURE_WIN, rankedWin ? 100 : 82, [
+      candidates.push(candidate(NEWSROOM_IMAGE_PRESETS.POSTGAME_SIGNATURE_WIN, rankedWin ? 130 : 82, [
         'game.result',
         rankedWin ? 'game.opponentRank' : '',
         hasFact(factsByKey, 'game.opponent') ? 'game.opponent' : '',

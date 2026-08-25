@@ -51,6 +51,7 @@ const NewsroomMediaManager = ({
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [lockerOpen, setLockerOpen] = useState(lockerOnly);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [typeBusyId, setTypeBusyId] = useState('');
   const [typeMessage, setTypeMessage] = useState('');
   const [folderFilter, setFolderFilter] = useState('all');
@@ -81,15 +82,20 @@ const NewsroomMediaManager = ({
     })
   ), [issueFolder, mediaLibrary]);
 
-  const receiveFile = async (event, asReference) => {
-    const file = event.target.files?.[0];
+  const receiveFiles = async (event, asReference) => {
+    const files = Array.from(event.target.files || []);
     event.target.value = '';
-    if (!file || !onUpload) return;
+    if (!files.length || !onUpload) return;
     setUploading(true);
+    setUploadProgress({ current: 0, total: files.length });
     try {
-      await onUpload(file, { issue, article, asReference });
+      for (let index = 0; index < files.length; index += 1) {
+        setUploadProgress({ current: index + 1, total: files.length });
+        await onUpload(files[index], { issue, article, asReference });
+      }
     } finally {
       setUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
     }
   };
 
@@ -173,10 +179,13 @@ const NewsroomMediaManager = ({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFile(event, false)} />
-        <input ref={referenceRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFile(event, true)} />
+        <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => receiveFiles(event, false)} />
+        <input ref={referenceRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFiles(event, true)} />
         <button type="button" disabled={controlsBusy} onClick={() => uploadRef.current?.click()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500 disabled:opacity-50">
-          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} {uploading ? 'Uploading Photo…' : 'Add Photos to Library'}
+          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+          {uploading
+            ? (uploadProgress.total > 1 ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…` : 'Uploading Photo…')
+            : 'Add Photos to Library'}
         </button>
         {currentMedia?.asset && !lockerOnly && (
           <button type="button" disabled={controlsBusy} onClick={() => onClear({ issue, article })} className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:border-red-500/50 hover:text-red-300">
@@ -191,10 +200,17 @@ const NewsroomMediaManager = ({
 
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
         {lockerOnly
-          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. File each photo under High School, College, or Coaching. Automatic matching never crosses career folders.`
-          : `Uploads preserve the full photo in your reusable library. This article belongs to the ${newsroomMediaFolderLabel(issueFolder)} folder; automatic matching will only use photos filed there.`}
+          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. Select one or multiple photos in a single upload, then file each under High School, College, or Coaching. Automatic matching never crosses career folders.`
+          : `Uploads preserve the full photo in your reusable library. You can select multiple photos in one upload. This article belongs to the ${newsroomMediaFolderLabel(issueFolder)} folder; automatic matching will only use photos filed there.`}
       </p>
-      {uploading && <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300"><Loader2 size={12} className="animate-spin" /> Preparing and securely uploading your photo. New uploads start in Unsorted until you file them below.</p>}
+      {uploading && (
+        <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300">
+          <Loader2 size={12} className="animate-spin" />
+          {uploadProgress.total > 1
+            ? `Preparing and securely uploading photo ${uploadProgress.current} of ${uploadProgress.total}. New uploads start in Unsorted until you file them below.`
+            : 'Preparing and securely uploading your photo. New uploads start in Unsorted until you file it below.'}
+        </p>
+      )}
 
       {libraryOpen && !lockerOnly && (
         <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-4">

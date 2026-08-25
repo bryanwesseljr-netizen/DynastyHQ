@@ -112,7 +112,8 @@ export const buildNewsroomPhotoQaReport = ({ state = {}, issue = {}, article = {
   const warnings = checks.filter((entry) => entry.level === 'warn');
   const passes = checks.filter((entry) => entry.level === 'pass');
   const existingApproved = article.mediaQaStatus === NEWSROOM_PHOTO_QA_STATUSES.APPROVED
-    && article.mediaQaAssetId === asset.id;
+    && article.mediaQaAssetId === asset.id
+    && failures.length === 0;
 
   return {
     status: existingApproved ? NEWSROOM_PHOTO_QA_STATUSES.APPROVED : (failures.length ? NEWSROOM_PHOTO_QA_STATUSES.NEEDS_REVIEW : NEWSROOM_PHOTO_QA_STATUSES.UNREVIEWED),

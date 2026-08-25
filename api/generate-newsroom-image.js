@@ -77,6 +77,7 @@ export default async function handler(req, res) {
   const requestedArticle = req.body?.article || {};
   const requestedPublicationId = text(requestedIssue.publicationId || requestedIssue.id, 120);
   const requestedArticleId = text(requestedArticle.id, 120);
+  const requestedSceneOverride = text(req.body?.sceneOverride || 'auto', 60).toLowerCase() || 'auto';
   if (!requestedPublicationId || !requestedArticleId) {
     return json(res, 400, { error: 'The verified article packet is incomplete.' });
   }
@@ -101,6 +102,7 @@ export default async function handler(req, res) {
       state: ownerState,
       issue: sourceIssue,
       article: sourceArticle,
+      sceneOverride: requestedSceneOverride,
     });
   } catch (error) {
     console.warn('Photo Director owner context could not be loaded; using verified request fallback.', error?.message || error);
@@ -170,6 +172,7 @@ export default async function handler(req, res) {
       disclosure: 'AI-generated editorial image',
       directorPreset: generationContext.director?.preset || '',
       directorSubject: generationContext.director?.subject || '',
+      sceneOverride: requestedSceneOverride,
       visualProfileApplied: Boolean(generationContext.visualProfileDirectives?.length),
       referenceRoles: references.map((entry) => entry.role),
       contextSource: ownerState ? 'owner-save' : 'request-fallback',

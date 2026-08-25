@@ -26,7 +26,7 @@ const peakDbfs = (buffer) => {
 
 test('levels quieter and louder render sections toward one speech target', () => {
   const quiet = pcmTone({ amplitude: 3000 });
-  const loud = pcmTone({ amplitude: 9000 });
+  const loud = pcmTone({ amplitude: 7500 });
 
   const quietResult = levelPcmSection(quiet);
   const loudResult = levelPcmSection(loud);

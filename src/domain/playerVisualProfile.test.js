@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { DEFAULT_CAREER_STATE } from './defaultCareerState.js';
+import { removeNewsroomMediaAsset } from './newsroomMedia.js';
 import {
   DEFAULT_PLAYER_VISUAL_PROFILE,
   applyPlayerVisualProfile,
@@ -70,4 +71,22 @@ test('removing a deleted reference only unlinks that asset from the visual profi
   assert.deepEqual(next.player.visualProfile.referenceAssetIds, ['identity-1', 'helmet-1']);
   assert.equal(next.player.name, 'Test Player');
   assert.deepEqual(next.trophies, ['award']);
+});
+
+test('deleting a newsroom reference also clears its permanent visual-profile link', () => {
+  const state = applyPlayerVisualProfile({
+    player: { name: 'Test Player' },
+    newsroomMediaLibrary: [
+      { id: 'identity-1', downloadUrl: 'https://example.com/identity.jpg' },
+      { id: 'uniform-1', downloadUrl: 'https://example.com/uniform.jpg' },
+    ],
+    newsroomIssues: [],
+    postgameFrontPages: [],
+  }, {
+    referenceAssetIds: ['identity-1', 'uniform-1'],
+  });
+
+  const next = removeNewsroomMediaAsset(state, 'uniform-1');
+  assert.deepEqual(next.player.visualProfile.referenceAssetIds, ['identity-1']);
+  assert.deepEqual(next.newsroomMediaLibrary.map((asset) => asset.id), ['identity-1']);
 });

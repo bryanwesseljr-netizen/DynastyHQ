@@ -6,6 +6,8 @@ const normalizeTeamKey = (value) => String(value || '')
   .replace(/\s+/g, ' ')
   .trim();
 
+// Canonical real-world FBS football alignment for the 2026 season.
+// This is intentionally structured data so image prompts never have to guess a team's conference.
 const CONFERENCE_TEAMS_2026 = Object.freeze({
   ACC: [
     'Boston College', 'California', 'Clemson', 'Duke', 'Florida State', 'Georgia Tech',
@@ -54,17 +56,50 @@ const CONFERENCE_TEAMS_2026 = Object.freeze({
   ],
 });
 
-const PATCH_LABELS = Object.freeze({
-  ACC: 'ACC',
-  'Big 12': 'Big 12',
-  'Big Ten': 'Big Ten',
-  SEC: 'SEC',
-  'American Conference': 'American Conference',
-  'Conference USA': 'Conference USA / CUSA',
-  MAC: 'MAC',
-  'Mountain West': 'Mountain West',
-  'Pac-12': 'Pac-12',
-  'Sun Belt': 'Sun Belt',
+// Exact conference-patch language used by the copied ChatGPT image prompt.
+// visualDescription is intentionally concrete so an image model has a recognizable target,
+// rather than only a conference name that it may confuse with an old affiliation.
+const CONFERENCE_PATCH_METADATA = Object.freeze({
+  ACC: Object.freeze({
+    conferencePatchLabel: 'ACC conference patch',
+    conferencePatchVisual: 'the official ACC wordmark/logo used as the football conference mark',
+  }),
+  'Big 12': Object.freeze({
+    conferencePatchLabel: 'Big 12 Conference patch',
+    conferencePatchVisual: 'the official Big 12 Conference stylized "XII" logo/mark',
+  }),
+  'Big Ten': Object.freeze({
+    conferencePatchLabel: 'Big Ten Conference patch',
+    conferencePatchVisual: 'the official Big Ten "B1G" wordmark/logo',
+  }),
+  SEC: Object.freeze({
+    conferencePatchLabel: 'SEC conference patch',
+    conferencePatchVisual: 'the official SEC circular "SEC" conference mark/logo',
+  }),
+  'American Conference': Object.freeze({
+    conferencePatchLabel: 'American Conference patch',
+    conferencePatchVisual: 'the current official American Conference football conference mark/logo',
+  }),
+  'Conference USA': Object.freeze({
+    conferencePatchLabel: 'Conference USA / CUSA patch',
+    conferencePatchVisual: 'the current official Conference USA / CUSA wordmark/logo',
+  }),
+  MAC: Object.freeze({
+    conferencePatchLabel: 'MAC conference patch',
+    conferencePatchVisual: 'the current official Mid-American Conference / MAC wordmark/logo',
+  }),
+  'Mountain West': Object.freeze({
+    conferencePatchLabel: 'Mountain West conference patch',
+    conferencePatchVisual: 'the official Mountain West "MW" mountain-style conference mark/logo',
+  }),
+  'Pac-12': Object.freeze({
+    conferencePatchLabel: 'Pac-12 Conference patch',
+    conferencePatchVisual: 'the official Pac-12 shield-style conference mark/logo',
+  }),
+  'Sun Belt': Object.freeze({
+    conferencePatchLabel: 'Sun Belt Conference patch',
+    conferencePatchVisual: 'the current official Sun Belt Conference mark/logo',
+  }),
 });
 
 const EXTRA_ALIASES = Object.freeze({
@@ -98,46 +133,51 @@ const EXTRA_ALIASES = Object.freeze({
   'louisiana lafayette': 'Louisiana',
   'ul lafayette': 'Louisiana',
   'louisiana monroe': 'UL Monroe',
-  'ulm': 'UL Monroe',
+  ulm: 'UL Monroe',
   'southern mississippi': 'Southern Miss',
   'southern miss': 'Southern Miss',
 });
 
-const LEGACY_CONFERENCE_MARKS = Object.freeze({
-  Cincinnati: ['American Athletic Conference', 'AAC', 'American'],
-  Houston: ['American Athletic Conference', 'AAC'],
-  UCF: ['American Athletic Conference', 'AAC'],
-  Arizona: ['Pac-12'],
-  'Arizona State': ['Pac-12'],
-  Colorado: ['Pac-12'],
-  Utah: ['Pac-12'],
-  California: ['Pac-12'],
-  Stanford: ['Pac-12'],
-  SMU: ['American Athletic Conference', 'AAC'],
-  Oregon: ['Pac-12'],
-  USC: ['Pac-12'],
-  UCLA: ['Pac-12'],
-  Washington: ['Pac-12'],
-  Oklahoma: ['Big 12'],
-  Texas: ['Big 12'],
-  'Boise State': ['Mountain West'],
-  'Colorado State': ['Mountain West'],
-  'Fresno State': ['Mountain West'],
-  'San Diego State': ['Mountain West'],
-  'Utah State': ['Mountain West'],
-  'Texas State': ['Sun Belt'],
-  UTEP: ['Conference USA', 'CUSA'],
-  NIU: ['MAC'],
+// Old affiliations that an image model must never reuse for these teams in a 2026 image.
+const FORBIDDEN_LEGACY_PATCHES = Object.freeze({
+  Cincinnati: [
+    'American Athletic Conference patch',
+    'AAC patch',
+    'American/AAC star-A conference logo',
+  ],
+  Houston: ['American Athletic Conference patch', 'AAC patch'],
+  UCF: ['American Athletic Conference patch', 'AAC patch'],
+  Arizona: ['Pac-12 patch'],
+  'Arizona State': ['Pac-12 patch'],
+  Colorado: ['Pac-12 patch'],
+  Utah: ['Pac-12 patch'],
+  California: ['Pac-12 patch'],
+  Stanford: ['Pac-12 patch'],
+  SMU: ['American Athletic Conference patch', 'AAC patch'],
+  Oregon: ['Pac-12 patch'],
+  USC: ['Pac-12 patch'],
+  UCLA: ['Pac-12 patch'],
+  Washington: ['Pac-12 patch'],
+  Oklahoma: ['Big 12 patch'],
+  Texas: ['Big 12 patch'],
+  'Boise State': ['Mountain West patch'],
+  'Colorado State': ['Mountain West patch'],
+  'Fresno State': ['Mountain West patch'],
+  'San Diego State': ['Mountain West patch'],
+  'Utah State': ['Mountain West patch'],
+  'Texas State': ['Sun Belt patch'],
+  UTEP: ['Conference USA patch', 'CUSA patch'],
+  NIU: ['MAC patch'],
 });
 
 const INDEPENDENTS_2026 = Object.freeze(['Notre Dame', 'UConn']);
 
 const teamConferenceLookup = (() => {
   const lookup = new Map();
-  Object.entries(CONFERENCE_TEAMS_2026).forEach(([conference, teams]) => {
-    teams.forEach((team) => lookup.set(normalizeTeamKey(team), { team, conference }));
+  Object.entries(CONFERENCE_TEAMS_2026).forEach(([primaryConference, teams]) => {
+    teams.forEach((team) => lookup.set(normalizeTeamKey(team), { team, primaryConference }));
   });
-  INDEPENDENTS_2026.forEach((team) => lookup.set(normalizeTeamKey(team), { team, conference: 'Independent' }));
+  INDEPENDENTS_2026.forEach((team) => lookup.set(normalizeTeamKey(team), { team, primaryConference: 'Independent' }));
   Object.entries(EXTRA_ALIASES).forEach(([alias, canonical]) => {
     const existing = lookup.get(normalizeTeamKey(canonical));
     if (existing) lookup.set(normalizeTeamKey(alias), existing);
@@ -150,13 +190,25 @@ export const getCollegeFootballTeamIdentity = (teamName) => {
   if (!key) return null;
   const entry = teamConferenceLookup.get(key);
   if (!entry) return null;
-  const conference = entry.conference;
+
+  const primaryConference = entry.primaryConference;
+  const patchMeta = primaryConference === 'Independent'
+    ? null
+    : CONFERENCE_PATCH_METADATA[primaryConference] || null;
+  const forbiddenLegacyPatches = FORBIDDEN_LEGACY_PATCHES[entry.team] || [];
+
   return {
     team: entry.team,
-    conference,
-    conferencePatch: conference === 'Independent' ? '' : PATCH_LABELS[conference] || conference,
-    legacyConferenceMarks: LEGACY_CONFERENCE_MARKS[entry.team] || [],
+    primaryConference,
+    conferencePatchLabel: patchMeta?.conferencePatchLabel || '',
+    conferencePatchVisual: patchMeta?.conferencePatchVisual || '',
+    forbiddenLegacyPatches,
     seasonBasis: 2026,
+
+    // Backward-compatible aliases for existing callers/tests.
+    conference: primaryConference,
+    conferencePatch: patchMeta?.conferencePatchLabel || '',
+    legacyConferenceMarks: forbiddenLegacyPatches,
   };
 };
 

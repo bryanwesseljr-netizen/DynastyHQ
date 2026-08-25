@@ -38,6 +38,28 @@ const referenceLines = (references = []) => (
     ))
 );
 
+const teamIdentityLines = (identity, role = 'Primary team') => {
+  if (!identity) return [];
+  if (identity.primaryConference === 'Independent') {
+    return [
+      `${role} uniform identity: ${identity.team} is an FBS Independent in the resolved Dynasty context.`,
+      `HARD UNIFORM RULE: do not add a conference patch to ${identity.team} jerseys.`,
+    ];
+  }
+  const lines = [
+    `${role} uniform identity: ${identity.team} = ${identity.primaryConference}.`,
+    `REQUIRED conference patch: ${identity.conferencePatchVisual || identity.conferencePatchLabel}.`,
+    identity.identitySource === 'save-override'
+      ? `This is a DynastyHQ save-specific conference override and it supersedes real-world 2026 alignment${identity.realWorldConference ? ` (${identity.realWorldConference})` : ''}.`
+      : 'This uses the real-world 2026 conference fallback because no save-specific override applies.',
+    `If a visible ${identity.team} game jersey would show a conference patch, the resolved conference mark above is mandatory and no other conference mark may appear.`,
+  ];
+  if (identity.forbiddenLegacyPatches?.length) {
+    lines.push(`Forbidden conference branding on ${identity.team}: ${identity.forbiddenLegacyPatches.join('; ')}.`);
+  }
+  return lines;
+};
+
 export const buildGroundedNewsroomImagePrompt = ({
   issue = {},
   article = {},
@@ -54,6 +76,7 @@ export const buildGroundedNewsroomImagePrompt = ({
   const refs = Array.isArray(references) ? references.slice(0, 4) : [];
   const subject = clean(director.subject || 'team', 40).toLowerCase();
   const playerContext = generationContext.playerContext || {};
+  const conferenceContext = generationContext.conferenceContext || {};
 
   const lines = [
     'Create one photorealistic 3:2 editorial American-football photograph for DynastyHQ.',
@@ -66,6 +89,14 @@ export const buildGroundedNewsroomImagePrompt = ({
     director.scene ? `Required scene: ${clean(director.scene, 600)}.` : '',
     director.emotionalTone ? `Emotional tone: ${clean(director.emotionalTone, 240)}.` : '',
   ].filter(Boolean);
+
+  const primaryIdentityLines = teamIdentityLines(conferenceContext.teamIdentity, 'Primary team');
+  if (primaryIdentityLines.length) {
+    lines.push('Resolved team/conference uniform identity — authoritative:');
+    primaryIdentityLines.forEach((entry) => lines.push(`- ${entry}`));
+  }
+  const opponentIdentityLines = teamIdentityLines(conferenceContext.opponentIdentity, 'Opponent');
+  if (opponentIdentityLines.length) opponentIdentityLines.forEach((entry) => lines.push(`- ${entry}`));
 
   if (subject === 'player') {
     const playerBits = [
@@ -109,7 +140,8 @@ export const buildGroundedNewsroomImagePrompt = ({
   }
 
   lines.push('Grounding rules: depict only a generalized scene supported by the verified context. Do not invent an exact touchdown, exact pass result, exact run result, injury, award ceremony, confrontation, or other specific event that was not separately verified.');
-  lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, jersey-name text, signage, or other readable text in the image.');
+  lines.push('Uniform authenticity is mandatory: use the resolved school identity and conference patch above, with realistic jersey numbers and team text where visible. A wrong or legacy conference patch is a failed image.');
+  lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, or unrelated signage in the image.');
   lines.push('Do not copy any reference photo background, pose, facial expression, crop, or camera angle. References exist to preserve identity, build, uniform, helmet, equipment, or team style only according to their assigned roles.');
 
   if (forbidden.length) {
@@ -117,6 +149,6 @@ export const buildGroundedNewsroomImagePrompt = ({
     forbidden.forEach((entry) => lines.push(`- ${entry}`));
   }
 
-  lines.push('Final quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, and restrained photographic color grading.');
+  lines.push('Final quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, restrained photographic color grading, and the correct resolved team/conference uniform identity.');
   return lines.join('\n');
 };

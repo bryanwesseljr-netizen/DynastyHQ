@@ -40,7 +40,7 @@ test('preserves multiple logical audio segments while chunking only the oversize
   assert.ok(stored.every((entry) => entry.data.length <= 24));
 
   const restored = reassemblePodcastAudioFromStorage(stored);
-  assert.deepEqual(restored, segments.map((segment, index) => ({ ...segment, index })));
+  assert.deepEqual(restored, segments.map((segment, index) => ({ ...segment, index, continuous: false })));
 });
 
 test('keeps legacy unchunked Firestore audio documents readable', () => {

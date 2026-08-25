@@ -3,6 +3,7 @@ import {
   getNewsroomIssueFolder,
   getNewsroomMediaFolder,
 } from './newsroomMediaFolders.js';
+import { resolveNewsroomTeamIdentity } from './newsroomConferenceContext.js';
 import { normalizePlayerVisualProfile } from './playerVisualProfile.js';
 import {
   getNewsroomReferenceRole,
@@ -134,12 +135,25 @@ export const buildNewsroomImageGenerationContext = ({
   const visualProfileDirectives = buildVisualProfileDirectives(visualProfile, director.subject);
   const references = selectNewsroomImageReferences({ state, issue, subject: director.subject, limit: 4 });
   const team = clean(state.player?.college || state.player?.school, 120);
+  const opponent = clean(director.verifiedDetails?.opponent, 120);
+  const dynastySeason = Math.max(1, Number(issue.season || state.currentSeason) || 1);
+  const teamIdentity = team
+    ? resolveNewsroomTeamIdentity({ state, teamName: team, dynastySeason })
+    : null;
+  const opponentIdentity = opponent && opponent.toLowerCase() !== team.toLowerCase()
+    ? resolveNewsroomTeamIdentity({ state, teamName: opponent, dynastySeason })
+    : null;
 
   return {
     director,
     visualProfile: director.subject === 'player' ? visualProfile : {},
     visualProfileDirectives,
     references,
+    conferenceContext: {
+      dynastySeason,
+      teamIdentity,
+      opponentIdentity,
+    },
     playerContext: {
       position: director.subject === 'player' ? clean(state.player?.pos || article.position, 40) : '',
       jerseyNumber: director.subject === 'player' ? clean(state.player?.number, 12) : '',

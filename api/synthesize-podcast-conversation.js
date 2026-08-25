@@ -1,5 +1,10 @@
 import * as lame from '@breezystack/lamejs';
 import { json, verifyFirebaseUser } from './_auth.js';
+import {
+  TARGET_SPEECH_DBFS,
+  levelPcmSection,
+  limitPcmEpisode,
+} from './_podcastAudioLeveling.js';
 
 const MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
 export const DEFAULT_MARK_VOICE = 'Sadaltager';
@@ -107,7 +112,7 @@ export const buildPerformancePrompt = ({ title, segments, priorContext = '', chu
     ? `\n\nPRIOR CONTEXT — FOR CONTINUITY ONLY, DO NOT SPEAK:\n${priorContext}`
     : '';
 
-  return `Perform only the Mark and Sarah transcript below as a polished, natural college-football podcast conversation. Preserve every spoken word exactly. Do not read speaker labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · performance section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE AND PERFORMANCE:\n- Speaker labels are authoritative. Every Mark line must use Mark's assigned voice and every Sarah line must use Sarah's assigned voice. Switch speakers immediately at every label. Never merge the two voices or let one speaker take over the other speaker's lines.\n- Mark is the experienced lead host: warm, confident, curious and conversational. He should sound like a real sports-radio host talking with a colleague, with natural low-key enthusiasm, thoughtful reactions and varied cadence. He is not a stadium announcer and must never sound monotone or robotic.\n- Sarah is the sharp co-host and analyst: warm, articulate, engaged and comfortable challenging or building on a point. Give her natural energy, intelligent emphasis and conversational rhythm without making her overly bubbly or theatrical.\n- Let the meaning of the words drive realistic inflection. Scores, surprises, momentum swings, strong statistics, disagreement and questions should receive subtle human emphasis. Ordinary setup lines should stay relaxed.\n- Use natural phrase breaks, punctuation-driven pauses and small changes in pace so consecutive sentences do not all have the same melody. Sound like two people reacting to each other in a studio, not two narrators reading copy.\n- Keep both voices clear and full-range from the first word through the last. Maintain stable loudness, microphone distance and timbre. Do not gradually fade, whisper, muffle, lose energy, become metallic, or drift into a synthetic cadence as the section continues.\n- Start and finish this section at normal studio volume. Do not create a fade-in or fade-out.\n- Do not add new words, filler phrases, laughter, side comments or dialogue that is not in the transcript. Natural breathing and punctuation pauses are fine.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
+  return `Perform only the Mark and Sarah transcript below as a polished, natural college-football podcast conversation. Preserve every spoken word exactly. Do not read speaker labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · performance section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE AND PERFORMANCE:\n- Speaker labels are authoritative. Every Mark line must use Mark's assigned voice and every Sarah line must use Sarah's assigned voice. Switch speakers immediately at every label. Never merge the two voices or let one speaker take over the other speaker's lines.\n- Mark is the experienced lead host: warm, confident, curious and conversational. He should sound like a real sports-radio host talking with a colleague, with natural low-key enthusiasm, thoughtful reactions and varied cadence. He is not a stadium announcer and must never sound monotone or robotic.\n- Sarah is the sharp co-host and analyst: warm, articulate, engaged and comfortable challenging or building on a point. Give her natural energy, intelligent emphasis and conversational rhythm without making her overly bubbly or theatrical.\n- Let the meaning of the words drive realistic inflection. Scores, surprises, momentum swings, strong statistics, disagreement and questions should receive subtle human emphasis. Ordinary setup lines should stay relaxed.\n- Use natural phrase breaks, punctuation-driven pauses and small changes in pace so consecutive sentences do not all have the same melody. Sound like two people reacting to each other in a studio, not two narrators reading copy.\n- Keep both voices clear and full-range from the first word through the last. Maintain stable loudness, microphone distance and timbre. Do not gradually fade, whisper, muffle, lose energy, become metallic, or drift into a synthetic cadence as the section continues.\n- Match the perceived studio loudness of every performance section. Do not make a later section noticeably louder or quieter than an earlier section.\n- Start and finish this section at normal studio volume. Do not create a fade-in or fade-out.\n- Do not add new words, filler phrases, laughter, side comments or dialogue that is not in the transcript. Natural breathing and punctuation pauses are fine.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
 };
 
 const audioFromInteraction = (interaction) => {
@@ -211,6 +216,8 @@ const encodePcmToMp3 = ({ pcmBuffer, sampleRate = DEFAULT_SAMPLE_RATE }) => {
   return Buffer.concat(chunks);
 };
 
+const roundedLevel = (value) => Number.isFinite(value) ? Number(value.toFixed(1)) : null;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -238,6 +245,7 @@ export default async function handler(req, res) {
   try {
     const transcriptChunks = partitionSegments(segments);
     const pcmChunks = [];
+    const loudnessAdjustments = [];
     let sampleRate = DEFAULT_SAMPLE_RATE;
     let priorSegments = [];
 
@@ -258,11 +266,21 @@ export default async function handler(req, res) {
       const rawPcm = Buffer.from(audio.data, 'base64');
       const trimmedPcm = transcriptChunks.length === 1 ? rawPcm : trimPcmEdges(rawPcm, sampleRate);
       if (trimmedPcm.length < sampleRate) throw new Error('Gemini returned an incomplete podcast audio section.');
-      pcmChunks.push(trimmedPcm);
+
+      const leveled = levelPcmSection(trimmedPcm, sampleRate);
+      pcmChunks.push(leveled.pcmBuffer);
+      loudnessAdjustments.push({
+        section: index + 1,
+        beforeDbfs: roundedLevel(leveled.beforeDbfs),
+        afterDbfs: roundedLevel(leveled.afterDbfs),
+        gainDb: roundedLevel(leveled.gainDb),
+        peakDbfs: roundedLevel(leveled.peakDbfs),
+      });
       priorSegments = [...priorSegments, ...chunk].slice(-2);
     }
 
-    const continuousPcm = Buffer.concat(pcmChunks);
+    const limitedEpisode = limitPcmEpisode(Buffer.concat(pcmChunks));
+    const continuousPcm = limitedEpisode.pcmBuffer;
     const mp3 = encodePcmToMp3({ pcmBuffer: continuousPcm, sampleRate });
     const audioBase64 = mp3.toString('base64');
 
@@ -274,12 +292,15 @@ export default async function handler(req, res) {
       audioBase64,
       mimeType: 'audio/mpeg',
       model: MODEL,
-      engine: 'gemini-multispeaker-v3.3-natural-chunked',
+      engine: 'gemini-multispeaker-v3.4-leveled',
       voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
       transcriptTurns: segments.length,
       transcriptWords: totalWords,
       performanceSections: transcriptChunks.length,
       performanceSectionWords: transcriptChunks.map(chunkWordCount),
+      loudnessTargetDbfs: TARGET_SPEECH_DBFS,
+      loudnessAdjustments,
+      episodePeakGainDb: roundedLevel(limitedEpisode.gainDb),
       sampleRate,
       mp3Kbps: MP3_KBPS,
     });

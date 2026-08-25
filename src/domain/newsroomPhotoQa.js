@@ -58,7 +58,7 @@ export const buildNewsroomPhotoQaReport = ({ state = {}, issue = {}, article = {
   const assetFolder = getNewsroomMediaFolder(asset);
   checks.push(assetFolder === issueFolder
     ? check('career-folder', 'pass', 'Career-stage folder matches the article', issueFolder)
-    : check('career-folder', 'fail', 'Career-stage folder does not match the article', `Article: ${issueFolder}; photo: ${assetFolder}.`));
+    : check('career-folder', 'warn', 'Career-stage folder differs from the article', `Article: ${issueFolder}; photo: ${assetFolder}. Manual overrides are allowed, so confirm this reuse is intentional.`));
 
   if (expectedTeam) {
     if (asset.teamTag) {
@@ -100,12 +100,12 @@ export const buildNewsroomPhotoQaReport = ({ state = {}, issue = {}, article = {
     checks.push(check('photo-type', 'warn', 'Photo type has weak article fit', photoType));
   }
 
-  const requestedScene = normalizeNewsroomSceneTag(article.imageSceneOverride || '');
+  const requestedScene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   const assetScene = normalizeNewsroomSceneTag(asset.sceneTag || asset.generatedFrom?.scene || '');
   if (requestedScene && requestedScene !== 'auto') {
     if (!assetScene) checks.push(check('scene-tag', 'warn', 'Photo has no scene tag for the selected Director scene', requestedScene));
     else if (assetScene === requestedScene) checks.push(check('scene-tag', 'pass', 'Photo scene matches the selected Director scene', requestedScene));
-    else checks.push(check('scene-tag', 'fail', 'Photo scene conflicts with the selected Director scene', `Requested ${requestedScene}; photo tagged ${assetScene}.`));
+    else checks.push(check('scene-tag', 'warn', 'Photo scene differs from the selected Director scene', `Requested ${requestedScene}; photo tagged ${assetScene}. This can be approved if the visual still fits the story.`));
   }
 
   const failures = checks.filter((entry) => entry.level === 'fail');

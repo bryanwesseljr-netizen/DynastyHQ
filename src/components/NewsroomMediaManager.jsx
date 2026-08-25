@@ -5,6 +5,8 @@ import {
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
 import CustomNewsroomPhotoCreator from './CustomNewsroomPhotoCreator.jsx';
+import NewsroomReferenceRoleSelect from './NewsroomReferenceRoleSelect.jsx';
+import VisualPlayerProfileEditor from './VisualPlayerProfileEditor.jsx';
 import {
   getNewsroomPhotoType,
   NEWSROOM_PHOTO_TYPES,
@@ -219,7 +221,7 @@ const NewsroomMediaManager = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Career Photo Library &amp; AI References</p>
-              <p className="mt-1 text-[10px] text-slate-500">Organize photos by career stage first, then use photo-type tags for story matching inside that folder. Approved AI references are also folder-aware.</p>
+              <p className="mt-1 text-[10px] text-slate-500">Organize photos by career stage and photo type. Approved AI references can now be labeled for identity, full body, uniform, helmet, equipment, or team style without forcing the original pose or background.</p>
             </div>
             <button type="button" disabled={controlsBusy} onClick={() => referenceRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/10 disabled:opacity-50">
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Add AI Reference
@@ -239,6 +241,8 @@ const NewsroomMediaManager = ({
             mediaLibrary={mediaLibrary}
             defaultFolder={folderFilter !== 'all' && folderFilter !== NEWSROOM_MEDIA_FOLDERS.UNSORTED ? folderFilter : NEWSROOM_MEDIA_FOLDERS.COLLEGE}
           />
+
+          <VisualPlayerProfileEditor mediaLibrary={mediaLibrary} />
 
           {typeMessage && <p className="mt-3 text-[10px] font-bold text-slate-400">{typeMessage}</p>}
 
@@ -276,6 +280,7 @@ const NewsroomMediaManager = ({
                         </select>
                       </label>
                     )}
+                    <NewsroomReferenceRoleSelect asset={asset} disabled={controlsBusy || typeBusyId === asset.id} />
                     <label className="flex cursor-pointer items-center gap-2 text-[9px] font-bold text-slate-300">
                       <input type="checkbox" disabled={controlsBusy} checked={Boolean(asset.isReference)} onChange={(event) => onToggleReference(asset, event.target.checked)} className="accent-amber-500" /> Approved reference
                     </label>

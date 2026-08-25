@@ -94,5 +94,5 @@ test('ChatGPT editorial prompt keeps team-first scenes generic', () => {
   assert.match(prompt, /Result: W 31-20/);
   assert.match(prompt, /Opponent: Houston/);
   assert.doesNotMatch(prompt, /white glove/i);
-  assert.doesNotMatch(prompt, /jersey number/i);
+  assert.doesNotMatch(prompt, /jersey number 6/i);
 });

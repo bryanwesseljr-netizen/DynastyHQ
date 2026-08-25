@@ -290,7 +290,7 @@ const NewsroomMediaManager = ({
             <input type="checkbox" disabled={controlsBusy} checked={autoAssignLibrary} onChange={(event) => onSetAutoAssignLibrary(event.target.checked)} className="mt-0.5 accent-blue-500" />
             <span>
               <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose library photos</span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">DynastyHQ first locks the article to its career folder—High School, College, or Coaching—then chooses an appropriate photo type inside that folder. It avoids same-edition duplicates and recent repeats. If the correct folder has no eligible photo, it leaves the article photo empty instead of borrowing from another stage of your career.</span>
+              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. DynastyHQ first locks the article to its career folder—High School, College, or Coaching—then chooses an appropriate saved photo type inside that folder. It avoids same-edition duplicates and recent repeats. If the correct folder has no eligible photo, it leaves the article photo empty instead of borrowing from another stage of your career. Custom AI creation runs only when you press the separate Generate + Save to Library button.</span>
             </span>
           </label>
         </div>

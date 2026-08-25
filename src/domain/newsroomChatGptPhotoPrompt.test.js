@@ -55,6 +55,15 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.match(prompt, /do not attempt to recreate or reference a pre-existing created-player appearance/i);
   assert.match(prompt, /not a portrait of a specific created player/i);
 
+  assert.match(prompt, /MANDATORY UNIFORM AUTHENTICITY/i);
+  assert.match(prompt, /visible football jerseys must include clear, believable jersey numbers/i);
+  assert.match(prompt, /MANDATORY BACK NAMEPLATES/i);
+  assert.match(prompt, /legible surname\/nameplate/i);
+  assert.match(prompt, /MANDATORY FRONT TEAM TEXT/i);
+  assert.match(prompt, /front of a Cincinnati jersey/i);
+  assert.match(prompt, /authentic real-world team\/program wordmark or jersey-front text/i);
+  assert.match(prompt, /Readable jersey numbers, back nameplates, and authentic jersey-front team text are required/i);
+
   assert.doesNotMatch(prompt, /jersey number 6/i);
   assert.doesNotMatch(prompt, /LEFT-HANDED/);
   assert.doesNotMatch(prompt, /Throwing hand: left/);
@@ -65,7 +74,7 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.doesNotMatch(prompt, /Permanent Visual Player Profile/);
 });
 
-test('ChatGPT editorial prompt keeps team-first scenes generic', () => {
+test('ChatGPT editorial prompt keeps team-first scenes generic while requiring authentic jersey text', () => {
   const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
     issue: { season: 1, week: 7 },
     article: {
@@ -93,6 +102,9 @@ test('ChatGPT editorial prompt keeps team-first scenes generic', () => {
   assert.match(prompt, /team\/program or football scene rather than a personalized created player/i);
   assert.match(prompt, /Result: W 31-20/);
   assert.match(prompt, /Opponent: Houston/);
+  assert.match(prompt, /Cincinnati jersey/i);
+  assert.match(prompt, /properly placed, legible surname\/nameplate/i);
   assert.doesNotMatch(prompt, /white glove/i);
   assert.doesNotMatch(prompt, /jersey number 6/i);
+  assert.doesNotMatch(prompt, /Do not render.*jersey-name text/i);
 });

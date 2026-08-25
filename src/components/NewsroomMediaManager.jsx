@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Check, FolderOpen, ImagePlus, Loader2, Trash2, Upload, X,
+  Check, FolderOpen, ImagePlus, Loader2, Sparkles, Trash2, Upload, X,
 } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
@@ -12,6 +12,7 @@ import {
   getNewsroomPhotoType,
   NEWSROOM_PHOTO_TYPES,
   normalizeNewsroomPhotoType,
+  scoreNewsroomMediaForArticle,
 } from '../domain/newsroomMedia';
 import {
   getNewsroomIssueFolder,
@@ -24,11 +25,18 @@ import {
 
 const PHOTO_TYPE_OPTIONS = [
   { value: NEWSROOM_PHOTO_TYPES.GENERAL, label: 'General' },
-  { value: NEWSROOM_PHOTO_TYPES.ACTION, label: 'Action' },
-  { value: NEWSROOM_PHOTO_TYPES.PORTRAIT, label: 'Portrait' },
-  { value: NEWSROOM_PHOTO_TYPES.RECRUITING, label: 'Recruiting' },
+  { value: NEWSROOM_PHOTO_TYPES.ACTION, label: 'Game Action' },
+  { value: NEWSROOM_PHOTO_TYPES.SIDELINE, label: 'Sideline' },
+  { value: NEWSROOM_PHOTO_TYPES.TUNNEL, label: 'Tunnel / Entrance' },
+  { value: NEWSROOM_PHOTO_TYPES.PRACTICE, label: 'Practice / Warmup' },
   { value: NEWSROOM_PHOTO_TYPES.CELEBRATION, label: 'Celebration' },
+  { value: NEWSROOM_PHOTO_TYPES.PORTRAIT, label: 'Portrait / Profile' },
+  { value: NEWSROOM_PHOTO_TYPES.TEAM, label: 'Team / Group' },
+  { value: NEWSROOM_PHOTO_TYPES.COACH, label: 'Coach' },
+  { value: NEWSROOM_PHOTO_TYPES.RECRUITING, label: 'Recruiting' },
 ];
+
+const photoTypeLabel = (asset) => PHOTO_TYPE_OPTIONS.find((option) => option.value === getNewsroomPhotoType(asset))?.label || 'General';
 
 const NewsroomMediaManager = ({
   issue,
@@ -75,12 +83,22 @@ const NewsroomMediaManager = ({
   ), [folderFilter, mediaLibrary]);
 
   const manualLibrary = useMemo(() => (
-    [...mediaLibrary].sort((a, b) => {
-      const aMatch = getNewsroomMediaFolder(a) === issueFolder ? 0 : 1;
-      const bMatch = getNewsroomMediaFolder(b) === issueFolder ? 0 : 1;
-      return aMatch - bMatch;
-    })
-  ), [issueFolder, mediaLibrary]);
+    [...mediaLibrary]
+      .filter((asset) => !asset.isReference)
+      .sort((a, b) => {
+        const scoreDiff = scoreNewsroomMediaForArticle({ asset: b, article: article || {}, issue: issue || {} })
+          - scoreNewsroomMediaForArticle({ asset: a, article: article || {}, issue: issue || {} });
+        if (scoreDiff) return scoreDiff;
+        return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      })
+  ), [article, issue, mediaLibrary]);
+
+  const recommendedIds = useMemo(() => new Set(
+    manualLibrary
+      .filter((asset) => getNewsroomMediaFolder(asset) === issueFolder)
+      .slice(0, 3)
+      .map((asset) => asset.id),
+  ), [issueFolder, manualLibrary]);
 
   const receiveFiles = async (event, asReference) => {
     const files = Array.from(event.target.files || []);
@@ -124,7 +142,7 @@ const NewsroomMediaManager = ({
           '_sync.updatedAt': new Date().toISOString(),
         });
       });
-      setTypeMessage(`Tagged as ${PHOTO_TYPE_OPTIONS.find((option) => option.value === photoType)?.label || 'General'}.`);
+      setTypeMessage(`Tagged as ${PHOTO_TYPE_OPTIONS.find((option) => option.value === photoType)?.label || 'General'}. Smart recommendations will use the new tag immediately.`);
     } catch (error) {
       setTypeMessage(error?.message || 'The photo type could not be saved.');
     } finally {
@@ -200,8 +218,8 @@ const NewsroomMediaManager = ({
 
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
         {lockerOnly
-          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. Select one or multiple photos in a single upload, then file each under High School, College, or Coaching. Automatic matching never crosses career folders.`
-          : `Uploads preserve the full photo in your reusable library. You can select multiple photos in one upload. This article belongs to the ${newsroomMediaFolderLabel(issueFolder)} folder; automatic matching will only use photos filed there.`}
+          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. File photos by career stage and tag the scene type so DynastyHQ can recommend action, sideline, tunnel, practice, celebration, portrait, team, coach, or recruiting images intelligently.`
+          : `Uploads preserve the full photo in your reusable library. This article belongs to the ${newsroomMediaFolderLabel(issueFolder)} folder. Smart recommendations rank same-stage photos by scene/article fit before showing other manual choices.`}
       </p>
       {uploading && (
         <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300">
@@ -217,20 +235,26 @@ const NewsroomMediaManager = ({
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Choose a career photo</p>
-              <p className="mt-1 text-[9px] text-slate-500">{newsroomMediaFolderLabel(issueFolder)} photos are shown first. Manual selection can still override the folder rule.</p>
+              <p className="mt-1 text-[9px] text-slate-500">Recommended photos are ranked by career folder, selected Director scene, article theme, and whether the photo was created for this story. Manual selection can still override the ranking.</p>
             </div>
             <button type="button" onClick={() => setLibraryOpen(false)} className="text-slate-500 hover:text-white"><X size={15} /></button>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {[...manualLibrary].reverse().map((asset) => (
+            {manualLibrary.map((asset) => (
               <button key={asset.id} type="button" onClick={() => { onAssign({ issue, article, asset }); setLibraryOpen(false); }} className={`group overflow-hidden rounded-lg border text-left ${article?.mediaAssetId === asset.id ? 'border-blue-400' : 'border-slate-700 hover:border-slate-500'}`}>
-                <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-contain" />
+                <div className="relative">
+                  <img src={asset.downloadUrl} alt={asset.referenceLabel || asset.fileName} className="aspect-[3/2] w-full bg-black object-contain" />
+                  {recommendedIds.has(asset.id) && <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-violet-600/90 px-1.5 py-1 text-[7px] font-black uppercase tracking-wider text-white"><Sparkles size={9} /> Recommended</span>}
+                </div>
                 <div className="space-y-1 p-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0 truncate text-[9px] font-bold text-slate-300">{asset.fileName}</span>
                     {article?.mediaAssetId === asset.id && <Check size={12} className="shrink-0 text-blue-400" />}
                   </div>
-                  <span className={`inline-flex rounded border px-1.5 py-0.5 text-[7px] font-black uppercase ${getNewsroomMediaFolder(asset) === issueFolder ? 'border-blue-400/40 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-500'}`}>{newsroomMediaFolderLabel(getNewsroomMediaFolder(asset))}</span>
+                  <div className="flex flex-wrap gap-1">
+                    <span className={`inline-flex rounded border px-1.5 py-0.5 text-[7px] font-black uppercase ${getNewsroomMediaFolder(asset) === issueFolder ? 'border-blue-400/40 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-500'}`}>{newsroomMediaFolderLabel(getNewsroomMediaFolder(asset))}</span>
+                    <span className="inline-flex rounded border border-slate-700 px-1.5 py-0.5 text-[7px] font-black uppercase text-slate-400">{photoTypeLabel(asset)}</span>
+                  </div>
                 </div>
               </button>
             ))}
@@ -243,7 +267,7 @@ const NewsroomMediaManager = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Career Photo Library &amp; AI References</p>
-              <p className="mt-1 text-[10px] text-slate-500">Organize photos by career stage and photo type. Approved AI references can now be labeled for identity, full body, uniform, helmet, equipment, or team style without forcing the original pose or background.</p>
+              <p className="mt-1 text-[10px] text-slate-500">Organize photos by career stage and scene type. Smart matching uses these tags to recommend the right visual before you generate something new. Approved AI references remain separate from normal article-photo matching.</p>
             </div>
             <button type="button" disabled={controlsBusy} onClick={() => referenceRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/10 disabled:opacity-50">
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Add AI Reference
@@ -289,9 +313,9 @@ const NewsroomMediaManager = ({
                         {NEWSROOM_MEDIA_FOLDER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                     </label>
-                    {asset.origin === 'upload' && !asset.isReference && (
+                    {!asset.isReference && (
                       <label className="block text-[8px] font-black uppercase tracking-wider text-slate-500">
-                        Photo type
+                        Photo / scene type
                         <select
                           value={getNewsroomPhotoType(asset)}
                           disabled={controlsBusy || typeBusyId === asset.id}
@@ -316,8 +340,8 @@ const NewsroomMediaManager = ({
           <label className="mt-4 flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-950/70 p-3">
             <input type="checkbox" disabled={controlsBusy} checked={autoAssignLibrary} onChange={(event) => onSetAutoAssignLibrary(event.target.checked)} className="mt-0.5 accent-blue-500" />
             <span>
-              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose library photos</span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. DynastyHQ first locks the article to its career folder—High School, College, or Coaching—then chooses an appropriate saved photo type inside that folder. It avoids same-edition duplicates and recent repeats. If the correct folder has no eligible photo, it leaves the article photo empty instead of borrowing from another stage of your career. Custom AI creation runs only when you press the separate Generate + Save to Library button.</span>
+              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose smart library photos</span>
+              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. DynastyHQ locks the article to its career folder, ranks eligible photos by Director scene and article theme, prefers fresh images, and avoids same-edition duplicates. If the correct folder has no eligible photo, it leaves the article photo empty instead of borrowing from another career stage.</span>
             </span>
           </label>
         </div>

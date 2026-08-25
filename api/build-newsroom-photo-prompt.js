@@ -5,6 +5,7 @@ import {
 } from './_userImageContext.js';
 import { buildNewsroomImageGenerationContext } from '../src/domain/newsroomImageGenerationContext.js';
 import { buildGroundedNewsroomImagePrompt } from '../src/domain/newsroomImagePrompt.js';
+import { buildGeneralChatGptNewsroomPhotoPrompt } from '../src/domain/newsroomChatGptPhotoPrompt.js';
 import { NEWSROOM_IMAGE_SCENE_OVERRIDES } from '../src/domain/newsroomImageDirector.js';
 
 const text = (value, maxLength) => String(value || '').trim().slice(0, maxLength);
@@ -80,18 +81,16 @@ export default async function handler(req, res) {
       generationContext,
       references: generationContext.references || [],
     });
-    const chatGptPrompt = [
-      'Generate 4 distinct photorealistic editorial-photo variations from the exact brief below.',
-      'Treat every factual and visual constraint as binding. Vary camera angle, crop, timing, and natural body language while keeping the same grounded story context. Do not add readable statistics, score graphics, headlines, watermarks, or invented game events.',
-      '',
-      prompt,
-      '',
-      'If I attach reference photos in this ChatGPT conversation, use them only for the identity, uniform, helmet, equipment, or team-style role described by the brief. Do not copy their pose or background.',
-    ].join('\n');
+    const chatGptPrompt = buildGeneralChatGptNewsroomPhotoPrompt({
+      issue: safe.issue,
+      article: safe.article,
+      generationContext,
+    });
 
     return json(res, 200, {
       prompt,
       chatGptPrompt,
+      chatGptPromptMode: 'general-editorial',
       sceneOverride,
       director: {
         preset: generationContext.director?.preset || '',

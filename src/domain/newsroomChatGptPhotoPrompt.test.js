@@ -55,18 +55,18 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.match(prompt, /do not attempt to recreate or reference a pre-existing created-player appearance/i);
   assert.match(prompt, /not a portrait of a specific created player/i);
 
-  assert.match(prompt, /MANDATORY UNIFORM AUTHENTICITY/i);
-  assert.match(prompt, /visible football jerseys must include clear, believable jersey numbers/i);
-  assert.match(prompt, /MANDATORY BACK NAMEPLATES/i);
-  assert.match(prompt, /legible surname\/nameplate/i);
-  assert.match(prompt, /MANDATORY FRONT TEAM TEXT/i);
+  assert.match(prompt, /UNIFORM AUTHENTICITY IS MANDATORY/i);
+  assert.match(prompt, /Jersey numbers are mandatory/i);
+  assert.match(prompt, /last-name nameplate/i);
   assert.match(prompt, /front of a Cincinnati jersey/i);
-  assert.match(prompt, /Current 2026 football conference: Big 12/i);
-  assert.match(prompt, /MANDATORY CONFERENCE PATCH: Cincinnati is a Big 12 football member/i);
-  assert.match(prompt, /current Big 12 conference patch\/mark/i);
-  assert.match(prompt, /OUTDATED PATCHES FORBIDDEN FOR CINCINNATI/i);
-  assert.match(prompt, /American Athletic Conference, AAC, American conference branding/i);
-  assert.match(prompt, /authentic real-world team\/program wordmark or jersey-front text/i);
+  assert.match(prompt, /Authoritative 2026 conference: Big 12/i);
+  assert.match(prompt, /PRIMARY TEAM CONFERENCE IDENTITY — AUTHORITATIVE 2026 DATA/i);
+  assert.match(prompt, /REQUIRED jersey conference patch: Big 12 Conference patch/i);
+  assert.match(prompt, /EXACT VISUAL TARGET: the official Big 12 Conference stylized "XII" logo\/mark/i);
+  assert.match(prompt, /FORBIDDEN LEGACY PATCHES: American Athletic Conference patch; AAC patch; American\/AAC star-A conference logo/i);
+  assert.match(prompt, /CINCINNATI PATCH CHECK — NON-NEGOTIABLE/i);
+  assert.match(prompt, /only acceptable conference mark on a visible Cincinnati jersey is the official Big 12 Conference stylized "XII" mark\/logo/i);
+  assert.match(prompt, /wrong or legacy conference patch is a failed image/i);
 
   assert.doesNotMatch(prompt, /jersey number 6/i);
   assert.doesNotMatch(prompt, /LEFT-HANDED/);
@@ -78,7 +78,7 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.doesNotMatch(prompt, /Permanent Visual Player Profile/);
 });
 
-test('ChatGPT editorial prompt keeps team-first scenes generic while retaining team and patch identity', () => {
+test('team-first prompt retains Cincinnati identity and validates the known opponent conference too', () => {
   const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
     issue: { season: 1, week: 7 },
     article: {
@@ -106,11 +106,36 @@ test('ChatGPT editorial prompt keeps team-first scenes generic while retaining t
   assert.match(prompt, /team\/program or football scene rather than a personalized created player/i);
   assert.match(prompt, /Result: W 31-20/);
   assert.match(prompt, /Opponent: Houston/);
-  assert.match(prompt, /Cincinnati jersey/i);
-  assert.match(prompt, /Current 2026 football conference: Big 12/i);
-  assert.match(prompt, /current Big 12 conference patch\/mark/i);
-  assert.match(prompt, /properly placed, legible surname\/nameplate/i);
+  assert.match(prompt, /PRIMARY TEAM CONFERENCE IDENTITY/i);
+  assert.match(prompt, /Team: Cincinnati/);
+  assert.match(prompt, /official Big 12 Conference stylized "XII" logo\/mark/i);
+  assert.match(prompt, /OPPONENT CONFERENCE IDENTITY/i);
+  assert.match(prompt, /Team: Houston/);
+  assert.match(prompt, /Primary football conference: Big 12/i);
+  assert.match(prompt, /last-name nameplate/i);
   assert.doesNotMatch(prompt, /white glove/i);
   assert.doesNotMatch(prompt, /jersey number 6/i);
   assert.doesNotMatch(prompt, /Do not render.*jersey-name text/i);
+});
+
+test('opponent patch guidance changes with the verified opponent', () => {
+  const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
+    issue: { season: 1, week: 1 },
+    article: { headline: 'Opening test', dek: 'Cincinnati faces a Big Ten opponent.' },
+    generationContext: {
+      director: {
+        subject: 'team',
+        verifiedDetails: { opponent: 'Michigan' },
+        mechanics: [],
+        styleDirectives: [],
+        forbiddenDetails: [],
+      },
+      playerContext: { team: 'Cincinnati' },
+    },
+  });
+
+  assert.match(prompt, /OPPONENT CONFERENCE IDENTITY/i);
+  assert.match(prompt, /Team: Michigan/);
+  assert.match(prompt, /Primary football conference: Big Ten/i);
+  assert.match(prompt, /Big Ten "B1G" wordmark\/logo/i);
 });

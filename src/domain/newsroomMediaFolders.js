@@ -25,25 +25,35 @@ export const newsroomMediaFolderLabel = (value) => (
   NEWSROOM_MEDIA_FOLDER_OPTIONS.find((option) => option.value === normalizeNewsroomMediaFolder(value))?.label || 'Unsorted'
 );
 
+const normalizedStage = (value) => String(value || '').trim().toLowerCase().replaceAll('_', '-');
+
 export const getNewsroomIssueFolder = (issue = {}) => {
-  const careerPhase = String(issue?.careerPhase || '').trim().toLowerCase();
-  const context = [
-    issue?.coverageStage,
-    issue?.editionType,
-    issue?.game?.stage,
-    issue?.outletProfile?.stage,
-    issue?.label,
-  ].filter(Boolean).join(' ').toLowerCase();
+  const careerPhase = normalizedStage(issue?.careerPhase);
+  const coverageStage = normalizedStage(issue?.coverageStage);
+  const gameStage = normalizedStage(issue?.game?.stage);
+  const outletStage = normalizedStage(issue?.outletProfile?.stage);
+  const editionType = normalizedStage(issue?.editionType);
+  const label = String(issue?.label || '').trim().toLowerCase();
 
   if (
     ['oc', 'hc', 'coordinator', 'head-coach', 'offensive-coordinator', 'retired'].includes(careerPhase)
     || /coach|coordinator|legacy|retired/.test(careerPhase)
-    || /coaching[- ]journey|head coach|offensive coordinator/.test(context)
+    || ['coaching', 'coach'].includes(coverageStage)
   ) return NEWSROOM_MEDIA_FOLDERS.COACHING;
 
   if (
-    /high[- ]?school|prep|recruit|commit|scholarship|college decision|evaluation/.test(context)
+    ['high-school', 'highschool', 'prep'].includes(coverageStage)
+    || ['high-school', 'highschool', 'prep'].includes(gameStage)
+    || ['high-school', 'highschool', 'prep'].includes(outletStage)
+    || editionType === 'high-school-evaluation'
+    || /\bhigh school\b|\bprep\b/.test(label)
   ) return NEWSROOM_MEDIA_FOLDERS.HIGH_SCHOOL;
+
+  if (
+    ['college', 'college-player'].includes(coverageStage)
+    || ['college', 'college-player'].includes(gameStage)
+    || ['college', 'college-player'].includes(outletStage)
+  ) return NEWSROOM_MEDIA_FOLDERS.COLLEGE;
 
   return NEWSROOM_MEDIA_FOLDERS.COLLEGE;
 };

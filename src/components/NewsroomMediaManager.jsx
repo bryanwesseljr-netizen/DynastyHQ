@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Check, FolderOpen, ImagePlus, Images, Loader2, Sparkles, Trash2, Upload, X,
+  Check, FolderOpen, ImagePlus, Loader2, Trash2, Upload, X,
 } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
 import CustomNewsroomPhotoCreator from './CustomNewsroomPhotoCreator.jsx';
+import EditorialPhotoDirectorControl from './EditorialPhotoDirectorControl.jsx';
 import NewsroomReferenceRoleSelect from './NewsroomReferenceRoleSelect.jsx';
 import VisualPlayerProfileEditor from './VisualPlayerProfileEditor.jsx';
 import {
@@ -160,19 +161,24 @@ const NewsroomMediaManager = ({
 
   return (
     <section className="border-t border-slate-700 bg-slate-950 p-4 text-slate-100">
+      {!lockerOnly && (
+        <EditorialPhotoDirectorControl
+          issue={issue}
+          article={article}
+          busy={controlsBusy}
+          mediaCount={mediaLibrary.length}
+          onUseLibrary={() => setLibraryOpen(true)}
+          onGenerate={onGenerate}
+        />
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFile(event, false)} />
         <input ref={referenceRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFile(event, true)} />
         <button type="button" disabled={controlsBusy} onClick={() => uploadRef.current?.click()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-500 disabled:opacity-50">
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} {uploading ? 'Uploading Photo…' : 'Add Photos to Library'}
         </button>
-        {!lockerOnly && <button type="button" disabled={controlsBusy || !mediaLibrary.length} onClick={() => setLibraryOpen((open) => !open)} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-wider hover:border-slate-500 disabled:opacity-40">
-          <Images size={14} /> Career Photo Library ({mediaLibrary.length})
-        </button>}
-        {!lockerOnly && <button type="button" disabled={controlsBusy || article?.groundingStatus !== 'verified'} onClick={() => onGenerate({ issue, article })} className="flex items-center gap-2 rounded-lg border border-violet-500/50 bg-violet-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">
-          {busy && !uploading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Generate AI Photo
-        </button>}
-        {currentMedia?.asset && (
+        {currentMedia?.asset && !lockerOnly && (
           <button type="button" disabled={controlsBusy} onClick={() => onClear({ issue, article })} className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:border-red-500/50 hover:text-red-300">
             <X size={14} /> Remove From Article
           </button>
@@ -190,7 +196,7 @@ const NewsroomMediaManager = ({
       </p>
       {uploading && <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300"><Loader2 size={12} className="animate-spin" /> Preparing and securely uploading your photo. New uploads start in Unsorted until you file them below.</p>}
 
-      {libraryOpen && (
+      {libraryOpen && !lockerOnly && (
         <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>

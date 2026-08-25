@@ -17,6 +17,8 @@ const MIN_TOTAL_WORDS = 400;
 const MAX_TOTAL_WORDS = 1000;
 export const TARGET_PERFORMANCE_WORDS = 170;
 export const MAX_PERFORMANCE_WORDS = 220;
+export const MIN_GEMINI_CALL_SPACING_MS = 6500;
+const MAX_GEMINI_RETRY_WAIT_MS = 30_000;
 const MIN_CHUNK_TURNS = 2;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
@@ -32,6 +34,32 @@ const HOSTS = Object.freeze({
 const clean = (value, max = 2000) => String(value || '').trim().slice(0, max);
 const countWords = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const parseGeminiRetryDelayMs = ({ response = null, body = null, message = '' } = {}) => {
+  const headerSeconds = Number(response?.headers?.get?.('retry-after'));
+  if (Number.isFinite(headerSeconds) && headerSeconds > 0) {
+    return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(headerSeconds * 1000));
+  }
+
+  const retryInfo = Array.isArray(body?.error?.details)
+    ? body.error.details.find((detail) => /RetryInfo$/i.test(String(detail?.['@type'] || '')))
+    : null;
+  const retryDelay = String(retryInfo?.retryDelay || '');
+  const retryInfoMatch = retryDelay.match(/^([\d.]+)s$/i);
+  if (retryInfoMatch) {
+    const retryMs = Number(retryInfoMatch[1]) * 1000;
+    if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(retryMs));
+  }
+
+  const text = String(message || body?.error?.message || '');
+  const messageMatch = text.match(/retry\s+in\s+([\d.]+)s/i);
+  if (messageMatch) {
+    const retryMs = Number(messageMatch[1]) * 1000;
+    if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(retryMs));
+  }
+
+  return null;
+};
 
 const normalizeSegments = (rawSegments) => {
   if (!Array.isArray(rawSegments)) return [];
@@ -154,6 +182,7 @@ const callGemini = async (prompt) => {
         const message = body?.error?.message || body?.error || `Gemini TTS request failed (${response.status}).`;
         const error = new Error(message);
         error.status = response.status;
+        error.retryAfterMs = parseGeminiRetryDelayMs({ response, body, message });
         throw error;
       }
 
@@ -168,7 +197,11 @@ const callGemini = async (prompt) => {
       lastError = error;
       const retryable = [429, 500, 502, 503, 504].includes(Number(error?.status));
       if (!retryable || attempt === 2) break;
-      await sleep(700 * (attempt + 1));
+
+      const waitMs = Number(error?.status) === 429
+        ? Math.max(MIN_GEMINI_CALL_SPACING_MS, Number(error?.retryAfterMs) || 0) + 500
+        : 700 * (attempt + 1);
+      await sleep(Math.min(MAX_GEMINI_RETRY_WAIT_MS, waitMs));
     }
   }
   throw lastError || new Error('Gemini TTS did not return audio.');
@@ -250,6 +283,8 @@ export default async function handler(req, res) {
     let priorSegments = [];
 
     for (let index = 0; index < transcriptChunks.length; index += 1) {
+      if (index > 0) await sleep(MIN_GEMINI_CALL_SPACING_MS);
+
       const chunk = transcriptChunks[index];
       const prompt = buildPerformancePrompt({
         title: req.body?.title,
@@ -292,7 +327,7 @@ export default async function handler(req, res) {
       audioBase64,
       mimeType: 'audio/mpeg',
       model: MODEL,
-      engine: 'gemini-multispeaker-v3.4-leveled',
+      engine: 'gemini-multispeaker-v3.5-leveled-paced',
       voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
       transcriptTurns: segments.length,
       transcriptWords: totalWords,
@@ -310,7 +345,7 @@ export default async function handler(req, res) {
     const message = String(error?.message || '');
     return json(res, status, {
       error: status === 429
-        ? 'Humanized podcast audio is temporarily busy. Try again shortly.'
+        ? 'Humanized podcast audio hit the current Gemini quota window. DynastyHQ waited and retried, but the quota is still busy. Wait about a minute and try again.'
         : /response size/i.test(message)
           ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
           : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',

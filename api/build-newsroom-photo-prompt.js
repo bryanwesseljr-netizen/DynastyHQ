@@ -102,6 +102,8 @@ export default async function handler(req, res) {
         emotionalTone: generationContext.director?.emotionalTone || '',
         reason: generationContext.director?.reason || '',
         priorityFacts: generationContext.director?.priorityFacts || [],
+        overrideApplied: Boolean(generationContext.director?.overrideApplied),
+        overrideRejectedReason: generationContext.director?.overrideRejectedReason || '',
       },
       referenceRoles: (generationContext.references || []).map((entry) => entry.role),
       visualProfileApplied: Boolean(generationContext.visualProfileDirectives?.length),

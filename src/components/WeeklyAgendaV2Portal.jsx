@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { appId, auth, db } from '../firebase';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter';
+import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
 import { extractMenuVideoFrames } from '../services/menuVideoFrames';
 import '../weekly-agenda-v2.css';
 
@@ -44,6 +45,9 @@ const findUniversalScannerInput = (root = document) => {
   return label?.querySelector('input[type="file"]') || null;
 };
 
+const findOriginalActions = (agenda) => [...(agenda?.querySelectorAll('.dhq-agenda-v2-actions') || [])]
+  .find((node) => node.parentElement === agenda && !node.closest('[data-guided-weekly-action]')) || null;
+
 const markTopLevelContaining = (agenda, matcher, className) => {
   const candidate = [...agenda.querySelectorAll('h1,h2,h3,h4,p,span,label')]
     .find((element) => matcher.test((element.textContent || '').trim()));
@@ -70,11 +74,10 @@ const markAgendaStructure = (agenda) => {
   markTopLevelContaining(agenda, /postgame\s*[·•-]\s*postgame scanner/i, 'dhq-agenda-v2-duplicate-block');
   markTopLevelContaining(agenda, /verified draft ready/i, 'dhq-agenda-v3-applied-ready');
 
-  const publishButton = findByText(
-    agenda,
-    'button',
-    /publish verified week|save & process weekly agenda|process completed game week|update game log/i,
-  );
+  const publishButton = [...agenda.querySelectorAll('button')].find((button) => (
+    !button.closest('[data-guided-weekly-action]')
+    && /publish verified week|save & process weekly agenda|process completed game week|update game log/i.test((button.textContent || '').trim())
+  ));
   publishButton?.parentElement?.classList.add('dhq-agenda-v2-actions');
 
   const guidedLabel = findByText(agenda, 'p', /guided high-school scanner/i);
@@ -177,16 +180,14 @@ const WeeklyAgendaShell = ({
   const [message, setMessage] = useState(null);
   const [pendingImport, setPendingImport] = useState(null);
 
-  const setup = career?.currentWeekSetup || {};
-  const week = Number(setup.week ?? career?.currentWeek ?? 1);
-  const season = Number(career?.currentSeason || 1);
+  const work = resolveWeeklyWorkContext(career);
+  const { setup, week, season, setupReady } = work;
   const school = career?.player?.college || career?.player?.school || career?.coach?.currentSchool || 'Current program';
   const role = stage === CAREER_STAGES.COLLEGE
     ? (career?.rtg?.rank || 'Player')
     : (stageLabels[stage] || 'Career');
-  const setupReady = setup.week !== undefined && setup.week !== null;
-  const setupType = setup.type === 'bye' ? 'Bye Week' : 'Game Week';
-  const phase = phaseLabels[setup.phase] || 'Regular Season';
+  const setupType = setupReady && setup.type === 'bye' ? 'Bye Week' : 'Game Week';
+  const phase = setupReady ? (phaseLabels[setup.phase] || 'Regular Season') : 'Not configured';
   const isHighSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
   const isCollegePlayer = stage === CAREER_STAGES.COLLEGE;
   const activeStep = !setupReady ? 'setup' : workflow.hasApplied ? 'publish' : workflow.hasReview ? 'review' : 'import';
@@ -277,8 +278,8 @@ const WeeklyAgendaShell = ({
           <div className="dhq-agenda-v3-control-card__icon is-amber"><CalendarDays size={16} /></div>
           <div className="min-w-0 flex-1">
             <span className="dhq-agenda-v3-label">Week setup</span>
-            <strong>{setupReady ? `${setupType} · ${phase}` : 'Setup needed'}</strong>
-            <small>{setupReady ? (setup.label || setup.customLabel || `Week ${week}`) : 'Define the week before playing.'}</small>
+            <strong>{setupReady ? `${setupType} · ${phase}` : `Week ${week} setup needed`}</strong>
+            <small>{setupReady ? (setup.label || setup.customLabel || `Week ${week}`) : 'Finalize the prior week, then define this week before playing.'}</small>
           </div>
           <button type="button" onClick={onToggleSetup} className="dhq-agenda-v3-text-button">
             {setupOpen ? 'Hide' : setupReady ? 'Edit' : 'Open'} {setupOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -379,11 +380,14 @@ const WeeklyAgendaShell = ({
 };
 
 const GuidedActionBar = ({ agenda, setupReady, setupOpen, workflow, onToggleSetup }) => {
-  const originalActions = agenda.querySelector('.dhq-agenda-v2-actions');
-
   const clickOriginal = (matcher) => {
+    const originalActions = findOriginalActions(agenda);
     const button = findByText(originalActions, 'button', matcher);
-    if (button && !button.disabled) button.click();
+    if (button && !button.disabled) {
+      button.click();
+      return true;
+    }
+    return false;
   };
 
   const focus = (selector) => agenda.querySelector(selector)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
@@ -413,7 +417,7 @@ const GuidedActionBar = ({ agenda, setupReady, setupOpen, workflow, onToggleSetu
     action = () => focus('.dhq-postgame-review');
   }
 
-  const saveProgressButton = findByText(originalActions, 'button', /save progress only/i);
+  const saveProgressButton = findByText(findOriginalActions(agenda), 'button', /save progress only/i);
 
   return (
     <div className="dhq-agenda-v3-action-bar" data-guided-weekly-action>
@@ -454,7 +458,8 @@ const WeeklyAgendaV2Portal = () => {
   }, [isReadOnly, user]);
 
   const stage = useMemo(() => career ? deriveCareerStage(career) : null, [career]);
-  const setupReady = career?.currentWeekSetup?.week !== undefined && career?.currentWeekSetup?.week !== null;
+  const workContext = useMemo(() => resolveWeeklyWorkContext(career || {}), [career]);
+  const setupReady = workContext.setupReady;
 
   useEffect(() => {
     if (!career) return;
@@ -466,8 +471,10 @@ const WeeklyAgendaV2Portal = () => {
 
   useEffect(() => {
     if (isReadOnly) return undefined;
+    const appRoot = document.getElementById('root');
+    if (!appRoot) return undefined;
     const ensure = () => {
-      const agenda = document.querySelector('.dhq-weekly-agenda-workspace');
+      const agenda = appRoot.querySelector('.dhq-weekly-agenda-workspace');
       if (!agenda) {
         setHosts({ shell: null, agenda: null, actions: null });
         return;
@@ -483,9 +490,9 @@ const WeeklyAgendaV2Portal = () => {
       }
       if (shellHost.parentElement !== agenda || agenda.firstElementChild !== shellHost) agenda.prepend(shellHost);
 
-      const originalActions = agenda.querySelector('.dhq-agenda-v2-actions');
+      const originalActions = findOriginalActions(agenda);
       let actionsHost = document.getElementById('dhq-weekly-agenda-v3-actions-host');
-      if (originalActions) {
+      if (originalActions?.parentElement === agenda) {
         if (!actionsHost) {
           actionsHost = document.createElement('div');
           actionsHost.id = 'dhq-weekly-agenda-v3-actions-host';
@@ -496,14 +503,15 @@ const WeeklyAgendaV2Portal = () => {
         }
       }
 
-      setHosts((current) => current.shell === shellHost && current.agenda === agenda && current.actions === (actionsHost || null)
+      const resolvedActionsHost = originalActions?.parentElement === agenda ? (actionsHost || null) : null;
+      setHosts((current) => current.shell === shellHost && current.agenda === agenda && current.actions === resolvedActionsHost
         ? current
-        : { shell: shellHost, agenda, actions: actionsHost || null });
+        : { shell: shellHost, agenda, actions: resolvedActionsHost });
     };
 
     ensure();
     const observer = new MutationObserver(ensure);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(appRoot, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
       ownedNodes.current.forEach((node) => node?.parentElement?.removeChild(node));

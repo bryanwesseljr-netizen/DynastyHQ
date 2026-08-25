@@ -133,16 +133,17 @@ export const buildNewsroomImageGenerationContext = ({
   const visualProfile = normalizePlayerVisualProfile(state.player?.visualProfile || {});
   const visualProfileDirectives = buildVisualProfileDirectives(visualProfile, director.subject);
   const references = selectNewsroomImageReferences({ state, issue, subject: director.subject, limit: 4 });
+  const team = clean(state.player?.college || state.player?.school, 120);
 
   return {
     director,
     visualProfile: director.subject === 'player' ? visualProfile : {},
     visualProfileDirectives,
     references,
-    playerContext: director.subject === 'player' ? {
-      position: clean(state.player?.pos || article.position, 40),
-      jerseyNumber: clean(state.player?.number, 12),
-      team: clean(state.player?.college || state.player?.school, 120),
-    } : {},
+    playerContext: {
+      position: director.subject === 'player' ? clean(state.player?.pos || article.position, 40) : '',
+      jerseyNumber: director.subject === 'player' ? clean(state.player?.number, 12) : '',
+      team,
+    },
   };
 };

@@ -298,6 +298,7 @@ export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] })
       groundingStatus: article.groundingStatus,
       citedFactKeys: article.citedFactKeys || [],
     },
+    sceneOverride: cleanText(article.sceneOverride || 'auto', 60).toLowerCase() || 'auto',
     references,
   };
 };

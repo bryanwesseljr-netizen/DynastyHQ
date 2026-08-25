@@ -61,8 +61,12 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.match(prompt, /legible surname\/nameplate/i);
   assert.match(prompt, /MANDATORY FRONT TEAM TEXT/i);
   assert.match(prompt, /front of a Cincinnati jersey/i);
+  assert.match(prompt, /Current 2026 football conference: Big 12/i);
+  assert.match(prompt, /MANDATORY CONFERENCE PATCH: Cincinnati is a Big 12 football member/i);
+  assert.match(prompt, /current Big 12 conference patch\/mark/i);
+  assert.match(prompt, /OUTDATED PATCHES FORBIDDEN FOR CINCINNATI/i);
+  assert.match(prompt, /American Athletic Conference, AAC, American conference branding/i);
   assert.match(prompt, /authentic real-world team\/program wordmark or jersey-front text/i);
-  assert.match(prompt, /Readable jersey numbers, back nameplates, and authentic jersey-front team text are required/i);
 
   assert.doesNotMatch(prompt, /jersey number 6/i);
   assert.doesNotMatch(prompt, /LEFT-HANDED/);
@@ -74,7 +78,7 @@ test('ChatGPT editorial prompt keeps story context but strips created-player per
   assert.doesNotMatch(prompt, /Permanent Visual Player Profile/);
 });
 
-test('ChatGPT editorial prompt keeps team-first scenes generic while requiring authentic jersey text', () => {
+test('ChatGPT editorial prompt keeps team-first scenes generic while retaining team and patch identity', () => {
   const prompt = buildGeneralChatGptNewsroomPhotoPrompt({
     issue: { season: 1, week: 7 },
     article: {
@@ -103,6 +107,8 @@ test('ChatGPT editorial prompt keeps team-first scenes generic while requiring a
   assert.match(prompt, /Result: W 31-20/);
   assert.match(prompt, /Opponent: Houston/);
   assert.match(prompt, /Cincinnati jersey/i);
+  assert.match(prompt, /Current 2026 football conference: Big 12/i);
+  assert.match(prompt, /current Big 12 conference patch\/mark/i);
   assert.match(prompt, /properly placed, legible surname\/nameplate/i);
   assert.doesNotMatch(prompt, /white glove/i);
   assert.doesNotMatch(prompt, /jersey number 6/i);

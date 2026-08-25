@@ -39,28 +39,32 @@ const conferencePatchRules = (identity, roleLabel = 'Team') => {
 
   if (identity.primaryConference === 'Independent') {
     return [
-      `${label.toUpperCase()} CONFERENCE IDENTITY — AUTHORITATIVE 2026 DATA`,
-      `- Team: ${identity.team}.`,
-      '- Football status: FBS Independent.',
-      '- HARD RULE: do not add any conference jersey patch to this team.',
+      `${label.toUpperCase()} TEAM IDENTITY / UNIFORM AUTHENTICITY — HARD CONSTRAINTS`,
+      `- TEAM NAME: ${identity.team}`,
+      '- PRIMARY CONFERENCE: FBS Independent',
+      '- REQUIRED CONFERENCE PATCH: NONE',
+      '- HARD RULE: do not place any conference logo, conference wordmark, or conference patch on this team\'s jersey.',
     ];
   }
 
   const rules = [
-    `${label.toUpperCase()} CONFERENCE IDENTITY — AUTHORITATIVE 2026 DATA`,
-    `- Team: ${identity.team}.`,
-    `- Primary football conference: ${identity.primaryConference}.`,
-    `- REQUIRED jersey conference patch: ${identity.conferencePatchLabel}.`,
-    `- EXACT VISUAL TARGET: ${identity.conferencePatchVisual}.`,
-    `- HARD RULE: whenever a conference-patch area on a visible ${identity.team} game jersey can be seen, it MUST show ${identity.conferencePatchVisual}. Do not approximate the conference mark and do not substitute a different conference logo.`,
+    `${label.toUpperCase()} TEAM IDENTITY / UNIFORM AUTHENTICITY — HARD CONSTRAINTS`,
+    `- TEAM NAME: ${identity.team}`,
+    `- PRIMARY CONFERENCE: ${identity.primaryConference}`,
+    `- REQUIRED CONFERENCE PATCH: ${identity.conferencePatchLabel}`,
+    `- REQUIRED PATCH VISUAL: ${identity.conferencePatchVisual}`,
+    `- THIS IS NOT OPTIONAL: when a real ${identity.team} game jersey would show its conference patch and that patch area is visible in the photograph, render ${identity.conferencePatchVisual} and no other conference mark.`,
+    `- DO NOT GUESS FROM OLD UNIFORMS OR PRIOR SEASONS. The conference assignment above is authoritative for the 2026 football season and overrides historical visual associations.`,
+    `- DO NOT SUBSTITUTE A GENERIC, SIMILAR, OR DIFFERENT CONFERENCE LOGO. A wrong conference patch makes the image factually incorrect.`,
   ];
 
   if (identity.forbiddenLegacyPatches?.length) {
-    rules.push(`- FORBIDDEN LEGACY PATCHES: ${identity.forbiddenLegacyPatches.join('; ')}. None of these may appear on ${identity.team} uniforms.`);
+    rules.push(`- FORBIDDEN PATCHES / LEGACY BRANDING: ${identity.forbiddenLegacyPatches.join('; ')}.`);
+    rules.push(`- ZERO-TOLERANCE RULE: none of the forbidden marks above may appear anywhere on a ${identity.team} uniform, even partially, decoratively, blurred, stylized, or as a near-match.`);
   }
 
-  rules.push(`- PATCH VALIDATION: before finalizing each image, inspect every visible ${identity.team} jersey. If its conference mark is missing where the real uniform would show one, belongs to another conference, resembles a forbidden legacy patch, or is visually incorrect, correct the uniform before returning the image.`);
-  rules.push(`- If the conference patch cannot be rendered accurately at the chosen angle or distance, change the framing/angle so the patch is not falsely readable rather than displaying the wrong conference identity.`);
+  rules.push(`- PATCH PLACEMENT: place the required conference mark in the normal real-world conference-patch location for that ${identity.team} uniform style; it must look stitched/printed/applied to the jersey fabric, never pasted on as an overlay.`);
+  rules.push(`- FINAL PATCH CHECK: inspect every visible ${identity.team} jersey before returning the image. If any visible conference patch is missing where the real uniform would show one, belongs to another conference, resembles a forbidden legacy mark, or is malformed enough to read as the wrong conference, correct it.`);
   return rules;
 };
 
@@ -87,10 +91,32 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
 
   const lines = [
     'Create 4 distinct photorealistic editorial college-football photographs that could realistically accompany the fictional sports-news article below.',
-    'Use the verified article information only to understand the game, teams, storyline, result, setting, and football situation.',
-    'Do not attempt to recreate or reference a pre-existing created-player appearance, player-profile image, face, hairstyle, body type, personalized jersey number, accessories, throwing hand, equipment personalization, or other character-specific visual details.',
-    'Players should look like believable anonymous college football athletes appropriate for their positions and teams. A player name appearing in article text is story context only and must not be treated as a likeness instruction.',
-    'TEAM AND CONFERENCE UNIFORM DATA PROVIDED BELOW IS AUTHORITATIVE. Do not override it from memory, prior seasons, historical affiliations, or visual associations with an older conference.',
+    '',
+    'CRITICAL TEAM-IDENTITY INSTRUCTION',
+    'The structured team/conference metadata below is authoritative and MUST override model memory, historical uniforms, old conference affiliations, training-data associations, or guesses.',
+    'Uniform authenticity is a factual requirement, not a stylistic preference. An image with the wrong team wordmark, conference patch, jersey number treatment, or nameplate is a failed image and must be corrected before output.',
+    '',
+  ];
+
+  conferencePatchRules(teamIdentity, 'Primary team').forEach((entry) => lines.push(entry));
+  if (opponentIdentity) {
+    lines.push('');
+    conferencePatchRules(opponentIdentity, 'Opponent').forEach((entry) => lines.push(entry));
+  }
+
+  if (teamIdentity?.team === 'Cincinnati') {
+    lines.push('');
+    lines.push('CINCINNATI — EXPLICIT PATCH OVERRIDE');
+    lines.push('- TEAM NAME: Cincinnati Bearcats');
+    lines.push('- PRIMARY CONFERENCE: Big 12 Conference');
+    lines.push('- REQUIRED CONFERENCE PATCH: Big 12');
+    lines.push('- REQUIRED PATCH VISUAL: the official Big 12 stylized "XII" conference logo/mark.');
+    lines.push('- FORBIDDEN: American Athletic Conference patch; AAC patch; American Conference patch; American/AAC star-A logo; any star-shaped American/AAC conference mark.');
+    lines.push('- NEVER use Cincinnati\'s former American/AAC conference branding. Cincinnati must be visually treated as a Big 12 football program in every generated image.');
+    lines.push('- If a Cincinnati jersey conference-patch area is visible, the patch must read visually as Big 12/XII. A star-A/AAC/American mark is always wrong.');
+  }
+
+  lines.push(
     '',
     'Verified Story Context',
     `Dynasty season ${Math.max(1, Number(issue.season) || 1)}, Week ${Math.max(1, Number(issue.week) || 1)}.`,
@@ -113,7 +139,7 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     'Photo Direction',
     director.reason ? `Director rationale: ${clean(director.reason, 520)}.` : '',
     director.emotionalTone ? `Emotional tone: ${clean(director.emotionalTone, 240)}.` : '',
-  ].filter(Boolean);
+  );
 
   if (verified.length) {
     lines.push('Verified context may guide the action and emotion but must never appear as rendered statistics or scoreboard text:');
@@ -128,16 +154,7 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     ? `- If the front of a ${team} jersey is visible enough to read, use the authentic team/program wordmark or jersey-front text that belongs on that real uniform style. Spell it correctly and integrate it naturally into the fabric.`
     : '- If the front of a team jersey is visible enough to read, use the authentic team/program wordmark or jersey-front text that belongs on that real uniform style.');
   lines.push('- Numbers, nameplates, team text, logos, and conference patches must look physically sewn/printed/applied to the uniform, never like floating text or graphic overlays.');
-
-  conferencePatchRules(teamIdentity, 'Primary team').forEach((entry) => lines.push(entry));
-  if (opponentIdentity) {
-    lines.push('');
-    conferencePatchRules(opponentIdentity, 'Opponent').forEach((entry) => lines.push(entry));
-  }
-
-  if (teamIdentity?.team === 'Cincinnati') {
-    lines.push('CINCINNATI PATCH CHECK — NON-NEGOTIABLE: Cincinnati is a Big 12 football member. The only acceptable conference mark on a visible Cincinnati jersey is the official Big 12 Conference stylized "XII" mark/logo. An American Athletic Conference, AAC, American/AAC star-A, or other conference patch on Cincinnati is incorrect and must not appear.');
-  }
+  lines.push('- Conference patch rules above have higher priority than generic uniform styling. Never trade conference accuracy for aesthetics.');
 
   if (mechanics.length) {
     lines.push('Football action and anatomy requirements:');
@@ -155,6 +172,8 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
   lines.push('Avoid cinematic fantasy effects, promotional-poster composition, video-game-render appearance, exaggerated HDR, artificial text overlays, or overly staged poses.');
   lines.push('Accuracy rules: depict only events supported by the verified article context. Do not invent touchdowns, celebrations, trophies, injuries, weather, scores, opponents, stadium features, or outcomes that contradict the supplied information. If a non-uniform visual detail is unknown, keep it generic rather than inventing it.');
   lines.push('Do not render headlines, captions, scoreboards, statistics, watermarks, or unrelated signage. Readable jersey numbers, back nameplates, authentic jersey-front team text, and the correct conference patch are required uniform details and are the exception to this no-overlay/no-extra-text rule.');
+  lines.push('Do not attempt to recreate or reference a pre-existing created-player appearance, player-profile image, face, hairstyle, body type, personalized jersey number, accessories, throwing hand, equipment personalization, or other character-specific visual details.');
+  lines.push('Players should look like believable anonymous college football athletes appropriate for their positions and teams. A player name appearing in article text is story context only and must not be treated as a likeness instruction.');
   lines.push('Do not reproduce the likeness of a real athlete or attempt to match a previously created DynastyHQ player. The goal is an authentic fictional editorial sports photograph, not a portrait of a specific created player.');
 
   if (forbidden.length) {
@@ -162,7 +181,13 @@ export const buildGeneralChatGptNewsroomPhotoPrompt = ({
     forbidden.forEach((entry) => lines.push(`- ${entry}`));
   }
 
-  lines.push('FINAL UNIFORM VALIDATION — REQUIRED BEFORE RETURNING EACH IMAGE: verify the school identity, jersey number, back nameplate when visible, front team text/wordmark when visible, and conference patch against the authoritative team metadata above. A wrong or legacy conference patch is a failed image and must be corrected before final output.');
+  lines.push('FINAL UNIFORM VALIDATION — REQUIRED BEFORE RETURNING EACH IMAGE: verify the school identity, jersey number, back nameplate when visible, front team text/wordmark when visible, and conference patch against the authoritative team metadata at the top of this prompt.');
+  if (teamIdentity) {
+    lines.push(`FINAL PRIMARY-TEAM PATCH ASSERTION: ${teamIdentity.team} = ${teamIdentity.primaryConference}; required patch = ${teamIdentity.conferencePatchLabel || 'none'}. Any other conference patch is incorrect.`);
+  }
+  if (teamIdentity?.team === 'Cincinnati') {
+    lines.push('FINAL CINCINNATI ASSERTION: Cincinnati = Big 12. Required jersey conference mark = Big 12 stylized XII. American/AAC/star-A conference branding must not appear anywhere on a Cincinnati uniform.');
+  }
   lines.push('Final photographic quality check: realistic human anatomy and hands, realistic football equipment, believable player spacing, physically plausible action, professional sports-photo composition, natural lighting, restrained photographic color grading, and accurate readable uniform details wherever visible.');
-  return lines.join('\n');
+  return lines.filter(Boolean).join('\n');
 };

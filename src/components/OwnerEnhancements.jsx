@@ -14,6 +14,7 @@ import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
 import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
 import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
 import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
+import NewsroomExactStoryRoutingPortal from './NewsroomExactStoryRoutingPortal.jsx';
 import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
@@ -31,6 +32,7 @@ const OwnerEnhancements = () => (
     <RtgStatusScannerPortal />
     <CoachRecruitingWorkspaceV2Portal />
     <EditorialPhotoDirectorPortal />
+    <NewsroomExactStoryRoutingPortal />
     <NewsroomTeamHubPortal />
     <NewsroomArticleExperiencePortal />
     <NewsroomArticleToolsPortal />

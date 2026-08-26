@@ -8,6 +8,7 @@ import CollegeCareerAgendaCardPortal from './CollegeCareerAgendaCardPortal.jsx';
 import RtgStatusScannerPortal from './RtgStatusScannerPortal.jsx';
 import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal.jsx';
 import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
+import PodcastArtworkHydrationPortal from './PodcastArtworkHydrationPortal.jsx';
 import PodcastLocalShowPortal from './PodcastLocalShowPortal.jsx';
 import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
 import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
@@ -32,6 +33,7 @@ const OwnerEnhancements = () => (
     <NewsroomArticleExperiencePortal />
     <NewsroomArticleToolsPortal />
     <NewsroomArticleSharePortal />
+    <PodcastArtworkHydrationPortal />
     <PodcastLocalShowPortal />
     <PodcastHumanizedAudioPortal />
   </OwnerCareerProvider>

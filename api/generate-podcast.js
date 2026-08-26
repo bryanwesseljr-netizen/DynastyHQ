@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
 import { PODCAST_HOSTS, PODCAST_PUBLIC_HOSTS } from '../src/domain/podcastShow.js';
+import { applyPodcastShowBookends } from '../src/domain/podcastShowBookends.js';
 
 const MODEL = process.env.OPENAI_PODCAST_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
@@ -29,6 +30,7 @@ const COLLEGE_MECHANIC_LABEL_RE = /(overall rating|\boverall\b|coach trust|skill
 const LOW_RELEVANCE_ALLOWED_KEY_RE = /^(program\.|game\.|team\.|milestone\.|award\.|transfer\.|portal\.)/i;
 const LISTENER_META_RE = /(deliberately measured|the restraint matters|verified snapshot|clear snapshot|snapshot of|the foundation of this conversation|the foundation of this episode|what we do know|what we know is|we do not have evidence|we don't have evidence|we should not invent|we shouldn't invent|the disciplined read|the verified starting point|the next set of facts|break down the next set of facts|no need to force a dramatic story|clean internal benchmark)/i;
 const LISTENER_MECHANIC_RE = /(\b\d+\s+overall\b|overall rating|coach trust|skill points?|weekly action points?|\benergy (?:is|at|sits|reading)\b|\bgpa\b|followers?|nil valuation|wear indicators?|health meter|fitness meter|brand tier|draft projection)/i;
+const LISTENER_BOOKEND_RE = /(welcome back|you're listening to|you are listening to|thanks for listening|that'll do it for|that will do it for|that's all for us|this has been .*podcast)/i;
 
 const safeText = (value, max) => String(value || '').trim().slice(0, max);
 const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
@@ -52,6 +54,9 @@ const listenerFacingViolation = (episode = {}, payload = {}) => {
   }
   if (LISTENER_META_RE.test(transcript)) {
     return 'The draft narrated its own editorial rules or source limitations instead of opening on football.';
+  }
+  if (LISTENER_BOOKEND_RE.test(transcript)) {
+    return 'The draft tried to write the branded intro or sign-off that DynastyHQ adds separately.';
   }
   return '';
 };
@@ -106,7 +111,7 @@ const validatePayload = (body = {}) => {
 
   const program = body.coveragePlan?.program || {};
   const programGames = Number(program.games) || 0;
-  const school = safeText(program.school, 160);
+  const school = safeText(program.school || body.show?.school || body.episodeContext?.school, 160);
   const week = Math.max(0, Number(body.week) || 0);
   const label = safeText(body.label, 160);
 
@@ -135,7 +140,7 @@ const validatePayload = (body = {}) => {
   if (!usableFacts.length) return null;
 
   const briefTitle = suppressTrackedPlayer
-    ? `${school || 'Cincinnati'} ${label || `Week ${week}`}: program outlook`
+    ? `${school || 'the program'} ${label || `Week ${week}`}: program outlook`
     : safeText(body.brief?.title, 240);
   const briefSummary = suppressTrackedPlayer
     ? `Keep this episode strictly about ${school || 'the program'}. Use only meaningful program, game, team or event facts that survived the editorial filter. Do not mention the tracked player, any depth-chart backup slot, development meters, ratings, progression resources or off-field game mechanics.`
@@ -226,15 +231,17 @@ const schemaFor = (payload) => ({
 });
 
 const [mark, sarah] = PODCAST_HOSTS;
-const INSTRUCTIONS = `You write The Gridiron Grind, a private two-host football podcast following one career from high school through college and eventually coaching.
+const INSTRUCTIONS = `You write the conversational body of a private two-host local football podcast following one career from high school through college and eventually coaching.
 
 Write like an experienced college-football producer and two knowledgeable hosts. The conversation should be clear, relaxed and intelligent. Do not write a debate show, announcer copy, alternating essays, or a performance that tries hard to sound casual.
 
-REAL-PODCAST OPENING RULE:
-- Cold-open on the actual football subject. The first host should sound as if the microphones came on in the middle of a real weekly college-football conversation.
+BRANDED BOOKEND HANDOFF:
+- DynastyHQ adds the team-specific show introduction and sign-off after your draft passes quality control.
+- Do not say "Welcome back," "You're listening to," the podcast name, host introductions, "thanks for listening," or any formal sign-off language in your generated turns.
+- Start the first generated turn directly on the actual football subject, as if the branded introduction just finished.
+- End the final generated turn on a real football theme or question to watch; DynastyHQ will add the closing sign-off after it.
 - Do not explain what the episode is going to cover. Do not announce an agenda, editorial method, level of restraint, source limitations or what information is and is not available.
 - If a claim is not supported, simply do not say it. Never narrate the reason you are omitting it.
-- A brief natural show identification is fine after the football hook, but do not turn the opening into a formal introduction every week.
 - Use ordinary straight apostrophes and quotation marks in listener-facing text.
 
 SHARED COVERAGE DECISION:
@@ -267,7 +274,7 @@ FOOTBALL INTELLIGENCE WITHOUT INVENTION:
 - Do not praise neutral facts or manufacture momentum from nothing happening.
 
 COLLEGE GAME WEEK:
-- Lead with the Cincinnati game: result, opponent, score and the most meaningful supplied statistical contrasts.
+- Lead with the current program's game: result, opponent, score and the most meaningful supplied statistical contrasts.
 - Use season record or streak once only when it genuinely frames the result or trajectory.
 - Use player statistics only when the player's football relevance warrants it.
 
@@ -307,7 +314,7 @@ GROUNDING:
 - Analysis/opinion is welcome when it follows logically from those facts.
 - Each segment must cite every supplied fact key it relies on; connective commentary may use an empty list.
 - segmentStart is the zero-based index of the first turn in the chapter.
-- End with a short unresolved football theme to watch, never an invented matchup or event.`;
+- End the generated body with a short unresolved football theme to watch, never an invented matchup or event and never a formal show sign-off.`;
 
 const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
   const note = repairNote ? `\n\nREVISION NOTE:\n${repairNote}` : '';
@@ -326,7 +333,7 @@ const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
       role: 'user',
       content: [{
         type: 'input_text',
-        text: `Write this Gridiron Grind episode from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener.${storylineNote}${note}\n${JSON.stringify(payload)}`,
+        text: `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`,
       }],
     }],
     text: {
@@ -359,7 +366,7 @@ export default async function handler(req, res) {
   const payload = validatePayload(req.body);
   if (!payload) {
     return json(res, 422, {
-      error: 'No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.',
+      error: 'No new episode this week. There was not enough meaningful football movement to justify a full local team podcast.',
       code: 'NO_NEWSWORTHY_PODCAST',
     });
   }
@@ -386,7 +393,7 @@ export default async function handler(req, res) {
         client,
         user,
         payload,
-        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts or a suppressed tracked-player angle. Start directly on the football subject.`,
+        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode body. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts, a suppressed tracked-player angle, or branded intro/sign-off language. Start directly on the football subject.`,
       });
 
       if (response.output_text) {
@@ -407,11 +414,13 @@ export default async function handler(req, res) {
 
     if (violation) {
       return json(res, 422, {
-        error: 'The draft still sounded like an AI/editorial report instead of a football podcast, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
+        error: 'The draft still sounded like an AI/editorial report or duplicated the show intro instead of a clean football conversation, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
       });
     }
 
-    return json(res, 200, { episode, model: MODEL, transcriptWords: inspection.words });
+    const completedEpisode = applyPodcastShowBookends({ episode, payload: req.body });
+    const completedInspection = inspectEpisode(completedEpisode);
+    return json(res, 200, { episode: completedEpisode, model: MODEL, transcriptWords: completedInspection.words });
   } catch (error) {
     console.error('OpenAI podcast generation failed', error);
     const status = error?.status === 429 ? 429 : 502;

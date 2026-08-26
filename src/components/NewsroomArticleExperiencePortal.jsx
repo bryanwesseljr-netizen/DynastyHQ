@@ -58,7 +58,13 @@ const NewsroomArticleExperiencePortal = () => {
           }
 
           const teamButton = findTeamNewsButton(root);
-          if (teamButton) teamButton.click();
+          if (teamButton) {
+            // Once the all-articles home exists, one Team News selection is enough.
+            // Cancel the remaining delayed resets so an intentional Regional/National
+            // click immediately after refresh cannot be pulled back to Team News.
+            if (teamButton.getAttribute('data-active') !== 'true') teamButton.click();
+            if (generation === homeResetGeneration) homeResetGeneration += 1;
+          }
           scrollNewsroomTop();
         }, delay);
       });
@@ -151,12 +157,28 @@ const NewsroomArticleExperiencePortal = () => {
       return Boolean(button && /^the newsroom$/i.test(clean(button.textContent)));
     };
 
+    const isNewsroomDeskButton = (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest('nav[aria-label="Newsroom desks"] button')
+        : null;
+      return Boolean(button);
+    };
+
     const handleNewsroomPointerDown = (event) => {
+      if (isNewsroomDeskButton(event)) {
+        // Explicit desk navigation always wins over any refresh/login home-reset timers.
+        homeResetGeneration += 1;
+        return;
+      }
       if (!isNewsroomTopNavButton(event)) return;
       forceNewsroomHome();
     };
 
     const handleNewsroomClick = (event) => {
+      if (isNewsroomDeskButton(event)) {
+        homeResetGeneration += 1;
+        return;
+      }
       if (!isNewsroomTopNavButton(event)) return;
       forceNewsroomHome();
     };

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   resolveCareerTeamMediaProfile,
+  resolveCurrentProgramSchool,
   resolveIssueTeamMediaProfile,
   resolveTeamMediaProfile,
   sameProgram,
@@ -58,6 +59,64 @@ test('current career profile follows the active school instead of the oldest car
   assert.equal(profile.school, 'Toledo');
   assert.equal(profile.nickname, 'Rockets');
   assert.equal(profile.localOutletName, 'Rocket City Football');
+});
+
+test('verified transfer destination outranks a stale player college value', () => {
+  const state = {
+    careerPhase: 'Player',
+    careerStage: 'College',
+    player: { college: 'Cincinnati', school: 'Cincinnati' },
+    careerMilestones: [
+      { type: 'transfer', institution: 'Michigan', previousInstitution: 'Cincinnati', season: 3, week: 16 },
+    ],
+    newsroomIssues: [
+      { outletProfile: { school: 'Cincinnati', localOutletName: 'Bearcats Insider' } },
+      { outletProfile: { school: 'Michigan', localOutletName: 'Ann Arbor Saturday' } },
+    ],
+  };
+
+  assert.equal(resolveCurrentProgramSchool(state), 'Michigan');
+  assert.equal(resolveCareerTeamMediaProfile(state).school, 'Michigan');
+  assert.equal(resolveCareerTeamMediaProfile(state).nickname, 'Wolverines');
+});
+
+test('coaching mode follows the latest verified coaching institution instead of the old player college', () => {
+  const state = {
+    careerPhase: 'OC',
+    player: { graduated: true, graduationSchool: 'Cincinnati', college: 'Cincinnati', school: 'Cincinnati' },
+    coach: {},
+    careerTransitions: { coachingUniverseCreated: true },
+    careerMilestones: [
+      { type: 'oc-hire', institution: 'Cincinnati', season: 5, week: 1 },
+      { type: 'hc-hire', institution: 'Toledo', previousInstitution: 'Cincinnati', season: 7, week: 1 },
+    ],
+    newsroomIssues: [
+      { outletProfile: { school: 'Cincinnati', localOutletName: 'Bearcats Insider' } },
+      { outletProfile: { school: 'Toledo', localOutletName: 'Rocket City Football' } },
+    ],
+  };
+
+  const profile = resolveCareerTeamMediaProfile(state);
+  assert.equal(resolveCurrentProgramSchool(state), 'Toledo');
+  assert.equal(profile.school, 'Toledo');
+  assert.equal(profile.nickname, 'Rockets');
+  assert.equal(profile.localOutletName, 'Rocket City Football');
+});
+
+test('explicit coach school wins when the coaching profile supplies the current job', () => {
+  const state = {
+    careerStage: 'HC',
+    player: { graduated: true, college: 'Cincinnati' },
+    coach: { school: 'Michigan State' },
+    careerTransitions: { coachingUniverseCreated: true },
+    careerMilestones: [
+      { type: 'hc-hire', institution: 'Toledo', season: 7, week: 1 },
+    ],
+  };
+
+  const profile = resolveCareerTeamMediaProfile(state);
+  assert.equal(profile.school, 'Michigan State');
+  assert.equal(profile.nickname, 'Spartans');
 });
 
 test('future public careers receive a usable generic local identity even without a special profile', () => {

@@ -72,8 +72,48 @@ const overridesFor = (state = {}, school = '') => {
   return entry?.[1] || {};
 };
 
+const latestMilestoneInstitution = (state = {}, types = []) => {
+  const wanted = new Set(types.map(normalizeKey));
+  return clean([...(state.careerMilestones || [])]
+    .reverse()
+    .find((entry) => wanted.has(normalizeKey(entry?.type)) && clean(entry?.institution))
+    ?.institution);
+};
+
+const isCoachingCareer = (state = {}) => {
+  const stages = [state?.careerPhase, state?.careerStage, state?.player?.careerStage].map(normalizeKey);
+  return stages.some((stage) => ['oc', 'hc', 'retired'].includes(stage))
+    || Boolean(state?.careerTransitions?.coachingUniverseCreated && state?.player?.graduated);
+};
+
+export const resolveCurrentProgramSchool = (state = {}) => {
+  if (isCoachingCareer(state)) {
+    const explicitCoachSchool = clean(
+      state?.coach?.school
+      || state?.coach?.institution
+      || state?.coach?.program
+      || state?.coach?.team
+      || state?.coach?.college,
+    );
+    const latestCoachingSchool = latestMilestoneInstitution(state, ['oc-hire', 'hc-hire', 'retirement']);
+    return clean(
+      explicitCoachSchool
+      || latestCoachingSchool
+      || state?.player?.graduationSchool
+      || state?.player?.college
+      || state?.player?.school,
+    );
+  }
+
+  // A verified transfer milestone is authoritative if an older player profile has
+  // not yet been rewritten. This keeps team media identity in sync during transfer
+  // transitions without recoloring prior editions.
+  const latestTransferSchool = latestMilestoneInstitution(state, ['transfer']);
+  return clean(latestTransferSchool || state?.player?.college || state?.player?.school);
+};
+
 export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, state = null } = {}) => {
-  const resolvedSchool = clean(school || outletProfile?.school || state?.player?.college || state?.coach?.school || state?.player?.school) || 'College';
+  const resolvedSchool = clean(school || outletProfile?.school || (state ? resolveCurrentProgramSchool(state) : '')) || 'College';
   const special = specialProfileFor(resolvedSchool) || {};
   const override = state ? overridesFor(state, resolvedSchool) : {};
   const shortName = shortSchoolName(resolvedSchool);
@@ -118,7 +158,7 @@ export const resolveIssueTeamMediaProfile = (issue = {}, state = null) => resolv
 
 export const resolveCareerTeamMediaProfile = (state = {}) => {
   const latestCollegeIssue = [...(state.newsroomIssues || [])].reverse().find((issue) => issue?.outletProfile?.school);
-  const currentSchool = clean(state?.player?.college || state?.coach?.school || state?.player?.school || latestCollegeIssue?.outletProfile?.school);
+  const currentSchool = resolveCurrentProgramSchool(state) || clean(latestCollegeIssue?.outletProfile?.school);
   const matchingIssue = [...(state.newsroomIssues || [])].reverse().find((issue) => normalizeKey(issue?.outletProfile?.school) === normalizeKey(currentSchool));
   return resolveTeamMediaProfile({ school: currentSchool, outletProfile: matchingIssue?.outletProfile || latestCollegeIssue?.outletProfile, state });
 };

@@ -4,7 +4,7 @@ import {
   Archive, ChevronDown, Headphones, Image as ImageIcon, Layers3, Loader2, Mic2,
   Radio, Settings2, StickyNote, UploadCloud,
 } from 'lucide-react';
-import { doc, runTransaction } from 'firebase/firestore';
+import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { appId, db, firebaseApp } from '../firebase';
 import { resolvePodcastShow } from '../domain/podcastShow';
 import { compressImage } from '../services/imageCompression';
@@ -30,11 +30,33 @@ const PodcastLocalShowPortal = () => {
   const [studioOpen, setStudioOpen] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState('');
   const [message, setMessage] = useState('');
+  const [persistedArtwork, setPersistedArtwork] = useState({});
 
   const show = useMemo(() => resolvePodcastShow(career || {}), [career]);
   const teamKey = useMemo(() => teamKeyFor(show.school), [show.school]);
-  const artwork = career?.podcastBranding?.teamArtwork?.[teamKey] || {};
+  const careerArtwork = career?.podcastBranding?.teamArtwork?.[teamKey] || {};
+  const artwork = { ...careerArtwork, ...persistedArtwork };
   const primaryArtwork = artwork.primary || career?.outletImages?.podcast || '';
+
+  // Podcast artwork gets its own tiny cloud record in addition to the master career.
+  // The master career is rewritten often by normal DynastyHQ saves; this dedicated
+  // record makes artwork durable even if a stale career write races an upload.
+  useEffect(() => {
+    if (!user || !db || !teamKey) {
+      setPersistedArtwork({});
+      return undefined;
+    }
+
+    const brandingRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', `podcast_branding-${teamKey}`);
+    return onSnapshot(
+      brandingRef,
+      (snapshot) => {
+        const next = snapshot.exists() ? (snapshot.data()?.artwork || {}) : {};
+        setPersistedArtwork(next);
+      },
+      () => setPersistedArtwork({}),
+    );
+  }, [teamKey, user]);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -87,8 +109,8 @@ const PodcastLocalShowPortal = () => {
       }
 
       // The original episode player owns a second artwork slot. Keep it synchronized
-      // with the new program-specific cover so the Current Week card never shows a
-      // stale or blank legacy image.
+      // with the program-specific cover so the Current Week card never shows a stale
+      // or blank legacy image.
       if (primaryArtwork) {
         const currentWeekLabel = [...podcastRoot.querySelectorAll('p')].find((node) => /^current week$/i.test(clean(node.textContent)));
         const currentWeekSection = currentWeekLabel?.closest('section');
@@ -156,31 +178,62 @@ const PodcastLocalShowPortal = () => {
         origin: 'podcast-artwork',
       });
       const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+      const brandingRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', `podcast_branding-${teamKey}`);
+      const savedAt = new Date().toISOString();
+
       await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(careerRef);
-        if (!snapshot.exists()) throw new Error('The DynastyHQ career could not be found.');
-        const data = snapshot.data();
+        const careerSnapshot = await transaction.get(careerRef);
+        const brandingSnapshot = await transaction.get(brandingRef);
+        if (!careerSnapshot.exists()) throw new Error('The DynastyHQ career could not be found.');
+
+        const data = careerSnapshot.data();
         const branding = data.podcastBranding || {};
         const teamArtwork = branding.teamArtwork || {};
         const existing = teamArtwork[teamKey] || {};
+        const backupArtwork = brandingSnapshot.exists() ? (brandingSnapshot.data()?.artwork || {}) : {};
+        const nextArtwork = {
+          ...backupArtwork,
+          ...existing,
+          school: show.school,
+          showName: show.name,
+          [slot]: uploaded.downloadUrl,
+          updatedAt: savedAt,
+        };
         const nextBranding = {
           ...branding,
-          version: Math.max(4, Number(branding.version) || 0),
+          version: Math.max(5, Number(branding.version) || 0),
           teamArtwork: {
             ...teamArtwork,
-            [teamKey]: {
-              ...existing,
-              school: show.school,
-              showName: show.name,
-              [slot]: uploaded.downloadUrl,
-              updatedAt: new Date().toISOString(),
-            },
+            [teamKey]: nextArtwork,
           },
         };
-        const patch = { podcastBranding: nextBranding };
+        const remoteRevision = Number(data?._sync?.revision) || 0;
+        const patch = {
+          podcastBranding: nextBranding,
+          '_sync.revision': remoteRevision + 1,
+          '_sync.deviceId': data?._sync?.deviceId || 'podcast-artwork-manager',
+          '_sync.updatedAt': savedAt,
+        };
         if (slot === 'primary') patch.outletImages = { ...(data.outletImages || {}), podcast: uploaded.downloadUrl };
+
         transaction.update(careerRef, patch);
+        transaction.set(brandingRef, {
+          version: 1,
+          teamKey,
+          school: show.school,
+          showName: show.name,
+          artwork: nextArtwork,
+          updatedAt: savedAt,
+        });
       });
+
+      setPersistedArtwork((current) => ({
+        ...current,
+        school: show.school,
+        showName: show.name,
+        [slot]: uploaded.downloadUrl,
+        updatedAt: savedAt,
+      }));
       setMessage(`${ARTWORK_SLOTS.find((entry) => entry.key === slot)?.label || 'Artwork'} saved for ${show.school}.`);
     } catch (error) {
       setMessage(error?.message || 'That podcast artwork could not be saved.');

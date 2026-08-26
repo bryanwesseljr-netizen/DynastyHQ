@@ -1,0 +1,67 @@
+.dhq-podcast-seek-track {
+  position: relative;
+  overflow: visible !important;
+  cursor: pointer;
+}
+
+.dhq-podcast-seek-range {
+  position: absolute;
+  inset: -9px 0;
+  z-index: 3;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+  touch-action: pan-x;
+}
+
+.dhq-podcast-seek-track:focus-within {
+  outline: 2px solid rgba(96, 165, 250, .65);
+  outline-offset: 4px;
+}
+
+.dhq-podcast-seek-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+.dhq-podcast-seek-jump {
+  min-width: 48px;
+  border: 1px solid rgba(71, 85, 105, .9);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .8);
+  padding: 5px 8px;
+  color: rgb(203, 213, 225);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .04em;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+}
+
+.dhq-podcast-seek-jump:hover,
+.dhq-podcast-seek-jump:focus-visible {
+  border-color: rgba(96, 165, 250, .65);
+  background: rgba(30, 41, 59, .95);
+  color: white;
+  outline: none;
+}
+
+.dhq-podcast-seek-hint {
+  color: rgb(100, 116, 139);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 520px) {
+  .dhq-podcast-seek-hint {
+    font-size: 8px;
+    letter-spacing: .04em;
+  }
+}

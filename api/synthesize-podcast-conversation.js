@@ -7,11 +7,13 @@ import {
 } from './_podcastAudioLeveling.js';
 
 const MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
+export const FALLBACK_MODEL = process.env.GEMINI_TTS_FALLBACK_MODEL || 'gemini-2.5-flash-preview-tts';
 export const DEFAULT_MARK_VOICE = 'Sadaltager';
 export const DEFAULT_SARAH_VOICE = 'Sulafat';
 const MARK_VOICE = process.env.GEMINI_TTS_MARK_VOICE || DEFAULT_MARK_VOICE;
 const SARAH_VOICE = process.env.GEMINI_TTS_SARAH_VOICE || DEFAULT_SARAH_VOICE;
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+const GEMINI_GENERATE_URL = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 const MAX_SEGMENTS = 20;
 const MIN_TOTAL_WORDS = 400;
 const MAX_TOTAL_WORDS = 1000;
@@ -62,6 +64,21 @@ export const parseGeminiRetryDelayMs = ({ response = null, body = null, message 
 
   return null;
 };
+
+export const geminiQuotaIds = (body = {}) => {
+  const ids = [];
+  for (const detail of Array.isArray(body?.error?.details) ? body.error.details : []) {
+    for (const violation of Array.isArray(detail?.violations) ? detail.violations : []) {
+      const id = String(violation?.quotaId || '').trim();
+      if (id) ids.push(id);
+    }
+  }
+  return [...new Set(ids)];
+};
+
+export const isDailyGeminiFreeTierQuota = (body = {}) => (
+  geminiQuotaIds(body).some((quotaId) => /GenerateRequestsPerDayPerProjectPerModel-FreeTier/i.test(quotaId))
+);
 
 export const shouldRetryGeminiStatus = (status) => [500, 502, 503, 504].includes(Number(status));
 
@@ -157,55 +174,114 @@ const audioFromInteraction = (interaction) => {
   return null;
 };
 
-const callGemini = async (prompt) => {
+const quotaAwareError = ({ response, body, model }) => {
+  const message = body?.error?.message || body?.error || `Gemini TTS request failed (${response.status}).`;
+  const error = new Error(message);
+  error.status = response.status;
+  error.model = model;
+  error.retryAfterMs = parseGeminiRetryDelayMs({ response, body, message });
+  error.quotaIds = geminiQuotaIds(body);
+  error.dailyQuotaExceeded = isDailyGeminiFreeTierQuota(body);
+  return error;
+};
+
+const withTransientRetries = async (request) => {
   let lastError = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY,
-          'Api-Revision': '2026-05-20',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          input: prompt,
-          response_format: { type: 'audio' },
-          generation_config: {
-            speech_config: [
-              { speaker: 'Mark', voice: MARK_VOICE },
-              { speaker: 'Sarah', voice: SARAH_VOICE },
-            ],
-          },
-        }),
-      });
-
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const message = body?.error?.message || body?.error || `Gemini TTS request failed (${response.status}).`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.retryAfterMs = parseGeminiRetryDelayMs({ response, body, message });
-        throw error;
-      }
-
-      const audio = audioFromInteraction(body);
-      if (!audio?.data) {
-        const error = new Error('Gemini returned no playable audio for this episode section.');
-        error.status = 502;
-        throw error;
-      }
-      return { audio, interaction: body };
+      return await request();
     } catch (error) {
       lastError = error;
-      const retryable = shouldRetryGeminiStatus(error?.status);
-      if (!retryable || attempt === 2) break;
+      if (!shouldRetryGeminiStatus(error?.status) || attempt === 2) break;
       await sleep(700 * (attempt + 1));
     }
   }
   throw lastError || new Error('Gemini TTS did not return audio.');
 };
+
+const callGemini31 = (prompt) => withTransientRetries(async () => {
+  const response = await fetch(GEMINI_INTERACTIONS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': process.env.GEMINI_API_KEY,
+      'Api-Revision': '2026-05-20',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      input: prompt,
+      response_format: { type: 'audio' },
+      generation_config: {
+        speech_config: [
+          { speaker: 'Mark', voice: MARK_VOICE },
+          { speaker: 'Sarah', voice: SARAH_VOICE },
+        ],
+      },
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw quotaAwareError({ response, body, model: MODEL });
+
+  const audio = audioFromInteraction(body);
+  if (!audio?.data) {
+    const error = new Error('Gemini 3.1 returned no playable audio for this episode section.');
+    error.status = 502;
+    error.model = MODEL;
+    throw error;
+  }
+  return { audio, model: MODEL };
+});
+
+const callGemini25 = (prompt) => withTransientRetries(async () => {
+  const response = await fetch(GEMINI_GENERATE_URL(FALLBACK_MODEL), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': process.env.GEMINI_API_KEY,
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          multiSpeakerVoiceConfig: {
+            speakerVoiceConfigs: [
+              {
+                speaker: 'Mark',
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: MARK_VOICE } },
+              },
+              {
+                speaker: 'Sarah',
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: SARAH_VOICE } },
+              },
+            ],
+          },
+        },
+      },
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw quotaAwareError({ response, body, model: FALLBACK_MODEL });
+
+  const part = body?.candidates?.[0]?.content?.parts?.find((entry) => entry?.inlineData?.data);
+  if (!part?.inlineData?.data) {
+    const error = new Error('Gemini 2.5 returned no playable audio for this episode section.');
+    error.status = 502;
+    error.model = FALLBACK_MODEL;
+    throw error;
+  }
+
+  return {
+    audio: {
+      data: part.inlineData.data,
+      sample_rate: DEFAULT_SAMPLE_RATE,
+      mimeType: part.inlineData.mimeType || 'audio/L16;codec=pcm;rate=24000',
+    },
+    model: FALLBACK_MODEL,
+  };
+});
 
 const trimPcmEdges = (pcmBuffer, sampleRate) => {
   const evenLength = pcmBuffer.length - (pcmBuffer.length % 2);
@@ -275,6 +351,9 @@ export default async function handler(req, res) {
     return json(res, 400, { error: 'A complete two-host podcast transcript is required for humanized audio.' });
   }
 
+  let activeModel = MODEL;
+  let usedFallback = false;
+
   try {
     const transcriptChunks = partitionSegments(segments);
     console.info('Humanized podcast render plan', {
@@ -282,6 +361,8 @@ export default async function handler(req, res) {
       transcriptWords: totalWords,
       performanceSections: transcriptChunks.length,
       performanceSectionWords: transcriptChunks.map(chunkWordCount),
+      primaryModel: MODEL,
+      fallbackModel: FALLBACK_MODEL,
     });
 
     const pcmChunks = [];
@@ -300,7 +381,29 @@ export default async function handler(req, res) {
         chunkIndex: index,
         chunkCount: transcriptChunks.length,
       });
-      const { audio } = await callGemini(prompt);
+
+      let rendered;
+      if (activeModel === FALLBACK_MODEL) {
+        rendered = await callGemini25(prompt);
+      } else {
+        try {
+          rendered = await callGemini31(prompt);
+        } catch (error) {
+          if (Number(error?.status) !== 429 || !FALLBACK_MODEL || FALLBACK_MODEL === MODEL) throw error;
+          activeModel = FALLBACK_MODEL;
+          usedFallback = true;
+          console.warn('Primary Gemini TTS quota unavailable; switching this episode to the fallback model', {
+            primaryModel: MODEL,
+            fallbackModel: FALLBACK_MODEL,
+            dailyQuotaExceeded: Boolean(error?.dailyQuotaExceeded),
+            quotaIds: error?.quotaIds || [],
+          });
+          rendered = await callGemini25(prompt);
+        }
+      }
+
+      activeModel = rendered.model || activeModel;
+      const audio = rendered.audio;
       const chunkSampleRate = Number(audio.sample_rate || audio.sampleRate) || DEFAULT_SAMPLE_RATE;
       if (index === 0) sampleRate = chunkSampleRate;
       if (chunkSampleRate !== sampleRate) throw new Error('Gemini returned inconsistent sample rates across podcast sections.');
@@ -324,12 +427,16 @@ export default async function handler(req, res) {
     const limitedEpisode = limitPcmEpisode(Buffer.concat(pcmChunks));
     const continuousPcm = limitedEpisode.pcmBuffer;
     const mp3 = encodePcmToMp3({ pcmBuffer: continuousPcm, sampleRate });
-    const engine = 'gemini-multispeaker-v3.7-binary-reference-cadence';
+    const engine = usedFallback
+      ? 'gemini-multispeaker-v3.8-fallback-reference-cadence'
+      : 'gemini-multispeaker-v3.8-reference-cadence';
 
     console.info('Humanized podcast render completed', {
       transcriptWords: totalWords,
       performanceSections: transcriptChunks.length,
       responseBytes: mp3.length,
+      model: activeModel,
+      usedFallback,
       loudnessTargetDbfs: TARGET_SPEECH_DBFS,
       loudnessAdjustments,
       episodePeakGainDb: roundedLevel(limitedEpisode.gainDb),
@@ -342,21 +449,34 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', String(mp3.length));
     res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-DynastyHQ-Model', MODEL);
+    res.setHeader('X-DynastyHQ-Model', activeModel);
     res.setHeader('X-DynastyHQ-Engine', engine);
     res.setHeader('X-DynastyHQ-Transcript-Words', String(totalWords));
     res.setHeader('X-DynastyHQ-Performance-Sections', String(transcriptChunks.length));
+    res.setHeader('X-DynastyHQ-TTS-Fallback', usedFallback ? '1' : '0');
     return res.end(mp3);
   } catch (error) {
     console.error('Gemini multispeaker podcast generation failed', error);
     const status = Number(error?.status) === 429 ? 429 : 502;
 
     if (status === 429) {
+      if (error?.dailyQuotaExceeded) {
+        return json(res, 429, {
+          error: usedFallback
+            ? 'Both available Gemini TTS free-tier daily quotas are exhausted for this project. Daily Gemini quotas reset at midnight Pacific time. Your saved transcript was not changed.'
+            : 'Gemini TTS has reached its free-tier daily request limit for this project. Daily Gemini quotas reset at midnight Pacific time. Your saved transcript was not changed.',
+          quotaType: 'daily',
+          model: error?.model || activeModel,
+        });
+      }
+
       const retrySeconds = Math.max(1, Math.ceil((Number(error?.retryAfterMs) || 60_000) / 1000));
       res.setHeader('Retry-After', String(retrySeconds));
       return json(res, 429, {
-        error: `Gemini's humanized-audio quota is full right now. Try again in about ${retrySeconds} seconds. DynastyHQ stopped immediately instead of holding the connection open.`,
+        error: `Gemini's humanized-audio rate limit is temporarily busy. Try again in about ${retrySeconds} seconds.`,
         retryAfterSeconds: retrySeconds,
+        quotaType: 'temporary',
+        model: error?.model || activeModel,
       });
     }
 

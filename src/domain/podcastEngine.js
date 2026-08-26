@@ -4,6 +4,7 @@ import {
   PODCAST_PUBLIC_HOSTS_BY_ID,
 } from './podcastShow.js';
 import { buildProgramCoverageContext } from './programCoverage.js';
+import { resolveCurrentProgramSchool } from './teamMediaProfile.js';
 
 const WORDS_PER_MINUTE = 145;
 const MIN_SCRIPT_WORDS = 400;
@@ -107,7 +108,15 @@ const factsForIssue = (state, issue, coverageStage, coverageContext = null) => {
 
 const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) => {
   const playerName = text(state.player?.name, 120) || 'the quarterback';
-  const school = text(state.player?.college || state.player?.school, 160) || 'the program';
+  // A saved issue is authoritative for historical episodes. Otherwise use the
+  // same current-program resolver that drives Newsroom, Podcast branding and accents.
+  const school = text(
+    issue?.outletProfile?.school
+      || resolveCurrentProgramSchool(state)
+      || state.player?.college
+      || state.player?.school,
+    160,
+  ) || 'the program';
   const label = text(issue.label || issue.weekLabel, 160) || `Week ${Number(issue.week ?? 1)}`;
   const weekType = text(issue.weekType, 60).toLowerCase();
   const relevance = coverageContext?.relevance;

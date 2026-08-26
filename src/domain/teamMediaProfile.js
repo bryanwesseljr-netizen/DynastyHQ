@@ -2,7 +2,7 @@ const clean = (value, maxLength = 180) => String(value ?? '').trim().slice(0, ma
 
 const normalizeKey = (value) => clean(value, 180)
   .toLowerCase()
-  .replace(/&/g, 'and')
+  .replace(/&/g, ' and ')
   .replace(/[^a-z0-9]+/g, ' ')
   .trim();
 

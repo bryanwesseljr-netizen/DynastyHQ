@@ -24,12 +24,13 @@ test('uses warmer podcast-oriented default voices', () => {
   assert.equal(DEFAULT_SARAH_VOICE, 'Sulafat');
 });
 
-test('breaks a long two-host episode into short natural performance sections', () => {
+test('uses quota-friendly natural performance sections for a long episode', () => {
   const transcript = alternatingTranscript(18, 50);
   const chunks = partitionSegments(transcript);
 
+  assert.ok(TARGET_PERFORMANCE_WORDS >= 280);
   assert.ok(TARGET_PERFORMANCE_WORDS < MAX_PERFORMANCE_WORDS);
-  assert.ok(chunks.length >= 4, `expected at least four render sections, received ${chunks.length}`);
+  assert.equal(chunks.length, 3, `expected three render sections for a 900-word episode, received ${chunks.length}`);
   assert.deepEqual(chunks.flat().map((entry) => entry.id), transcript.map((entry) => entry.id));
 
   for (const chunk of chunks) {
@@ -49,7 +50,7 @@ test('performance prompt explicitly asks for human inflection, speaker switching
       { speaker: 'Sarah', text: 'Absolutely. The numbers finally started matching the momentum.' },
     ],
     chunkIndex: 1,
-    chunkCount: 4,
+    chunkCount: 3,
   });
 
   assert.match(prompt, /must never sound monotone or robotic/i);

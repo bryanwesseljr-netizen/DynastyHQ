@@ -30,6 +30,8 @@ const SPECIAL_PROFILES = Object.freeze({
     secondary: '#050505',
     accent: '#ffffff',
     localOutletName: 'Bearcats Insider',
+    regionalOutletName: 'Cincinnati Enquirer',
+    nationalOutletName: 'National College Football Desk',
     teamNewsLabel: 'Cincinnati Football',
     teamNewsTagline: 'News, analysis and every week of the Bearcats season.',
     localMotto: 'Cincinnati Tough.',
@@ -77,8 +79,8 @@ export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, sta
   const shortName = shortSchoolName(resolvedSchool);
   const hue = hashHue(resolvedSchool);
   const localOutletName = clean(override.localOutletName || outletProfile?.localOutletName || special.localOutletName) || `${shortName} Football`;
-  const regionalOutletName = clean(override.regionalOutletName || outletProfile?.regionalOutletName) || `${shortName} Regional Sports`;
-  const nationalOutletName = clean(override.nationalOutletName || outletProfile?.nationalOutletName) || 'College Football Central';
+  const regionalOutletName = clean(override.regionalOutletName || outletProfile?.regionalOutletName || special.regionalOutletName) || `${shortName} Regional Sports`;
+  const nationalOutletName = clean(override.nationalOutletName || outletProfile?.nationalOutletName || special.nationalOutletName) || 'College Football Central';
   const nickname = clean(override.nickname || special.nickname) || shortName;
   const city = clean(override.city || special.city) || shortName;
   const primary = clean(override.primary || special.primary) || `hsl(${hue} 68% 38%)`;

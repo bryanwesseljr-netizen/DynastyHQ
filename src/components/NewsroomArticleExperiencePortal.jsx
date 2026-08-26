@@ -61,9 +61,15 @@ const NewsroomArticleExperiencePortal = () => {
         || (career?.newsroomIssues || []).find((issue) => issue.publicationId === issueSelect?.value);
       if (selectedIssue) {
         const profile = resolveIssueTeamMediaProfile(selectedIssue, career);
-        article.style.setProperty('--article-team-primary', profile.primary || '#e00122');
-        article.style.setProperty('--article-team-secondary', profile.secondary || '#050505');
-        article.style.setProperty('--article-team-accent', profile.accent || '#ffffff');
+        const primary = profile.primary || '#e00122';
+        const secondary = profile.secondary || '#050505';
+        const accent = profile.accent || '#ffffff';
+        newsroomRoot.style.setProperty('--article-team-primary', primary);
+        newsroomRoot.style.setProperty('--article-team-secondary', secondary);
+        newsroomRoot.style.setProperty('--article-team-accent', accent);
+        article.style.setProperty('--article-team-primary', primary);
+        article.style.setProperty('--article-team-secondary', secondary);
+        article.style.setProperty('--article-team-accent', accent);
       }
 
       // Keep every owner-only article production surface backstage by default.
@@ -94,7 +100,7 @@ const NewsroomArticleExperiencePortal = () => {
     };
 
     const handleDocumentClick = (event) => {
-      const button = event.target.closest('header button');
+      const button = event.target instanceof Element ? event.target.closest('header button') : null;
       if (!button || clean(button.textContent) !== 'The Newsroom') return;
 
       // Clicking the already-active Newsroom tab should always mean "Newsroom home".

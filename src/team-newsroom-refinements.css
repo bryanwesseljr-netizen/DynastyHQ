@@ -1,0 +1,20 @@
+/* Small visual refinements for the current-team Newsroom home. */
+
+/* The team-name masthead was overpowering the rest of the page. Reduce the
+   "Bearcats / Football" lockup by roughly 25% while preserving hierarchy. */
+.dhq-team-newsroom__masthead h1 {
+  font-size: clamp(2.8rem, 7.5vw, 6rem) !important;
+}
+
+.dhq-team-newsroom__masthead h2 {
+  font-size: clamp(1.125rem, 3vw, 2.25rem) !important;
+}
+
+@media (max-width: 620px) {
+  .dhq-team-newsroom__masthead h1 {
+    font-size: clamp(2.35rem, 15vw, 4.5rem) !important;
+  }
+  .dhq-team-newsroom__masthead h2 {
+    font-size: clamp(1rem, 6vw, 1.7rem) !important;
+  }
+}

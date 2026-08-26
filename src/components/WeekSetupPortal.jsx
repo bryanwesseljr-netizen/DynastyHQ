@@ -350,18 +350,30 @@ const WeekSetupPortal = () => {
   useEffect(() => {
     let ownedNode = null;
     const ensureHost = () => {
-      const workspace = document.querySelector('.dhq-weekly-agenda-workspace');
-      if (!workspace) {
+      const shell = document.querySelector('[data-weekly-agenda-v3-shell]');
+      const controlGrid = shell?.querySelector('.dhq-agenda-v3-control-grid');
+      const setupControl = [...(controlGrid?.querySelectorAll('.dhq-agenda-v3-control-card') || [])]
+        .find((card) => /week setup/i.test((card.textContent || '').trim()));
+
+      if (!controlGrid || !setupControl) {
         setHost(null);
         return;
       }
+
       let node = document.getElementById('dhq-week-setup-portal');
       if (!node) {
         node = document.createElement('div');
         node.id = 'dhq-week-setup-portal';
         ownedNode = node;
       }
-      if (node.parentElement !== workspace) workspace.prepend(node);
+
+      node.style.gridColumn = '1 / -1';
+      node.style.gridRow = '2';
+      node.style.minWidth = '0';
+
+      if (node.parentElement !== controlGrid || setupControl.nextElementSibling !== node) {
+        setupControl.insertAdjacentElement('afterend', node);
+      }
       setHost(node);
     };
 

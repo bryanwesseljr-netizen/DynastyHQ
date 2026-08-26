@@ -6,6 +6,10 @@ import {
 
 const DB_NAME = 'DynastyHQPodcastDB';
 const STORE_NAME = 'episodeAudio';
+const CLOUD_RETRY_ATTEMPTS = 4;
+const CLOUD_RETRY_BASE_MS = 350;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const openAudioDb = () => new Promise((resolve, reject) => {
   const request = indexedDB.open(DB_NAME, 1);
@@ -51,25 +55,53 @@ const publicCollection = (db, appId, ownerId, episodeId) => collection(
   db, 'artifacts', appId, 'public', 'data', `shared_podcast_${ownerId}_${safeEpisodeId(episodeId)}`,
 );
 
+const isNonRetryableFirestoreError = (error) => {
+  const code = String(error?.code || '').toLowerCase();
+  return /permission-denied|unauthenticated|invalid-argument|not-found|failed-precondition/.test(code);
+};
+
+export const retryPodcastCloudOperation = async (operation, attempts = CLOUD_RETRY_ATTEMPTS) => {
+  let lastError = null;
+  const limit = Math.max(1, Number(attempts) || CLOUD_RETRY_ATTEMPTS);
+  for (let attempt = 1; attempt <= limit; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (isNonRetryableFirestoreError(error) || attempt === limit) break;
+      await sleep(CLOUD_RETRY_BASE_MS * attempt);
+    }
+  }
+  throw lastError || new Error('Podcast cloud storage did not respond.');
+};
+
 const replaceCollection = async (collectionRef, segments) => {
-  const existing = await getDocs(collectionRef);
-  await Promise.all(existing.docs.map((entry) => deleteDoc(entry.ref)));
+  const existing = await retryPodcastCloudOperation(() => getDocs(collectionRef));
+
+  // Keep these requests intentionally sequential. Large parallel Firestore writes
+  // are fragile on mobile networks and can surface as a generic browser fetch error.
+  for (const entry of existing.docs) {
+    await retryPodcastCloudOperation(() => deleteDoc(entry.ref));
+  }
 
   const storedSegments = chunkPodcastAudioForStorage(segments);
-  await Promise.all(storedSegments.map((segment) => setDoc(doc(collectionRef, `segment_${segment.index}`), {
-    index: segment.index,
-    segmentIndex: segment.segmentIndex,
-    chunkIndex: segment.chunkIndex,
-    chunkCount: segment.chunkCount,
-    data: segment.data,
-    mimeType: segment.mimeType || 'audio/mpeg',
-    hostId: segment.hostId || '',
-    continuous: Boolean(segment.continuous),
-  })));
+  for (const segment of storedSegments) {
+    const segmentRef = doc(collectionRef, `segment_${segment.index}`);
+    await retryPodcastCloudOperation(() => setDoc(segmentRef, {
+      index: segment.index,
+      segmentIndex: segment.segmentIndex,
+      chunkIndex: segment.chunkIndex,
+      chunkCount: segment.chunkCount,
+      data: segment.data,
+      mimeType: segment.mimeType || 'audio/mpeg',
+      hostId: segment.hostId || '',
+      continuous: Boolean(segment.continuous),
+    }));
+  }
 };
 
 const loadCollection = async (collectionRef) => {
-  const snapshot = await getDocs(collectionRef);
+  const snapshot = await retryPodcastCloudOperation(() => getDocs(collectionRef));
   if (snapshot.empty) return null;
   return reassemblePodcastAudioFromStorage(snapshot.docs.map((entry) => entry.data()));
 };

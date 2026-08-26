@@ -7,22 +7,26 @@ import {
 } from './_podcastAudioLeveling.js';
 
 const MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
+export const FALLBACK_MODEL = process.env.GEMINI_TTS_FALLBACK_MODEL || 'gemini-2.5-flash-preview-tts';
 export const DEFAULT_MARK_VOICE = 'Sadaltager';
 export const DEFAULT_SARAH_VOICE = 'Sulafat';
 const MARK_VOICE = process.env.GEMINI_TTS_MARK_VOICE || DEFAULT_MARK_VOICE;
 const SARAH_VOICE = process.env.GEMINI_TTS_SARAH_VOICE || DEFAULT_SARAH_VOICE;
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+const GEMINI_GENERATE_URL = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 const MAX_SEGMENTS = 20;
 const MIN_TOTAL_WORDS = 400;
 const MAX_TOTAL_WORDS = 1000;
-export const TARGET_PERFORMANCE_WORDS = 170;
-export const MAX_PERFORMANCE_WORDS = 220;
+export const TARGET_PERFORMANCE_WORDS = 420;
+export const MAX_PERFORMANCE_WORDS = 560;
+export const SINGLE_RENDER_MAX_WORDS = 560;
+export const TWO_RENDER_MAX_WORDS = 820;
 export const MIN_GEMINI_CALL_SPACING_MS = 6500;
-const MAX_GEMINI_RETRY_WAIT_MS = 30_000;
+export const MAX_GEMINI_RETRY_WAIT_MS = 75_000;
 const MIN_CHUNK_TURNS = 2;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
-const EDGE_PAD_MS = 70;
+const EDGE_PAD_MS = 180;
 
 export const config = { maxDuration: 180 };
 
@@ -51,8 +55,8 @@ export const parseGeminiRetryDelayMs = ({ response = null, body = null, message 
     if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(retryMs));
   }
 
-  const text = String(message || body?.error?.message || '');
-  const messageMatch = text.match(/retry\s+in\s+([\d.]+)s/i);
+  const retryText = String(message || body?.error?.message || '');
+  const messageMatch = retryText.match(/retry\s+in\s+([\d.]+)s/i);
   if (messageMatch) {
     const retryMs = Number(messageMatch[1]) * 1000;
     if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(retryMs));
@@ -60,6 +64,23 @@ export const parseGeminiRetryDelayMs = ({ response = null, body = null, message 
 
   return null;
 };
+
+export const geminiQuotaIds = (body = {}) => {
+  const ids = [];
+  for (const detail of Array.isArray(body?.error?.details) ? body.error.details : []) {
+    for (const violation of Array.isArray(detail?.violations) ? detail.violations : []) {
+      const id = String(violation?.quotaId || '').trim();
+      if (id) ids.push(id);
+    }
+  }
+  return [...new Set(ids)];
+};
+
+export const isDailyGeminiFreeTierQuota = (body = {}) => (
+  geminiQuotaIds(body).some((quotaId) => /GenerateRequestsPerDayPerProjectPerModel-FreeTier/i.test(quotaId))
+);
+
+export const shouldRetryGeminiStatus = (status) => [500, 502, 503, 504].includes(Number(status));
 
 const normalizeSegments = (rawSegments) => {
   if (!Array.isArray(rawSegments)) return [];
@@ -83,48 +104,48 @@ export const partitionSegments = (segments) => {
   const source = Array.isArray(segments) ? segments.filter(Boolean) : [];
   if (!source.length) return [];
 
+  const totalWords = chunkWordCount(source);
+  const desiredChunkCount = totalWords <= SINGLE_RENDER_MAX_WORDS
+    ? 1
+    : totalWords <= TWO_RENDER_MAX_WORDS
+      ? 2
+      : 3;
+
+  if (desiredChunkCount === 1) return [source];
+
   const chunks = [];
   let current = [];
   let currentWords = 0;
+  let assignedWords = 0;
 
   for (let index = 0; index < source.length; index += 1) {
     const segment = source[index];
-    const segmentWords = countWords(segment?.text);
-
-    if (
-      current.length >= MIN_CHUNK_TURNS
-      && hasBothSpeakers(current)
-      && currentWords + segmentWords > MAX_PERFORMANCE_WORDS
-    ) {
-      chunks.push(current);
-      current = [];
-      currentWords = 0;
-    }
-
     current.push(segment);
-    currentWords += segmentWords;
+    currentWords += countWords(segment?.text);
 
-    const next = source[index + 1];
-    const nextWords = next ? countWords(next?.text) : 0;
-    const reachedTarget = currentWords >= TARGET_PERFORMANCE_WORDS;
-    const nextWouldRunLong = Boolean(next) && currentWords + nextWords > MAX_PERFORMANCE_WORDS;
+    const chunksStillNeeded = desiredChunkCount - chunks.length;
+    const futureChunks = chunksStillNeeded - 1;
+    if (futureChunks <= 0 || index >= source.length - 1) continue;
+
+    const turnsRemaining = source.length - index - 1;
+    const enoughTurnsRemain = turnsRemaining >= futureChunks * MIN_CHUNK_TURNS;
+    const wordsRemainingIncludingCurrent = totalWords - assignedWords;
+    const balancedTarget = wordsRemainingIncludingCurrent / chunksStillNeeded;
     const canBreakNaturally = current.length >= MIN_CHUNK_TURNS && hasBothSpeakers(current);
 
-    if (index < source.length - 1 && canBreakNaturally && (reachedTarget || nextWouldRunLong)) {
+    if (enoughTurnsRemain && canBreakNaturally && currentWords >= balancedTarget) {
       chunks.push(current);
+      assignedWords += currentWords;
       current = [];
       currentWords = 0;
     }
   }
 
-  if (current.length) {
-    const previous = chunks[chunks.length - 1];
-    const mergedWords = previous ? chunkWordCount(previous) + chunkWordCount(current) : Infinity;
-    if (current.length === 1 && previous && mergedWords <= MAX_PERFORMANCE_WORDS + 40) {
-      chunks[chunks.length - 1] = [...previous, ...current];
-    } else {
-      chunks.push(current);
-    }
+  if (current.length) chunks.push(current);
+
+  while (chunks.length > desiredChunkCount) {
+    const tail = chunks.pop();
+    chunks[chunks.length - 1] = [...(chunks[chunks.length - 1] || []), ...tail];
   }
 
   return chunks;
@@ -137,10 +158,10 @@ const contextFromSegments = (segments) => segments.slice(-2)
 export const buildPerformancePrompt = ({ title, segments, priorContext = '', chunkIndex = 0, chunkCount = 1 }) => {
   const transcript = segments.map((segment) => `${segment.speaker}: ${segment.text}`).join('\n');
   const continuation = priorContext
-    ? `\n\nPRIOR CONTEXT — FOR CONTINUITY ONLY, DO NOT SPEAK:\n${priorContext}`
+    ? `\n\nPRIOR CONTEXT — continuity reference only; do not speak it:\n${priorContext}`
     : '';
 
-  return `Perform only the Mark and Sarah transcript below as a polished, natural college-football podcast conversation. Preserve every spoken word exactly. Do not read speaker labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · performance section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE AND PERFORMANCE:\n- Speaker labels are authoritative. Every Mark line must use Mark's assigned voice and every Sarah line must use Sarah's assigned voice. Switch speakers immediately at every label. Never merge the two voices or let one speaker take over the other speaker's lines.\n- Mark is the experienced lead host: warm, confident, curious and conversational. He should sound like a real sports-radio host talking with a colleague, with natural low-key enthusiasm, thoughtful reactions and varied cadence. He is not a stadium announcer and must never sound monotone or robotic.\n- Sarah is the sharp co-host and analyst: warm, articulate, engaged and comfortable challenging or building on a point. Give her natural energy, intelligent emphasis and conversational rhythm without making her overly bubbly or theatrical.\n- Let the meaning of the words drive realistic inflection. Scores, surprises, momentum swings, strong statistics, disagreement and questions should receive subtle human emphasis. Ordinary setup lines should stay relaxed.\n- Use natural phrase breaks, punctuation-driven pauses and small changes in pace so consecutive sentences do not all have the same melody. Sound like two people reacting to each other in a studio, not two narrators reading copy.\n- Keep both voices clear and full-range from the first word through the last. Maintain stable loudness, microphone distance and timbre. Do not gradually fade, whisper, muffle, lose energy, become metallic, or drift into a synthetic cadence as the section continues.\n- Match the perceived studio loudness of every performance section. Do not make a later section noticeably louder or quieter than an earlier section.\n- Start and finish this section at normal studio volume. Do not create a fade-in or fade-out.\n- Do not add new words, filler phrases, laughter, side comments or dialogue that is not in the transcript. Natural breathing and punctuation pauses are fine.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
+  return `Read only the Mark and Sarah transcript below as one relaxed, continuous college-football studio conversation. Preserve every spoken word exactly. Do not read speaker labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE ANCHORS:\n- Speaker labels are absolute. Mark always uses Mark's assigned voice. Sarah always uses Sarah's assigned voice. Switch immediately at each label and never let one voice take the other speaker's line.\n- Lock each host's identity from the first sentence: keep the same apparent age, pitch range, accent, timbre and vocal weight for that host for the entire section. Do not morph, drift, become gravelly, metallic, nasal, unusually deep or unusually high as the conversation continues.\n- Keep both hosts at a consistent conversational microphone distance and perceived loudness. Neither host should suddenly become louder, softer, breathier or more compressed than before.\n\nCONVERSATION FEEL:\n- Sound like two colleagues sitting across from each other talking through a football game, not announcers performing a script. Keep the energy easy and believable.\n- Let the actual wording and punctuation create the inflection. A surprising result, a question or a strong football point can naturally lift the delivery; ordinary analysis should stay relaxed. Do not force emotion onto every sentence.\n- Use natural phrase breaks and tight handoffs. Avoid long dramatic pauses between speakers.\n- Small human texture is good when it happens naturally: a quiet breath, a tiny hesitation or a brief thinking pause. Do not force these quirks, repeat them on a pattern, or add new spoken words that are not in the transcript.\n- A sentence fragment or self-correction already written into the transcript should sound spontaneous rather than over-enunciated.\n- Do not add laughter, ad-libs, new filler words or commentary.\n- Start and finish at normal studio volume. Do not fade in or fade out.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
 };
 
 const audioFromInteraction = (interaction) => {
@@ -153,59 +174,114 @@ const audioFromInteraction = (interaction) => {
   return null;
 };
 
-const callGemini = async (prompt) => {
+const quotaAwareError = ({ response, body, model }) => {
+  const message = body?.error?.message || body?.error || `Gemini TTS request failed (${response.status}).`;
+  const error = new Error(message);
+  error.status = response.status;
+  error.model = model;
+  error.retryAfterMs = parseGeminiRetryDelayMs({ response, body, message });
+  error.quotaIds = geminiQuotaIds(body);
+  error.dailyQuotaExceeded = isDailyGeminiFreeTierQuota(body);
+  return error;
+};
+
+const withTransientRetries = async (request) => {
   let lastError = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY,
-          'Api-Revision': '2026-05-20',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          input: prompt,
-          response_format: { type: 'audio' },
-          generation_config: {
-            speech_config: [
-              { speaker: 'Mark', voice: MARK_VOICE },
-              { speaker: 'Sarah', voice: SARAH_VOICE },
-            ],
-          },
-        }),
-      });
-
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const message = body?.error?.message || body?.error || `Gemini TTS request failed (${response.status}).`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.retryAfterMs = parseGeminiRetryDelayMs({ response, body, message });
-        throw error;
-      }
-
-      const audio = audioFromInteraction(body);
-      if (!audio?.data) {
-        const error = new Error('Gemini returned no playable audio for this episode section.');
-        error.status = 502;
-        throw error;
-      }
-      return { audio, interaction: body };
+      return await request();
     } catch (error) {
       lastError = error;
-      const retryable = [429, 500, 502, 503, 504].includes(Number(error?.status));
-      if (!retryable || attempt === 2) break;
-
-      const waitMs = Number(error?.status) === 429
-        ? Math.max(MIN_GEMINI_CALL_SPACING_MS, Number(error?.retryAfterMs) || 0) + 500
-        : 700 * (attempt + 1);
-      await sleep(Math.min(MAX_GEMINI_RETRY_WAIT_MS, waitMs));
+      if (!shouldRetryGeminiStatus(error?.status) || attempt === 2) break;
+      await sleep(700 * (attempt + 1));
     }
   }
   throw lastError || new Error('Gemini TTS did not return audio.');
 };
+
+const callGemini31 = (prompt) => withTransientRetries(async () => {
+  const response = await fetch(GEMINI_INTERACTIONS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': process.env.GEMINI_API_KEY,
+      'Api-Revision': '2026-05-20',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      input: prompt,
+      response_format: { type: 'audio' },
+      generation_config: {
+        speech_config: [
+          { speaker: 'Mark', voice: MARK_VOICE },
+          { speaker: 'Sarah', voice: SARAH_VOICE },
+        ],
+      },
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw quotaAwareError({ response, body, model: MODEL });
+
+  const audio = audioFromInteraction(body);
+  if (!audio?.data) {
+    const error = new Error('Gemini 3.1 returned no playable audio for this episode section.');
+    error.status = 502;
+    error.model = MODEL;
+    throw error;
+  }
+  return { audio, model: MODEL };
+});
+
+const callGemini25 = (prompt) => withTransientRetries(async () => {
+  const response = await fetch(GEMINI_GENERATE_URL(FALLBACK_MODEL), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': process.env.GEMINI_API_KEY,
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          multiSpeakerVoiceConfig: {
+            speakerVoiceConfigs: [
+              {
+                speaker: 'Mark',
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: MARK_VOICE } },
+              },
+              {
+                speaker: 'Sarah',
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: SARAH_VOICE } },
+              },
+            ],
+          },
+        },
+      },
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw quotaAwareError({ response, body, model: FALLBACK_MODEL });
+
+  const part = body?.candidates?.[0]?.content?.parts?.find((entry) => entry?.inlineData?.data);
+  if (!part?.inlineData?.data) {
+    const error = new Error('Gemini 2.5 returned no playable audio for this episode section.');
+    error.status = 502;
+    error.model = FALLBACK_MODEL;
+    throw error;
+  }
+
+  return {
+    audio: {
+      data: part.inlineData.data,
+      sample_rate: DEFAULT_SAMPLE_RATE,
+      mimeType: part.inlineData.mimeType || 'audio/L16;codec=pcm;rate=24000',
+    },
+    model: FALLBACK_MODEL,
+  };
+});
 
 const trimPcmEdges = (pcmBuffer, sampleRate) => {
   const evenLength = pcmBuffer.length - (pcmBuffer.length % 2);
@@ -275,8 +351,20 @@ export default async function handler(req, res) {
     return json(res, 400, { error: 'A complete two-host podcast transcript is required for humanized audio.' });
   }
 
+  let activeModel = MODEL;
+  let usedFallback = false;
+
   try {
     const transcriptChunks = partitionSegments(segments);
+    console.info('Humanized podcast render plan', {
+      transcriptTurns: segments.length,
+      transcriptWords: totalWords,
+      performanceSections: transcriptChunks.length,
+      performanceSectionWords: transcriptChunks.map(chunkWordCount),
+      primaryModel: MODEL,
+      fallbackModel: FALLBACK_MODEL,
+    });
+
     const pcmChunks = [];
     const loudnessAdjustments = [];
     let sampleRate = DEFAULT_SAMPLE_RATE;
@@ -293,7 +381,29 @@ export default async function handler(req, res) {
         chunkIndex: index,
         chunkCount: transcriptChunks.length,
       });
-      const { audio } = await callGemini(prompt);
+
+      let rendered;
+      if (activeModel === FALLBACK_MODEL) {
+        rendered = await callGemini25(prompt);
+      } else {
+        try {
+          rendered = await callGemini31(prompt);
+        } catch (error) {
+          if (Number(error?.status) !== 429 || !FALLBACK_MODEL || FALLBACK_MODEL === MODEL) throw error;
+          activeModel = FALLBACK_MODEL;
+          usedFallback = true;
+          console.warn('Primary Gemini TTS quota unavailable; switching this episode to the fallback model', {
+            primaryModel: MODEL,
+            fallbackModel: FALLBACK_MODEL,
+            dailyQuotaExceeded: Boolean(error?.dailyQuotaExceeded),
+            quotaIds: error?.quotaIds || [],
+          });
+          rendered = await callGemini25(prompt);
+        }
+      }
+
+      activeModel = rendered.model || activeModel;
+      const audio = rendered.audio;
       const chunkSampleRate = Number(audio.sample_rate || audio.sampleRate) || DEFAULT_SAMPLE_RATE;
       if (index === 0) sampleRate = chunkSampleRate;
       if (chunkSampleRate !== sampleRate) throw new Error('Gemini returned inconsistent sample rates across podcast sections.');
@@ -317,38 +427,61 @@ export default async function handler(req, res) {
     const limitedEpisode = limitPcmEpisode(Buffer.concat(pcmChunks));
     const continuousPcm = limitedEpisode.pcmBuffer;
     const mp3 = encodePcmToMp3({ pcmBuffer: continuousPcm, sampleRate });
-    const audioBase64 = mp3.toString('base64');
+    const engine = usedFallback
+      ? 'gemini-multispeaker-v3.8-fallback-reference-cadence'
+      : 'gemini-multispeaker-v3.8-reference-cadence';
 
-    if (Buffer.byteLength(audioBase64, 'utf8') > 4_000_000) {
-      throw new Error('The compressed podcast exceeded the safe response size.');
-    }
-
-    return json(res, 200, {
-      audioBase64,
-      mimeType: 'audio/mpeg',
-      model: MODEL,
-      engine: 'gemini-multispeaker-v3.5-leveled-paced',
-      voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
-      transcriptTurns: segments.length,
+    console.info('Humanized podcast render completed', {
       transcriptWords: totalWords,
       performanceSections: transcriptChunks.length,
-      performanceSectionWords: transcriptChunks.map(chunkWordCount),
+      responseBytes: mp3.length,
+      model: activeModel,
+      usedFallback,
       loudnessTargetDbfs: TARGET_SPEECH_DBFS,
       loudnessAdjustments,
       episodePeakGainDb: roundedLevel(limitedEpisode.gainDb),
       sampleRate,
       mp3Kbps: MP3_KBPS,
+      voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
     });
+
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', String(mp3.length));
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-DynastyHQ-Model', activeModel);
+    res.setHeader('X-DynastyHQ-Engine', engine);
+    res.setHeader('X-DynastyHQ-Transcript-Words', String(totalWords));
+    res.setHeader('X-DynastyHQ-Performance-Sections', String(transcriptChunks.length));
+    res.setHeader('X-DynastyHQ-TTS-Fallback', usedFallback ? '1' : '0');
+    return res.end(mp3);
   } catch (error) {
     console.error('Gemini multispeaker podcast generation failed', error);
     const status = Number(error?.status) === 429 ? 429 : 502;
-    const message = String(error?.message || '');
+
+    if (status === 429) {
+      if (error?.dailyQuotaExceeded) {
+        return json(res, 429, {
+          error: usedFallback
+            ? 'Both available Gemini TTS free-tier daily quotas are exhausted for this project. Daily Gemini quotas reset at midnight Pacific time. Your saved transcript was not changed.'
+            : 'Gemini TTS has reached its free-tier daily request limit for this project. Daily Gemini quotas reset at midnight Pacific time. Your saved transcript was not changed.',
+          quotaType: 'daily',
+          model: error?.model || activeModel,
+        });
+      }
+
+      const retrySeconds = Math.max(1, Math.ceil((Number(error?.retryAfterMs) || 60_000) / 1000));
+      res.setHeader('Retry-After', String(retrySeconds));
+      return json(res, 429, {
+        error: `Gemini's humanized-audio rate limit is temporarily busy. Try again in about ${retrySeconds} seconds.`,
+        retryAfterSeconds: retrySeconds,
+        quotaType: 'temporary',
+        model: error?.model || activeModel,
+      });
+    }
+
     return json(res, status, {
-      error: status === 429
-        ? 'Humanized podcast audio hit the current Gemini quota window. DynastyHQ waited and retried, but the quota is still busy. Wait about a minute and try again.'
-        : /response size/i.test(message)
-          ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
-          : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
+      error: 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
     });
   }
 }

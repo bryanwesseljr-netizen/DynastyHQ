@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  MAX_SECTION_BOOST_DB,
+  MAX_SECTION_CUT_DB,
   PEAK_CEILING_DBFS,
   TARGET_SPEECH_DBFS,
   levelPcmSection,
@@ -24,9 +26,16 @@ const peakDbfs = (buffer) => {
   return peak ? 20 * Math.log10(peak / 32768) : -Infinity;
 };
 
-test('levels quieter and louder render sections toward one speech target', () => {
-  const quiet = pcmTone({ amplitude: 3000 });
-  const loud = pcmTone({ amplitude: 7500 });
+test('uses a relaxed reference-style speech target with conservative section gain', () => {
+  assert.ok(TARGET_SPEECH_DBFS <= -25 && TARGET_SPEECH_DBFS >= -27.5);
+  assert.ok(PEAK_CEILING_DBFS <= -2.5);
+  assert.ok(MAX_SECTION_BOOST_DB <= 3);
+  assert.ok(Math.abs(MAX_SECTION_CUT_DB) <= 4);
+});
+
+test('levels nearby quiet and loud render sections toward one speech target', () => {
+  const quiet = pcmTone({ amplitude: 2000 });
+  const loud = pcmTone({ amplitude: 3800 });
 
   const quietResult = levelPcmSection(quiet);
   const loudResult = levelPcmSection(loud);

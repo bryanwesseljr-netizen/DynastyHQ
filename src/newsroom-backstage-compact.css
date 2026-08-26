@@ -1,0 +1,58 @@
+/* Keep the Newsroom's owner-only backstage panels close to the utility bar.
+   The native Newsroom DOM uses generous vertical spacing for its old workspace;
+   when these panels are selectively revealed that spacing creates large dead zones. */
+
+.dhq-newsroom-tools-open .dhq-newsroom-owner-controls,
+.dhq-newsroom-library-open .dhq-newsroom-owner-library {
+  min-height: 0 !important;
+  margin-top: 12px !important;
+  margin-bottom: 0 !important;
+}
+
+.dhq-newsroom-tools-open .dhq-newsroom-owner-controls {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.dhq-newsroom-library-open .dhq-newsroom-owner-library {
+  padding-top: 0 !important;
+}
+
+/* When both panels are open, visually stack them as one compact backstage area. */
+.dhq-newsroom-tools-open.dhq-newsroom-library-open .dhq-newsroom-owner-controls {
+  margin-bottom: 10px !important;
+}
+
+.dhq-newsroom-tools-open.dhq-newsroom-library-open .dhq-newsroom-owner-library {
+  margin-top: 10px !important;
+}
+
+/* Neutralize Tailwind space-y margins inherited from the legacy Newsroom root
+   for the selectively revealed owner surfaces. */
+.dhq-newsroom-tools-open > .dhq-newsroom-owner-controls,
+.dhq-newsroom-library-open > .dhq-newsroom-owner-library,
+.dhq-newsroom-tools-open > * > .dhq-newsroom-owner-controls,
+.dhq-newsroom-library-open > * > .dhq-newsroom-owner-library {
+  --tw-space-y-reverse: 0 !important;
+}
+
+.dhq-newsroom-owner-controls + .dhq-newsroom-owner-library,
+.dhq-newsroom-owner-library + .dhq-newsroom-owner-controls {
+  margin-top: 10px !important;
+}
+
+/* The old workspace can leave oversized spacer/min-height wrappers around the
+   revealed panels. Collapse empty siblings between the two backstage surfaces. */
+.dhq-newsroom-tools-open.dhq-newsroom-library-open .dhq-newsroom-owner-controls ~ :empty {
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .dhq-newsroom-tools-open .dhq-newsroom-owner-controls,
+  .dhq-newsroom-library-open .dhq-newsroom-owner-library {
+    margin-top: 8px !important;
+  }
+}

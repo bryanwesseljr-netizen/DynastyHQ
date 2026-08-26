@@ -1,0 +1,184 @@
+.dhq-podcast-master {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, .16);
+}
+
+.dhq-podcast-master__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.dhq-podcast-master__icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--pod-team-primary, #e00122) 34%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pod-team-primary, #e00122) 10%, rgba(15, 23, 42, .9));
+  color: color-mix(in srgb, var(--pod-team-primary, #e00122) 65%, white);
+}
+
+.dhq-podcast-master__copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dhq-podcast-master__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dhq-podcast-master__title-row strong {
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .01em;
+}
+
+.dhq-podcast-master__title-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid rgba(52, 211, 153, .22);
+  border-radius: 999px;
+  background: rgba(16, 185, 129, .08);
+  color: #a7f3d0;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dhq-podcast-master__copy p {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.dhq-podcast-master select {
+  width: 100%;
+  margin-top: 11px;
+  padding: 8px 10px;
+  border: 1px solid rgba(100, 116, 139, .28);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, .66);
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 650;
+  outline: none;
+}
+
+.dhq-podcast-master select:focus {
+  border-color: color-mix(in srgb, var(--pod-team-primary, #e00122) 52%, #64748b);
+}
+
+.dhq-podcast-master__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.dhq-podcast-master__actions button,
+.dhq-podcast-master__actions label {
+  display: inline-flex;
+  min-height: 33px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.dhq-podcast-master__source {
+  border: 1px solid rgba(100, 116, 139, .32);
+  background: rgba(15, 23, 42, .62);
+  color: #94a3b8;
+}
+
+.dhq-podcast-master__source:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, .5);
+  background: rgba(30, 41, 59, .78);
+  color: #e2e8f0;
+}
+
+.dhq-podcast-master__upload {
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--pod-team-primary, #e00122) 42%, rgba(100, 116, 139, .35));
+  background: color-mix(in srgb, var(--pod-team-primary, #e00122) 11%, rgba(15, 23, 42, .78));
+  color: #f8fafc;
+}
+
+.dhq-podcast-master__upload:hover {
+  border-color: color-mix(in srgb, var(--pod-team-primary, #e00122) 68%, white 10%);
+  background: color-mix(in srgb, var(--pod-team-primary, #e00122) 17%, rgba(15, 23, 42, .78));
+}
+
+.dhq-podcast-master__upload input {
+  display: none;
+}
+
+.dhq-podcast-master__upload[data-busy="true"] {
+  cursor: wait;
+  opacity: .72;
+}
+
+.dhq-podcast-master__actions button:disabled {
+  cursor: not-allowed;
+  opacity: .46;
+}
+
+.dhq-podcast-master__file {
+  margin: 9px 0 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dhq-podcast-master__message {
+  margin: 9px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(52, 211, 153, .18);
+  border-radius: 9px;
+  background: rgba(6, 78, 59, .12);
+  color: #a7f3d0;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.dhq-podcast-master__message[data-type="error"] {
+  border-color: rgba(248, 113, 113, .22);
+  background: rgba(127, 29, 29, .14);
+  color: #fecaca;
+}
+
+@media (max-width: 620px) {
+  .dhq-podcast-master {
+    margin-top: 13px;
+    padding-top: 13px;
+  }
+
+  .dhq-podcast-master__actions button,
+  .dhq-podcast-master__actions label {
+    flex: 1 1 145px;
+  }
+}

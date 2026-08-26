@@ -32,6 +32,34 @@ test('builds podcast input from only the selected publication verified facts', (
   assert.deepEqual(payload.facts.map((fact) => fact.value), ['Test Player', 245]);
 });
 
+test('coach podcast brief follows the saved issue program instead of the old player college', () => {
+  const coachingState = {
+    careerPhase: 'HC',
+    careerStage: 'HC',
+    player: { graduated: true, college: 'Cincinnati', graduationSchool: 'Cincinnati' },
+    coach: { school: 'UCF' },
+    careerMilestones: [{ type: 'hc-hire', institution: 'UCF', previousInstitution: 'Cincinnati' }],
+    factLedger: [
+      { publicationId: 'season-8-week-3', key: 'game.result', label: 'Result', value: 'W', verified: true },
+    ],
+    newsroomIssues: [{
+      id: 'season-8-week-3',
+      publicationId: 'season-8-week-3',
+      season: 8,
+      week: 3,
+      careerPhase: 'HC',
+      outletProfile: { school: 'UCF' },
+      podcastBrief: { title: '', summary: '', citedFactKeys: ['game.result'] },
+    }],
+    podcastEpisodes: [],
+  };
+
+  const payload = buildPodcastGenerationPayload(coachingState, 'season-8-week-3');
+  assert.equal(payload.coverageStage, 'coach');
+  assert.match(payload.brief.title, /^UCF /);
+  assert.doesNotMatch(payload.brief.title, /Cincinnati/);
+});
+
 test('normalizes a grounded five-to-six-minute two-host script', () => {
   const payload = buildPodcastGenerationPayload(state, 'season-1-week-2');
   const generated = {

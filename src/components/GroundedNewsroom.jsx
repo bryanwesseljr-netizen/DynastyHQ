@@ -64,6 +64,7 @@ const GroundedNewsroom = ({
   const [selectedIssueId, setSelectedIssueId] = useState(
     issues.some((issue) => issue.id === initialIssueId) ? initialIssueId : latestIssue.id,
   );
+  const [selectedOutletId, setSelectedOutletId] = useState('');
   const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [frontPageIssueId, setFrontPageIssueId] = useState(initialFrontPageId);
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -75,9 +76,11 @@ const GroundedNewsroom = ({
   );
   const tabs = useMemo(() => tabsForIssue(selectedIssue), [selectedIssue]);
   const activeTheme = tabs.some((tab) => tab.theme === newsTheme) ? newsTheme : tabs[0]?.theme;
-  const selectedTab = tabs.find((tab) => tab.theme === activeTheme) || tabs[0];
-  const story = selectedIssue.articles.find((entry) => entry.outletId === selectedTab.outletId);
-  const imageKey = selectedTab.theme === 'on3' ? 'on3' : selectedTab.theme;
+  const selectedTab = tabs.find((tab) => tab.outletId === selectedOutletId)
+    || tabs.find((tab) => tab.theme === activeTheme)
+    || tabs[0];
+  const story = selectedIssue.articles.find((entry) => entry.outletId === selectedTab?.outletId);
+  const imageKey = selectedTab?.theme === 'on3' ? 'on3' : selectedTab?.theme;
   const currentMedia = resolveNewsroomMedia({
     article: story,
     mediaLibrary,
@@ -98,18 +101,21 @@ const GroundedNewsroom = ({
     if (issues.some((issue) => issue.id === selectedIssueId)) return;
     const nextId = issues[issues.length - 1]?.id || '';
     if (nextId) setSelectedIssueId(nextId);
+    setSelectedOutletId('');
     setIsReaderOpen(false);
     setFrontPageIssueId('');
   }, [issues, selectedIssueId]);
 
-  const openStory = (theme) => {
+  const openStory = (theme, outletId) => {
     setNewsTheme(theme);
+    setSelectedOutletId(outletId || '');
     setIsReaderOpen(true);
     setFrontPageIssueId('');
   };
 
   const chooseIssue = (issueId) => {
     setSelectedIssueId(issueId);
+    setSelectedOutletId('');
     setIsReaderOpen(false);
     setFrontPageIssueId(initialFrontPageId === issueId ? issueId : '');
     setArchiveMessage(null);
@@ -152,6 +158,7 @@ const GroundedNewsroom = ({
       const remaining = issues.filter((issue) => issue.id !== selectedIssue.id);
       const nextId = remaining[remaining.length - 1]?.id || '';
       setSelectedIssueId(nextId);
+      setSelectedOutletId('');
       setIsReaderOpen(false);
       setFrontPageIssueId('');
       setArchiveMessage({ type: 'success', text: 'Newsroom archive deleted. Verified career history and podcast data were preserved.' });
@@ -253,11 +260,12 @@ const GroundedNewsroom = ({
               const cardPresentation = resolveNewsroomPresentation(cardStory);
               return (
                 <button
-                  key={theme}
+                  key={`${theme}-${outletId}`}
                   type="button"
-                  onClick={() => openStory(theme)}
+                  onClick={() => openStory(theme, outletId)}
                   className="dhq-newsroom-story-card group flex min-h-52 cursor-pointer flex-col rounded-xl p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                   data-editorial-layout={cardPresentation.layout}
+                  data-newsroom-outlet-id={outletId}
                   style={presentationVariables(cardPresentation)}
                   aria-label={`Read full article from ${label}: ${cardStory.headline}`}
                 >
@@ -290,13 +298,14 @@ const GroundedNewsroom = ({
           </button>
 
           <nav className="flex items-center gap-2 overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-950/90 p-2 text-xs font-bold shadow-2xl" aria-label="Weekly newsroom articles">
-            {tabs.map(({ theme, label, icon: Icon }) => (
+            {tabs.map(({ theme, outletId, label, icon: Icon }) => (
               <button
-                key={theme}
+                key={`${theme}-${outletId}`}
                 type="button"
-                onClick={() => openStory(theme)}
-                aria-pressed={activeTheme === theme}
-                className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${activeTheme === theme ? 'border-blue-400 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-blue-400 hover:bg-slate-800 hover:text-white'}`}
+                onClick={() => openStory(theme, outletId)}
+                aria-pressed={selectedTab?.outletId === outletId}
+                data-newsroom-outlet-id={outletId}
+                className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selectedTab?.outletId === outletId ? 'border-blue-400 bg-blue-600 text-white' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-blue-400 hover:bg-slate-800 hover:text-white'}`}
               >
                 <Icon size={14} /> {label}
               </button>

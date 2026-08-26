@@ -1,0 +1,81 @@
+/* Small visual refinements for the current-team Newsroom home. */
+
+/* Keep the team masthead immersive without letting it dominate the first screen.
+   This second pass reduces both the lockup and the hero's vertical footprint so
+   users can reach Team / Regional / National coverage sooner. */
+.dhq-team-newsroom__masthead {
+  min-height: 255px !important;
+  padding: clamp(22px, 4vw, 42px) !important;
+  background-size: cover !important;
+  background-position: center 44% !important;
+}
+
+.dhq-team-newsroom__masthead h1 {
+  margin-top: 7px !important;
+  font-size: clamp(2.15rem, 5.6vw, 4.5rem) !important;
+  line-height: .82 !important;
+}
+
+.dhq-team-newsroom__masthead h2 {
+  margin-top: 8px !important;
+  font-size: clamp(.95rem, 2.25vw, 1.7rem) !important;
+  letter-spacing: .14em !important;
+}
+
+.dhq-team-newsroom__masthead-copy > p:last-of-type {
+  max-width: 600px !important;
+  margin-top: 12px !important;
+  font-size: .82rem !important;
+  line-height: 1.52 !important;
+}
+
+.dhq-team-newsroom__masthead-badges {
+  gap: 6px !important;
+  margin-top: 14px !important;
+}
+
+.dhq-team-newsroom__masthead-badges span {
+  padding: 6px 9px !important;
+  font-size: 8px !important;
+}
+
+.dhq-team-newsroom__masthead::after {
+  right: -3% !important;
+  bottom: -28% !important;
+  width: min(42vw, 450px) !important;
+  height: min(42vw, 450px) !important;
+  border-width: 28px !important;
+}
+
+@media (max-width: 900px) {
+  .dhq-team-newsroom__masthead {
+    min-height: 240px !important;
+    background-position: center 42% !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .dhq-team-newsroom__masthead {
+    min-height: 220px !important;
+    padding: 20px 16px !important;
+    background-position: center 40% !important;
+  }
+
+  .dhq-team-newsroom__masthead h1 {
+    font-size: clamp(1.95rem, 11.5vw, 3.35rem) !important;
+  }
+
+  .dhq-team-newsroom__masthead h2 {
+    font-size: clamp(.9rem, 5vw, 1.3rem) !important;
+  }
+
+  .dhq-team-newsroom__masthead-copy > p:last-of-type {
+    margin-top: 9px !important;
+    font-size: .76rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .dhq-team-newsroom__masthead-badges {
+    margin-top: 10px !important;
+  }
+}

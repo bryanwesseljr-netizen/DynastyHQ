@@ -1,8 +1,8 @@
-export const TARGET_SPEECH_DBFS = -20;
-export const PEAK_CEILING_DBFS = -1.5;
+export const TARGET_SPEECH_DBFS = -26;
+export const PEAK_CEILING_DBFS = -3;
 export const SPEECH_GATE_DBFS = -45;
-export const MAX_SECTION_BOOST_DB = 5;
-export const MAX_SECTION_CUT_DB = -5;
+export const MAX_SECTION_BOOST_DB = 3;
+export const MAX_SECTION_CUT_DB = -4;
 
 const FULL_SCALE = 32768;
 const DEFAULT_SAMPLE_RATE = 24000;

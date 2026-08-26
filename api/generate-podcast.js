@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
 import { PODCAST_HOSTS, PODCAST_PUBLIC_HOSTS } from '../src/domain/podcastShow.js';
+import { applyPodcastShowBookends } from '../src/domain/podcastShowBookends.js';
 
 const MODEL = process.env.OPENAI_PODCAST_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
@@ -29,6 +30,7 @@ const COLLEGE_MECHANIC_LABEL_RE = /(overall rating|\boverall\b|coach trust|skill
 const LOW_RELEVANCE_ALLOWED_KEY_RE = /^(program\.|game\.|team\.|milestone\.|award\.|transfer\.|portal\.)/i;
 const LISTENER_META_RE = /(deliberately measured|the restraint matters|verified snapshot|clear snapshot|snapshot of|the foundation of this conversation|the foundation of this episode|what we do know|what we know is|we do not have evidence|we don't have evidence|we should not invent|we shouldn't invent|the disciplined read|the verified starting point|the next set of facts|break down the next set of facts|no need to force a dramatic story|clean internal benchmark)/i;
 const LISTENER_MECHANIC_RE = /(\b\d+\s+overall\b|overall rating|coach trust|skill points?|weekly action points?|\benergy (?:is|at|sits|reading)\b|\bgpa\b|followers?|nil valuation|wear indicators?|health meter|fitness meter|brand tier|draft projection)/i;
+const LISTENER_BOOKEND_RE = /(welcome back|you're listening to|you are listening to|thanks for listening|that'll do it for|that will do it for|that's all for us|this has been .*podcast)/i;
 
 const safeText = (value, max) => String(value || '').trim().slice(0, max);
 const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Boolean).length;
@@ -52,6 +54,9 @@ const listenerFacingViolation = (episode = {}, payload = {}) => {
   }
   if (LISTENER_META_RE.test(transcript)) {
     return 'The draft narrated its own editorial rules or source limitations instead of opening on football.';
+  }
+  if (LISTENER_BOOKEND_RE.test(transcript)) {
+    return 'The draft tried to write the branded intro or sign-off that DynastyHQ adds separately.';
   }
   return '';
 };
@@ -106,7 +111,7 @@ const validatePayload = (body = {}) => {
 
   const program = body.coveragePlan?.program || {};
   const programGames = Number(program.games) || 0;
-  const school = safeText(program.school, 160);
+  const school = safeText(program.school || body.show?.school || body.episodeContext?.school, 160);
   const week = Math.max(0, Number(body.week) || 0);
   const label = safeText(body.label, 160);
 
@@ -135,7 +140,7 @@ const validatePayload = (body = {}) => {
   if (!usableFacts.length) return null;
 
   const briefTitle = suppressTrackedPlayer
-    ? `${school || 'Cincinnati'} ${label || `Week ${week}`}: program outlook`
+    ? `${school || 'the program'} ${label || `Week ${week}`}: program outlook`
     : safeText(body.brief?.title, 240);
   const briefSummary = suppressTrackedPlayer
     ? `Keep this episode strictly about ${school || 'the program'}. Use only meaningful program, game, team or event facts that survived the editorial filter. Do not mention the tracked player, any depth-chart backup slot, development meters, ratings, progression resources or off-field game mechanics.`
@@ -225,16 +230,39 @@ const schemaFor = (payload) => ({
   },
 });
 
+export const PODCAST_STATS_AS_EVIDENCE_POLICY = `STATS ARE EVIDENCE, NOT THE SCRIPT:
+- Treat the supplied numbers like a producer's research notes. Use them to understand how the game was played; do not read the research notes to the audience.
+- Never recite a complete box-score line. Do not march through completions, attempts, yards, touchdowns and interceptions, or carries, yards and touchdowns, as a list.
+- The final score is normally worth saying. Beyond that, prefer football conclusions over exact numbers: the run game controlled the night, the quarterback struggled to generate a passing game and hurt the offense with turnovers, the line kept the quarterback clean, the defense lived in the backfield, or the offense could not sustain drives, when the supplied facts support that conclusion.
+- Exact individual numbers are optional emphasis, not required reporting. Use one only when it genuinely sharpens a point because it was exceptional, decisive or surprising.
+- Usually mention only the few players who actually shaped the story. Do not cycle through every player with a recorded stat just because the data exists.
+- Combine related statistics into one football takeaway. Passing yards plus interceptions can support a conclusion about an ineffective or turnover-prone passing day. Rushing production plus touchdowns can support a conclusion about a productive ground game. Few sacks allowed can support a conclusion about protection. Team turnovers can support a conclusion about possession and game control.
+- Once a number has done its job, move on. Do not repeat the same number or stat line in another chapter.
+- If one host cites an exact number, the other host should react to what it means rather than repeat the number.
+- Never make the listener feel as if someone is reading a stat table aloud.`;
+
+export const PODCAST_CONVERSATION_REFERENCE_POLICY = `NATURAL TWO-HOST RHYTHM:
+- Write two people thinking through football together, not two analysts taking turns delivering mini-reports.
+- Most host turns should be one to three spoken sentences. A short reaction, question or follow-up is often better than another paragraph.
+- Let the second host respond to the idea that was just raised before introducing another fact. Build, question, qualify, agree or gently disagree instead of resetting the conversation every turn.
+- Use contractions and normal spoken phrasing. Sentence fragments are fine when they sound natural.
+- Sparse conversational texture is welcome: an occasional "well," "I mean," brief self-correction, em dash or ellipsis can create the feeling of a person thinking in real time. Use these only when they fit; never sprinkle them into every turn.
+- Do not write phonetic stutters such as "I-I-I," fake laughter, catchphrases or repeated filler noises. The goal is subtle imperfection, not a performance gimmick.
+- Leave room for the voice renderer to breathe. Do not make every sentence emphatic or emotionally marked.
+- Avoid long monologues unless a major or career-defining story genuinely needs one.`;
+
 const [mark, sarah] = PODCAST_HOSTS;
-const INSTRUCTIONS = `You write The Gridiron Grind, a private two-host football podcast following one career from high school through college and eventually coaching.
+const INSTRUCTIONS = `You write the conversational body of a private two-host local football podcast following one career from high school through college and eventually coaching.
 
 Write like an experienced college-football producer and two knowledgeable hosts. The conversation should be clear, relaxed and intelligent. Do not write a debate show, announcer copy, alternating essays, or a performance that tries hard to sound casual.
 
-REAL-PODCAST OPENING RULE:
-- Cold-open on the actual football subject. The first host should sound as if the microphones came on in the middle of a real weekly college-football conversation.
+BRANDED BOOKEND HANDOFF:
+- DynastyHQ adds the team-specific show introduction and sign-off after your draft passes quality control.
+- Do not say "Welcome back," "You're listening to," the podcast name, host introductions, "thanks for listening," or any formal sign-off language in your generated turns.
+- Start the first generated turn directly on the actual football subject, as if the branded introduction just finished.
+- End the final generated turn on a real football theme or question to watch; DynastyHQ will add the closing sign-off after it.
 - Do not explain what the episode is going to cover. Do not announce an agenda, editorial method, level of restraint, source limitations or what information is and is not available.
 - If a claim is not supported, simply do not say it. Never narrate the reason you are omitting it.
-- A brief natural show identification is fine after the football hook, but do not turn the opening into a formal introduction every week.
 - Use ordinary straight apostrophes and quotation marks in listener-facing text.
 
 SHARED COVERAGE DECISION:
@@ -245,6 +273,8 @@ SHARED COVERAGE DECISION:
 
 EDITORIAL DECISION RULE:
 A supplied fact is not automatically a story. Ask what a real college-football audience would care about this week. Prioritize consequence, change, tension, performance and meaningful football questions. Ignore bookkeeping and unchanged states.
+
+${PODCAST_STATS_AS_EVIDENCE_POLICY}
 
 TRACKED PLAYER RULE:
 - The team and game are the default subject.
@@ -267,19 +297,19 @@ FOOTBALL INTELLIGENCE WITHOUT INVENTION:
 - Do not praise neutral facts or manufacture momentum from nothing happening.
 
 COLLEGE GAME WEEK:
-- Lead with the Cincinnati game: result, opponent, score and the most meaningful supplied statistical contrasts.
+- Lead with the current program's game: result, opponent, score, the clearest football reasons the game took its shape, and what the result changes.
 - Use season record or streak once only when it genuinely frames the result or trajectory.
-- Use player statistics only when the player's football relevance warrants it.
+- Use player production to explain performance, not to inventory stat lines. Give airtime only to players whose football relevance warrants it.
+
+${PODCAST_CONVERSATION_REFERENCE_POLICY}
 
 CONVERSATION STYLE:
 - Produce 10 to 16 alternating host turns.
 - Let the coverage tier control scale: standard should feel like a normal weekly show; major can breathe longer; career-defining can be the fullest episode.
 - Do not pad with neutral facts, bookkeeping, repeated conclusions or suppressed player material just to hit a word target.
-- Most turns should be straightforward spoken sentences. Mix a few short reactions with normal analytical turns.
 - Mark and Sarah can disagree when the football point genuinely calls for it, but calm agreement is also normal.
 - Avoid hot-take phrasing, rhetorical theatrics and artificial banter.
 - Do not start every turn with the other host's name.
-- No fake laughter, stutters, filler noises or exaggerated personality.
 - Do not have both hosts restate the same conclusion.
 
 HOSTS:
@@ -307,7 +337,7 @@ GROUNDING:
 - Analysis/opinion is welcome when it follows logically from those facts.
 - Each segment must cite every supplied fact key it relies on; connective commentary may use an empty list.
 - segmentStart is the zero-based index of the first turn in the chapter.
-- End with a short unresolved football theme to watch, never an invented matchup or event.`;
+- End the generated body with a short unresolved football theme to watch, never an invented matchup or event and never a formal show sign-off.`;
 
 const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
   const note = repairNote ? `\n\nREVISION NOTE:\n${repairNote}` : '';
@@ -326,7 +356,7 @@ const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
       role: 'user',
       content: [{
         type: 'input_text',
-        text: `Write this Gridiron Grind episode from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener.${storylineNote}${note}\n${JSON.stringify(payload)}`,
+        text: `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Statistics are evidence for football conclusions, not lines that need to be read aloud. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`,
       }],
     }],
     text: {
@@ -359,7 +389,7 @@ export default async function handler(req, res) {
   const payload = validatePayload(req.body);
   if (!payload) {
     return json(res, 422, {
-      error: 'No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.',
+      error: 'No new episode this week. There was not enough meaningful football movement to justify a full local team podcast.',
       code: 'NO_NEWSWORTHY_PODCAST',
     });
   }
@@ -386,7 +416,7 @@ export default async function handler(req, res) {
         client,
         user,
         payload,
-        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts or a suppressed tracked-player angle. Start directly on the football subject.`,
+        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode body. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Keep statistics synthesized into football takeaways rather than complete stat lines. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts, a suppressed tracked-player angle, or branded intro/sign-off language. Start directly on the football subject.`,
       });
 
       if (response.output_text) {
@@ -407,11 +437,13 @@ export default async function handler(req, res) {
 
     if (violation) {
       return json(res, 422, {
-        error: 'The draft still sounded like an AI/editorial report instead of a football podcast, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
+        error: 'The draft still sounded like an AI/editorial report or duplicated the show intro instead of a clean football conversation, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
       });
     }
 
-    return json(res, 200, { episode, model: MODEL, transcriptWords: inspection.words });
+    const completedEpisode = applyPodcastShowBookends({ episode, payload: req.body });
+    const completedInspection = inspectEpisode(completedEpisode);
+    return json(res, 200, { episode: completedEpisode, model: MODEL, transcriptWords: completedInspection.words });
   } catch (error) {
     console.error('OpenAI podcast generation failed', error);
     const status = error?.status === 429 ? 429 : 502;

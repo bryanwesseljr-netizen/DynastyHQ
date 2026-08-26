@@ -103,12 +103,18 @@ const NewsroomArticleExperiencePortal = () => {
       const button = event.target instanceof Element ? event.target.closest('header button') : null;
       if (!button || clean(button.textContent) !== 'The Newsroom') return;
 
-      // Clicking the already-active Newsroom tab should always mean "Newsroom home".
+      // Clicking The Newsroom always means the current program's Team News home,
+      // even when the user is already inside a Regional or National article.
       window.setTimeout(() => {
         const backButton = [...root.querySelectorAll('button')]
           .find((candidate) => /back to all articles/i.test(clean(candidate.textContent)));
         backButton?.click();
-        scrollNewsroomTop();
+        window.setTimeout(() => {
+          const teamButton = [...root.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
+            .find((candidate) => /team news/i.test(clean(candidate.textContent)));
+          teamButton?.click();
+          scrollNewsroomTop();
+        }, 0);
       }, 0);
     };
 

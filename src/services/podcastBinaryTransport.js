@@ -1,5 +1,4 @@
-const JSON_AUDIO_PATH = '/api/synthesize-podcast-conversation';
-const BINARY_AUDIO_PATH = '/api/synthesize-podcast-conversation-binary';
+const AUDIO_PATH = '/api/synthesize-podcast-conversation';
 const PATCH_FLAG = '__dynastyhqPodcastBinaryTransportInstalled';
 
 const bytesToBase64 = (bytes) => {
@@ -30,10 +29,13 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function' && !wind
   window[PATCH_FLAG] = true;
 
   window.fetch = async (input, init) => {
-    if (requestPath(input) !== JSON_AUDIO_PATH) return baseFetch(input, init);
+    if (requestPath(input) !== AUDIO_PATH) return baseFetch(input, init);
 
-    const response = await baseFetch(BINARY_AUDIO_PATH, init);
+    const response = await baseFetch(input, init);
     if (!response.ok) return response;
+
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.startsWith('audio/')) return response;
 
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.length) {
@@ -43,10 +45,9 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function' && !wind
       });
     }
 
-    const mimeType = String(response.headers.get('content-type') || 'audio/mpeg').split(';')[0];
     const payload = {
       audioBase64: bytesToBase64(bytes),
-      mimeType,
+      mimeType: contentType.split(';')[0] || 'audio/mpeg',
       model: response.headers.get('x-dynastyhq-model') || 'gemini-multispeaker',
       engine: response.headers.get('x-dynastyhq-engine') || 'gemini-multispeaker-v3',
       transcriptWords: Number(response.headers.get('x-dynastyhq-transcript-words')) || 0,

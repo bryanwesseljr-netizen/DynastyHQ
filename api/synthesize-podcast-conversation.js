@@ -324,32 +324,32 @@ export default async function handler(req, res) {
     const limitedEpisode = limitPcmEpisode(Buffer.concat(pcmChunks));
     const continuousPcm = limitedEpisode.pcmBuffer;
     const mp3 = encodePcmToMp3({ pcmBuffer: continuousPcm, sampleRate });
-    const audioBase64 = mp3.toString('base64');
+    const engine = 'gemini-multispeaker-v3.7-binary-reference-cadence';
 
-    if (Buffer.byteLength(audioBase64, 'utf8') > 4_000_000) {
-      throw new Error('The compressed podcast exceeded the safe response size.');
-    }
-
-    return json(res, 200, {
-      audioBase64,
-      mimeType: 'audio/mpeg',
-      model: MODEL,
-      engine: 'gemini-multispeaker-v3.6-reference-cadence',
-      voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
-      transcriptTurns: segments.length,
+    console.info('Humanized podcast render completed', {
       transcriptWords: totalWords,
       performanceSections: transcriptChunks.length,
-      performanceSectionWords: transcriptChunks.map(chunkWordCount),
+      responseBytes: mp3.length,
       loudnessTargetDbfs: TARGET_SPEECH_DBFS,
       loudnessAdjustments,
       episodePeakGainDb: roundedLevel(limitedEpisode.gainDb),
       sampleRate,
       mp3Kbps: MP3_KBPS,
+      voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
     });
+
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', String(mp3.length));
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-DynastyHQ-Model', MODEL);
+    res.setHeader('X-DynastyHQ-Engine', engine);
+    res.setHeader('X-DynastyHQ-Transcript-Words', String(totalWords));
+    res.setHeader('X-DynastyHQ-Performance-Sections', String(transcriptChunks.length));
+    return res.end(mp3);
   } catch (error) {
     console.error('Gemini multispeaker podcast generation failed', error);
     const status = Number(error?.status) === 429 ? 429 : 502;
-    const message = String(error?.message || '');
 
     if (status === 429) {
       const retrySeconds = Math.max(1, Math.ceil((Number(error?.retryAfterMs) || 60_000) / 1000));
@@ -361,9 +361,7 @@ export default async function handler(req, res) {
     }
 
     return json(res, status, {
-      error: /response size/i.test(message)
-        ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
-        : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
+      error: 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
     });
   }
 }

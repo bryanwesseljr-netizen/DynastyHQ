@@ -4,7 +4,9 @@ import AuthAwareApp from './components/AuthAwareApp.jsx'
 import OwnerEnhancements from './components/OwnerEnhancements.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
 import PublicShareGuard from './components/PublicShareGuard.jsx'
+import PublicNewsroomArticlePage from './components/PublicNewsroomArticlePage.jsx'
 import { resolveViewContext } from './domain/viewMode.js'
+import { readSharedNewsroomArticleId } from './domain/newsroomArticleShare.js'
 import './index.css' // <-- Make sure this line is here!
 import './newsroom-bearcats-logo.css'
 import './weekly-agenda-v3-refinements.css'
@@ -18,11 +20,18 @@ import './tile-fit-v2.css'
 import './public-share-v1.css'
 
 const viewContext = resolveViewContext(window.location.search)
+const sharedArticleId = readSharedNewsroomArticleId(window.location.search)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthAwareApp />
-    {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
-    <DuplicateGuardPortal />
+    {sharedArticleId ? (
+      <PublicNewsroomArticlePage shareId={sharedArticleId} />
+    ) : (
+      <>
+        <AuthAwareApp />
+        {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
+        <DuplicateGuardPortal />
+      </>
+    )}
   </React.StrictMode>,
 )

@@ -1,9 +1,19 @@
+import {
+  FBS_TEAM_MEDIA_ALIASES_2026,
+  FBS_TEAM_MEDIA_PROFILES_2026,
+} from './fbsTeamMediaProfiles.js';
+
 const clean = (value, maxLength = 180) => String(value ?? '').trim().slice(0, maxLength);
 
 const normalizeKey = (value) => clean(value, 180)
   .toLowerCase()
   .replace(/&/g, ' and ')
   .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const lookupKey = (value) => normalizeKey(value)
+  .replace(/^university of\s+/, '')
+  .replace(/\suniversity$/, '')
   .trim();
 
 const shortSchoolName = (school = '') => {
@@ -22,52 +32,68 @@ const hashHue = (value = '') => {
   return hash % 360;
 };
 
-const SPECIAL_PROFILES = Object.freeze({
-  cincinnati: Object.freeze({
-    nickname: 'Bearcats',
-    city: 'Cincinnati',
-    primary: '#e00122',
-    secondary: '#050505',
-    accent: '#ffffff',
-    localOutletName: 'Bearcats Insider',
-    regionalOutletName: 'Cincinnati Enquirer',
-    nationalOutletName: 'National College Football Desk',
-    teamNewsLabel: 'Cincinnati Football',
-    teamNewsTagline: 'News, analysis and every week of the Bearcats season.',
-    localMotto: 'Cincinnati Tough.',
-    podcastName: 'Nippert Notebook',
-    podcastSubtitle: 'Cincinnati Football Podcast',
-    podcastTagline: 'Local coverage. Bearcat focused. Cincinnati proud.',
-    podcastHostsLabel: 'Mark Thompson · Sarah Chen',
-  }),
-  michigan: Object.freeze({ nickname: 'Wolverines', city: 'Ann Arbor', primary: '#00274c', secondary: '#ffcb05', accent: '#ffffff' }),
-  'michigan state': Object.freeze({ nickname: 'Spartans', city: 'East Lansing', primary: '#18453b', secondary: '#ffffff', accent: '#ffffff' }),
-  'eastern michigan': Object.freeze({ nickname: 'Eagles', city: 'Ypsilanti', primary: '#006633', secondary: '#ffffff', accent: '#ffffff' }),
-  toledo: Object.freeze({ nickname: 'Rockets', city: 'Toledo', primary: '#15397f', secondary: '#ffcc00', accent: '#ffffff' }),
-  'ohio state': Object.freeze({ nickname: 'Buckeyes', city: 'Columbus', primary: '#bb0000', secondary: '#666666', accent: '#ffffff' }),
-  'notre dame': Object.freeze({ nickname: 'Fighting Irish', city: 'Notre Dame', primary: '#0c2340', secondary: '#c99700', accent: '#ffffff' }),
-  'penn state': Object.freeze({ nickname: 'Nittany Lions', city: 'State College', primary: '#041e42', secondary: '#ffffff', accent: '#ffffff' }),
-  alabama: Object.freeze({ nickname: 'Crimson Tide', city: 'Tuscaloosa', primary: '#9e1b32', secondary: '#ffffff', accent: '#ffffff' }),
-  georgia: Object.freeze({ nickname: 'Bulldogs', city: 'Athens', primary: '#ba0c2f', secondary: '#000000', accent: '#ffffff' }),
-  texas: Object.freeze({ nickname: 'Longhorns', city: 'Austin', primary: '#bf5700', secondary: '#ffffff', accent: '#ffffff' }),
-  oregon: Object.freeze({ nickname: 'Ducks', city: 'Eugene', primary: '#154733', secondary: '#fee123', accent: '#ffffff' }),
-  lsu: Object.freeze({ nickname: 'Tigers', city: 'Baton Rouge', primary: '#461d7c', secondary: '#fdd023', accent: '#ffffff' }),
-  clemson: Object.freeze({ nickname: 'Tigers', city: 'Clemson', primary: '#f56600', secondary: '#522d80', accent: '#ffffff' }),
-  tennessee: Object.freeze({ nickname: 'Volunteers', city: 'Knoxville', primary: '#ff8200', secondary: '#ffffff', accent: '#ffffff' }),
+const catalogByKey = new Map(Object.entries(FBS_TEAM_MEDIA_PROFILES_2026).map(
+  ([school, profile]) => [lookupKey(school), { school, profile }],
+));
+
+const aliasByKey = new Map(Object.entries(FBS_TEAM_MEDIA_ALIASES_2026).map(
+  ([alias, canonicalSchool]) => [lookupKey(alias), canonicalSchool],
+));
+
+const fbsProfileFor = (school = '') => {
+  const key = lookupKey(school);
+  if (!key) return null;
+  const canonicalAlias = aliasByKey.get(key);
+  if (canonicalAlias) return catalogByKey.get(lookupKey(canonicalAlias)) || null;
+  return catalogByKey.get(key) || null;
+};
+
+const programKey = (school = '') => normalizeKey(fbsProfileFor(school)?.school || school);
+
+const CINCINNATI_MEDIA_OVERRIDE = Object.freeze({
+  primary: '#e00122',
+  secondary: '#050505',
+  accent: '#ffffff',
+  localOutletName: 'Bearcats Insider',
+  regionalOutletName: 'Cincinnati Enquirer',
+  nationalOutletName: 'National College Football Desk',
+  teamNewsLabel: 'Cincinnati Football',
+  teamNewsTagline: 'News, analysis and every week of the Bearcats season.',
+  localMotto: 'Cincinnati Tough.',
+  podcastName: 'Nippert Notebook',
+  podcastSubtitle: 'Cincinnati Football Podcast',
+  podcastTagline: 'Local coverage. Bearcat focused. Cincinnati proud.',
+  podcastHostsLabel: 'Mark Thompson · Sarah Chen',
 });
 
-const specialProfileFor = (school = '') => {
-  const key = normalizeKey(school)
-    .replace(/^university of\s+/, '')
-    .replace(/\suniversity$/, '');
-  return SPECIAL_PROFILES[key] || null;
+const catalogProfileFor = (school = '') => {
+  const match = fbsProfileFor(school);
+  if (!match) return null;
+  return {
+    school: match.school,
+    profile: match.school === 'Cincinnati'
+      ? { ...match.profile, ...CINCINNATI_MEDIA_OVERRIDE }
+      : match.profile,
+  };
+};
+
+const readableAccent = (value = '') => {
+  const match = /^#([0-9a-f]{6})$/i.exec(clean(value));
+  if (!match) return '#ffffff';
+  const hex = match[1];
+  const [red, green, blue] = [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255);
+  const linear = [red, green, blue].map((channel) => (
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  ));
+  const luminance = (0.2126 * linear[0]) + (0.7152 * linear[1]) + (0.0722 * linear[2]);
+  return luminance > 0.18 ? '#050505' : '#ffffff';
 };
 
 const overridesFor = (state = {}, school = '') => {
   const profiles = state?.newsroomMediaSettings?.teamMediaProfiles || {};
-  const wanted = normalizeKey(school);
+  const wanted = programKey(school);
   const entry = Object.entries(profiles).find(([key, value]) => (
-    normalizeKey(key) === wanted || normalizeKey(value?.school) === wanted
+    programKey(key) === wanted || programKey(value?.school) === wanted
   ));
   return entry?.[1] || {};
 };
@@ -113,21 +139,39 @@ export const resolveCurrentProgramSchool = (state = {}) => {
 };
 
 export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, state = null } = {}) => {
-  const resolvedSchool = clean(school || outletProfile?.school || (state ? resolveCurrentProgramSchool(state) : '')) || 'College';
-  const special = specialProfileFor(resolvedSchool) || {};
+  const requestedSchool = clean(school || outletProfile?.school || (state ? resolveCurrentProgramSchool(state) : '')) || 'College';
+  const catalogMatch = catalogProfileFor(requestedSchool);
+  const resolvedSchool = catalogMatch?.school || requestedSchool;
+  const catalogProfile = catalogMatch?.profile || {};
+  const effectiveOutletProfile = !outletProfile?.school || programKey(outletProfile.school) === programKey(resolvedSchool)
+    ? outletProfile
+    : null;
   const override = state ? overridesFor(state, resolvedSchool) : {};
   const shortName = shortSchoolName(resolvedSchool);
   const hue = hashHue(resolvedSchool);
-  const localOutletName = clean(override.localOutletName || outletProfile?.localOutletName || special.localOutletName) || `${shortName} Football`;
-  const regionalOutletName = clean(override.regionalOutletName || outletProfile?.regionalOutletName || special.regionalOutletName) || `${shortName} Regional Sports`;
-  const nationalOutletName = clean(override.nationalOutletName || outletProfile?.nationalOutletName || special.nationalOutletName) || 'College Football Central';
-  const nickname = clean(override.nickname || special.nickname) || shortName;
-  const city = clean(override.city || special.city) || shortName;
-  const primary = clean(override.primary || special.primary) || `hsl(${hue} 68% 38%)`;
-  const secondary = clean(override.secondary || special.secondary) || '#08111f';
-  const accent = clean(override.accent || special.accent) || '#ffffff';
-  const teamNewsLabel = clean(override.teamNewsLabel || special.teamNewsLabel) || `${shortName} Football`;
-  const podcastName = clean(override.podcastName || special.podcastName) || `${shortName} Football Notebook`;
+
+  const nickname = clean(override.nickname || catalogProfile.nickname) || shortName;
+  const city = clean(override.city || catalogProfile.city) || shortName;
+  const primary = clean(override.primary || catalogProfile.primary) || `hsl(${hue} 68% 38%)`;
+  const secondary = clean(override.secondary || catalogProfile.secondary) || '#08111f';
+  const accent = clean(override.accent || catalogProfile.accent) || readableAccent(primary);
+  const localOutletName = clean(
+    override.localOutletName
+    || effectiveOutletProfile?.localOutletName
+    || catalogProfile.localOutletName,
+  ) || `${nickname} Insider`;
+  const regionalOutletName = clean(
+    override.regionalOutletName
+    || effectiveOutletProfile?.regionalOutletName
+    || catalogProfile.regionalOutletName,
+  ) || `${city} College Sports`;
+  const nationalOutletName = clean(
+    override.nationalOutletName
+    || effectiveOutletProfile?.nationalOutletName
+    || catalogProfile.nationalOutletName,
+  ) || 'College Football Central';
+  const teamNewsLabel = clean(override.teamNewsLabel || catalogProfile.teamNewsLabel) || `${shortName} Football`;
+  const podcastName = clean(override.podcastName || catalogProfile.podcastName) || `${nickname} Notebook`;
 
   return {
     school: resolvedSchool,
@@ -141,12 +185,15 @@ export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, sta
     regionalOutletName,
     nationalOutletName,
     teamNewsLabel,
-    teamNewsTagline: clean(override.teamNewsTagline || special.teamNewsTagline) || `The local home for ${resolvedSchool} football coverage, week after week.`,
-    localMotto: clean(override.localMotto || special.localMotto) || `${nickname} football, covered locally.`,
+    teamNewsTagline: clean(override.teamNewsTagline || catalogProfile.teamNewsTagline)
+      || `News, analysis and every week of the ${nickname} season.`,
+    localMotto: clean(override.localMotto || catalogProfile.localMotto) || `${nickname} football, covered locally.`,
     podcastName,
-    podcastSubtitle: clean(override.podcastSubtitle || special.podcastSubtitle) || `${resolvedSchool} Football Podcast`,
-    podcastTagline: clean(override.podcastTagline || special.podcastTagline) || `Local coverage of ${resolvedSchool} football.`,
-    podcastHostsLabel: clean(override.podcastHostsLabel || special.podcastHostsLabel) || 'Mark Thompson · Sarah Chen',
+    podcastSubtitle: clean(override.podcastSubtitle || catalogProfile.podcastSubtitle) || `${resolvedSchool} Football Podcast`,
+    podcastTagline: clean(override.podcastTagline || catalogProfile.podcastTagline)
+      || `Local coverage. ${nickname} focused. ${city} connected.`,
+    podcastHostsLabel: clean(override.podcastHostsLabel || catalogProfile.podcastHostsLabel) || 'Mark Thompson · Sarah Chen',
+    profileSource: catalogMatch ? 'fbs-2026' : 'generated',
   };
 };
 
@@ -159,8 +206,16 @@ export const resolveIssueTeamMediaProfile = (issue = {}, state = null) => resolv
 export const resolveCareerTeamMediaProfile = (state = {}) => {
   const latestCollegeIssue = [...(state.newsroomIssues || [])].reverse().find((issue) => issue?.outletProfile?.school);
   const currentSchool = resolveCurrentProgramSchool(state) || clean(latestCollegeIssue?.outletProfile?.school);
-  const matchingIssue = [...(state.newsroomIssues || [])].reverse().find((issue) => normalizeKey(issue?.outletProfile?.school) === normalizeKey(currentSchool));
-  return resolveTeamMediaProfile({ school: currentSchool, outletProfile: matchingIssue?.outletProfile || latestCollegeIssue?.outletProfile, state });
+  const matchingIssue = [...(state.newsroomIssues || [])]
+    .reverse()
+    .find((issue) => programKey(issue?.outletProfile?.school) === programKey(currentSchool));
+  return resolveTeamMediaProfile({
+    school: currentSchool,
+    outletProfile: matchingIssue?.outletProfile || null,
+    state,
+  });
 };
 
-export const sameProgram = (left = '', right = '') => normalizeKey(left) === normalizeKey(right);
+export const sameProgram = (left = '', right = '') => (
+  programKey(left) !== '' && programKey(left) === programKey(right)
+);

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../newsroom-article-polish.css';
+import '../newsroom-reader-shell-v2.css';
 
 const clean = (value) => String(value ?? '').trim();
 
@@ -21,6 +22,12 @@ const readerClasses = [
   'dhq-newsroom-reader-national',
 ];
 
+const findBackButton = (root) => [...root.querySelectorAll('button')]
+  .find((button) => /back to all articles/i.test(clean(button.textContent)));
+
+const findTeamNewsButton = (root) => [...root.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
+  .find((button) => /team news/i.test(clean(button.textContent)));
+
 const NewsroomArticleExperiencePortal = () => {
   const { career } = useOwnerCareer();
 
@@ -30,18 +37,24 @@ const NewsroomArticleExperiencePortal = () => {
 
     let scheduled = false;
     let lastStoryKey = '';
+    let homeResetGeneration = 0;
 
     const sync = () => {
       scheduled = false;
+      const main = root.querySelector('main[data-active-tab="newsroom"]');
       const issueSelect = root.querySelector('select[aria-label="Choose weekly newsroom edition"]');
       const newsroomRoot = issueSelect?.closest('.max-w-6xl');
-      if (!newsroomRoot) return;
+
+      if (!newsroomRoot) {
+        main?.classList.remove('dhq-newsroom-article-main');
+        return;
+      }
 
       const article = newsroomRoot.querySelector('.dhq-news-article');
       readerClasses.forEach((className) => newsroomRoot.classList.remove(className));
+      main?.classList.toggle('dhq-newsroom-article-main', Boolean(article));
 
-      const backButton = [...newsroomRoot.querySelectorAll('button')]
-        .find((button) => /back to all articles/i.test(clean(button.textContent)));
+      const backButton = findBackButton(newsroomRoot);
       const readerTabs = newsroomRoot.querySelector('nav[aria-label="Weekly newsroom articles"]');
       backButton?.classList.add('dhq-newsroom-back-button');
       readerTabs?.classList.add('dhq-newsroom-reader-tabs');
@@ -99,33 +112,57 @@ const NewsroomArticleExperiencePortal = () => {
       window.requestAnimationFrame(sync);
     };
 
-    const handleDocumentClick = (event) => {
-      const button = event.target instanceof Element ? event.target.closest('header button') : null;
-      if (!button || clean(button.textContent) !== 'The Newsroom') return;
+    const forceNewsroomHome = () => {
+      const generation = ++homeResetGeneration;
+      const resetAt = (delay) => window.setTimeout(() => {
+        if (generation !== homeResetGeneration) return;
 
-      // Clicking The Newsroom always means the current program's Team News home,
-      // even when the user is already inside a Regional or National article.
-      window.setTimeout(() => {
-        const backButton = [...root.querySelectorAll('button')]
-          .find((candidate) => /back to all articles/i.test(clean(candidate.textContent)));
-        backButton?.click();
-        window.setTimeout(() => {
-          const teamButton = [...root.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
-            .find((candidate) => /team news/i.test(clean(candidate.textContent)));
-          teamButton?.click();
-          scrollNewsroomTop();
-        }, 0);
-      }, 0);
+        const backButton = findBackButton(root);
+        if (backButton) {
+          backButton.click();
+          return;
+        }
+
+        const teamButton = findTeamNewsButton(root);
+        teamButton?.click();
+        scrollNewsroomTop();
+      }, delay);
+
+      // React can finish the top-nav state change after the native pointer/click event,
+      // so retry through the next few paint windows instead of trusting one timeout.
+      resetAt(0);
+      resetAt(50);
+      resetAt(140);
+      resetAt(280);
+    };
+
+    const isNewsroomTopNavButton = (event) => {
+      const button = event.target instanceof Element ? event.target.closest('header button') : null;
+      return Boolean(button && /^the newsroom$/i.test(clean(button.textContent)));
+    };
+
+    const handleNewsroomPointerDown = (event) => {
+      if (!isNewsroomTopNavButton(event)) return;
+      forceNewsroomHome();
+    };
+
+    const handleNewsroomClick = (event) => {
+      if (!isNewsroomTopNavButton(event)) return;
+      forceNewsroomHome();
     };
 
     sync();
     const observer = new MutationObserver(schedule);
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-audience'] });
-    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('pointerdown', handleNewsroomPointerDown, true);
+    document.addEventListener('click', handleNewsroomClick, true);
 
     return () => {
+      homeResetGeneration += 1;
       observer.disconnect();
-      document.removeEventListener('click', handleDocumentClick);
+      document.removeEventListener('pointerdown', handleNewsroomPointerDown, true);
+      document.removeEventListener('click', handleNewsroomClick, true);
+      root.querySelector('main')?.classList.remove('dhq-newsroom-article-main');
     };
   }, [career]);
 

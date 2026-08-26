@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './services/podcastBinaryTransport.js'
 import AuthAwareApp from './components/AuthAwareApp.jsx'
 import OwnerEnhancements from './components/OwnerEnhancements.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'

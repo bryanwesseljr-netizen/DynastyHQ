@@ -1,0 +1,156 @@
+/* Compact owner-side article reader shell.
+   Keeps the article visually attached to the fixed DynastyHQ navigation and turns
+   the reader controls into one sleek toolbar instead of stacked floating rows. */
+
+main[data-active-tab="newsroom"].dhq-newsroom-article-main {
+  padding-top: 72px !important;
+}
+
+.dhq-newsroom-reader-mode {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px !important;
+  max-width: 78rem !important;
+}
+
+.dhq-newsroom-reader-mode > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0 !important;
+}
+
+/* Empty/owner-only home mounts must not consume a grid cell in reader mode. */
+.dhq-newsroom-reader-mode > [data-team-newsroom-hub],
+.dhq-newsroom-reader-mode > .dhq-newsroom-owner-controls,
+.dhq-newsroom-reader-mode > .dhq-newsroom-owner-library,
+.dhq-newsroom-reader-mode > .dhq-newsroom-legacy-coverage {
+  display: none !important;
+}
+
+.dhq-newsroom-reader-mode > .dhq-newsroom-back-button {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  padding: 0 15px !important;
+  white-space: nowrap;
+}
+
+.dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+}
+
+.dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs button {
+  min-height: 36px;
+  padding: 7px 12px !important;
+}
+
+.dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: stretch;
+  margin: 0 !important;
+}
+
+.dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] > div {
+  height: 100%;
+  margin: 0 !important;
+  align-items: stretch !important;
+}
+
+.dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] button {
+  min-height: 46px;
+  border-radius: 12px !important;
+  padding-inline: 15px !important;
+  white-space: nowrap;
+}
+
+.dhq-newsroom-reader-mode > .dhq-news-article {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  margin-top: 2px !important;
+}
+
+.dhq-newsroom-reader-mode > .dhq-newsroom-media-tools,
+.dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount],
+.dhq-newsroom-reader-mode > [data-editorial-photo-director] {
+  grid-column: 1 / -1;
+}
+
+/* The production toggle should sit directly below the finished story, not create
+   another detached workspace section. */
+.dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount] {
+  margin-top: 10px !important;
+}
+
+@media (max-width: 900px) {
+  main[data-active-tab="newsroom"].dhq-newsroom-article-main {
+    padding-top: 70px !important;
+  }
+
+  .dhq-newsroom-reader-mode {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] > div {
+    justify-content: flex-end !important;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-news-article {
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 640px) {
+  main[data-active-tab="newsroom"].dhq-newsroom-article-main {
+    padding-top: 68px !important;
+    padding-inline: 10px !important;
+  }
+
+  .dhq-newsroom-reader-mode {
+    grid-template-columns: 1fr;
+    gap: 6px !important;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-back-button,
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs,
+  .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount],
+  .dhq-newsroom-reader-mode > .dhq-news-article {
+    grid-column: 1;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-back-button {
+    grid-row: 1;
+    width: 100%;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs {
+    grid-row: 2;
+    overflow-x: auto;
+  }
+
+  .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {
+    grid-row: 3;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-news-article {
+    grid-row: 4;
+  }
+}

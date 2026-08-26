@@ -1,4 +1,4 @@
-export const FIRESTORE_AUDIO_DATA_MAX_CHARS = 700_000;
+export const FIRESTORE_AUDIO_DATA_MAX_CHARS = 360_000;
 
 const normalizedChunkSize = (maxDataChars = FIRESTORE_AUDIO_DATA_MAX_CHARS) => {
   const numeric = Math.max(4, Number(maxDataChars) || FIRESTORE_AUDIO_DATA_MAX_CHARS);

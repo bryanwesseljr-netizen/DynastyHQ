@@ -10,6 +10,8 @@ import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal
 import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
 import PodcastLocalShowPortal from './PodcastLocalShowPortal.jsx';
 import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
+import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
+import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
 import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
 import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
@@ -27,6 +29,8 @@ const OwnerEnhancements = () => (
     <CoachRecruitingWorkspaceV2Portal />
     <EditorialPhotoDirectorPortal />
     <NewsroomTeamHubPortal />
+    <NewsroomArticleExperiencePortal />
+    <NewsroomArticleToolsPortal />
     <NewsroomArticleSharePortal />
     <PodcastLocalShowPortal />
     <PodcastHumanizedAudioPortal />

@@ -216,7 +216,7 @@ const RtgStatusScanner = ({ user, career }) => {
   };
 
   return (
-    <div className="border-t border-white/10 px-5 pb-6 pt-5 md:px-6" data-rtg-status-scanner>
+    <div className="border-t border-white/10 px-5 pb-6 pt-5 md:px-6" data-rtg-status-inline-panel>
       <div className="rounded-2xl border border-blue-400/20 bg-blue-500/[0.04] p-4 md:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -322,14 +322,42 @@ const RtgStatusScannerPortal = () => {
   }, [user]);
 
   useEffect(() => {
-    const findTarget = () => {
-      const next = document.querySelector('[data-week-setup-panel]');
-      setTarget((current) => current === next ? current : next);
+    let ownedNode = null;
+    const syncTarget = () => {
+      const row = document.querySelector('.dhq-agenda-v3-rtg-row');
+      if (!row?.parentElement) {
+        setTarget(null);
+        return;
+      }
+
+      let node = document.getElementById('dhq-rtg-status-inline-host');
+      if (!node) {
+        node = document.createElement('div');
+        node.id = 'dhq-rtg-status-inline-host';
+        ownedNode = node;
+      }
+
+      if (node.parentElement !== row.parentElement || row.nextElementSibling !== node) {
+        row.insertAdjacentElement('afterend', node);
+      }
+
+      node.style.display = row.classList.contains('is-open') ? 'block' : 'none';
+      node.style.marginTop = '10px';
+      setTarget((current) => current === node ? current : node);
     };
-    findTarget();
-    const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+
+    syncTarget();
+    const observer = new MutationObserver(syncTarget);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => {
+      observer.disconnect();
+      if (ownedNode?.parentElement) ownedNode.remove();
+    };
   }, []);
 
   const careerPhase = String(career?.careerPhase || 'Player');

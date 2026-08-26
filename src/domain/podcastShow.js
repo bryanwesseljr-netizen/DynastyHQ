@@ -1,8 +1,10 @@
+import { resolveCareerTeamMediaProfile } from './teamMediaProfile.js';
+
 export const PODCAST_SHOW = Object.freeze({
-  name: 'The Gridiron Grind',
-  shortName: 'Gridiron Grind',
-  brandingVersion: 3,
-  description: 'Mark Thompson and Sarah Chen turn each verified football week into a grounded five-to-six-minute show—from recruiting trail to coaching legacy.',
+  name: 'Nippert Notebook',
+  shortName: 'Nippert Notebook',
+  brandingVersion: 4,
+  description: 'Mark Thompson and Sarah Chen cover the current program like a local football beat: every game, role change, roster storyline and meaningful week in context.',
   disclosure: 'AI-generated voices',
 });
 
@@ -12,18 +14,18 @@ export const PODCAST_HOSTS = Object.freeze([
   Object.freeze({
     id: 'marcus-grant',
     name: 'Mark Thompson',
-    role: 'Lead Host & College Football Insider',
+    role: 'Lead Host & Team Beat Reporter',
     voice: 'cedar',
-    scriptPersona: 'composed lead host and college-football insider: warm, grounded, naturally curious, comfortable making a firm take, asking Sarah direct questions, and reacting in the moment without sounding like an announcer',
-    speechInstructions: 'Speak as Mark Thompson, an adult male cohost on a polished American college-football podcast. Use a natural lower male register and warm conversational confidence. Sound like you are sitting across from Sarah in the same studio, responding to her rather than reading narration to an audience. Let pace vary naturally by sentence: quicker on short reactions, slower on thoughtful points. Use subtle pauses, contractions, selective emphasis, and an easy conversational rhythm. Avoid a perfectly even cadence, theatrical sports-radio energy, announcer voice, or over-enunciation.',
+    scriptPersona: 'experienced local football beat host: Mark covers this program every week, remembers prior games and role changes, leads with the team story, asks Sarah direct football questions, and sounds like someone who knows the locker-room context without inventing private access or facts',
+    speechInstructions: 'Speak as Mark Thompson, an adult male host on a polished local college-football podcast dedicated to one program. Use a natural lower male register and warm conversational confidence. Sound like a beat reporter talking with Sarah after following this team all season, not like a national studio anchor parachuting into one story. Refer naturally to prior verified weeks when supplied, keep the program and game as the frame, and react to Sarah rather than reading narration. Let pace vary naturally. Avoid theatrical sports-radio energy, announcer voice, fake insider claims, or invented private conversations.',
   }),
   Object.freeze({
     id: 'tyler-brooks',
     name: 'Sarah Chen',
-    role: 'College Football Analyst',
+    role: 'Football Analyst & Recruiting Reporter',
     voice: 'coral',
-    scriptPersona: 'sharp college-football analyst: concise, observant, comfortable challenging Mark, adding nuance, making quick reactions, and sounding engaged rather than delivering prepared mini-columns',
-    speechInstructions: 'Speak as Sarah Chen, an adult female cohost and college-football analyst on a polished American sports podcast. Use a natural female register, intelligent conversational confidence, and an engaged but relaxed tone. Sound like you are talking directly with Mark in the same room, not presenting a report. Let pace and emphasis change with the thought: quick on agreement or pushback, measured on analysis, slightly slower when reflective. Use natural pauses and contractions. Avoid a perfectly even cadence, theatrical excitement, announcer delivery, or overly crisp recital-style diction.',
+    scriptPersona: 'sharp local team analyst and recruiting reporter: Sarah knows the current roster story, player development, recruiting and matchup context, challenges Mark when appropriate, and connects this week to what has actually changed without turning the conversation into a national roundup',
+    speechInstructions: 'Speak as Sarah Chen, an adult female cohost and football analyst on a polished local college-football podcast dedicated to one program. Use a natural female register, intelligent conversational confidence, and an engaged but relaxed tone. Sound like you cover this team every week and are talking directly with Mark in the same room. Build on verified prior context when it is supplied, focus on football meaning rather than game mechanics, and never imply private sourcing that is not in the packet. Avoid a national-anchor voice, theatrical excitement, or recital-style diction.',
   }),
 ]);
 
@@ -36,6 +38,24 @@ export const canonicalPodcastHost = (hostId) => PODCAST_PUBLIC_HOSTS_BY_ID.get(h
 
 export const canonicalizePodcastHosts = () => PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host }));
 
+export const resolvePodcastShow = (state = {}) => {
+  const team = resolveCareerTeamMediaProfile(state);
+  return {
+    ...PODCAST_SHOW,
+    name: team.podcastName || PODCAST_SHOW.name,
+    shortName: team.podcastName || PODCAST_SHOW.shortName,
+    description: team.podcastTagline || PODCAST_SHOW.description,
+    subtitle: team.podcastSubtitle || `${team.school} Football Podcast`,
+    school: team.school,
+    nickname: team.nickname,
+    city: team.city,
+    primary: team.primary,
+    secondary: team.secondary,
+    accent: team.accent,
+    hostsLabel: team.podcastHostsLabel,
+  };
+};
+
 export const isManagedPodcastCoverUrl = (value) => {
   const urlValue = String(value || '').trim();
   if (!urlValue) return false;
@@ -43,9 +63,7 @@ export const isManagedPodcastCoverUrl = (value) => {
   try {
     const parsed = new URL(urlValue);
     if (parsed.protocol !== 'https:' || !/(?:^|\.)blob\.vercel-storage\.com$/i.test(parsed.hostname)) return false;
-    // Only covers uploaded through the dedicated Gridiron Grind uploader are trusted.
-    // Legacy generic podcast image URLs are intentionally ignored because a deleted
-    // Vercel Blob can return a valid-looking missing-image graphic instead of firing onError.
+    // Only covers uploaded through DynastyHQ's dedicated podcast-cover uploader are trusted.
     return /podcast-cover-/i.test(parsed.pathname);
   } catch {
     return false;

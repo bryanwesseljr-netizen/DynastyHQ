@@ -4,7 +4,7 @@ import {
   PODCAST_PUBLIC_HOSTS_BY_ID,
 } from './podcastShow.js';
 import { buildProgramCoverageContext } from './programCoverage.js';
-import { resolveCurrentProgramSchool } from './teamMediaProfile.js';
+import { resolveCurrentProgramSchool, resolveIssueTeamMediaProfile } from './teamMediaProfile.js';
 
 const WORDS_PER_MINUTE = 145;
 const MIN_SCRIPT_WORDS = 400;
@@ -173,6 +173,21 @@ export const findPodcastEpisode = (state, publicationId) => (
   (state.podcastEpisodes || []).find((episode) => episode.publicationId === publicationId) || null
 );
 
+const currentGameForIssue = (state = {}, issue = {}) => {
+  const publicationId = issue?.publicationId || issue?.id || '';
+  const weekly = (state.weeklyUpdates || []).find((entry) => (
+    entry?.publicationId === publicationId
+    || entry?.id === publicationId
+    || entry?.weekKey === publicationId
+  ));
+  if (weekly?.game) return weekly.game;
+  if (issue?.game) return issue.game;
+  return (state.gameLogs || []).find((entry) => (
+    Number(entry?.season || 1) === Number(issue?.season || 1)
+    && Number(entry?.week ?? 0) === Number(issue?.week ?? 0)
+  )) || null;
+};
+
 export const buildPodcastGenerationPayload = (state, publicationId) => {
   const issue = findPodcastIssue(state, publicationId);
   if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
@@ -187,13 +202,24 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
   const usableFacts = facts.filter((fact) => fact.editorialUse !== 'background-only');
   if (!usableFacts.length) throw new Error('The selected issue has no football facts available for a podcast.');
   const brief = editorialBriefFor(state, issue, coverageStage, coverageContext);
+  const mediaProfile = resolveIssueTeamMediaProfile(issue, state);
+  const currentGame = coverageContext?.program?.currentGame || currentGameForIssue(state, issue);
+  const weekType = text(issue.weekType, 60).toLowerCase();
+  const opponent = text(
+    currentGame?.opponent
+      || issue?.opponent
+      || issue?.weeklySummary?.opponent
+      || issue?.summary?.opponent
+      || issue?.podcastBrief?.opponent,
+    160,
+  );
 
   return {
     publicationId: issue.publicationId || issue.id,
     season: Number(issue.season) || 1,
     week: Math.max(0, Number(issue.week) || 0),
     label: text(issue.label || issue.weekLabel, 160),
-    weekType: text(issue.weekType, 60).toLowerCase(),
+    weekType,
     weekPhase: text(issue.weekPhase, 80).toLowerCase(),
     careerPhase: text(issue.careerPhase, 40),
     coverageStage,
@@ -208,6 +234,20 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
       playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
       editorialPrinciple: 'The team/game is the default subject. Use the shared coverage tier and active storyline threads. Do not repeat an established storyline unless something changed.',
     } : null,
+    show: {
+      name: mediaProfile.podcastName,
+      subtitle: mediaProfile.podcastSubtitle,
+      school: mediaProfile.school,
+      nickname: mediaProfile.nickname,
+      city: mediaProfile.city,
+    },
+    episodeContext: {
+      school: mediaProfile.school,
+      nickname: mediaProfile.nickname,
+      opponent,
+      result: text(currentGame?.result, 20),
+      didPlay: weekType.includes('bye') ? false : currentGame?.didPlay !== false,
+    },
     brief,
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
@@ -225,6 +265,8 @@ const normalizeDelivery = (value) => {
     ? normalized
     : 'neutral';
 };
+
+const isShowBookend = (segment = {}) => /^show-(?:open|close)-/i.test(text(segment.id, 100));
 
 export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) => {
   const allowedKeys = new Set(payload.facts.map((fact) => fact.key));
@@ -244,18 +286,20 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     deliveryStyle: normalizeDelivery(segment.deliveryStyle),
     citedFactKeys: normalizeCitations(segment.citedFactKeys, allowedKeys),
   })).filter((segment) => segment.text);
+  const coreSegments = segments.filter((segment) => !isShowBookend(segment));
 
-  if (segments.length < 10) throw new Error('The podcast script was incomplete. Please try generating it again.');
-  if (new Set(segments.map((segment) => segment.hostId)).size < 2) {
+  if (coreSegments.length < 10) throw new Error('The podcast script was incomplete. Please try generating it again.');
+  if (new Set(coreSegments.map((segment) => segment.hostId)).size < 2) {
     throw new Error('The podcast script did not include both hosts. Please try generating it again.');
   }
-  const transcriptWordCount = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
-  if (transcriptWordCount < MIN_SCRIPT_WORDS || transcriptWordCount > MAX_SCRIPT_WORDS) {
+  const coreWordCount = coreSegments.reduce((total, segment) => total + wordCount(segment.text), 0);
+  if (coreWordCount < MIN_SCRIPT_WORDS || coreWordCount > MAX_SCRIPT_WORDS) {
     throw new Error('The generated episode fell outside the supported script range. Please try again.');
   }
 
-  const citedFactKeys = [...new Set(segments.flatMap((segment) => segment.citedFactKeys))];
+  const citedFactKeys = [...new Set(coreSegments.flatMap((segment) => segment.citedFactKeys))];
   if (!citedFactKeys.length) throw new Error('The generated episode did not cite its verified source facts.');
+  const transcriptWordCount = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
 
   return {
     id: `podcast-${payload.publicationId}`,
@@ -267,6 +311,10 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     coverageDecision: payload.coverageDecision || null,
     storylineKeys: payload.coverageDecision?.storylineKeys || [],
     storylineThreads: payload.storylineThreads || [],
+    showName: text(generated?.showName || payload?.show?.name, 160),
+    showSchool: text(generated?.showSchool || payload?.show?.school, 160),
+    showNickname: text(generated?.showNickname || payload?.show?.nickname, 120),
+    opponent: text(generated?.opponent || payload?.episodeContext?.opponent, 160),
     title: text(generated.title, 240) || payload.brief.title,
     summary: text(generated.summary, 700) || payload.brief.summary,
     generatedAt: new Date().toISOString(),
@@ -309,7 +357,7 @@ export const markPodcastAudioReady = (state, publicationId, { model = '', segmen
 
 export const podcastTranscriptText = (episode) => {
   const lines = [
-    'THE GRIDIRON GRIND',
+    episode?.showName || 'The Gridiron Grind',
     episode?.title || 'Episode',
     `Season ${episode?.season || 1}, Week ${episode?.week ?? 0}`,
     'Hosted by Mark Thompson and Sarah Chen',

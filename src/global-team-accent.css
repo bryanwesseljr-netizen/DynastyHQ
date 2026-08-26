@@ -1,0 +1,60 @@
+/* Subtle current-program accent layer. DynastyHQ keeps its own black/navy/gold
+   product identity while the active team lightly influences the career UI. */
+
+:root {
+  --dhq-team-primary: #e00122;
+  --dhq-team-secondary: #050505;
+  --dhq-team-accent: #ffffff;
+}
+
+body[data-dhq-team-accent="true"] header {
+  border-bottom-color: color-mix(in srgb, var(--dhq-team-primary) 24%, #1e293b) !important;
+}
+
+body[data-dhq-team-accent="true"] header .dhq-primary-nav-item[aria-current="page"] > span:last-child {
+  background: var(--dhq-team-primary) !important;
+  box-shadow: 0 0 13px color-mix(in srgb, var(--dhq-team-primary) 55%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"]::before {
+  position: fixed;
+  z-index: 118;
+  top: 64px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 2%, color-mix(in srgb, var(--dhq-team-primary) 74%, transparent) 50%, transparent 98%);
+  content: '';
+  opacity: .72;
+  pointer-events: none;
+}
+
+/* Give the working areas a faint program-colored edge without recoloring the
+   whole interface or replacing DynastyHQ's semantic success/warning colors. */
+body[data-dhq-team-accent="true"] main[data-active-tab]:not([data-active-tab="newsroom"]):not([data-active-tab="podcast"]) [class~="border-slate-700/50"],
+body[data-dhq-team-accent="true"] main[data-active-tab]:not([data-active-tab="newsroom"]):not([data-active-tab="podcast"]) [class~="border-slate-700"] {
+  border-color: color-mix(in srgb, var(--dhq-team-primary) 14%, #334155) !important;
+}
+
+body[data-dhq-team-accent="true"] main[data-active-tab] input:focus,
+body[data-dhq-team-accent="true"] main[data-active-tab] select:focus,
+body[data-dhq-team-accent="true"] main[data-active-tab] textarea:focus,
+body[data-dhq-team-accent="true"] main[data-active-tab] button:focus-visible {
+  outline-color: color-mix(in srgb, var(--dhq-team-primary) 76%, white) !important;
+  border-color: color-mix(in srgb, var(--dhq-team-primary) 60%, #64748b) !important;
+}
+
+/* Current-career hubs get a whisper of the team color around their outermost
+   glass panels. Newsroom and Podcast already receive a full team treatment. */
+body[data-dhq-team-accent="true"] main[data-active-tab="dashboard"] > div > div:first-child,
+body[data-dhq-team-accent="true"] main[data-active-tab="agenda"] > div > div:first-child,
+body[data-dhq-team-accent="true"] main[data-active-tab="story"] > div > div:first-child,
+body[data-dhq-team-accent="true"] main[data-active-tab="trophies"] > div > div:first-child {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dhq-team-primary) 23%, transparent), 0 18px 48px rgba(0,0,0,.2);
+}
+
+@media (max-width: 1199px) {
+  body[data-dhq-team-accent="true"] header button[aria-current="page"] {
+    border-color: color-mix(in srgb, var(--dhq-team-primary) 58%, #475569) !important;
+  }
+}

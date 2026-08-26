@@ -15,8 +15,8 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interaction
 const MAX_SEGMENTS = 20;
 const MIN_TOTAL_WORDS = 400;
 const MAX_TOTAL_WORDS = 1000;
-export const TARGET_PERFORMANCE_WORDS = 170;
-export const MAX_PERFORMANCE_WORDS = 220;
+export const TARGET_PERFORMANCE_WORDS = 300;
+export const MAX_PERFORMANCE_WORDS = 340;
 export const MIN_GEMINI_CALL_SPACING_MS = 6500;
 export const MAX_GEMINI_RETRY_WAIT_MS = 75_000;
 const MIN_CHUNK_TURNS = 2;
@@ -60,6 +60,8 @@ export const parseGeminiRetryDelayMs = ({ response = null, body = null, message 
 
   return null;
 };
+
+export const shouldRetryGeminiStatus = (status) => [500, 502, 503, 504].includes(Number(status));
 
 const normalizeSegments = (rawSegments) => {
   if (!Array.isArray(rawSegments)) return [];
@@ -195,21 +197,9 @@ const callGemini = async (prompt) => {
       return { audio, interaction: body };
     } catch (error) {
       lastError = error;
-      const retryable = [429, 500, 502, 503, 504].includes(Number(error?.status));
+      const retryable = shouldRetryGeminiStatus(error?.status);
       if (!retryable || attempt === 2) break;
-
-      const requestedWaitMs = Number(error?.status) === 429
-        ? Math.max(MIN_GEMINI_CALL_SPACING_MS, Number(error?.retryAfterMs) || 0) + 500
-        : 700 * (attempt + 1);
-      const waitMs = Math.min(MAX_GEMINI_RETRY_WAIT_MS, requestedWaitMs);
-      if (Number(error?.status) === 429) {
-        console.warn('Gemini TTS quota backoff', {
-          attempt: attempt + 1,
-          retryAfterMs: Number(error?.retryAfterMs) || null,
-          waitMs,
-        });
-      }
-      await sleep(waitMs);
+      await sleep(700 * (attempt + 1));
     }
   }
   throw lastError || new Error('Gemini TTS did not return audio.');
@@ -285,6 +275,13 @@ export default async function handler(req, res) {
 
   try {
     const transcriptChunks = partitionSegments(segments);
+    console.info('Humanized podcast render plan', {
+      transcriptTurns: segments.length,
+      transcriptWords: totalWords,
+      performanceSections: transcriptChunks.length,
+      performanceSectionWords: transcriptChunks.map(chunkWordCount),
+    });
+
     const pcmChunks = [];
     const loudnessAdjustments = [];
     let sampleRate = DEFAULT_SAMPLE_RATE;
@@ -351,12 +348,20 @@ export default async function handler(req, res) {
     console.error('Gemini multispeaker podcast generation failed', error);
     const status = Number(error?.status) === 429 ? 429 : 502;
     const message = String(error?.message || '');
+
+    if (status === 429) {
+      const retrySeconds = Math.max(1, Math.ceil((Number(error?.retryAfterMs) || 60_000) / 1000));
+      res.setHeader('Retry-After', String(retrySeconds));
+      return json(res, 429, {
+        error: `Gemini's humanized-audio quota is full right now. Try again in about ${retrySeconds} seconds. DynastyHQ stopped immediately instead of holding the connection open.`,
+        retryAfterSeconds: retrySeconds,
+      });
+    }
+
     return json(res, status, {
-      error: status === 429
-        ? 'Gemini stayed quota-limited even after DynastyHQ honored the requested retry window. Wait a couple of minutes and try the humanized audio again.'
-        : /response size/i.test(message)
-          ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
-          : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
+      error: /response size/i.test(message)
+        ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
+        : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',
     });
   }
 }

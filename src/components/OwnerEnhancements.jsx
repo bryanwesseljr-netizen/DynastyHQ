@@ -10,7 +10,7 @@ import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal
 import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
 import PodcastArtworkHydrationPortal from './PodcastArtworkHydrationPortal.jsx';
 import PodcastLocalShowPortal from './PodcastLocalShowPortal.jsx';
-import PodcastMasterAudioPortal from './PodcastMasterAudioPortal.jsx';
+import PodcastMasterAudioPortalV2 from './PodcastMasterAudioPortalV2.jsx';
 import PodcastSeekControlsPortal from './PodcastSeekControlsPortal.jsx';
 import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
 import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
@@ -42,7 +42,7 @@ const OwnerEnhancements = () => (
     <PodcastArtworkHydrationPortal />
     <PodcastLocalShowPortal />
     <PodcastHumanizedAudioPortal />
-    <PodcastMasterAudioPortal />
+    <PodcastMasterAudioPortalV2 />
     <PodcastSeekControlsPortal />
   </OwnerCareerProvider>
 );

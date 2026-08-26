@@ -21,6 +21,7 @@ import './tile-fit-v2.css'
 import './public-share-v1.css'
 import './global-team-accent.css'
 import './newsroom-backstage-compact.css'
+import './podcast-seek-controls.css'
 
 const viewContext = resolveViewContext(window.location.search)
 const sharedArticleId = readSharedNewsroomArticleId(window.location.search)

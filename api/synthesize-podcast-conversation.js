@@ -15,14 +15,16 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interaction
 const MAX_SEGMENTS = 20;
 const MIN_TOTAL_WORDS = 400;
 const MAX_TOTAL_WORDS = 1000;
-export const TARGET_PERFORMANCE_WORDS = 300;
-export const MAX_PERFORMANCE_WORDS = 340;
+export const TARGET_PERFORMANCE_WORDS = 420;
+export const MAX_PERFORMANCE_WORDS = 560;
+export const SINGLE_RENDER_MAX_WORDS = 560;
+export const TWO_RENDER_MAX_WORDS = 820;
 export const MIN_GEMINI_CALL_SPACING_MS = 6500;
 export const MAX_GEMINI_RETRY_WAIT_MS = 75_000;
 const MIN_CHUNK_TURNS = 2;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
-const EDGE_PAD_MS = 70;
+const EDGE_PAD_MS = 180;
 
 export const config = { maxDuration: 180 };
 
@@ -85,48 +87,48 @@ export const partitionSegments = (segments) => {
   const source = Array.isArray(segments) ? segments.filter(Boolean) : [];
   if (!source.length) return [];
 
+  const totalWords = chunkWordCount(source);
+  const desiredChunkCount = totalWords <= SINGLE_RENDER_MAX_WORDS
+    ? 1
+    : totalWords <= TWO_RENDER_MAX_WORDS
+      ? 2
+      : 3;
+
+  if (desiredChunkCount === 1) return [source];
+
   const chunks = [];
   let current = [];
   let currentWords = 0;
+  let assignedWords = 0;
 
   for (let index = 0; index < source.length; index += 1) {
     const segment = source[index];
-    const segmentWords = countWords(segment?.text);
-
-    if (
-      current.length >= MIN_CHUNK_TURNS
-      && hasBothSpeakers(current)
-      && currentWords + segmentWords > MAX_PERFORMANCE_WORDS
-    ) {
-      chunks.push(current);
-      current = [];
-      currentWords = 0;
-    }
-
     current.push(segment);
-    currentWords += segmentWords;
+    currentWords += countWords(segment?.text);
 
-    const next = source[index + 1];
-    const nextWords = next ? countWords(next?.text) : 0;
-    const reachedTarget = currentWords >= TARGET_PERFORMANCE_WORDS;
-    const nextWouldRunLong = Boolean(next) && currentWords + nextWords > MAX_PERFORMANCE_WORDS;
+    const chunksStillNeeded = desiredChunkCount - chunks.length;
+    const futureChunks = chunksStillNeeded - 1;
+    if (futureChunks <= 0 || index >= source.length - 1) continue;
+
+    const turnsRemaining = source.length - index - 1;
+    const enoughTurnsRemain = turnsRemaining >= futureChunks * MIN_CHUNK_TURNS;
+    const wordsRemainingIncludingCurrent = totalWords - assignedWords;
+    const balancedTarget = wordsRemainingIncludingCurrent / chunksStillNeeded;
     const canBreakNaturally = current.length >= MIN_CHUNK_TURNS && hasBothSpeakers(current);
 
-    if (index < source.length - 1 && canBreakNaturally && (reachedTarget || nextWouldRunLong)) {
+    if (enoughTurnsRemain && canBreakNaturally && currentWords >= balancedTarget) {
       chunks.push(current);
+      assignedWords += currentWords;
       current = [];
       currentWords = 0;
     }
   }
 
-  if (current.length) {
-    const previous = chunks[chunks.length - 1];
-    const mergedWords = previous ? chunkWordCount(previous) + chunkWordCount(current) : Infinity;
-    if (current.length === 1 && previous && mergedWords <= MAX_PERFORMANCE_WORDS + 40) {
-      chunks[chunks.length - 1] = [...previous, ...current];
-    } else {
-      chunks.push(current);
-    }
+  if (current.length) chunks.push(current);
+
+  while (chunks.length > desiredChunkCount) {
+    const tail = chunks.pop();
+    chunks[chunks.length - 1] = [...(chunks[chunks.length - 1] || []), ...tail];
   }
 
   return chunks;
@@ -139,10 +141,10 @@ const contextFromSegments = (segments) => segments.slice(-2)
 export const buildPerformancePrompt = ({ title, segments, priorContext = '', chunkIndex = 0, chunkCount = 1 }) => {
   const transcript = segments.map((segment) => `${segment.speaker}: ${segment.text}`).join('\n');
   const continuation = priorContext
-    ? `\n\nPRIOR CONTEXT — FOR CONTINUITY ONLY, DO NOT SPEAK:\n${priorContext}`
+    ? `\n\nPRIOR CONTEXT — continuity reference only; do not speak it:\n${priorContext}`
     : '';
 
-  return `Perform only the Mark and Sarah transcript below as a polished, natural college-football podcast conversation. Preserve every spoken word exactly. Do not read speaker labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · performance section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE AND PERFORMANCE:\n- Speaker labels are authoritative. Every Mark line must use Mark's assigned voice and every Sarah line must use Sarah's assigned voice. Switch speakers immediately at every label. Never merge the two voices or let one speaker take over the other speaker's lines.\n- Mark is the experienced lead host: warm, confident, curious and conversational. He should sound like a real sports-radio host talking with a colleague, with natural low-key enthusiasm, thoughtful reactions and varied cadence. He is not a stadium announcer and must never sound monotone or robotic.\n- Sarah is the sharp co-host and analyst: warm, articulate, engaged and comfortable challenging or building on a point. Give her natural energy, intelligent emphasis and conversational rhythm without making her overly bubbly or theatrical.\n- Let the meaning of the words drive realistic inflection. Scores, surprises, momentum swings, strong statistics, disagreement and questions should receive subtle human emphasis. Ordinary setup lines should stay relaxed.\n- Use natural phrase breaks, punctuation-driven pauses and small changes in pace so consecutive sentences do not all have the same melody. Sound like two people reacting to each other in a studio, not two narrators reading copy.\n- Keep both voices clear and full-range from the first word through the last. Maintain stable loudness, microphone distance and timbre. Do not gradually fade, whisper, muffle, lose energy, become metallic, or drift into a synthetic cadence as the section continues.\n- Match the perceived studio loudness of every performance section. Do not make a later section noticeably louder or quieter than an earlier section.\n- Start and finish this section at normal studio volume. Do not create a fade-in or fade-out.\n- Do not add new words, filler phrases, laughter, side comments or dialogue that is not in the transcript. Natural breathing and punctuation pauses are fine.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
+  return `Read only the Mark and Sarah transcript below as one relaxed, continuous college-football studio conversation. Preserve every spoken word exactly. Do not read speaker labels, headings, context or production notes.\n\nEpisode: ${clean(title, 220) || 'The Gridiron Grind'}${chunkCount > 1 ? ` · section ${chunkIndex + 1} of ${chunkCount}` : ''}\n\nVOICE ANCHORS:\n- Speaker labels are absolute. Mark always uses Mark's assigned voice. Sarah always uses Sarah's assigned voice. Switch immediately at each label and never let one voice take the other speaker's line.\n- Lock each host's identity from the first sentence: keep the same apparent age, pitch range, accent, timbre and vocal weight for that host for the entire section. Do not morph, drift, become gravelly, metallic, nasal, unusually deep or unusually high as the conversation continues.\n- Keep both hosts at a consistent conversational microphone distance and perceived loudness. Neither host should suddenly become louder, softer, breathier or more compressed than before.\n\nCONVERSATION FEEL:\n- Sound like two colleagues sitting across from each other talking through a football game, not announcers performing a script. Keep the energy easy and believable.\n- Let the actual wording and punctuation create the inflection. A surprising result, a question or a strong football point can naturally lift the delivery; ordinary analysis should stay relaxed. Do not force emotion onto every sentence.\n- Use natural phrase breaks and tight handoffs. Avoid long dramatic pauses between speakers.\n- Small human texture is good when it happens naturally: a quiet breath, a tiny hesitation or a brief thinking pause. Do not force these quirks, repeat them on a pattern, or add new spoken words that are not in the transcript.\n- A sentence fragment or self-correction already written into the transcript should sound spontaneous rather than over-enunciated.\n- Do not add laughter, ad-libs, new filler words or commentary.\n- Start and finish at normal studio volume. Do not fade in or fade out.\n${continuation}\n\nTRANSCRIPT:\n${transcript}`;
 };
 
 const audioFromInteraction = (interaction) => {
@@ -332,7 +334,7 @@ export default async function handler(req, res) {
       audioBase64,
       mimeType: 'audio/mpeg',
       model: MODEL,
-      engine: 'gemini-multispeaker-v3.5-leveled-paced',
+      engine: 'gemini-multispeaker-v3.6-reference-cadence',
       voices: { mark: MARK_VOICE, sarah: SARAH_VOICE },
       transcriptTurns: segments.length,
       transcriptWords: totalWords,

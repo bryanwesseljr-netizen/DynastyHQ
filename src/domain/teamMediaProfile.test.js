@@ -52,7 +52,7 @@ test('representative future FBS destinations receive real team identity instead 
     assert.equal(profile.city, city);
     assert.equal(profile.primary, primary);
     assert.equal(profile.localOutletName, `${nickname} Insider`);
-    assert.equal(profile.podcastName, `${nickname} Notebook`);
+    assert.equal(profile.podcastName, `${school} Football Notebook`);
     assert.equal(profile.profileSource, 'fbs-2026');
   });
 });
@@ -167,7 +167,7 @@ test('new coaching destination does not inherit the previous programs saved medi
   assert.equal(profile.nickname, 'Knights');
   assert.equal(profile.localOutletName, 'Knights Insider');
   assert.equal(profile.regionalOutletName, 'Orlando College Sports');
-  assert.equal(profile.podcastName, 'Knights Notebook');
+  assert.equal(profile.podcastName, 'UCF Football Notebook');
   assert.notEqual(profile.localOutletName, 'Bearcats Insider');
 });
 

@@ -131,9 +131,6 @@ export const resolveCurrentProgramSchool = (state = {}) => {
     );
   }
 
-  // A verified transfer milestone is authoritative if an older player profile has
-  // not yet been rewritten. This keeps team media identity in sync during transfer
-  // transitions without recoloring prior editions.
   const latestTransferSchool = latestMilestoneInstitution(state, ['transfer']);
   return clean(latestTransferSchool || state?.player?.college || state?.player?.school);
 };
@@ -171,7 +168,7 @@ export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, sta
     || catalogProfile.nationalOutletName,
   ) || 'College Football Central';
   const teamNewsLabel = clean(override.teamNewsLabel || catalogProfile.teamNewsLabel) || `${shortName} Football`;
-  const podcastName = clean(override.podcastName || catalogProfile.podcastName) || `${nickname} Notebook`;
+  const podcastName = clean(override.podcastName || catalogProfile.podcastName) || `${shortName} Football Notebook`;
 
   return {
     school: resolvedSchool,

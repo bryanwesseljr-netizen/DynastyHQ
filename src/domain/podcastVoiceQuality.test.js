@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_MARK_VOICE,
   DEFAULT_SARAH_VOICE,
+  FALLBACK_MODEL,
   MAX_PERFORMANCE_WORDS,
   MIN_GEMINI_CALL_SPACING_MS,
   SINGLE_RENDER_MAX_WORDS,
   TARGET_PERFORMANCE_WORDS,
   TWO_RENDER_MAX_WORDS,
   buildPerformancePrompt,
+  geminiQuotaIds,
+  isDailyGeminiFreeTierQuota,
   parseGeminiRetryDelayMs,
   partitionSegments,
 } from '../../api/synthesize-podcast-conversation.js';
@@ -32,9 +35,10 @@ const assertPreserved = (transcript, chunks) => {
   }
 };
 
-test('keeps the established podcast host voices', () => {
+test('keeps the established podcast host voices and a separate free-tier TTS fallback', () => {
   assert.equal(DEFAULT_MARK_VOICE, 'Sadaltager');
   assert.equal(DEFAULT_SARAH_VOICE, 'Sulafat');
+  assert.equal(FALLBACK_MODEL, 'gemini-2.5-flash-preview-tts');
 });
 
 test('uses as few stable render sections as episode length allows', () => {
@@ -100,4 +104,24 @@ test('honors Gemini quota retry hints from headers, RetryInfo, and error text', 
   assert.equal(parseGeminiRetryDelayMs({
     message: 'Quota exceeded. Please retry in 18.261147622s.',
   }), 18_262);
+});
+
+test('distinguishes the daily free-tier TTS cap from a temporary retry window', () => {
+  const body = {
+    error: {
+      details: [{
+        '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+        violations: [{
+          quotaMetric: 'generativelanguage.googleapis.com/generate_content_free_tier_requests',
+          quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier',
+          quotaDimensions: { location: 'global', model: 'gemini-3.1-flash-tts' },
+          quotaValue: '10',
+        }],
+      }],
+    },
+  };
+
+  assert.deepEqual(geminiQuotaIds(body), ['GenerateRequestsPerDayPerProjectPerModel-FreeTier']);
+  assert.equal(isDailyGeminiFreeTierQuota(body), true);
+  assert.equal(isDailyGeminiFreeTierQuota({ error: { details: [] } }), false);
 });

@@ -15,10 +15,12 @@ import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.j
 import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
 import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
 import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
+import TeamAccentPortal from './TeamAccentPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 
 const OwnerEnhancements = () => (
   <OwnerCareerProvider>
+    <TeamAccentPortal />
     <CollegeGameCoverageRepairPortal />
     <WeekSetupPortal />
     <GameweekFlowPortal />

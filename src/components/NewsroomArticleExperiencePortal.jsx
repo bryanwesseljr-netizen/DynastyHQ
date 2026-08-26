@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
+import '../newsroom-article-polish.css';
 
 const clean = (value) => String(value ?? '').trim();
 

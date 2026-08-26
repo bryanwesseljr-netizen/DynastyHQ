@@ -1,5 +1,7 @@
 .dhq-local-podcast-root .dhq-podcast-legacy-header { display: none; }
-.dhq-local-podcast-root .dhq-podcast-legacy-archive[data-open="false"] { display: none; }
+.dhq-local-podcast-root .dhq-podcast-legacy-archive[data-open="false"],
+.dhq-local-podcast-root .dhq-podcast-rundown[data-open="false"],
+.dhq-local-podcast-root .dhq-podcast-show-notes[data-open="false"] { display: none !important; }
 .dhq-local-podcast-root .dhq-podcast-production-control[data-open="false"],
 .dhq-local-podcast-root .dhq-podcast-production-note[data-open="false"] { display: none !important; }
 
@@ -132,7 +134,8 @@
 .dhq-local-podcast__message { margin: 13px 0 0; border: 1px solid #2b5848; border-radius: .7rem; padding: 9px 11px; background: rgba(16,92,65,.12); color: #9de3c2; font-size: 10px; font-weight: 800; }
 .dhq-local-podcast__studio-note { margin: 13px 0 0; color: #59677a; font-size: 9px; line-height: 1.55; }
 
-/* Let the finished show page feel team-owned instead of generic national blue. */
+/* Keep the original player useful, but make it feel like the same local show. */
+.dhq-local-podcast-root .dhq-podcast-current-episode img { object-fit: cover !important; }
 .dhq-local-podcast-root [class*="text-blue-4"],
 .dhq-local-podcast-root [class*="text-blue-3"] { color: color-mix(in srgb, var(--pod-team-primary) 72%, white) !important; }
 .dhq-local-podcast-root [class*="bg-blue-6"] { background-color: var(--pod-team-primary) !important; }

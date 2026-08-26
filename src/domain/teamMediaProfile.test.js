@@ -2,12 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  FBS_TEAM_MEDIA_PROFILES_2026,
+} from './fbsTeamMediaProfiles.js';
+import {
   resolveCareerTeamMediaProfile,
   resolveCurrentProgramSchool,
   resolveIssueTeamMediaProfile,
   resolveTeamMediaProfile,
   sameProgram,
 } from './teamMediaProfile.js';
+
+test('2026 FBS media catalog covers the complete 138-team DynastyHQ alignment', () => {
+  assert.equal(Object.keys(FBS_TEAM_MEDIA_PROFILES_2026).length, 138);
+});
 
 test('Cincinnati resolves to the Nippert Notebook and Bearcats team-media identity', () => {
   const profile = resolveTeamMediaProfile({
@@ -26,6 +33,38 @@ test('Cincinnati resolves to the Nippert Notebook and Bearcats team-media identi
   assert.equal(profile.podcastName, 'Nippert Notebook');
   assert.equal(profile.podcastSubtitle, 'Cincinnati Football Podcast');
   assert.equal(profile.primary, '#e00122');
+  assert.equal(profile.profileSource, 'fbs-2026');
+});
+
+test('representative future FBS destinations receive real team identity instead of generic branding', () => {
+  const cases = [
+    ['UCF', 'Knights', 'Orlando', '#BA9B37'],
+    ['Delaware', 'Blue Hens', 'Newark', '#033594'],
+    ['Missouri State', 'Bears', 'Springfield', '#5F0000'],
+    ['Sacramento State', 'Hornets', 'Sacramento', '#00573C'],
+    ['North Dakota State', 'Bison', 'Fargo', '#01402A'],
+  ];
+
+  cases.forEach(([school, nickname, city, primary]) => {
+    const profile = resolveTeamMediaProfile({ school });
+    assert.equal(profile.school, school);
+    assert.equal(profile.nickname, nickname);
+    assert.equal(profile.city, city);
+    assert.equal(profile.primary, primary);
+    assert.equal(profile.localOutletName, `${nickname} Insider`);
+    assert.equal(profile.podcastName, `${nickname} Notebook`);
+    assert.equal(profile.profileSource, 'fbs-2026');
+  });
+});
+
+test('FBS aliases resolve to the canonical program identity', () => {
+  assert.equal(resolveTeamMediaProfile({ school: "Hawai'i" }).school, 'Hawaii');
+  assert.equal(resolveTeamMediaProfile({ school: 'Connecticut' }).school, 'UConn');
+  assert.equal(resolveTeamMediaProfile({ school: 'North Carolina State' }).school, 'NC State');
+  assert.equal(resolveTeamMediaProfile({ school: 'Northern Illinois' }).school, 'NIU');
+  assert.equal(sameProgram("Hawai'i", 'Hawaii'), true);
+  assert.equal(sameProgram('Connecticut', 'UConn'), true);
+  assert.equal(sameProgram('North Carolina State', 'NC State'), true);
 });
 
 test('issue profile preserves the school and outlets captured when that edition was published', () => {
@@ -103,6 +142,35 @@ test('coaching mode follows the latest verified coaching institution instead of 
   assert.equal(profile.localOutletName, 'Rocket City Football');
 });
 
+test('new coaching destination does not inherit the previous programs saved media names', () => {
+  const state = {
+    careerPhase: 'HC',
+    player: { graduated: true, graduationSchool: 'Cincinnati', college: 'Cincinnati' },
+    coach: {},
+    careerTransitions: { coachingUniverseCreated: true },
+    careerMilestones: [
+      { type: 'hc-hire', institution: 'UCF', previousInstitution: 'Cincinnati', season: 8, week: 1 },
+    ],
+    newsroomIssues: [
+      {
+        outletProfile: {
+          school: 'Cincinnati',
+          localOutletName: 'Bearcats Insider',
+          regionalOutletName: 'Cincinnati Enquirer',
+        },
+      },
+    ],
+  };
+
+  const profile = resolveCareerTeamMediaProfile(state);
+  assert.equal(profile.school, 'UCF');
+  assert.equal(profile.nickname, 'Knights');
+  assert.equal(profile.localOutletName, 'Knights Insider');
+  assert.equal(profile.regionalOutletName, 'Orlando College Sports');
+  assert.equal(profile.podcastName, 'Knights Notebook');
+  assert.notEqual(profile.localOutletName, 'Bearcats Insider');
+});
+
 test('explicit coach school wins when the coaching profile supplies the current job', () => {
   const state = {
     careerStage: 'HC',
@@ -119,12 +187,13 @@ test('explicit coach school wins when the coaching profile supplies the current 
   assert.equal(profile.nickname, 'Spartans');
 });
 
-test('future public careers receive a usable generic local identity even without a special profile', () => {
+test('unknown programs still receive a usable generated identity', () => {
   const profile = resolveTeamMediaProfile({ school: 'Test University' });
   assert.equal(profile.school, 'Test University');
   assert.match(profile.localOutletName, /Test/);
   assert.match(profile.podcastName, /Test/);
   assert.ok(profile.primary);
+  assert.equal(profile.profileSource, 'generated');
 });
 
 test('program matching normalizes punctuation and case', () => {

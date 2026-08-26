@@ -63,8 +63,9 @@ export const isManagedPodcastCoverUrl = (value) => {
   try {
     const parsed = new URL(urlValue);
     if (parsed.protocol !== 'https:' || !/(?:^|\.)blob\.vercel-storage\.com$/i.test(parsed.hostname)) return false;
-    // Only covers uploaded through DynastyHQ's dedicated podcast-cover uploader are trusted.
-    return /podcast-cover-/i.test(parsed.pathname);
+    // Accept both the legacy dedicated cover uploader and the newer program-specific
+    // artwork uploader used by the local podcast identity system.
+    return /podcast-cover-|podcast-[^/]+-(?:primary|editorial|hosts)-/i.test(parsed.pathname);
   } catch {
     return false;
   }

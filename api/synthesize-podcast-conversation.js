@@ -18,7 +18,7 @@ const MAX_TOTAL_WORDS = 1000;
 export const TARGET_PERFORMANCE_WORDS = 170;
 export const MAX_PERFORMANCE_WORDS = 220;
 export const MIN_GEMINI_CALL_SPACING_MS = 6500;
-const MAX_GEMINI_RETRY_WAIT_MS = 30_000;
+export const MAX_GEMINI_RETRY_WAIT_MS = 75_000;
 const MIN_CHUNK_TURNS = 2;
 const DEFAULT_SAMPLE_RATE = 24000;
 const MP3_KBPS = 56;
@@ -51,8 +51,8 @@ export const parseGeminiRetryDelayMs = ({ response = null, body = null, message 
     if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(retryMs));
   }
 
-  const text = String(message || body?.error?.message || '');
-  const messageMatch = text.match(/retry\s+in\s+([\d.]+)s/i);
+  const retryText = String(message || body?.error?.message || '');
+  const messageMatch = retryText.match(/retry\s+in\s+([\d.]+)s/i);
   if (messageMatch) {
     const retryMs = Number(messageMatch[1]) * 1000;
     if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(MAX_GEMINI_RETRY_WAIT_MS, Math.ceil(retryMs));
@@ -198,10 +198,18 @@ const callGemini = async (prompt) => {
       const retryable = [429, 500, 502, 503, 504].includes(Number(error?.status));
       if (!retryable || attempt === 2) break;
 
-      const waitMs = Number(error?.status) === 429
+      const requestedWaitMs = Number(error?.status) === 429
         ? Math.max(MIN_GEMINI_CALL_SPACING_MS, Number(error?.retryAfterMs) || 0) + 500
         : 700 * (attempt + 1);
-      await sleep(Math.min(MAX_GEMINI_RETRY_WAIT_MS, waitMs));
+      const waitMs = Math.min(MAX_GEMINI_RETRY_WAIT_MS, requestedWaitMs);
+      if (Number(error?.status) === 429) {
+        console.warn('Gemini TTS quota backoff', {
+          attempt: attempt + 1,
+          retryAfterMs: Number(error?.retryAfterMs) || null,
+          waitMs,
+        });
+      }
+      await sleep(waitMs);
     }
   }
   throw lastError || new Error('Gemini TTS did not return audio.');
@@ -345,7 +353,7 @@ export default async function handler(req, res) {
     const message = String(error?.message || '');
     return json(res, status, {
       error: status === 429
-        ? 'Humanized podcast audio hit the current Gemini quota window. DynastyHQ waited and retried, but the quota is still busy. Wait about a minute and try again.'
+        ? 'Gemini stayed quota-limited even after DynastyHQ honored the requested retry window. Wait a couple of minutes and try the humanized audio again.'
         : /response size/i.test(message)
           ? 'The humanized mix rendered but was too large to return safely. Shorten the episode slightly and try again.'
           : 'The humanized two-host audio could not be rendered. Your saved transcript was not changed.',

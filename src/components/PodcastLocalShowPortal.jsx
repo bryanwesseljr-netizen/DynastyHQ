@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Archive, ChevronDown, Headphones, Image as ImageIcon, Loader2, Mic2,
-  Radio, Settings2, UploadCloud,
+  Archive, ChevronDown, Headphones, Image as ImageIcon, Layers3, Loader2, Mic2,
+  Radio, Settings2, StickyNote, UploadCloud,
 } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db, firebaseApp } from '../firebase';
@@ -25,6 +25,8 @@ const PodcastLocalShowPortal = () => {
   const { user, career } = useOwnerCareer();
   const [mount, setMount] = useState(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [rundownOpen, setRundownOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState('');
   const [message, setMessage] = useState('');
@@ -70,6 +72,34 @@ const PodcastLocalShowPortal = () => {
         archiveSection.dataset.open = archiveOpen ? 'true' : 'false';
       }
 
+      const rundownHeading = [...podcastRoot.querySelectorAll('h3')].find((node) => /show, chapter by chapter/i.test(node.textContent || ''));
+      const rundownSection = rundownHeading?.closest('section');
+      if (rundownSection) {
+        rundownSection.classList.add('dhq-podcast-rundown');
+        rundownSection.dataset.open = rundownOpen ? 'true' : 'false';
+      }
+
+      const notesHeading = [...podcastRoot.querySelectorAll('h3')].find((node) => /grounded in the week/i.test(node.textContent || ''));
+      const notesSection = notesHeading?.closest('section');
+      if (notesSection) {
+        notesSection.classList.add('dhq-podcast-show-notes');
+        notesSection.dataset.open = notesOpen ? 'true' : 'false';
+      }
+
+      // The original episode player owns a second artwork slot. Keep it synchronized
+      // with the new program-specific cover so the Current Week card never shows a
+      // stale or blank legacy image.
+      if (primaryArtwork) {
+        const currentWeekLabel = [...podcastRoot.querySelectorAll('p')].find((node) => /^current week$/i.test(clean(node.textContent)));
+        const currentWeekSection = currentWeekLabel?.closest('section');
+        if (currentWeekSection) {
+          currentWeekSection.classList.add('dhq-podcast-current-episode');
+          currentWeekSection.querySelectorAll('img').forEach((image) => {
+            if (image.src !== primaryArtwork) image.src = primaryArtwork;
+          });
+        }
+      }
+
       [...podcastRoot.querySelectorAll('button')].forEach((button) => {
         const text = clean(button.textContent);
         if (/generate full episode|generate episode audio|verified sources required/i.test(text)) {
@@ -107,7 +137,7 @@ const PodcastLocalShowPortal = () => {
       observer.disconnect();
       if (ownedMount?.parentElement) ownedMount.remove();
     };
-  }, [archiveOpen, show, studioOpen]);
+  }, [archiveOpen, notesOpen, primaryArtwork, rundownOpen, show, studioOpen]);
 
   const uploadArtwork = async (slot, file) => {
     if (!file || !user || !career || !db) return;
@@ -199,9 +229,15 @@ const PodcastLocalShowPortal = () => {
         </div>
       </div>
 
-      <div className="dhq-local-podcast__utility">
+      <div className="dhq-local-podcast__utility" aria-label="Podcast page sections">
         <button type="button" data-active={archiveOpen} onClick={() => setArchiveOpen((value) => !value)}>
           <Archive size={14} /> Previous Episodes <ChevronDown size={14} />
+        </button>
+        <button type="button" data-active={rundownOpen} onClick={() => setRundownOpen((value) => !value)}>
+          <Layers3 size={14} /> Episode Rundown <ChevronDown size={14} />
+        </button>
+        <button type="button" data-active={notesOpen} onClick={() => setNotesOpen((value) => !value)}>
+          <StickyNote size={14} /> Show Notes <ChevronDown size={14} />
         </button>
         <button type="button" data-active={studioOpen} onClick={() => setStudioOpen((value) => !value)}>
           <Settings2 size={14} /> Studio Controls <ChevronDown size={14} />

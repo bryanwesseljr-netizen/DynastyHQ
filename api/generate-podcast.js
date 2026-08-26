@@ -230,6 +230,27 @@ const schemaFor = (payload) => ({
   },
 });
 
+export const PODCAST_STATS_AS_EVIDENCE_POLICY = `STATS ARE EVIDENCE, NOT THE SCRIPT:
+- Treat the supplied numbers like a producer's research notes. Use them to understand how the game was played; do not read the research notes to the audience.
+- Never recite a complete box-score line. Do not march through completions, attempts, yards, touchdowns and interceptions, or carries, yards and touchdowns, as a list.
+- The final score is normally worth saying. Beyond that, prefer football conclusions over exact numbers: the run game controlled the night, the quarterback struggled to generate a passing game and hurt the offense with turnovers, the line kept the quarterback clean, the defense lived in the backfield, or the offense could not sustain drives, when the supplied facts support that conclusion.
+- Exact individual numbers are optional emphasis, not required reporting. Use one only when it genuinely sharpens a point because it was exceptional, decisive or surprising.
+- Usually mention only the few players who actually shaped the story. Do not cycle through every player with a recorded stat just because the data exists.
+- Combine related statistics into one football takeaway. Passing yards plus interceptions can support a conclusion about an ineffective or turnover-prone passing day. Rushing production plus touchdowns can support a conclusion about a productive ground game. Few sacks allowed can support a conclusion about protection. Team turnovers can support a conclusion about possession and game control.
+- Once a number has done its job, move on. Do not repeat the same number or stat line in another chapter.
+- If one host cites an exact number, the other host should react to what it means rather than repeat the number.
+- Never make the listener feel as if someone is reading a stat table aloud.`;
+
+export const PODCAST_CONVERSATION_REFERENCE_POLICY = `NATURAL TWO-HOST RHYTHM:
+- Write two people thinking through football together, not two analysts taking turns delivering mini-reports.
+- Most host turns should be one to three spoken sentences. A short reaction, question or follow-up is often better than another paragraph.
+- Let the second host respond to the idea that was just raised before introducing another fact. Build, question, qualify, agree or gently disagree instead of resetting the conversation every turn.
+- Use contractions and normal spoken phrasing. Sentence fragments are fine when they sound natural.
+- Sparse conversational texture is welcome: an occasional "well," "I mean," brief self-correction, em dash or ellipsis can create the feeling of a person thinking in real time. Use these only when they fit; never sprinkle them into every turn.
+- Do not write phonetic stutters such as "I-I-I," fake laughter, catchphrases or repeated filler noises. The goal is subtle imperfection, not a performance gimmick.
+- Leave room for the voice renderer to breathe. Do not make every sentence emphatic or emotionally marked.
+- Avoid long monologues unless a major or career-defining story genuinely needs one.`;
+
 const [mark, sarah] = PODCAST_HOSTS;
 const INSTRUCTIONS = `You write the conversational body of a private two-host local football podcast following one career from high school through college and eventually coaching.
 
@@ -253,6 +274,8 @@ SHARED COVERAGE DECISION:
 EDITORIAL DECISION RULE:
 A supplied fact is not automatically a story. Ask what a real college-football audience would care about this week. Prioritize consequence, change, tension, performance and meaningful football questions. Ignore bookkeeping and unchanged states.
 
+${PODCAST_STATS_AS_EVIDENCE_POLICY}
+
 TRACKED PLAYER RULE:
 - The team and game are the default subject.
 - If coveragePlan.playerMentionPolicy is "omit", do not mention the tracked player at all. Do not mention his name, backup status, QB3/QB4 slot, lack of snaps, development, future opportunity, or use him as a doorway into a quarterback-room discussion.
@@ -274,19 +297,19 @@ FOOTBALL INTELLIGENCE WITHOUT INVENTION:
 - Do not praise neutral facts or manufacture momentum from nothing happening.
 
 COLLEGE GAME WEEK:
-- Lead with the current program's game: result, opponent, score and the most meaningful supplied statistical contrasts.
+- Lead with the current program's game: result, opponent, score, the clearest football reasons the game took its shape, and what the result changes.
 - Use season record or streak once only when it genuinely frames the result or trajectory.
-- Use player statistics only when the player's football relevance warrants it.
+- Use player production to explain performance, not to inventory stat lines. Give airtime only to players whose football relevance warrants it.
+
+${PODCAST_CONVERSATION_REFERENCE_POLICY}
 
 CONVERSATION STYLE:
 - Produce 10 to 16 alternating host turns.
 - Let the coverage tier control scale: standard should feel like a normal weekly show; major can breathe longer; career-defining can be the fullest episode.
 - Do not pad with neutral facts, bookkeeping, repeated conclusions or suppressed player material just to hit a word target.
-- Most turns should be straightforward spoken sentences. Mix a few short reactions with normal analytical turns.
 - Mark and Sarah can disagree when the football point genuinely calls for it, but calm agreement is also normal.
 - Avoid hot-take phrasing, rhetorical theatrics and artificial banter.
 - Do not start every turn with the other host's name.
-- No fake laughter, stutters, filler noises or exaggerated personality.
 - Do not have both hosts restate the same conclusion.
 
 HOSTS:
@@ -333,7 +356,7 @@ const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
       role: 'user',
       content: [{
         type: 'input_text',
-        text: `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`,
+        text: `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Statistics are evidence for football conclusions, not lines that need to be read aloud. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`,
       }],
     }],
     text: {
@@ -393,7 +416,7 @@ export default async function handler(req, res) {
         client,
         user,
         payload,
-        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode body. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts, a suppressed tracked-player angle, or branded intro/sign-off language. Start directly on the football subject.`,
+        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode body. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Keep statistics synthesized into football takeaways rather than complete stat lines. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts, a suppressed tracked-player angle, or branded intro/sign-off language. Start directly on the football subject.`,
       });
 
       if (response.output_text) {

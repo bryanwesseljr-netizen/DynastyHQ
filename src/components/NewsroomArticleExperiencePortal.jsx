@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../newsroom-article-polish.css';
+import '../newsroom-local-classic-restore.css';
 import '../newsroom-reader-shell-v2.css';
+import '../team-newsroom-refinements.css';
 
 const clean = (value) => String(value ?? '').trim();
 
@@ -38,9 +40,41 @@ const NewsroomArticleExperiencePortal = () => {
     let scheduled = false;
     let lastStoryKey = '';
     let homeResetGeneration = 0;
+    let wasNewsroomActive = false;
+
+    const forceNewsroomHome = () => {
+      const generation = ++homeResetGeneration;
+      const delays = [0, 40, 120, 240, 450, 750, 1100, 1600, 2200, 3000];
+
+      delays.forEach((delay) => {
+        window.setTimeout(() => {
+          if (generation !== homeResetGeneration) return;
+
+          const backButton = findBackButton(root);
+          if (backButton) {
+            backButton.click();
+            scrollNewsroomTop();
+            return;
+          }
+
+          const teamButton = findTeamNewsButton(root);
+          if (teamButton) teamButton.click();
+          scrollNewsroomTop();
+        }, delay);
+      });
+    };
 
     const sync = () => {
       scheduled = false;
+      const newsroomNavButton = [...root.querySelectorAll('header button')]
+        .find((button) => /^the newsroom$/i.test(clean(button.textContent)));
+      const newsroomActive = newsroomNavButton?.getAttribute('aria-current') === 'page';
+
+      // A fresh navigation into The Newsroom always means the team/all-articles home.
+      // This catches first-login lazy mounts as well as normal tab changes.
+      if (newsroomActive && !wasNewsroomActive) forceNewsroomHome();
+      wasNewsroomActive = newsroomActive;
+
       const main = root.querySelector('main[data-active-tab="newsroom"]');
       const issueSelect = root.querySelector('select[aria-label="Choose weekly newsroom edition"]');
       const newsroomRoot = issueSelect?.closest('.max-w-6xl');
@@ -112,30 +146,6 @@ const NewsroomArticleExperiencePortal = () => {
       window.requestAnimationFrame(sync);
     };
 
-    const forceNewsroomHome = () => {
-      const generation = ++homeResetGeneration;
-      const resetAt = (delay) => window.setTimeout(() => {
-        if (generation !== homeResetGeneration) return;
-
-        const backButton = findBackButton(root);
-        if (backButton) {
-          backButton.click();
-          return;
-        }
-
-        const teamButton = findTeamNewsButton(root);
-        teamButton?.click();
-        scrollNewsroomTop();
-      }, delay);
-
-      // React can finish the top-nav state change after the native pointer/click event,
-      // so retry through the next few paint windows instead of trusting one timeout.
-      resetAt(0);
-      resetAt(50);
-      resetAt(140);
-      resetAt(280);
-    };
-
     const isNewsroomTopNavButton = (event) => {
       const button = event.target instanceof Element ? event.target.closest('header button') : null;
       return Boolean(button && /^the newsroom$/i.test(clean(button.textContent)));
@@ -153,7 +163,12 @@ const NewsroomArticleExperiencePortal = () => {
 
     sync();
     const observer = new MutationObserver(schedule);
-    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-audience'] });
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-audience', 'aria-current'],
+    });
     document.addEventListener('pointerdown', handleNewsroomPointerDown, true);
     document.addEventListener('click', handleNewsroomClick, true);
 

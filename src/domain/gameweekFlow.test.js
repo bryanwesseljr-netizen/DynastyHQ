@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { buildGameweekFlow, createWeekFinalization } from './gameweekFlow.js';
+import { buildGameweekFlow, createWeekFinalization, shouldRequireLocalPodcast } from './gameweekFlow.js';
 
 const quietWeekZero = () => ({
   currentSeason: 1,
@@ -39,6 +39,32 @@ const quietWeekZero = () => ({
   podcastEpisodes: [],
   weekFinalizations: {},
   _sync: { revision: 10 },
+});
+
+test('local team podcast is required after every completed game even when editorial coverage is quiet', () => {
+  assert.equal(shouldRequireLocalPodcast({
+    weekEntry: { game: { result: 'W' } },
+    coverage: { coverageDecision: { podcastEligible: false } },
+    issue: {},
+  }), true);
+  assert.equal(shouldRequireLocalPodcast({
+    weekEntry: { game: { result: 'L' } },
+    coverage: { coverageDecision: { podcastEligible: false } },
+    issue: {},
+  }), true);
+});
+
+test('bye or no-game weeks only require a podcast when the team story gate earns one', () => {
+  assert.equal(shouldRequireLocalPodcast({
+    weekEntry: { weekType: 'bye' },
+    coverage: { coverageDecision: { podcastEligible: false } },
+    issue: { podcastBrief: { title: 'Quiet bye' } },
+  }), false);
+  assert.equal(shouldRequireLocalPodcast({
+    weekEntry: { weekType: 'bye' },
+    coverage: { coverageDecision: { podcastEligible: true } },
+    issue: {},
+  }), true);
 });
 
 test('quiet preseason week becomes a one-click finalization instead of fake content work', () => {

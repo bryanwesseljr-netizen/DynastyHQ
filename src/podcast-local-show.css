@@ -5,6 +5,31 @@
 .dhq-local-podcast-root .dhq-podcast-production-control[data-open="false"],
 .dhq-local-podcast-root .dhq-podcast-production-note[data-open="false"] { display: none !important; }
 
+/*
+ * The local-show controls live in the new masthead while the detailed sections are
+ * still rendered by PodcastStudio. Reorder those existing siblings visually so the
+ * selected panel sits directly beneath its controls without duplicating any content.
+ */
+.dhq-local-podcast-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.dhq-local-podcast-root > :not([hidden]) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.dhq-local-podcast-root > [data-local-podcast-masthead="true"] { order: 0; }
+.dhq-local-podcast-root > .dhq-podcast-legacy-archive,
+.dhq-local-podcast-root > .dhq-podcast-rundown,
+.dhq-local-podcast-root > .dhq-podcast-show-notes { order: 1; }
+.dhq-local-podcast-root > .dhq-podcast-legacy-archive[data-open="true"],
+.dhq-local-podcast-root > .dhq-podcast-rundown[data-open="true"],
+.dhq-local-podcast-root > .dhq-podcast-show-notes[data-open="true"] {
+  margin-top: -.75rem !important;
+}
+.dhq-local-podcast-root > :not([data-local-podcast-masthead="true"]):not(.dhq-podcast-legacy-archive):not(.dhq-podcast-rundown):not(.dhq-podcast-show-notes) { order: 20; }
+
 .dhq-local-podcast {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--pod-team-primary) 48%, #293446);

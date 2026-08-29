@@ -5,6 +5,58 @@
 .dhq-local-podcast-root .dhq-podcast-production-control[data-open="false"],
 .dhq-local-podcast-root .dhq-podcast-production-note[data-open="false"] { display: none !important; }
 
+/*
+ * The local-show controls live in the new masthead while the detailed sections are
+ * still rendered by PodcastStudio. Reorder those existing siblings visually so the
+ * selected panel sits directly beneath its controls without duplicating any content.
+ */
+.dhq-local-podcast-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.dhq-local-podcast-root > :not([hidden]) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.dhq-local-podcast-root > [data-local-podcast-masthead="true"] { order: 0; }
+.dhq-local-podcast-root > .dhq-podcast-legacy-archive,
+.dhq-local-podcast-root > .dhq-podcast-rundown,
+.dhq-local-podcast-root > .dhq-podcast-show-notes { order: 1; }
+.dhq-local-podcast-root > .dhq-podcast-legacy-archive[data-open="true"],
+.dhq-local-podcast-root > .dhq-podcast-rundown[data-open="true"],
+.dhq-local-podcast-root > .dhq-podcast-show-notes[data-open="true"] {
+  margin-top: -.75rem !important;
+}
+.dhq-local-podcast-root > :not([data-local-podcast-masthead="true"]):not(.dhq-podcast-legacy-archive):not(.dhq-podcast-rundown):not(.dhq-podcast-show-notes) { order: 20; }
+
+/* Episode Rundown and Show Notes are two columns inside one PodcastStudio section.
+ * Keep that shared section attached to the utility row, then reveal only the column
+ * selected by the active masthead control and let it use the full available width. */
+.dhq-local-podcast-root:has([data-local-podcast-masthead="true"] .dhq-local-podcast__utility button:nth-child(2)[data-active="true"]) > .dhq-podcast-rundown.dhq-podcast-show-notes,
+.dhq-local-podcast-root:has([data-local-podcast-masthead="true"] .dhq-local-podcast__utility button:nth-child(3)[data-active="true"]) > .dhq-podcast-rundown.dhq-podcast-show-notes {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  order: 1;
+  margin-top: -.75rem !important;
+}
+.dhq-local-podcast-root:has([data-local-podcast-masthead="true"] .dhq-local-podcast__utility button:nth-child(2)[data-active="true"]) > .dhq-podcast-rundown.dhq-podcast-show-notes > div:first-child {
+  display: block !important;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.dhq-local-podcast-root:has([data-local-podcast-masthead="true"] .dhq-local-podcast__utility button:nth-child(2)[data-active="true"]) > .dhq-podcast-rundown.dhq-podcast-show-notes > aside {
+  display: none !important;
+}
+.dhq-local-podcast-root:has([data-local-podcast-masthead="true"] .dhq-local-podcast__utility button:nth-child(3)[data-active="true"]) > .dhq-podcast-rundown.dhq-podcast-show-notes > div:first-child {
+  display: none !important;
+}
+.dhq-local-podcast-root:has([data-local-podcast-masthead="true"] .dhq-local-podcast__utility button:nth-child(3)[data-active="true"]) > .dhq-podcast-rundown.dhq-podcast-show-notes > aside {
+  display: block !important;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .dhq-local-podcast {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--pod-team-primary) 48%, #293446);

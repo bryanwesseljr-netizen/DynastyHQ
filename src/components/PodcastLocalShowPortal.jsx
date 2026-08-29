@@ -24,13 +24,16 @@ const ARTWORK_SLOTS = Object.freeze([
 const PodcastLocalShowPortal = () => {
   const { user, career } = useOwnerCareer();
   const [mount, setMount] = useState(null);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const [rundownOpen, setRundownOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [studioOpen, setStudioOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState('');
   const [uploadingSlot, setUploadingSlot] = useState('');
   const [message, setMessage] = useState('');
   const [persistedArtwork, setPersistedArtwork] = useState({});
+
+  const archiveOpen = activePanel === 'archive';
+  const rundownOpen = activePanel === 'rundown';
+  const notesOpen = activePanel === 'notes';
+  const studioOpen = activePanel === 'studio';
+  const togglePanel = (panel) => setActivePanel((current) => current === panel ? '' : panel);
 
   const show = useMemo(() => resolvePodcastShow(career || {}), [career]);
   const teamKey = useMemo(() => teamKeyFor(show.school), [show.school]);
@@ -159,7 +162,7 @@ const PodcastLocalShowPortal = () => {
       observer.disconnect();
       if (ownedMount?.parentElement) ownedMount.remove();
     };
-  }, [archiveOpen, notesOpen, primaryArtwork, rundownOpen, show, studioOpen]);
+  }, [activePanel, archiveOpen, notesOpen, primaryArtwork, rundownOpen, show, studioOpen]);
 
   const uploadArtwork = async (slot, file) => {
     if (!file || !user || !career || !db) return;
@@ -283,16 +286,16 @@ const PodcastLocalShowPortal = () => {
       </div>
 
       <div className="dhq-local-podcast__utility" aria-label="Podcast page sections">
-        <button type="button" data-active={archiveOpen} onClick={() => setArchiveOpen((value) => !value)}>
+        <button type="button" aria-expanded={archiveOpen} data-active={archiveOpen} onClick={() => togglePanel('archive')}>
           <Archive size={14} /> Previous Episodes <ChevronDown size={14} />
         </button>
-        <button type="button" data-active={rundownOpen} onClick={() => setRundownOpen((value) => !value)}>
+        <button type="button" aria-expanded={rundownOpen} data-active={rundownOpen} onClick={() => togglePanel('rundown')}>
           <Layers3 size={14} /> Episode Rundown <ChevronDown size={14} />
         </button>
-        <button type="button" data-active={notesOpen} onClick={() => setNotesOpen((value) => !value)}>
+        <button type="button" aria-expanded={notesOpen} data-active={notesOpen} onClick={() => togglePanel('notes')}>
           <StickyNote size={14} /> Show Notes <ChevronDown size={14} />
         </button>
-        <button type="button" data-active={studioOpen} onClick={() => setStudioOpen((value) => !value)}>
+        <button type="button" aria-expanded={studioOpen} data-active={studioOpen} onClick={() => togglePanel('studio')}>
           <Settings2 size={14} /> Studio Controls <ChevronDown size={14} />
         </button>
       </div>

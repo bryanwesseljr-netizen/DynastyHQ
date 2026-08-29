@@ -53,6 +53,14 @@ const podcastGenerated = (episode = {}) => (
   || (episode?.segments || []).length >= 10
 );
 
+export const shouldRequireLocalPodcast = ({ weekEntry = null, coverage = null, issue = null } = {}) => {
+  const result = String(weekEntry?.game?.result || '').trim().toUpperCase();
+  const completedGame = ['W', 'L'].includes(result);
+  if (completedGame) return true;
+  if (coverage) return Boolean(coverage.coverageDecision?.podcastEligible);
+  return Boolean(issue?.podcastBrief);
+};
+
 const setupForActiveWeek = (state = {}) => {
   const season = finite(state.currentSeason, 1);
   const week = Math.max(0, finite(state.currentWeek, 1));
@@ -111,7 +119,7 @@ export const buildGameweekFlow = (state = {}) => {
     });
     const idle = [
       statusStep({ id: 'newsroom', label: 'Newsroom', state: 'waiting', detail: 'Evaluated after the week is published.' }),
-      statusStep({ id: 'podcast', label: 'Podcast', state: 'waiting', detail: 'Only required when the week earns a show.' }),
+      statusStep({ id: 'podcast', label: 'Podcast', state: 'waiting', detail: 'Required after every played game; bye weeks only when team news warrants a show.' }),
       statusStep({ id: 'finalize', label: 'Finalize', state: 'waiting', detail: 'Available after the published week is wrapped.' }),
     ];
     const next = activeWeek.configured
@@ -131,7 +139,8 @@ export const buildGameweekFlow = (state = {}) => {
   const episode = (state.podcastEpisodes || []).find((entry) => entry?.publicationId === wrapUp.publicationId || entry?.id === `podcast-${wrapUp.publicationId}`);
   const coverage = collegeCoverageFor(state, issue);
   const newsroomRequired = coverage ? coverage.coverageDecision?.articleCount > 0 : Boolean(issue?.articles?.length);
-  const podcastRequired = coverage ? Boolean(coverage.coverageDecision?.podcastEligible) : Boolean(issue?.podcastBrief);
+  const completedGame = ['W', 'L'].includes(String(wrapUp.entry?.game?.result || '').trim().toUpperCase());
+  const podcastRequired = shouldRequireLocalPodcast({ weekEntry: wrapUp.entry, coverage, issue });
   const newsroomComplete = !newsroomRequired || articleGenerated(issue);
   const podcastComplete = !podcastRequired || podcastGenerated(episode);
   const archiveComplete = chronicleExists(state, wrapUp.publicationId, wrapUp.season, wrapUp.week);
@@ -151,7 +160,13 @@ export const buildGameweekFlow = (state = {}) => {
     }),
     statusStep({
       id: 'podcast', label: 'Podcast', state: podcastComplete ? 'complete' : 'pending',
-      detail: !podcastRequired ? 'Not needed this week — no show warranted.' : podcastComplete ? (episode?.audioStatus === 'ready' ? 'Transcript + audio are ready.' : 'Transcript is ready. Audio is optional for week completion.') : 'This week earned a show; create the transcript before finalizing.',
+      detail: !podcastRequired
+        ? 'Not needed this week — no team story warranted a bye-week show.'
+        : podcastComplete
+          ? (episode?.audioStatus === 'ready' ? 'Transcript + audio are ready.' : 'Transcript is ready. Audio is optional for week completion.')
+          : completedGame
+            ? 'Every played game gets a local team show; create the transcript before finalizing.'
+            : 'This bye/no-game week earned a team show; create the transcript before finalizing.',
       action: podcastRequired && !podcastComplete ? 'Open Podcast' : '', target: podcastRequired && !podcastComplete ? 'podcast' : '', optional: !podcastRequired,
     }),
   ];

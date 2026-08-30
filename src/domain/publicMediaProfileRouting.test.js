@@ -15,7 +15,7 @@ test('media profile route is handled before the authenticated or legacy whole-ca
   assert.match(main, /sharedArticleId[\s\S]*mediaProfileId[\s\S]*<AuthAwareApp/);
 });
 
-test('owner enhancements replace the old whole-career share action with scoped media sharing', async () => {
+test('owner enhancements replace legacy whole-career sharing and management controls', async () => {
   const [ownerEnhancements, sharePortal] = await Promise.all([
     readFile(ownerEnhancementsUrl, 'utf8'),
     readFile(sharePortalUrl, 'utf8'),
@@ -24,7 +24,11 @@ test('owner enhancements replace the old whole-career share action with scoped m
   assert.match(sharePortal, /shared_media_profiles/);
   assert.match(sharePortal, /shared_dynasties/);
   assert.match(sharePortal, /LEGACY_SHARE_LABEL = 'Get Share Link'/);
+  assert.match(sharePortal, /LEGACY_REVOKE_LABEL = 'Revoke Public Link'/);
   assert.match(sharePortal, /Share Media Profile/);
+  assert.match(sharePortal, /Manage Media Profile/);
+  assert.match(sharePortal, /Revoke Profile/);
+  assert.match(sharePortal, /shared_podcast_/);
 });
 
 test('public media profile exposes exactly stats, newsroom and podcast navigation', async () => {

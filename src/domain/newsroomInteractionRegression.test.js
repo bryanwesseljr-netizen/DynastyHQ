@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const immersiveUrl = new URL('../../public/newsroom-immersive.js', import.meta.url);
 const exactRoutingUrl = new URL('../components/NewsroomExactStoryRoutingPortal.jsx', import.meta.url);
+const libraryScrollGuardUrl = new URL('../components/NewsroomLibraryScrollGuardPortal.jsx', import.meta.url);
 
 test('Team Hub story clicks keep exact Regional and National article identity', async () => {
   const [immersive, exactRouting] = await Promise.all([
@@ -25,4 +26,16 @@ test('Newsroom utility re-anchoring does not tear down the active Media Library 
   assert.match(immersive, /const currentMargin = Number\.parseFloat/);
   assert.match(immersive, /const naturalTop = currentTop - currentMargin;/);
   assert.match(immersive, /Math\.abs\(adjustment - currentMargin\) > 0\.5/);
+});
+
+test('photo metadata edits preserve the exact library viewport through Firebase refreshes', async () => {
+  const guard = await readFile(libraryScrollGuardUrl, 'utf8');
+
+  assert.match(guard, /dhq-newsroom-owner-library/);
+  assert.match(guard, /input\[type="checkbox"\]/);
+  assert.match(guard, /tag current team/i);
+  assert.match(guard, /anchor\.getBoundingClientRect\(\)\.top - anchorTop/);
+  assert.match(guard, /window\.scrollBy/);
+  assert.match(guard, /window\.scrollTo/);
+  assert.match(guard, /\[0, 60, 140, 260, 450, 750, 1100, 1500\]/);
 });

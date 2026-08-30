@@ -142,6 +142,10 @@
     });
   };
 
+  const scheduleApply = () => {
+    requestAnimationFrame(() => requestAnimationFrame(apply));
+  };
+
   document.addEventListener('click', (event) => {
     const button = event.target?.closest?.('button');
     if (!button) return;
@@ -162,14 +166,15 @@
         utilityClosePending = true;
         setTimeout(() => otherButton.click(), 0);
       }
-      setTimeout(apply, 0);
+      setTimeout(scheduleApply, 0);
+      setTimeout(scheduleApply, 80);
       return;
     }
 
     if (label === 'the newsroom') {
       overviewRequested = false;
       articleFirstPending = true;
-      setTimeout(apply, 0);
+      setTimeout(scheduleApply, 0);
       return;
     }
 
@@ -184,16 +189,19 @@
     if (!select) return;
     overviewRequested = false;
     articleFirstPending = true;
-    setTimeout(apply, 0);
+    setTimeout(scheduleApply, 0);
   }, true);
 
-  window.addEventListener('resize', apply);
+  window.addEventListener('resize', scheduleApply);
+  window.addEventListener('orientationchange', scheduleApply);
 
   const appRoot = document.getElementById('root');
   if (appRoot) {
-    new MutationObserver(apply).observe(appRoot, {
+    new MutationObserver(scheduleApply).observe(appRoot, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'data-active'],
     });
   }
 

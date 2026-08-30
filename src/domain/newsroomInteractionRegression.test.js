@@ -28,14 +28,16 @@ test('Newsroom utility re-anchoring does not tear down the active Media Library 
   assert.match(immersive, /Math\.abs\(adjustment - currentMargin\) > 0\.5/);
 });
 
-test('photo metadata edits preserve the exact library viewport through Firebase refreshes', async () => {
+test('photo metadata edits protect only the save jump and release normal scrolling immediately', async () => {
   const guard = await readFile(libraryScrollGuardUrl, 'utf8');
 
   assert.match(guard, /dhq-newsroom-owner-library/);
   assert.match(guard, /input\[type="checkbox"\]/);
   assert.match(guard, /tag current team/i);
-  assert.match(guard, /anchor\.getBoundingClientRect\(\)\.top - anchorTop/);
-  assert.match(guard, /window\.scrollBy/);
-  assert.match(guard, /window\.scrollTo/);
-  assert.match(guard, /\[0, 60, 140, 260, 450, 750, 1100, 1500\]/);
+  assert.match(guard, /severeBackwardJump/);
+  assert.match(guard, /if \(!severeBackwardJump\) return/);
+  assert.match(guard, /release\(\);\s*\n\s*};/);
+  assert.match(guard, /addEventListener\('wheel', onUserScrollIntent/);
+  assert.match(guard, /addEventListener\('touchmove', onUserScrollIntent/);
+  assert.match(guard, /\[0, 80, 180, 360, 700, 1200\]/);
 });

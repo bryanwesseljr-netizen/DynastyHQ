@@ -97,12 +97,17 @@ const NewsroomMediaManager = ({
       })
   ), [article, issue, mediaLibrary]);
 
-  const recommendedIds = useMemo(() => new Set(
+  const recommendedIds = useMemo(() => {
+    const ids = [];
+    if (article?.mediaAutoAssigned && article?.mediaAssetId) ids.push(article.mediaAssetId);
     manualLibrary
       .filter((asset) => getNewsroomMediaFolder(asset) === issueFolder)
-      .slice(0, 3)
-      .map((asset) => asset.id),
-  ), [issueFolder, manualLibrary]);
+      .forEach((asset) => {
+        if (ids.length >= 3 || ids.includes(asset.id)) return;
+        ids.push(asset.id);
+      });
+    return new Set(ids);
+  }, [article?.mediaAssetId, article?.mediaAutoAssigned, issueFolder, manualLibrary]);
 
   const receiveFiles = async (event, asReference) => {
     const files = Array.from(event.target.files || []);
@@ -357,7 +362,9 @@ const NewsroomMediaManager = ({
 
           <VisualPlayerProfileEditor mediaLibrary={mediaLibrary} />
 
-          {typeMessage && <p className="mt-3 text-[10px] font-bold text-slate-400">{typeMessage}</p>}
+          <div className="mt-3 min-h-[16px]" aria-live="polite">
+            {typeMessage && <p className="text-[10px] font-bold text-slate-400">{typeMessage}</p>}
+          </div>
 
           {filteredLibrary.length ? (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">

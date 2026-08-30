@@ -53,12 +53,6 @@
         min-height: 34px;
       }
 
-      main[data-active-tab="newsroom"] .dhq-newsroom-tools-open > .dhq-newsroom-owner-controls,
-      main[data-active-tab="newsroom"] .dhq-newsroom-library-open > .dhq-newsroom-owner-library {
-        margin-top: 8px !important;
-        margin-bottom: 0 !important;
-      }
-
       @media (max-width: 640px) {
         main[data-active-tab="newsroom"] .dhq-newsroom-library-compact > div:first-child {
           padding: 9px 12px !important;
@@ -94,6 +88,37 @@
     }
   };
 
+  const anchorOwnerUtilityPanel = (main) => {
+    const utilityRow = main.querySelector('.dhq-team-newsroom__utility-grid');
+    const issueSelect = main.querySelector('select[aria-label="Choose weekly newsroom edition"]');
+    const newsroomRoot = issueSelect?.closest('.max-w-6xl');
+    if (!utilityRow || !newsroomRoot) return;
+
+    const controls = newsroomRoot.querySelector('.dhq-newsroom-owner-controls');
+    const library = newsroomRoot.querySelector('.dhq-newsroom-owner-library');
+    const panels = [controls, library].filter(Boolean);
+
+    panels.forEach((panel) => {
+      panel.style.removeProperty('margin-top');
+      panel.style.removeProperty('margin-bottom');
+    });
+
+    const activePanel = newsroomRoot.classList.contains('dhq-newsroom-library-open')
+      ? library
+      : newsroomRoot.classList.contains('dhq-newsroom-tools-open')
+        ? controls
+        : null;
+
+    if (!activePanel || window.getComputedStyle(activePanel).display === 'none') return;
+
+    const naturalTop = activePanel.getBoundingClientRect().top;
+    const desiredTop = utilityRow.getBoundingClientRect().bottom + 8;
+    const adjustment = desiredTop - naturalTop;
+
+    activePanel.style.setProperty('margin-top', `${adjustment}px`, 'important');
+    activePanel.style.setProperty('margin-bottom', '0px', 'important');
+  };
+
   const openLatestArticle = (main) => {
     if (!articleFirstPending || overviewRequested) return;
     const storyCard = main.querySelector('.dhq-newsroom-story-card');
@@ -110,6 +135,7 @@
       const main = newsroomMain();
       if (main) {
         compactPhotoLibrary(main);
+        anchorOwnerUtilityPanel(main);
         openLatestArticle(main);
       }
       applying = false;
@@ -160,6 +186,8 @@
     articleFirstPending = true;
     setTimeout(apply, 0);
   }, true);
+
+  window.addEventListener('resize', apply);
 
   const appRoot = document.getElementById('root');
   if (appRoot) {

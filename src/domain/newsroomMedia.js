@@ -375,16 +375,19 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
         const asset = decision.asset;
 
         if (!asset) {
-          return {
-            ...article,
+          const clearedAutoMedia = article.mediaAutoAssigned === true ? {
             mediaAssetId: '',
             mediaSource: '',
             mediaDisclosure: '',
             mediaAutoAssigned: false,
+            ...emptyPhotoQa(),
+          } : {};
+          return {
+            ...article,
+            ...clearedAutoMedia,
             mediaAutoRecommendation: 'generate',
             mediaAutoReason: decision.reason,
             mediaAutoMatchQuality: decision.quality,
-            ...emptyPhotoQa(),
           };
         }
 

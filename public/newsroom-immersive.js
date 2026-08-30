@@ -3,6 +3,7 @@
   let articleFirstPending = true;
   let overviewRequested = false;
   let applying = false;
+  let utilityClosePending = false;
 
   const installStyles = () => {
     if (document.getElementById('dhq-newsroom-immersive-styles')) return;
@@ -50,6 +51,12 @@
 
       main[data-active-tab="newsroom"] .dhq-newsroom-library-compact button {
         min-height: 34px;
+      }
+
+      main[data-active-tab="newsroom"] .dhq-newsroom-tools-open > .dhq-newsroom-owner-controls,
+      main[data-active-tab="newsroom"] .dhq-newsroom-library-open > .dhq-newsroom-owner-library {
+        margin-top: 8px !important;
+        margin-bottom: 0 !important;
       }
 
       @media (max-width: 640px) {
@@ -113,6 +120,25 @@
     const button = event.target?.closest?.('button');
     if (!button) return;
     const label = normalize(button.textContent);
+
+    if (label === 'newsroom controls' || label === 'media library') {
+      if (utilityClosePending) {
+        utilityClosePending = false;
+        return;
+      }
+
+      const main = newsroomMain();
+      const otherLabel = label === 'newsroom controls' ? 'media library' : 'newsroom controls';
+      const otherButton = [...(main?.querySelectorAll('.dhq-team-newsroom__owner-tools button') || [])]
+        .find((candidate) => normalize(candidate.textContent) === otherLabel);
+
+      if (otherButton?.dataset.active === 'true') {
+        utilityClosePending = true;
+        setTimeout(() => otherButton.click(), 0);
+      }
+      setTimeout(apply, 0);
+      return;
+    }
 
     if (label === 'the newsroom') {
       overviewRequested = false;

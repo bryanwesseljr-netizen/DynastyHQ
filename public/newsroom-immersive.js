@@ -97,30 +97,47 @@
     const controls = newsroomRoot.querySelector('.dhq-newsroom-owner-controls');
     const library = newsroomRoot.querySelector('.dhq-newsroom-owner-library');
     const panels = [controls, library].filter(Boolean);
-
-    panels.forEach((panel) => {
-      panel.style.removeProperty('margin-top');
-      panel.style.removeProperty('margin-bottom');
-    });
-
     const activePanel = newsroomRoot.classList.contains('dhq-newsroom-library-open')
       ? library
       : newsroomRoot.classList.contains('dhq-newsroom-tools-open')
         ? controls
         : null;
 
+    // Only clear the inactive panel. Removing and then re-applying the active
+    // panel's large negative margin on every React/Firebase update causes the
+    // browser's scroll anchoring to jump away from the photo being edited.
+    panels.forEach((panel) => {
+      if (panel === activePanel) return;
+      panel.style.removeProperty('margin-top');
+      panel.style.removeProperty('margin-bottom');
+    });
+
     if (!activePanel || window.getComputedStyle(activePanel).display === 'none') return;
 
-    const naturalTop = activePanel.getBoundingClientRect().top;
+    const currentMargin = Number.parseFloat(activePanel.style.getPropertyValue('margin-top')) || 0;
+    const currentTop = activePanel.getBoundingClientRect().top;
+    const naturalTop = currentTop - currentMargin;
     const desiredTop = utilityRow.getBoundingClientRect().bottom + 8;
     const adjustment = desiredTop - naturalTop;
 
-    activePanel.style.setProperty('margin-top', `${adjustment}px`, 'important');
+    if (Math.abs(adjustment - currentMargin) > 0.5) {
+      activePanel.style.setProperty('margin-top', `${adjustment}px`, 'important');
+    }
     activePanel.style.setProperty('margin-bottom', '0px', 'important');
   };
 
   const openLatestArticle = (main) => {
     if (!articleFirstPending || overviewRequested) return;
+
+    // The Team Hub owns story selection in the current owner experience. Its
+    // exact-story router may change the edition before opening a Regional or
+    // National card; auto-clicking the first legacy card here would steal that
+    // selection and always open Team News instead.
+    if (main.querySelector('[data-team-newsroom-hub="true"]')) {
+      articleFirstPending = false;
+      return;
+    }
+
     const storyCard = main.querySelector('.dhq-newsroom-story-card');
     if (!storyCard) return;
     articleFirstPending = false;

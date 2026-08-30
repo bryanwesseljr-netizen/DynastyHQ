@@ -5,6 +5,7 @@ import test from 'node:test';
 const immersiveUrl = new URL('../../public/newsroom-immersive.js', import.meta.url);
 const exactRoutingUrl = new URL('../components/NewsroomExactStoryRoutingPortal.jsx', import.meta.url);
 const libraryScrollGuardUrl = new URL('../components/NewsroomLibraryScrollGuardPortal.jsx', import.meta.url);
+const mediaManagerUrl = new URL('../components/NewsroomMediaManager.jsx', import.meta.url);
 
 test('Team Hub story clicks keep exact Regional and National article identity', async () => {
   const [immersive, exactRouting] = await Promise.all([
@@ -28,7 +29,7 @@ test('Newsroom utility re-anchoring does not tear down the active Media Library 
   assert.match(immersive, /Math\.abs\(adjustment - currentMargin\) > 0\.5/);
 });
 
-test('photo metadata edits protect only the save jump and release normal scrolling immediately', async () => {
+test('photo metadata edits protect the cold save jump and release normal scrolling immediately', async () => {
   const guard = await readFile(libraryScrollGuardUrl, 'utf8');
 
   assert.match(guard, /dhq-newsroom-owner-library/);
@@ -39,5 +40,15 @@ test('photo metadata edits protect only the save jump and release normal scrolli
   assert.match(guard, /release\(\);\s*\n\s*};/);
   assert.match(guard, /addEventListener\('wheel', onUserScrollIntent/);
   assert.match(guard, /addEventListener\('touchmove', onUserScrollIntent/);
-  assert.match(guard, /\[0, 80, 180, 360, 700, 1200\]/);
+  assert.match(guard, /\[0, 80, 180, 360, 700, 1200, 2000, 3500, 5500\]/);
+  assert.match(guard, /if \(isTeamTagButton\(event\.target\)\) remember/);
+});
+
+test('photo library reserves save-status space before the first metadata edit', async () => {
+  const manager = await readFile(mediaManagerUrl, 'utf8');
+
+  assert.match(manager, /min-h-\[16px\]/);
+  assert.match(manager, /aria-live="polite"/);
+  assert.match(manager, /Defeat \/ Disappointment/);
+  assert.match(manager, /Generate New Photo Recommended/);
 });

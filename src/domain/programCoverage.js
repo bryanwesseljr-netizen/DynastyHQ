@@ -17,9 +17,19 @@ const roleNumber = (value) => {
   return match ? Number(match[1]) : null;
 };
 
+// A row full of zeroes is common when the tracked player did not take a snap.
+// Treat only non-zero production as implicit appearance evidence. An explicit
+// didPlay=true still wins for legitimate appearances that happen to finish 0s.
 const appearanceHasProduction = (game = {}) => [
   game.passYds, game.passTD, game.rushYds, game.rushTD, game.int,
-].some((value) => finite(value) !== null);
+].some((value) => {
+  const parsed = finite(value);
+  return parsed !== null && parsed !== 0;
+});
+
+const appearanceIsVerified = (game = {}) => (
+  game?.didPlay === true || (game?.didPlay !== false && appearanceHasProduction(game))
+);
 
 const totalIfComplete = (a, b) => {
   const first = finite(a);
@@ -71,12 +81,11 @@ const playerRelevanceFor = ({ state, issue, publicationId }) => {
   const roleChanged = Boolean(currentRole && previousRole && currentRole !== previousRole);
   const promoted = roleChanged && currentRoleNumber !== null && previousRoleNumber !== null && currentRoleNumber < previousRoleNumber;
   const demoted = roleChanged && currentRoleNumber !== null && previousRoleNumber !== null && currentRoleNumber > previousRoleNumber;
-  const didPlay = Boolean(game && game.didPlay !== false && appearanceHasProduction(game));
+  const didPlay = Boolean(game && appearanceIsVerified(game));
   const priorAppearances = (state.gameLogs || []).filter((entry) => (
     Number(entry.season || 1) === Number(issue.season || 1)
     && Number(entry.week ?? 0) < Number(issue.week ?? 0)
-    && entry.didPlay !== false
-    && appearanceHasProduction(entry)
+    && appearanceIsVerified(entry)
     && entry.stage !== 'high-school'
   )).length;
   const firstAppearance = didPlay && priorAppearances === 0;
@@ -291,9 +300,9 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
         editorialUse: 'primary',
       }));
     });
-    if (currentGame.didPlay === false) {
+    if (!relevance.didPlay) {
       facts.push(derivedFact({ publicationId, key: 'player.didPlay', label: 'Tracked player appeared', value: false, editorialUse: 'background-only' }));
-    } else if (relevance.didPlay) {
+    } else {
       facts.push(derivedFact({ publicationId, key: 'player.didPlay', label: 'Tracked player appeared', value: true, editorialUse: 'context' }));
     }
   }

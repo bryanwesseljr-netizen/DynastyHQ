@@ -426,7 +426,7 @@ const NewsroomMediaManager = ({
             <input type="checkbox" disabled={controlsBusy} checked={autoAssignLibrary} onChange={(event) => onSetAutoAssignLibrary(event.target.checked)} className="mt-0.5 accent-blue-500" />
             <span>
               <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose library photos · smart matching</span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Auto Select locks each article to the correct career folder, strongly prefers the active team and story/scene type, cycles among similarly strong photos, and avoids photos used in the previous two editions. If only repeats or weak/wrong-team matches remain, DynastyHQ leaves the article photo open and recommends generating a fresh one instead of forcing a bad choice.</span>
+              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. Auto Select locks each article to the correct career folder, strongly prefers the active team and story/scene type, cycles among similarly strong photos, and avoids photos used in the previous two editions. If only repeats or weak/wrong-team matches remain, DynastyHQ leaves the article photo open and recommends generating a fresh one instead of forcing a bad choice.</span>
             </span>
           </label>
         </div>

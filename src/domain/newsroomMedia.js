@@ -20,6 +20,7 @@ export const NEWSROOM_PHOTO_TYPES = Object.freeze({
   PORTRAIT: 'portrait',
   RECRUITING: 'recruiting',
   CELEBRATION: 'celebration',
+  DEFEAT: 'defeat',
   SIDELINE: 'sideline',
   TUNNEL: 'tunnel',
   PRACTICE: 'practice',
@@ -28,6 +29,9 @@ export const NEWSROOM_PHOTO_TYPES = Object.freeze({
 });
 
 const VALID_PHOTO_TYPES = new Set(Object.values(NEWSROOM_PHOTO_TYPES));
+const AUTO_MATCH_MIN_SCORE = 100;
+const AUTO_FALLBACK_MIN_SCORE = 82;
+const AUTO_SCORE_CYCLE_WINDOW = 24;
 
 export const normalizeNewsroomPhotoType = (value) => (
   VALID_PHOTO_TYPES.has(String(value || '').toLowerCase())
@@ -44,6 +48,7 @@ const inferPhotoTypeFromText = (value = '') => {
   const text = String(value || '').toLowerCase();
   if (/\bcoach\b|coaching|coordinator|head coach|position coach/.test(text)) return NEWSROOM_PHOTO_TYPES.COACH;
   if (/tunnel|entrance|walkout|walk out|runout|run out/.test(text)) return NEWSROOM_PHOTO_TYPES.TUNNEL;
+  if (/defeat|tough loss|heartbreak|deject|disappoint|frustrat|head down|walk off|postgame loss|after the loss/.test(text)) return NEWSROOM_PHOTO_TYPES.DEFEAT;
   if (/sideline|bench|waiting|headset|huddle|between series|between drives/.test(text)) return NEWSROOM_PHOTO_TYPES.SIDELINE;
   if (/practice|training|drill|warmup|warm-up|workout/.test(text)) return NEWSROOM_PHOTO_TYPES.PRACTICE;
   if (/team photo|team shot|group photo|locker room|whole team|team huddle/.test(text)) return NEWSROOM_PHOTO_TYPES.TEAM;
@@ -66,6 +71,12 @@ const emptyPhotoQa = () => ({
   mediaQaAssetId: '',
   mediaQaApprovedAt: '',
   mediaQaChecklist: [],
+});
+
+const clearAutoRecommendation = () => ({
+  mediaAutoRecommendation: '',
+  mediaAutoReason: '',
+  mediaAutoMatchQuality: '',
 });
 
 export const createNewsroomMediaAsset = ({
@@ -133,6 +144,7 @@ export const assignNewsroomMedia = ({ issues = [], publicationId, articleId, ass
       mediaSource: asset.origin,
       mediaDisclosure: asset.origin === NEWSROOM_MEDIA_ORIGINS.AI ? 'AI-generated editorial image' : '',
       mediaAutoAssigned: false,
+      ...clearAutoRecommendation(),
       ...emptyPhotoQa(),
       mediaQaAssetId: asset.id,
     }),
@@ -148,6 +160,7 @@ export const clearNewsroomMediaAssignment = ({ issues = [], publicationId, artic
       mediaSource: '',
       mediaDisclosure: '',
       mediaAutoAssigned: false,
+      ...clearAutoRecommendation(),
       ...emptyPhotoQa(),
     }),
   })
@@ -167,12 +180,16 @@ export const getNewsroomArticlePhotoPreferences = (article = {}) => {
 
   const scene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   if (scene === 'celebration') return [NEWSROOM_PHOTO_TYPES.CELEBRATION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.GENERAL];
-  if (scene === 'sideline' || scene === 'tough-loss') return [NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL];
+  if (scene === 'tough-loss') return [NEWSROOM_PHOTO_TYPES.DEFEAT, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.GENERAL];
+  if (scene === 'sideline') return [NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL];
   if (scene === 'tunnel') return [NEWSROOM_PHOTO_TYPES.TUNNEL, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.ACTION];
   if (scene === 'practice') return [NEWSROOM_PHOTO_TYPES.PRACTICE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.PORTRAIT];
   if (scene === 'portrait') return [NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM];
   if (scene === 'pocket-action' || scene === 'scramble') return [NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT];
 
+  if (/loss\b|lost\b|defeat|heartbreak|upset loss|falls? to|stumbles?|comes up short|disappoint/.test(text)) {
+    return [NEWSROOM_PHOTO_TYPES.DEFEAT, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.GENERAL];
+  }
   if (/recruit|signing|commit|offer|scholarship|visit|prospect/.test(text)) {
     return [NEWSROOM_PHOTO_TYPES.RECRUITING, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.TEAM];
   }
@@ -231,8 +248,6 @@ export const rankNewsroomMediaForArticle = ({ assets = [], article = {}, issue =
   })
 );
 
-const stableAsset = (assets = []) => assets[0];
-
 const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
   const end = targetIndex >= 0 ? targetIndex : issues.length;
   const recentIssues = issues.slice(Math.max(0, end - 2), end);
@@ -244,21 +259,82 @@ const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
   )));
 };
 
-const chooseSmartLibraryPhoto = ({ candidates, article, issue, usedThisEdition, recentlyUsed }) => {
-  const currentId = article.mediaAssetId || '';
-  const available = candidates.filter((asset) => !usedThisEdition.has(asset.id));
-  const editionPool = available.length ? available : candidates;
-  const ranked = rankNewsroomMediaForArticle({ assets: editionPool, article, issue });
-  if (!ranked.length) return null;
+const libraryUsageHistory = (issues = [], targetIndex = -1) => {
+  const end = targetIndex >= 0 ? targetIndex : issues.length;
+  const usage = new Map();
+  issues.slice(0, end).forEach((issue, issueIndex) => {
+    (issue.articles || []).forEach((article) => {
+      const assetId = article.mediaAssetId;
+      if (!assetId) return;
+      const previous = usage.get(assetId) || { count: 0, lastIssueIndex: -1 };
+      usage.set(assetId, { count: previous.count + 1, lastIssueIndex: issueIndex });
+    });
+  });
+  return usage;
+};
 
-  const bestScore = scoreNewsroomMediaForArticle({ asset: ranked[0], article, issue });
-  const bestMatches = ranked.filter((asset) => (
-    scoreNewsroomMediaForArticle({ asset, article, issue }) === bestScore
+const hasProgramMismatch = (asset, issue) => {
+  const issueTeam = cleanText(issue?.outletProfile?.school || issue?.team || issue?.school, 120);
+  const assetTeam = cleanText(asset?.teamTag || asset?.generatedFrom?.team, 120);
+  return Boolean(issueTeam && assetTeam && !sameProgram(assetTeam, issueTeam));
+};
+
+const cycleCandidate = ({ entries = [], usage = new Map() }) => {
+  if (!entries.length) return null;
+  const bestScore = entries[0].score;
+  const comparable = entries.filter((entry) => entry.score >= bestScore - AUTO_SCORE_CYCLE_WINDOW);
+  return [...comparable].sort((a, b) => {
+    const aUsage = usage.get(a.asset.id)?.count || 0;
+    const bUsage = usage.get(b.asset.id)?.count || 0;
+    if (aUsage !== bUsage) return aUsage - bUsage;
+    if (b.score !== a.score) return b.score - a.score;
+    const dateDiff = String(b.asset.createdAt || '').localeCompare(String(a.asset.createdAt || ''));
+    if (dateDiff) return dateDiff;
+    return String(a.asset.id || '').localeCompare(String(b.asset.id || ''));
+  })[0] || null;
+};
+
+const chooseSmartLibraryPhoto = ({ candidates, article, issue, usedThisEdition, recentlyUsed, usage }) => {
+  const available = candidates.filter((asset) => !usedThisEdition.has(asset.id));
+  const ranked = rankNewsroomMediaForArticle({ assets: available, article, issue });
+  const scored = ranked.map((asset) => ({
+    asset,
+    score: scoreNewsroomMediaForArticle({ asset, article, issue }),
+  })).filter((entry) => !hasProgramMismatch(entry.asset, issue));
+
+  if (!scored.length) {
+    return { asset: null, quality: 'none', reason: 'No same-program photo is available in this career folder.' };
+  }
+
+  const credible = scored.filter((entry) => entry.score >= AUTO_MATCH_MIN_SCORE);
+  const freshCredible = credible.filter((entry) => !recentlyUsed.has(entry.asset.id));
+  const selectedFresh = cycleCandidate({ entries: freshCredible, usage });
+  if (selectedFresh) {
+    return { asset: selectedFresh.asset, quality: 'strong', reason: 'Best fresh team/scene match from the library.' };
+  }
+
+  const freshFallback = scored.filter((entry) => (
+    !recentlyUsed.has(entry.asset.id)
+    && entry.score >= AUTO_FALLBACK_MIN_SCORE
   ));
-  const currentBest = bestMatches.find((asset) => asset.id === currentId && !recentlyUsed.has(asset.id));
-  if (currentBest) return currentBest;
-  const freshBest = bestMatches.find((asset) => !recentlyUsed.has(asset.id));
-  return freshBest || stableAsset(bestMatches) || stableAsset(ranked);
+  const selectedFallback = cycleCandidate({ entries: freshFallback, usage });
+  if (selectedFallback) {
+    return { asset: selectedFallback.asset, quality: 'fallback', reason: 'Fresh close-enough match selected to avoid a recent duplicate.' };
+  }
+
+  if (credible.length) {
+    return {
+      asset: null,
+      quality: 'exhausted',
+      reason: 'The credible matches were already used in the last two editions. A fresh generated photo is recommended instead of a back-to-back repeat.',
+    };
+  }
+
+  return {
+    asset: null,
+    quality: 'weak',
+    reason: 'The remaining library photos do not fit this team/story closely enough. Generate or add a better-matched photo.',
+  };
 };
 
 export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
@@ -274,9 +350,8 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
     && asset.downloadUrl
     && getNewsroomMediaFolder(asset) === targetFolder
   ));
-  if (!candidates.length) return issues;
-
   const recentlyUsed = recentLibraryAssignments(issues, targetIndex);
+  const usage = libraryUsageHistory(issues, targetIndex);
 
   return issues.map((issue) => {
     if (issue.publicationId !== publicationId && issue.id !== publicationId) return issue;
@@ -289,11 +364,37 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
           return article;
         }
 
-        const asset = chooseSmartLibraryPhoto({ candidates, article, issue, usedThisEdition, recentlyUsed });
-        if (!asset) return article;
-        usedThisEdition.add(asset.id);
+        const decision = chooseSmartLibraryPhoto({
+          candidates,
+          article,
+          issue,
+          usedThisEdition,
+          recentlyUsed,
+          usage,
+        });
+        const asset = decision.asset;
 
-        if (article.mediaAutoAssigned === true && article.mediaAssetId === asset.id) return article;
+        if (!asset) {
+          return {
+            ...article,
+            mediaAssetId: '',
+            mediaSource: '',
+            mediaDisclosure: '',
+            mediaAutoAssigned: false,
+            mediaAutoRecommendation: 'generate',
+            mediaAutoReason: decision.reason,
+            mediaAutoMatchQuality: decision.quality,
+            ...emptyPhotoQa(),
+          };
+        }
+
+        usedThisEdition.add(asset.id);
+        if (
+          article.mediaAutoAssigned === true
+          && article.mediaAssetId === asset.id
+          && article.mediaAutoMatchQuality === decision.quality
+          && !article.mediaAutoRecommendation
+        ) return article;
 
         return {
           ...article,
@@ -301,6 +402,9 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
           mediaSource: asset.origin,
           mediaDisclosure: asset.origin === NEWSROOM_MEDIA_ORIGINS.AI ? 'AI-generated editorial image' : '',
           mediaAutoAssigned: true,
+          mediaAutoRecommendation: '',
+          mediaAutoReason: decision.reason,
+          mediaAutoMatchQuality: decision.quality,
           ...emptyPhotoQa(),
           mediaQaAssetId: asset.id,
         };
@@ -322,6 +426,7 @@ export const removeNewsroomMediaAsset = (state, assetId) => {
         mediaSource: '',
         mediaDisclosure: '',
         mediaAutoAssigned: false,
+        ...clearAutoRecommendation(),
         ...emptyPhotoQa(),
       }),
     })),

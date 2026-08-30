@@ -82,15 +82,28 @@ body {
 @media (min-width: 960px) and (max-width: 1199px) {
   .dhq-primary-nav {
     display: flex !important;
+    margin-right: 42px !important;
   }
 
   .dhq-primary-nav-item {
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-    font-size: 10.5px !important;
-    letter-spacing: 0.02em !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.015em !important;
+  }
+
+  /* The appearance toggle is injected separately from the React nav. Reserve
+     a real lane for it so it cannot sit on top of Weekly Agenda or Settings. */
+  #dhq-theme-toggle-host {
+    top: 12px !important;
+    right: 8px !important;
+  }
+
+  #dhq-theme-toggle {
+    width: 32px !important;
+    height: 32px !important;
   }
 
   button[aria-controls="mobile-primary-navigation"],

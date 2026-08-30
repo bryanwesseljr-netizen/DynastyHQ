@@ -59,6 +59,11 @@ const NewsroomLibraryScrollGuardPortal = () => {
       timers.clear();
     };
 
+    const release = () => {
+      clearTimers();
+      pending = null;
+    };
+
     const restore = (token) => {
       if (!pending || pending.token !== token) return;
 
@@ -66,14 +71,22 @@ const NewsroomLibraryScrollGuardPortal = () => {
       const currentHostTop = scrollTopFor(host);
       const severeBackwardJump = currentHostTop < hostTop - 80;
 
+      // Only repair the actual failure we care about: the save/render cycle
+      // sending the library substantially upward. Ordinary user scrolling must
+      // never be treated as a layout error.
+      if (!severeBackwardJump) return;
+
       if (anchor?.isConnected) {
         const anchorDelta = anchor.getBoundingClientRect().top - anchorTop;
-        if (Math.abs(anchorDelta) > 12 || severeBackwardJump) {
-          addScroll(host, anchorDelta);
-        }
-      } else if (severeBackwardJump) {
+        if (Math.abs(anchorDelta) > 12) addScroll(host, anchorDelta);
+        else setScroll(host, hostTop);
+      } else {
         setScroll(host, hostTop);
       }
+
+      // A repair is one-shot. Once the bad jump is corrected, release the guard
+      // immediately so normal scrolling cannot be pulled back afterward.
+      release();
     };
 
     const remember = (target) => {
@@ -91,27 +104,42 @@ const NewsroomLibraryScrollGuardPortal = () => {
       };
 
       clearTimers();
-      [0, 60, 140, 260, 450, 750, 1100, 1500].forEach((delay) => {
+      [0, 80, 180, 360, 700, 1200].forEach((delay) => {
         const timer = window.setTimeout(() => {
           timers.delete(timer);
           restore(token);
-          if (delay === 1500 && pending?.token === token) pending = null;
+          if (delay === 1200 && pending?.token === token) pending = null;
         }, delay);
         timers.add(timer);
       });
     };
 
-    const onPointerDown = (event) => remember(event.target);
+    const onPointerDown = (event) => {
+      if (isLibraryMetadataControl(event.target)) remember(event.target);
+      else if (pending) release();
+    };
     const onChange = (event) => remember(event.target);
+    const onUserScrollIntent = () => {
+      if (pending) release();
+    };
+    const onKeyDown = (event) => {
+      if (!pending) return;
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) release();
+    };
 
     document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('change', onChange, true);
+    document.addEventListener('wheel', onUserScrollIntent, { capture: true, passive: true });
+    document.addEventListener('touchmove', onUserScrollIntent, { capture: true, passive: true });
+    document.addEventListener('keydown', onKeyDown, true);
 
     return () => {
-      clearTimers();
-      pending = null;
+      release();
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('change', onChange, true);
+      document.removeEventListener('wheel', onUserScrollIntent, true);
+      document.removeEventListener('touchmove', onUserScrollIntent, true);
+      document.removeEventListener('keydown', onKeyDown, true);
     };
   }, []);
 

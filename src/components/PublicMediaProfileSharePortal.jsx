@@ -64,8 +64,13 @@ const PublicMediaProfileSharePortal = () => {
 
   const publicUrl = useMemo(() => {
     if (!user?.uid) return '';
-    const base = window.location.href.split('?')[0];
-    return `${base}?media=${encodeURIComponent(user.uid)}`;
+    const url = new URL(window.location.href);
+    const previewShareToken = url.searchParams.get('_vercel_share');
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('media', user.uid);
+    if (previewShareToken) url.searchParams.set('_vercel_share', previewShareToken);
+    return url.toString();
   }, [user?.uid]);
 
   const deleteCollectionDocs = async (collectionRef) => {
@@ -78,6 +83,17 @@ const PublicMediaProfileSharePortal = () => {
     if (!db || !user?.uid) return;
     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', user.uid)).catch(() => {});
     await deleteCollectionDocs(collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${user.uid}`));
+  };
+
+  const syncPublicPodcastAudio = async () => {
+    if (!db || !user?.uid) return;
+    for (const episode of (career?.podcastEpisodes || []).filter((entry) => entry?.audioStatus === 'ready' && entry?.id)) {
+      const segments = await loadPodcastAudioLocal(episode.id)
+        || await loadPodcastAudioCloud({ db, appId, userId: user.uid, episodeId: episode.id });
+      if (segments?.length) {
+        await savePublicPodcastAudio({ db, appId, ownerId: user.uid, episodeId: episode.id, segments });
+      }
+    }
   };
 
   const deletePublicPodcastAudio = async () => {
@@ -102,19 +118,30 @@ const PublicMediaProfileSharePortal = () => {
       const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_media_profiles', user.uid);
       await setDoc(profileRef, snapshot);
 
-      for (const episode of (career.podcastEpisodes || []).filter((entry) => entry?.audioStatus === 'ready' && entry?.id)) {
-        const segments = await loadPodcastAudioLocal(episode.id)
-          || await loadPodcastAudioCloud({ db, appId, userId: user.uid, episodeId: episode.id });
-        if (segments?.length) {
-          await savePublicPodcastAudio({ db, appId, ownerId: user.uid, episodeId: episode.id, segments });
-        }
-      }
+      // The profile itself is ready as soon as the scoped Firestore snapshot lands.
+      // Do not make the owner wait for every podcast audio chunk or legacy cleanup
+      // before exposing the link; those can safely finish after the page is usable.
+      setModal({
+        open: true,
+        url: publicUrl,
+        status: 'Media Profile ready. Podcast audio is finishing its public sync in the background.',
+      });
+      setBusy(false);
 
-      await retireLegacyWholeCareerShare();
-      setModal({ open: true, url: publicUrl, status: 'Media Profile ready — only Player Stats, Newsroom, and Podcast are public.' });
+      void Promise.all([
+        syncPublicPodcastAudio(),
+        retireLegacyWholeCareerShare(),
+      ]).then(() => {
+        setModal((current) => current.open && current.url === publicUrl
+          ? { ...current, status: 'Media Profile ready — only Player Stats, Newsroom, and Podcast are public.' }
+          : current);
+      }).catch(() => {
+        setModal((current) => current.open && current.url === publicUrl
+          ? { ...current, status: 'Media Profile is live. One or more podcast audio files are still unavailable; publishing again will retry them.' }
+          : current);
+      });
     } catch (error) {
       setModal({ open: true, url: '', status: error?.message || 'The Media Profile link could not be created. Try again.' });
-    } finally {
       setBusy(false);
     }
   };

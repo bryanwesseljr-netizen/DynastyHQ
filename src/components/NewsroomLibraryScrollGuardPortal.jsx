@@ -48,6 +48,12 @@ const isLibraryMetadataControl = (target) => {
   return /tag current team/i.test(button.textContent || '');
 };
 
+const isTeamTagButton = (target) => {
+  if (!(target instanceof Element)) return false;
+  const button = target.closest('.dhq-newsroom-owner-library button');
+  return Boolean(button && /tag current team/i.test(button.textContent || ''));
+};
+
 const NewsroomLibraryScrollGuardPortal = () => {
   useEffect(() => {
     let sequence = 0;
@@ -104,19 +110,25 @@ const NewsroomLibraryScrollGuardPortal = () => {
       };
 
       clearTimers();
-      [0, 80, 180, 360, 700, 1200].forEach((delay) => {
+
+      // The very first Firestore transaction in a session can be noticeably
+      // slower than later warm saves. Keep the one-shot guard alive long enough
+      // to cover that cold refresh, but release instantly on any real user scroll.
+      [0, 80, 180, 360, 700, 1200, 2000, 3500, 5500].forEach((delay) => {
         const timer = window.setTimeout(() => {
           timers.delete(timer);
           restore(token);
-          if (delay === 1200 && pending?.token === token) pending = null;
+          if (delay === 5500 && pending?.token === token) pending = null;
         }, delay);
         timers.add(timer);
       });
     };
 
     const onPointerDown = (event) => {
-      if (isLibraryMetadataControl(event.target)) remember(event.target);
-      else if (pending) release();
+      // Selects and checkboxes arm the guard on change, after the user actually
+      // commits a new value. Only the explicit team-tag action needs pointerdown.
+      if (isTeamTagButton(event.target)) remember(event.target);
+      else if (pending && !isLibraryMetadataControl(event.target)) release();
     };
     const onChange = (event) => remember(event.target);
     const onUserScrollIntent = () => {

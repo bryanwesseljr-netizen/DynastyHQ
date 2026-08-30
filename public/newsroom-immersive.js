@@ -127,23 +127,21 @@
     storyCard.click();
   };
 
-  const apply = () => {
+  const runApply = () => {
     if (applying) return;
     applying = true;
-    requestAnimationFrame(() => {
-      installStyles();
-      const main = newsroomMain();
-      if (main) {
-        compactPhotoLibrary(main);
-        anchorOwnerUtilityPanel(main);
-        openLatestArticle(main);
-      }
-      applying = false;
-    });
+    installStyles();
+    const main = newsroomMain();
+    if (main) {
+      compactPhotoLibrary(main);
+      anchorOwnerUtilityPanel(main);
+      openLatestArticle(main);
+    }
+    applying = false;
   };
 
-  const scheduleApply = () => {
-    requestAnimationFrame(() => requestAnimationFrame(apply));
+  const apply = () => {
+    requestAnimationFrame(() => requestAnimationFrame(runApply));
   };
 
   document.addEventListener('click', (event) => {
@@ -166,15 +164,15 @@
         utilityClosePending = true;
         setTimeout(() => otherButton.click(), 0);
       }
-      setTimeout(scheduleApply, 0);
-      setTimeout(scheduleApply, 80);
+      setTimeout(apply, 0);
+      setTimeout(apply, 80);
       return;
     }
 
     if (label === 'the newsroom') {
       overviewRequested = false;
       articleFirstPending = true;
-      setTimeout(scheduleApply, 0);
+      setTimeout(apply, 0);
       return;
     }
 
@@ -189,15 +187,15 @@
     if (!select) return;
     overviewRequested = false;
     articleFirstPending = true;
-    setTimeout(scheduleApply, 0);
+    setTimeout(apply, 0);
   }, true);
 
-  window.addEventListener('resize', scheduleApply);
-  window.addEventListener('orientationchange', scheduleApply);
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', apply);
 
   const appRoot = document.getElementById('root');
   if (appRoot) {
-    new MutationObserver(scheduleApply).observe(appRoot, {
+    new MutationObserver(apply).observe(appRoot, {
       childList: true,
       subtree: true,
       attributes: true,

@@ -50,6 +50,41 @@ test('tough-loss stories prefer the new defeat/disappointment photo type', () =>
   assert.equal(preferences[0], NEWSROOM_PHOTO_TYPES.DEFEAT);
 });
 
+test('loss coverage rejects a celebration image when a defeat image is available', () => {
+  const celebration = makeAsset({ id: 'loss-celebration', photoType: 'celebration' });
+  const defeat = makeAsset({ id: 'loss-defeat', photoType: 'defeat' });
+  const lossStory = baseStory('loss-fit', {
+    sceneOverride: 'tough-loss',
+    headline: 'Cincinnati comes up short in a tough loss',
+  });
+  const issues = [makeIssue({ id: 's2-loss', week: 5, articles: [lossStory] })];
+
+  const result = assignLibraryPhotosToEdition({
+    issues,
+    publicationId: 's2-loss',
+    mediaLibrary: [celebration, defeat],
+  });
+
+  assert.equal(result[0].articles[0].mediaAssetId, defeat.id);
+});
+
+test('win coverage does not auto-select a defeat image', () => {
+  const defeat = makeAsset({ id: 'win-defeat', photoType: 'defeat' });
+  const winStory = baseStory('win-fit', {
+    headline: 'Cincinnati wins in dominant fashion',
+  });
+  const issues = [makeIssue({ id: 's2-win', week: 6, articles: [winStory] })];
+
+  const result = assignLibraryPhotosToEdition({
+    issues,
+    publicationId: 's2-win',
+    mediaLibrary: [defeat],
+  });
+
+  assert.equal(result[0].articles[0].mediaAssetId, undefined);
+  assert.equal(result[0].articles[0].mediaAutoRecommendation, 'generate');
+});
+
 test('auto selection rotates to a fresh similarly strong photo instead of repeating recent weeks', () => {
   const usedWeekOne = makeAsset({ id: 'action-1', photoType: 'action' });
   const usedWeekTwo = makeAsset({ id: 'action-2', photoType: 'action' });
@@ -121,7 +156,7 @@ test('auto selection recommends a new generated photo when only recent credible 
   });
 
   const story = result[2].articles[0];
-  assert.equal(story.mediaAssetId, '');
+  assert.equal(story.mediaAssetId, undefined);
   assert.equal(story.mediaAutoRecommendation, 'generate');
   assert.equal(story.mediaAutoMatchQuality, 'exhausted');
   assert.match(story.mediaAutoReason, /fresh generated photo/i);
@@ -138,7 +173,7 @@ test('auto selection refuses a clearly wrong-team photo even when the scene type
   });
 
   const story = result[0].articles[0];
-  assert.equal(story.mediaAssetId, '');
+  assert.equal(story.mediaAssetId, undefined);
   assert.equal(story.mediaAutoRecommendation, 'generate');
   assert.match(story.mediaAutoReason, /same-program photo/i);
 });

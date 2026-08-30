@@ -19,12 +19,14 @@ import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
 import NewsroomExactStoryRoutingPortal from './NewsroomExactStoryRoutingPortal.jsx';
 import NewsroomLibraryScrollGuardPortal from './NewsroomLibraryScrollGuardPortal.jsx';
 import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
+import PublicMediaProfileSharePortal from './PublicMediaProfileSharePortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 
 const OwnerEnhancements = () => (
   <OwnerCareerProvider>
     <TeamAccentPortal />
+    <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />
     <WeekSetupPortal />
     <GameweekFlowPortal />

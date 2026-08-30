@@ -29,8 +29,8 @@ export const NEWSROOM_PHOTO_TYPES = Object.freeze({
 });
 
 const VALID_PHOTO_TYPES = new Set(Object.values(NEWSROOM_PHOTO_TYPES));
-const AUTO_MATCH_MIN_SCORE = 100;
-const AUTO_FALLBACK_MIN_SCORE = 82;
+const AUTO_MATCH_MIN_SCORE = 210;
+const AUTO_FALLBACK_MIN_SCORE = 130;
 const AUTO_SCORE_CYCLE_WINDOW = 24;
 
 export const normalizeNewsroomPhotoType = (value) => (
@@ -220,8 +220,22 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
   if (issueTeam && assetTeam) score += sameProgram(assetTeam, issueTeam) ? 90 : -140;
 
   const preferences = getNewsroomArticlePhotoPreferences(article);
-  const typeIndex = preferences.indexOf(getNewsroomPhotoType(asset));
-  score += typeIndex >= 0 ? Math.max(0, 60 - (typeIndex * 12)) : 0;
+  const photoType = getNewsroomPhotoType(asset);
+  const typeIndex = preferences.indexOf(photoType);
+  score += typeIndex >= 0 ? Math.max(0, 60 - (typeIndex * 12)) : -45;
+
+  const storyText = [
+    article.theme,
+    article.kicker,
+    article.headline,
+    article.dek,
+    article.imageSceneOverride,
+    article.sceneOverride,
+  ].filter(Boolean).join(' ').toLowerCase();
+  const isLossStory = /loss\b|lost\b|defeat|heartbreak|upset loss|falls? to|stumbles?|comes up short|disappoint|tough-loss/.test(storyText);
+  const isCelebratoryStory = !isLossStory && /champ|award|victory|win\b|wins\b|won\b|beat\b|beats\b|rolls past|dominates?|celebrat/.test(storyText);
+  if (isLossStory && photoType === NEWSROOM_PHOTO_TYPES.CELEBRATION) score -= 120;
+  if (isCelebratoryStory && photoType === NEWSROOM_PHOTO_TYPES.DEFEAT) score -= 120;
 
   const requestedScene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   const assetScene = normalizeNewsroomSceneTag(asset.sceneTag || asset.generatedFrom?.scene || '');

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
-import { CheckCircle2, Copy, ExternalLink, Loader2, Share2, ShieldCheck, Trash2 } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Loader2, Settings2, Share2, ShieldCheck, Trash2 } from 'lucide-react';
 import { appId, db } from '../firebase';
 import { buildPublicNewsroomMediaLibrary } from '../domain/newsroomMedia';
 import { buildPublicMediaProfileSnapshot } from '../domain/publicMediaProfile';
@@ -14,29 +14,39 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 const LEGACY_SHARE_LABEL = 'Get Share Link';
+const LEGACY_REVOKE_LABEL = 'Revoke Public Link';
 
 const PublicMediaProfileSharePortal = () => {
   const { user, career, ready } = useOwnerCareer();
-  const [mounts, setMounts] = useState([]);
+  const [shareMounts, setShareMounts] = useState([]);
+  const [manageMounts, setManageMounts] = useState([]);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState({ open: false, url: '', status: '' });
 
   useEffect(() => {
+    const ensureMount = (button, kind) => {
+      button.dataset.dhqLegacyWholeShare = 'true';
+      button.style.setProperty('display', 'none', 'important');
+      const selector = `:scope > [data-dhq-media-share-mount="${kind}"]`;
+      let mount = button.parentElement?.querySelector(selector);
+      if (!mount && button.parentElement) {
+        mount = document.createElement('span');
+        mount.dataset.dhqMediaShareMount = kind;
+        mount.className = 'contents';
+        button.insertAdjacentElement('afterend', mount);
+      }
+    };
+
     const refresh = () => {
       document.querySelectorAll('button').forEach((button) => {
-        if (normalize(button.textContent) !== LEGACY_SHARE_LABEL) return;
-        button.dataset.dhqLegacyWholeShare = 'true';
-        button.style.setProperty('display', 'none', 'important');
-        let mount = button.parentElement?.querySelector(':scope > [data-dhq-media-share-mount="true"]');
-        if (!mount && button.parentElement) {
-          mount = document.createElement('span');
-          mount.dataset.dhqMediaShareMount = 'true';
-          mount.className = 'contents';
-          button.insertAdjacentElement('afterend', mount);
-        }
+        const label = normalize(button.textContent);
+        if (label === LEGACY_SHARE_LABEL) ensureMount(button, 'share');
+        if (label === LEGACY_REVOKE_LABEL) ensureMount(button, 'manage');
       });
-      const next = [...document.querySelectorAll('[data-dhq-media-share-mount="true"]')];
-      setMounts((current) => current.length === next.length && current.every((node, index) => node === next[index]) ? current : next);
+      const nextShare = [...document.querySelectorAll('[data-dhq-media-share-mount="share"]')];
+      const nextManage = [...document.querySelectorAll('[data-dhq-media-share-mount="manage"]')];
+      setShareMounts((current) => current.length === nextShare.length && current.every((node, index) => node === nextShare[index]) ? current : nextShare);
+      setManageMounts((current) => current.length === nextManage.length && current.every((node, index) => node === nextManage[index]) ? current : nextManage);
     };
 
     refresh();
@@ -44,7 +54,7 @@ const PublicMediaProfileSharePortal = () => {
     observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
-      document.querySelectorAll('[data-dhq-media-share-mount="true"]').forEach((node) => node.remove());
+      document.querySelectorAll('[data-dhq-media-share-mount]').forEach((node) => node.remove());
       document.querySelectorAll('[data-dhq-legacy-whole-share="true"]').forEach((button) => {
         button.style.removeProperty('display');
         delete button.dataset.dhqLegacyWholeShare;
@@ -58,13 +68,23 @@ const PublicMediaProfileSharePortal = () => {
     return `${base}?media=${encodeURIComponent(user.uid)}`;
   }, [user?.uid]);
 
+  const deleteCollectionDocs = async (collectionRef) => {
+    const snapshot = await getDocs(collectionRef).catch(() => null);
+    if (!snapshot) return;
+    for (const entry of snapshot.docs) await deleteDoc(entry.ref).catch(() => {});
+  };
+
   const retireLegacyWholeCareerShare = async () => {
     if (!db || !user?.uid) return;
     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'shared_dynasties', user.uid)).catch(() => {});
-    const legacyAudio = collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${user.uid}`);
-    const snapshot = await getDocs(legacyAudio).catch(() => null);
-    if (snapshot) {
-      for (const entry of snapshot.docs) await deleteDoc(entry.ref).catch(() => {});
+    await deleteCollectionDocs(collection(db, 'artifacts', appId, 'public', 'data', `shared_audio_${user.uid}`));
+  };
+
+  const deletePublicPodcastAudio = async () => {
+    if (!db || !user?.uid) return;
+    for (const episode of (career?.podcastEpisodes || []).filter((entry) => entry?.id)) {
+      const episodeId = String(episode.id).replaceAll('/', '-').slice(0, 180);
+      await deleteCollectionDocs(collection(db, 'artifacts', appId, 'public', 'data', `shared_podcast_${user.uid}_${episodeId}`));
     }
   };
 
@@ -99,11 +119,20 @@ const PublicMediaProfileSharePortal = () => {
     }
   };
 
+  const openManager = () => {
+    setModal({
+      open: true,
+      url: publicUrl,
+      status: 'Manage your scoped Media Profile. Publishing again refreshes it from your current DynastyHQ data.',
+    });
+  };
+
   const revoke = async () => {
     if (!db || !user?.uid || busy) return;
     setBusy(true);
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'shared_media_profiles', user.uid));
+      await deletePublicPodcastAudio();
       setModal({ open: true, url: '', status: 'Media Profile revoked. Your private DynastyHQ save was not changed.' });
     } catch {
       setModal((current) => ({ ...current, status: 'The Media Profile could not be revoked. Try again.' }));
@@ -125,9 +154,22 @@ const PublicMediaProfileSharePortal = () => {
     </button>
   );
 
+  const manageButton = (key) => (
+    <button
+      key={key}
+      type="button"
+      onClick={openManager}
+      disabled={!ready || !career || busy}
+      className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-300 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:text-slate-600"
+    >
+      <Settings2 size={14} /> Manage Media Profile
+    </button>
+  );
+
   return (
     <>
-      {mounts.map((mount, index) => createPortal(shareButton(`media-share-${index}`), mount))}
+      {shareMounts.map((mount, index) => createPortal(shareButton(`media-share-${index}`), mount))}
+      {manageMounts.map((mount, index) => createPortal(manageButton(`media-manage-${index}`), mount))}
       {modal.open ? createPortal(
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-slate-700 bg-slate-950 p-7 shadow-2xl">
@@ -145,7 +187,7 @@ const PublicMediaProfileSharePortal = () => {
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <button type="button" onClick={() => window.open(modal.url, '_blank', 'noopener,noreferrer')} className="flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-950"><ExternalLink size={14} /> Open Public Profile</button>
-                  <button type="button" onClick={revoke} disabled={busy} className="flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><Trash2 size={14} /> Revoke Link</button>
+                  <button type="button" onClick={revoke} disabled={busy} className="flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><Trash2 size={14} /> Revoke Profile</button>
                 </div>
               </>
             ) : busy ? <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-slate-400"><Loader2 size={16} className="animate-spin" /> Publishing shared media…</div> : <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-slate-400"><CheckCircle2 size={16} /> No public link is active.</div>}

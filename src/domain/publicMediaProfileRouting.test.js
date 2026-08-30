@@ -31,6 +31,15 @@ test('owner enhancements replace legacy whole-career sharing and management cont
   assert.match(sharePortal, /shared_podcast_/);
 });
 
+test('preview media links preserve Vercel access and do not wait for podcast audio copying', async () => {
+  const sharePortal = await readFile(sharePortalUrl, 'utf8');
+  assert.match(sharePortal, /searchParams\.get\('_vercel_share'\)/);
+  assert.match(sharePortal, /searchParams\.set\('media', user\.uid\)/);
+  assert.match(sharePortal, /if \(previewShareToken\) url\.searchParams\.set\('_vercel_share', previewShareToken\)/);
+  assert.match(sharePortal, /setModal\(\{[\s\S]*url: publicUrl,[\s\S]*Podcast audio is finishing its public sync in the background/);
+  assert.match(sharePortal, /void Promise\.all\(\[[\s\S]*syncPublicPodcastAudio\(\)[\s\S]*retireLegacyWholeCareerShare\(\)/);
+});
+
 test('public media profile exposes exactly stats, newsroom and podcast navigation', async () => {
   const publicPage = await readFile(publicPageUrl, 'utf8');
   assert.match(publicPage, /Player Stats/);

@@ -11,6 +11,7 @@ import {
   NEWSROOM_MEDIA_ORIGINS,
   removeNewsroomMediaAsset,
   resolveNewsroomMedia,
+  scoreNewsroomMediaForArticle,
   setNewsroomMediaFolder,
   setNewsroomReferenceStatus,
 } from './newsroomMedia.js';
@@ -83,6 +84,76 @@ test('automatically assigns stable uploaded library photos without spending AI c
   assert.ok(assignedIds.every((id) => uploaded.some((entry) => entry.id === id)));
   assert.equal(first[0].articles[2].mediaAssetId, 'manual-photo');
   assert.ok(first[0].articles.slice(0, 2).every((article) => article.mediaAutoAssigned === true));
+});
+
+test('smart photo scoring prefers the article program team tag over a different team', () => {
+  const cincinnatiIssue = {
+    ...issue,
+    outletProfile: { school: 'Cincinnati' },
+    articles: [{ ...issue.articles[0], headline: 'Cincinnati controls the game' }],
+  };
+  const correctTeam = {
+    ...asset,
+    id: 'cincinnati-action',
+    downloadUrl: 'https://firebasestorage.googleapis.com/cincinnati.jpg',
+    photoType: 'action',
+    teamTag: 'Cincinnati',
+  };
+  const wrongTeam = {
+    ...asset,
+    id: 'missouri-state-action',
+    downloadUrl: 'https://firebasestorage.googleapis.com/missouri-state.jpg',
+    photoType: 'action',
+    teamTag: 'Missouri State',
+  };
+
+  assert.ok(
+    scoreNewsroomMediaForArticle({ asset: correctTeam, article: cincinnatiIssue.articles[0], issue: cincinnatiIssue })
+      > scoreNewsroomMediaForArticle({ asset: wrongTeam, article: cincinnatiIssue.articles[0], issue: cincinnatiIssue }),
+  );
+
+  const matched = assignLibraryPhotosToEdition({
+    issues: [cincinnatiIssue],
+    publicationId: cincinnatiIssue.id,
+    mediaLibrary: [wrongTeam, correctTeam],
+  });
+  assert.equal(matched[0].articles[0].mediaAssetId, 'cincinnati-action');
+});
+
+test('automatic matching re-evaluates an old auto photo when tags now identify a better match', () => {
+  const wrongTeam = {
+    ...asset,
+    id: 'old-auto-photo',
+    downloadUrl: 'https://firebasestorage.googleapis.com/old-auto.jpg',
+    photoType: 'action',
+    teamTag: 'Missouri State',
+  };
+  const correctTeam = {
+    ...asset,
+    id: 'better-cincinnati-photo',
+    downloadUrl: 'https://firebasestorage.googleapis.com/better-cincinnati.jpg',
+    photoType: 'action',
+    teamTag: 'Cincinnati',
+  };
+  const cincinnatiIssue = {
+    ...issue,
+    outletProfile: { school: 'Cincinnati' },
+    articles: [{
+      ...issue.articles[0],
+      headline: 'Cincinnati controls the game',
+      mediaAssetId: wrongTeam.id,
+      mediaSource: NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+      mediaAutoAssigned: true,
+    }],
+  };
+
+  const rematched = assignLibraryPhotosToEdition({
+    issues: [cincinnatiIssue],
+    publicationId: cincinnatiIssue.id,
+    mediaLibrary: [wrongTeam, correctTeam],
+  });
+  assert.equal(rematched[0].articles[0].mediaAssetId, correctTeam.id);
+  assert.equal(rematched[0].articles[0].mediaAutoAssigned, true);
 });
 
 test('automatic photo assignment never crosses career-stage folders', () => {

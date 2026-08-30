@@ -1,5 +1,6 @@
 import { getFrontPageMediaAssetIds, removeFrontPageMediaAsset } from './postgameFrontPage.js';
 import { removeVisualProfileReference } from './playerVisualProfile.js';
+import { sameProgram } from './teamMediaProfile.js';
 import {
   getNewsroomIssueFolder,
   getNewsroomMediaFolder,
@@ -197,6 +198,10 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
   if (getNewsroomMediaFolder(asset) === issueFolder) score += 100;
   else score -= 80;
 
+  const issueTeam = cleanText(issue?.outletProfile?.school || issue?.team || issue?.school, 120);
+  const assetTeam = cleanText(asset.teamTag || asset.generatedFrom?.team, 120);
+  if (issueTeam && assetTeam) score += sameProgram(assetTeam, issueTeam) ? 90 : -140;
+
   const preferences = getNewsroomArticlePhotoPreferences(article);
   const typeIndex = preferences.indexOf(getNewsroomPhotoType(asset));
   score += typeIndex >= 0 ? Math.max(0, 60 - (typeIndex * 12)) : 0;
@@ -215,6 +220,17 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
   return score;
 };
 
+export const rankNewsroomMediaForArticle = ({ assets = [], article = {}, issue = {} } = {}) => (
+  [...assets].sort((a, b) => {
+    const scoreDiff = scoreNewsroomMediaForArticle({ asset: b, article, issue })
+      - scoreNewsroomMediaForArticle({ asset: a, article, issue });
+    if (scoreDiff) return scoreDiff;
+    const dateDiff = String(b?.createdAt || '').localeCompare(String(a?.createdAt || ''));
+    if (dateDiff) return dateDiff;
+    return String(a?.id || '').localeCompare(String(b?.id || ''));
+  })
+);
+
 const stableAsset = (assets = []) => assets[0];
 
 const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
@@ -232,14 +248,17 @@ const chooseSmartLibraryPhoto = ({ candidates, article, issue, usedThisEdition, 
   const currentId = article.mediaAssetId || '';
   const available = candidates.filter((asset) => !usedThisEdition.has(asset.id));
   const editionPool = available.length ? available : candidates;
-  const ranked = [...editionPool].sort((a, b) => (
-    scoreNewsroomMediaForArticle({ asset: b, article, issue })
-    - scoreNewsroomMediaForArticle({ asset: a, article, issue })
+  const ranked = rankNewsroomMediaForArticle({ assets: editionPool, article, issue });
+  if (!ranked.length) return null;
+
+  const bestScore = scoreNewsroomMediaForArticle({ asset: ranked[0], article, issue });
+  const bestMatches = ranked.filter((asset) => (
+    scoreNewsroomMediaForArticle({ asset, article, issue }) === bestScore
   ));
-  const fresh = ranked.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
-  if (fresh.length) return stableAsset(fresh);
-  const notCurrent = ranked.filter((asset) => asset.id !== currentId);
-  return stableAsset(notCurrent.length ? notCurrent : ranked);
+  const currentBest = bestMatches.find((asset) => asset.id === currentId && !recentlyUsed.has(asset.id));
+  if (currentBest) return currentBest;
+  const freshBest = bestMatches.find((asset) => !recentlyUsed.has(asset.id));
+  return freshBest || stableAsset(bestMatches) || stableAsset(ranked);
 };
 
 export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
@@ -257,7 +276,6 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
   ));
   if (!candidates.length) return issues;
 
-  const assetById = new Map(mediaLibrary.map((entry) => [entry?.id, entry]));
   const recentlyUsed = recentLibraryAssignments(issues, targetIndex);
 
   return issues.map((issue) => {
@@ -266,14 +284,7 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
     return {
       ...issue,
       articles: (issue.articles || []).map((article) => {
-        const currentAsset = article.mediaAssetId ? assetById.get(article.mediaAssetId) : null;
-        const currentMatchesFolder = currentAsset && getNewsroomMediaFolder(currentAsset) === targetFolder;
-
         if (article.mediaAssetId && article.mediaAutoAssigned !== true) {
-          usedThisEdition.add(article.mediaAssetId);
-          return article;
-        }
-        if (article.mediaAssetId && article.mediaAutoAssigned === true && currentMatchesFolder) {
           usedThisEdition.add(article.mediaAssetId);
           return article;
         }
@@ -281,6 +292,9 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
         const asset = chooseSmartLibraryPhoto({ candidates, article, issue, usedThisEdition, recentlyUsed });
         if (!asset) return article;
         usedThisEdition.add(asset.id);
+
+        if (article.mediaAutoAssigned === true && article.mediaAssetId === asset.id) return article;
+
         return {
           ...article,
           mediaAssetId: asset.id,

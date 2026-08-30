@@ -1,6 +1,7 @@
-/* Keep the most-used weekly workflow directly beside Dashboard on desktop.
-   Mobile already renders Weekly Agenda second through the React nav ordering. */
-@media (min-width: 1200px) {
+/* Keep the most-used weekly workflow directly beside Dashboard anywhere the
+   full desktop navigation is visible. Mobile already renders Weekly Agenda
+   second through the React nav ordering. */
+@media (min-width: 960px) {
   .dhq-primary-nav > .dhq-primary-nav-item[title="Dashboard"] { order: 0; }
   .dhq-primary-nav > .dhq-primary-nav-item[title="Weekly Agenda"] { order: 1; }
   .dhq-primary-nav > .dhq-primary-nav-item[title="Recruiting Board"] { order: 2; }

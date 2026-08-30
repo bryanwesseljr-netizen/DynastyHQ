@@ -3,6 +3,7 @@
   let articleFirstPending = true;
   let overviewRequested = false;
   let applying = false;
+  let utilityClosePending = false;
 
   const installStyles = () => {
     if (document.getElementById('dhq-newsroom-immersive-styles')) return;
@@ -87,32 +88,103 @@
     }
   };
 
+  const anchorOwnerUtilityPanel = (main) => {
+    const utilityRow = main.querySelector('.dhq-team-newsroom__utility-grid');
+    const issueSelect = main.querySelector('select[aria-label="Choose weekly newsroom edition"]');
+    const newsroomRoot = issueSelect?.closest('.max-w-6xl');
+    if (!utilityRow || !newsroomRoot) return;
+
+    const controls = newsroomRoot.querySelector('.dhq-newsroom-owner-controls');
+    const library = newsroomRoot.querySelector('.dhq-newsroom-owner-library');
+    const panels = [controls, library].filter(Boolean);
+    const activePanel = newsroomRoot.classList.contains('dhq-newsroom-library-open')
+      ? library
+      : newsroomRoot.classList.contains('dhq-newsroom-tools-open')
+        ? controls
+        : null;
+
+    // Only clear the inactive panel. Removing and then re-applying the active
+    // panel's large negative margin on every React/Firebase update causes the
+    // browser's scroll anchoring to jump away from the photo being edited.
+    panels.forEach((panel) => {
+      if (panel === activePanel) return;
+      panel.style.removeProperty('margin-top');
+      panel.style.removeProperty('margin-bottom');
+    });
+
+    if (!activePanel || window.getComputedStyle(activePanel).display === 'none') return;
+
+    const currentMargin = Number.parseFloat(activePanel.style.getPropertyValue('margin-top')) || 0;
+    const currentTop = activePanel.getBoundingClientRect().top;
+    const naturalTop = currentTop - currentMargin;
+    const desiredTop = utilityRow.getBoundingClientRect().bottom + 8;
+    const adjustment = desiredTop - naturalTop;
+
+    if (Math.abs(adjustment - currentMargin) > 0.5) {
+      activePanel.style.setProperty('margin-top', `${adjustment}px`, 'important');
+    }
+    activePanel.style.setProperty('margin-bottom', '0px', 'important');
+  };
+
   const openLatestArticle = (main) => {
     if (!articleFirstPending || overviewRequested) return;
+
+    // The Team Hub owns story selection in the current owner experience. Its
+    // exact-story router may change the edition before opening a Regional or
+    // National card; auto-clicking the first legacy card here would steal that
+    // selection and always open Team News instead.
+    if (main.querySelector('[data-team-newsroom-hub="true"]')) {
+      articleFirstPending = false;
+      return;
+    }
+
     const storyCard = main.querySelector('.dhq-newsroom-story-card');
     if (!storyCard) return;
     articleFirstPending = false;
     storyCard.click();
   };
 
-  const apply = () => {
+  const runApply = () => {
     if (applying) return;
     applying = true;
-    requestAnimationFrame(() => {
-      installStyles();
-      const main = newsroomMain();
-      if (main) {
-        compactPhotoLibrary(main);
-        openLatestArticle(main);
-      }
-      applying = false;
-    });
+    installStyles();
+    const main = newsroomMain();
+    if (main) {
+      compactPhotoLibrary(main);
+      anchorOwnerUtilityPanel(main);
+      openLatestArticle(main);
+    }
+    applying = false;
+  };
+
+  const apply = () => {
+    requestAnimationFrame(() => requestAnimationFrame(runApply));
   };
 
   document.addEventListener('click', (event) => {
     const button = event.target?.closest?.('button');
     if (!button) return;
     const label = normalize(button.textContent);
+
+    if (label === 'newsroom controls' || label === 'media library') {
+      if (utilityClosePending) {
+        utilityClosePending = false;
+        return;
+      }
+
+      const main = newsroomMain();
+      const otherLabel = label === 'newsroom controls' ? 'media library' : 'newsroom controls';
+      const otherButton = [...(main?.querySelectorAll('.dhq-team-newsroom__owner-tools button') || [])]
+        .find((candidate) => normalize(candidate.textContent) === otherLabel);
+
+      if (otherButton?.dataset.active === 'true') {
+        utilityClosePending = true;
+        setTimeout(() => otherButton.click(), 0);
+      }
+      setTimeout(apply, 0);
+      setTimeout(apply, 80);
+      return;
+    }
 
     if (label === 'the newsroom') {
       overviewRequested = false;
@@ -135,11 +207,16 @@
     setTimeout(apply, 0);
   }, true);
 
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', apply);
+
   const appRoot = document.getElementById('root');
   if (appRoot) {
     new MutationObserver(apply).observe(appRoot, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'data-active'],
     });
   }
 

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Check, FolderOpen, ImagePlus, Loader2, Sparkles, Tags, Trash2, Upload, X,
+  AlertTriangle, Check, FolderOpen, ImagePlus, Loader2, Sparkles, Tags, Trash2, Upload, X,
 } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
@@ -31,6 +31,7 @@ const PHOTO_TYPE_OPTIONS = [
   { value: NEWSROOM_PHOTO_TYPES.TUNNEL, label: 'Tunnel / Entrance' },
   { value: NEWSROOM_PHOTO_TYPES.PRACTICE, label: 'Practice / Warmup' },
   { value: NEWSROOM_PHOTO_TYPES.CELEBRATION, label: 'Celebration' },
+  { value: NEWSROOM_PHOTO_TYPES.DEFEAT, label: 'Defeat / Disappointment' },
   { value: NEWSROOM_PHOTO_TYPES.PORTRAIT, label: 'Portrait / Profile' },
   { value: NEWSROOM_PHOTO_TYPES.TEAM, label: 'Team / Group' },
   { value: NEWSROOM_PHOTO_TYPES.COACH, label: 'Coach' },
@@ -66,6 +67,8 @@ const NewsroomMediaManager = ({
   const [folderFilter, setFolderFilter] = useState('all');
   const controlsBusy = busy || uploading;
   const issueFolder = getNewsroomIssueFolder(issue || {});
+  const generateRecommended = !lockerOnly && article?.mediaAutoRecommendation === 'generate';
+  const usedFallback = !lockerOnly && article?.mediaAutoMatchQuality === 'fallback' && article?.mediaAutoAssigned;
 
   const folderCounts = useMemo(() => {
     const counts = { all: mediaLibrary.length };
@@ -94,12 +97,17 @@ const NewsroomMediaManager = ({
       })
   ), [article, issue, mediaLibrary]);
 
-  const recommendedIds = useMemo(() => new Set(
+  const recommendedIds = useMemo(() => {
+    const ids = [];
+    if (article?.mediaAutoAssigned && article?.mediaAssetId) ids.push(article.mediaAssetId);
     manualLibrary
       .filter((asset) => getNewsroomMediaFolder(asset) === issueFolder)
-      .slice(0, 3)
-      .map((asset) => asset.id),
-  ), [issueFolder, manualLibrary]);
+      .forEach((asset) => {
+        if (ids.length >= 3 || ids.includes(asset.id)) return;
+        ids.push(asset.id);
+      });
+    return new Set(ids);
+  }, [article?.mediaAssetId, article?.mediaAutoAssigned, issueFolder, manualLibrary]);
 
   const receiveFiles = async (event, asReference) => {
     const files = Array.from(event.target.files || []);
@@ -243,6 +251,22 @@ const NewsroomMediaManager = ({
         />
       )}
 
+      {generateRecommended && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-400/35 bg-amber-500/10 p-3 text-amber-100">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-300" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">Generate New Photo Recommended</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-amber-100/80">{article?.mediaAutoReason || 'Auto Select could not find a fresh library photo that fits this story closely enough.'} Use the Photo Director above to generate a new image, or add/tag another library photo.</p>
+          </div>
+        </div>
+      )}
+
+      {usedFallback && (
+        <p className="mb-3 rounded-lg border border-blue-400/25 bg-blue-500/10 px-3 py-2 text-[9px] font-bold leading-relaxed text-blue-200">
+          Auto Select used a fresh close-enough library match to avoid repeating a recently used photo. You can keep it or manually override it.
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => receiveFiles(event, false)} />
         <input ref={referenceRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => receiveFiles(event, true)} />
@@ -265,8 +289,8 @@ const NewsroomMediaManager = ({
 
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
         {lockerOnly
-          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. File photos by career stage and tag the scene type so DynastyHQ can recommend action, sideline, tunnel, practice, celebration, portrait, team, coach, or recruiting images intelligently.`
-          : `Uploads preserve the full photo in your reusable library. This article belongs to the ${newsroomMediaFolderLabel(issueFolder)} folder. Smart recommendations rank same-stage photos by scene/article fit before showing other manual choices.`}
+          ? `${mediaLibrary.length} saved ${mediaLibrary.length === 1 ? 'photo' : 'photos'}. File photos by career stage and tag the scene type so DynastyHQ can recommend action, sideline, tunnel, practice, celebration, defeat/disappointment, portrait, team, coach, or recruiting images intelligently.`
+          : `Uploads preserve the full photo in your reusable library. This article belongs to the ${newsroomMediaFolderLabel(issueFolder)} folder. Smart recommendations rank same-stage photos by team and scene fit before showing other manual choices.`}
       </p>
       {uploading && (
         <p className="mt-2 flex items-center gap-2 text-[10px] font-bold text-blue-300">
@@ -282,7 +306,7 @@ const NewsroomMediaManager = ({
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Choose a career photo</p>
-              <p className="mt-1 text-[9px] text-slate-500">Recommended photos are ranked by career folder, selected Director scene, article theme, and whether the photo was created for this story. Manual selection can still override the ranking.</p>
+              <p className="mt-1 text-[9px] text-slate-500">Recommended photos are ranked by career folder, team tag, selected Director scene, and article theme. Auto Select also rotates through fresh photos to avoid back-to-back repeats. Manual selection can always override the ranking.</p>
             </div>
             <button type="button" onClick={() => setLibraryOpen(false)} className="text-slate-500 hover:text-white"><X size={15} /></button>
           </div>
@@ -315,7 +339,7 @@ const NewsroomMediaManager = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">Career Photo Library &amp; AI References</p>
-              <p className="mt-1 text-[10px] text-slate-500">Organize photos by career stage and scene type. Smart matching uses these tags to recommend the right visual before you generate something new. Approved AI references remain separate from normal article-photo matching.</p>
+              <p className="mt-1 text-[10px] text-slate-500">Organize photos by career stage and scene type. Smart matching uses team + scene tags, rotates similarly strong photos, and avoids recent duplicates before recommending a new generated image. Approved AI references remain separate from normal article-photo matching.</p>
             </div>
             <button type="button" disabled={controlsBusy} onClick={() => referenceRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/10 disabled:opacity-50">
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Add AI Reference
@@ -338,7 +362,9 @@ const NewsroomMediaManager = ({
 
           <VisualPlayerProfileEditor mediaLibrary={mediaLibrary} />
 
-          {typeMessage && <p className="mt-3 text-[10px] font-bold text-slate-400">{typeMessage}</p>}
+          <div className="mt-3 min-h-[16px]" aria-live="polite">
+            {typeMessage && <p className="text-[10px] font-bold text-slate-400">{typeMessage}</p>}
+          </div>
 
           {filteredLibrary.length ? (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -400,7 +426,7 @@ const NewsroomMediaManager = ({
             <input type="checkbox" disabled={controlsBusy} checked={autoAssignLibrary} onChange={(event) => onSetAutoAssignLibrary(event.target.checked)} className="mt-0.5 accent-blue-500" />
             <span>
               <span className="block text-[10px] font-black uppercase tracking-wider text-slate-200">Automatically choose library photos · smart matching</span>
-              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. DynastyHQ locks the article to its career folder, ranks eligible photos by Director scene and article theme, prefers fresh images, and avoids same-edition duplicates. If the correct folder has no eligible photo, it leaves the article photo empty instead of borrowing from another career stage.</span>
+              <span className="mt-1 block text-[10px] leading-relaxed text-slate-500">Automatic matching never generates an AI image or uses API image credits. Auto Select locks each article to the correct career folder, strongly prefers the active team and story/scene type, cycles among similarly strong photos, and avoids photos used in the previous two editions. If only repeats or weak/wrong-team matches remain, DynastyHQ leaves the article photo open and recommends generating a fresh one instead of forcing a bad choice.</span>
             </span>
           </label>
         </div>

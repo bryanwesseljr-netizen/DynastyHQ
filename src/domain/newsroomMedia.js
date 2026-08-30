@@ -1,5 +1,6 @@
 import { getFrontPageMediaAssetIds, removeFrontPageMediaAsset } from './postgameFrontPage.js';
 import { removeVisualProfileReference } from './playerVisualProfile.js';
+import { sameProgram } from './teamMediaProfile.js';
 import {
   getNewsroomIssueFolder,
   getNewsroomMediaFolder,
@@ -19,6 +20,7 @@ export const NEWSROOM_PHOTO_TYPES = Object.freeze({
   PORTRAIT: 'portrait',
   RECRUITING: 'recruiting',
   CELEBRATION: 'celebration',
+  DEFEAT: 'defeat',
   SIDELINE: 'sideline',
   TUNNEL: 'tunnel',
   PRACTICE: 'practice',
@@ -27,6 +29,9 @@ export const NEWSROOM_PHOTO_TYPES = Object.freeze({
 });
 
 const VALID_PHOTO_TYPES = new Set(Object.values(NEWSROOM_PHOTO_TYPES));
+const AUTO_MATCH_MIN_SCORE = 210;
+const AUTO_FALLBACK_MIN_SCORE = 130;
+const AUTO_SCORE_CYCLE_WINDOW = 24;
 
 export const normalizeNewsroomPhotoType = (value) => (
   VALID_PHOTO_TYPES.has(String(value || '').toLowerCase())
@@ -43,6 +48,7 @@ const inferPhotoTypeFromText = (value = '') => {
   const text = String(value || '').toLowerCase();
   if (/\bcoach\b|coaching|coordinator|head coach|position coach/.test(text)) return NEWSROOM_PHOTO_TYPES.COACH;
   if (/tunnel|entrance|walkout|walk out|runout|run out/.test(text)) return NEWSROOM_PHOTO_TYPES.TUNNEL;
+  if (/defeat|tough loss|heartbreak|deject|disappoint|frustrat|head down|walk off|postgame loss|after the loss/.test(text)) return NEWSROOM_PHOTO_TYPES.DEFEAT;
   if (/sideline|bench|waiting|headset|huddle|between series|between drives/.test(text)) return NEWSROOM_PHOTO_TYPES.SIDELINE;
   if (/practice|training|drill|warmup|warm-up|workout/.test(text)) return NEWSROOM_PHOTO_TYPES.PRACTICE;
   if (/team photo|team shot|group photo|locker room|whole team|team huddle/.test(text)) return NEWSROOM_PHOTO_TYPES.TEAM;
@@ -65,6 +71,12 @@ const emptyPhotoQa = () => ({
   mediaQaAssetId: '',
   mediaQaApprovedAt: '',
   mediaQaChecklist: [],
+});
+
+const clearAutoRecommendation = () => ({
+  mediaAutoRecommendation: '',
+  mediaAutoReason: '',
+  mediaAutoMatchQuality: '',
 });
 
 export const createNewsroomMediaAsset = ({
@@ -132,6 +144,7 @@ export const assignNewsroomMedia = ({ issues = [], publicationId, articleId, ass
       mediaSource: asset.origin,
       mediaDisclosure: asset.origin === NEWSROOM_MEDIA_ORIGINS.AI ? 'AI-generated editorial image' : '',
       mediaAutoAssigned: false,
+      ...clearAutoRecommendation(),
       ...emptyPhotoQa(),
       mediaQaAssetId: asset.id,
     }),
@@ -147,6 +160,7 @@ export const clearNewsroomMediaAssignment = ({ issues = [], publicationId, artic
       mediaSource: '',
       mediaDisclosure: '',
       mediaAutoAssigned: false,
+      ...clearAutoRecommendation(),
       ...emptyPhotoQa(),
     }),
   })
@@ -166,12 +180,16 @@ export const getNewsroomArticlePhotoPreferences = (article = {}) => {
 
   const scene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   if (scene === 'celebration') return [NEWSROOM_PHOTO_TYPES.CELEBRATION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.GENERAL];
-  if (scene === 'sideline' || scene === 'tough-loss') return [NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL];
+  if (scene === 'tough-loss') return [NEWSROOM_PHOTO_TYPES.DEFEAT, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.GENERAL];
+  if (scene === 'sideline') return [NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL];
   if (scene === 'tunnel') return [NEWSROOM_PHOTO_TYPES.TUNNEL, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.ACTION];
   if (scene === 'practice') return [NEWSROOM_PHOTO_TYPES.PRACTICE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.PORTRAIT];
   if (scene === 'portrait') return [NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM];
   if (scene === 'pocket-action' || scene === 'scramble') return [NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.PORTRAIT];
 
+  if (/loss\b|lost\b|defeat|heartbreak|upset loss|falls? to|stumbles?|comes up short|disappoint/.test(text)) {
+    return [NEWSROOM_PHOTO_TYPES.DEFEAT, NEWSROOM_PHOTO_TYPES.SIDELINE, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.TEAM, NEWSROOM_PHOTO_TYPES.GENERAL];
+  }
   if (/recruit|signing|commit|offer|scholarship|visit|prospect/.test(text)) {
     return [NEWSROOM_PHOTO_TYPES.RECRUITING, NEWSROOM_PHOTO_TYPES.PORTRAIT, NEWSROOM_PHOTO_TYPES.ACTION, NEWSROOM_PHOTO_TYPES.GENERAL, NEWSROOM_PHOTO_TYPES.TEAM];
   }
@@ -197,9 +215,27 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
   if (getNewsroomMediaFolder(asset) === issueFolder) score += 100;
   else score -= 80;
 
+  const issueTeam = cleanText(issue?.outletProfile?.school || issue?.team || issue?.school, 120);
+  const assetTeam = cleanText(asset.teamTag || asset.generatedFrom?.team, 120);
+  if (issueTeam && assetTeam) score += sameProgram(assetTeam, issueTeam) ? 90 : -140;
+
   const preferences = getNewsroomArticlePhotoPreferences(article);
-  const typeIndex = preferences.indexOf(getNewsroomPhotoType(asset));
-  score += typeIndex >= 0 ? Math.max(0, 60 - (typeIndex * 12)) : 0;
+  const photoType = getNewsroomPhotoType(asset);
+  const typeIndex = preferences.indexOf(photoType);
+  score += typeIndex >= 0 ? Math.max(0, 60 - (typeIndex * 12)) : -45;
+
+  const storyText = [
+    article.theme,
+    article.kicker,
+    article.headline,
+    article.dek,
+    article.imageSceneOverride,
+    article.sceneOverride,
+  ].filter(Boolean).join(' ').toLowerCase();
+  const isLossStory = /loss\b|lost\b|defeat|heartbreak|upset loss|falls? to|stumbles?|comes up short|disappoint|tough-loss/.test(storyText);
+  const isCelebratoryStory = !isLossStory && /champ|award|victory|win\b|wins\b|won\b|beat\b|beats\b|rolls past|dominates?|celebrat/.test(storyText);
+  if (isLossStory && photoType === NEWSROOM_PHOTO_TYPES.CELEBRATION) score -= 120;
+  if (isCelebratoryStory && photoType === NEWSROOM_PHOTO_TYPES.DEFEAT) score -= 120;
 
   const requestedScene = normalizeNewsroomSceneTag(article.imageSceneOverride || article.sceneOverride || '');
   const assetScene = normalizeNewsroomSceneTag(asset.sceneTag || asset.generatedFrom?.scene || '');
@@ -215,7 +251,16 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
   return score;
 };
 
-const stableAsset = (assets = []) => assets[0];
+export const rankNewsroomMediaForArticle = ({ assets = [], article = {}, issue = {} } = {}) => (
+  [...assets].sort((a, b) => {
+    const scoreDiff = scoreNewsroomMediaForArticle({ asset: b, article, issue })
+      - scoreNewsroomMediaForArticle({ asset: a, article, issue });
+    if (scoreDiff) return scoreDiff;
+    const dateDiff = String(b?.createdAt || '').localeCompare(String(a?.createdAt || ''));
+    if (dateDiff) return dateDiff;
+    return String(a?.id || '').localeCompare(String(b?.id || ''));
+  })
+);
 
 const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
   const end = targetIndex >= 0 ? targetIndex : issues.length;
@@ -228,18 +273,82 @@ const recentLibraryAssignments = (issues = [], targetIndex = -1) => {
   )));
 };
 
-const chooseSmartLibraryPhoto = ({ candidates, article, issue, usedThisEdition, recentlyUsed }) => {
-  const currentId = article.mediaAssetId || '';
+const libraryUsageHistory = (issues = [], targetIndex = -1) => {
+  const end = targetIndex >= 0 ? targetIndex : issues.length;
+  const usage = new Map();
+  issues.slice(0, end).forEach((issue, issueIndex) => {
+    (issue.articles || []).forEach((article) => {
+      const assetId = article.mediaAssetId;
+      if (!assetId) return;
+      const previous = usage.get(assetId) || { count: 0, lastIssueIndex: -1 };
+      usage.set(assetId, { count: previous.count + 1, lastIssueIndex: issueIndex });
+    });
+  });
+  return usage;
+};
+
+const hasProgramMismatch = (asset, issue) => {
+  const issueTeam = cleanText(issue?.outletProfile?.school || issue?.team || issue?.school, 120);
+  const assetTeam = cleanText(asset?.teamTag || asset?.generatedFrom?.team, 120);
+  return Boolean(issueTeam && assetTeam && !sameProgram(assetTeam, issueTeam));
+};
+
+const cycleCandidate = ({ entries = [], usage = new Map() }) => {
+  if (!entries.length) return null;
+  const bestScore = entries[0].score;
+  const comparable = entries.filter((entry) => entry.score >= bestScore - AUTO_SCORE_CYCLE_WINDOW);
+  return [...comparable].sort((a, b) => {
+    const aUsage = usage.get(a.asset.id)?.count || 0;
+    const bUsage = usage.get(b.asset.id)?.count || 0;
+    if (aUsage !== bUsage) return aUsage - bUsage;
+    if (b.score !== a.score) return b.score - a.score;
+    const dateDiff = String(b.asset.createdAt || '').localeCompare(String(a.asset.createdAt || ''));
+    if (dateDiff) return dateDiff;
+    return String(a.asset.id || '').localeCompare(String(b.asset.id || ''));
+  })[0] || null;
+};
+
+const chooseSmartLibraryPhoto = ({ candidates, article, issue, usedThisEdition, recentlyUsed, usage }) => {
   const available = candidates.filter((asset) => !usedThisEdition.has(asset.id));
-  const editionPool = available.length ? available : candidates;
-  const ranked = [...editionPool].sort((a, b) => (
-    scoreNewsroomMediaForArticle({ asset: b, article, issue })
-    - scoreNewsroomMediaForArticle({ asset: a, article, issue })
+  const ranked = rankNewsroomMediaForArticle({ assets: available, article, issue });
+  const scored = ranked.map((asset) => ({
+    asset,
+    score: scoreNewsroomMediaForArticle({ asset, article, issue }),
+  })).filter((entry) => !hasProgramMismatch(entry.asset, issue));
+
+  if (!scored.length) {
+    return { asset: null, quality: 'none', reason: 'No same-program photo is available in this career folder.' };
+  }
+
+  const credible = scored.filter((entry) => entry.score >= AUTO_MATCH_MIN_SCORE);
+  const freshCredible = credible.filter((entry) => !recentlyUsed.has(entry.asset.id));
+  const selectedFresh = cycleCandidate({ entries: freshCredible, usage });
+  if (selectedFresh) {
+    return { asset: selectedFresh.asset, quality: 'strong', reason: 'Best fresh team/scene match from the library.' };
+  }
+
+  const freshFallback = scored.filter((entry) => (
+    !recentlyUsed.has(entry.asset.id)
+    && entry.score >= AUTO_FALLBACK_MIN_SCORE
   ));
-  const fresh = ranked.filter((asset) => !recentlyUsed.has(asset.id) && asset.id !== currentId);
-  if (fresh.length) return stableAsset(fresh);
-  const notCurrent = ranked.filter((asset) => asset.id !== currentId);
-  return stableAsset(notCurrent.length ? notCurrent : ranked);
+  const selectedFallback = cycleCandidate({ entries: freshFallback, usage });
+  if (selectedFallback) {
+    return { asset: selectedFallback.asset, quality: 'fallback', reason: 'Fresh close-enough match selected to avoid a recent duplicate.' };
+  }
+
+  if (credible.length) {
+    return {
+      asset: null,
+      quality: 'exhausted',
+      reason: 'The credible matches were already used in the last two editions. A fresh generated photo is recommended instead of a back-to-back repeat.',
+    };
+  }
+
+  return {
+    asset: null,
+    quality: 'weak',
+    reason: 'The remaining library photos do not fit this team/story closely enough. Generate or add a better-matched photo.',
+  };
 };
 
 export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, mediaLibrary = [] }) => {
@@ -255,10 +364,8 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
     && asset.downloadUrl
     && getNewsroomMediaFolder(asset) === targetFolder
   ));
-  if (!candidates.length) return issues;
-
-  const assetById = new Map(mediaLibrary.map((entry) => [entry?.id, entry]));
   const recentlyUsed = recentLibraryAssignments(issues, targetIndex);
+  const usage = libraryUsageHistory(issues, targetIndex);
 
   return issues.map((issue) => {
     if (issue.publicationId !== publicationId && issue.id !== publicationId) return issue;
@@ -266,27 +373,55 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
     return {
       ...issue,
       articles: (issue.articles || []).map((article) => {
-        const currentAsset = article.mediaAssetId ? assetById.get(article.mediaAssetId) : null;
-        const currentMatchesFolder = currentAsset && getNewsroomMediaFolder(currentAsset) === targetFolder;
-
         if (article.mediaAssetId && article.mediaAutoAssigned !== true) {
           usedThisEdition.add(article.mediaAssetId);
           return article;
         }
-        if (article.mediaAssetId && article.mediaAutoAssigned === true && currentMatchesFolder) {
-          usedThisEdition.add(article.mediaAssetId);
-          return article;
+
+        const decision = chooseSmartLibraryPhoto({
+          candidates,
+          article,
+          issue,
+          usedThisEdition,
+          recentlyUsed,
+          usage,
+        });
+        const asset = decision.asset;
+
+        if (!asset) {
+          const clearedAutoMedia = article.mediaAutoAssigned === true ? {
+            mediaAssetId: '',
+            mediaSource: '',
+            mediaDisclosure: '',
+            mediaAutoAssigned: false,
+            ...emptyPhotoQa(),
+          } : {};
+          return {
+            ...article,
+            ...clearedAutoMedia,
+            mediaAutoRecommendation: 'generate',
+            mediaAutoReason: decision.reason,
+            mediaAutoMatchQuality: decision.quality,
+          };
         }
 
-        const asset = chooseSmartLibraryPhoto({ candidates, article, issue, usedThisEdition, recentlyUsed });
-        if (!asset) return article;
         usedThisEdition.add(asset.id);
+        if (
+          article.mediaAutoAssigned === true
+          && article.mediaAssetId === asset.id
+          && article.mediaAutoMatchQuality === decision.quality
+          && !article.mediaAutoRecommendation
+        ) return article;
+
         return {
           ...article,
           mediaAssetId: asset.id,
           mediaSource: asset.origin,
           mediaDisclosure: asset.origin === NEWSROOM_MEDIA_ORIGINS.AI ? 'AI-generated editorial image' : '',
           mediaAutoAssigned: true,
+          mediaAutoRecommendation: '',
+          mediaAutoReason: decision.reason,
+          mediaAutoMatchQuality: decision.quality,
           ...emptyPhotoQa(),
           mediaQaAssetId: asset.id,
         };
@@ -308,6 +443,7 @@ export const removeNewsroomMediaAsset = (state, assetId) => {
         mediaSource: '',
         mediaDisclosure: '',
         mediaAutoAssigned: false,
+        ...clearAutoRecommendation(),
         ...emptyPhotoQa(),
       }),
     })),

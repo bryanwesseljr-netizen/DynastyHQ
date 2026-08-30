@@ -73,11 +73,10 @@ const NewsroomExactStoryRoutingPortal = () => {
           clean(card.dataset.newsroomOutletId) === outletId
           && clean(card.getAttribute('aria-label')).includes(headline)
         ));
-        const outletFallback = cards.find((card) => clean(card.dataset.newsroomOutletId) === outletId);
-        const storyCard = exact || outletFallback;
-        if (!storyCard) return false;
+        if (!exact) return false;
+
         finished = true;
-        storyCard.click();
+        exact.click();
         window.requestAnimationFrame(() => {
           const main = document.querySelector('main[data-active-tab="newsroom"]');
           if (main?.scrollTo) main.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -86,9 +85,10 @@ const NewsroomExactStoryRoutingPortal = () => {
         return true;
       };
 
-      // React may need a render after the edition selector changes. Retry briefly
-      // rather than relying on one arbitrary timeout.
-      [0, 16, 40, 80, 140, 240, 400, 650].forEach((delay) => {
+      // Wait for React to finish rendering the requested edition. Never fall back
+      // to merely "the same outlet" because that can open a Regional/National
+      // story from a different week before the exact headline is in the DOM.
+      [16, 40, 80, 140, 240, 400, 650, 900].forEach((delay) => {
         window.setTimeout(tryOpenExactStory, delay);
       });
     };

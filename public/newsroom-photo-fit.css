@@ -21,6 +21,24 @@
   background: #080b0f !important;
 }
 
+/* Cincinnati Enquirer / regional print layout. Keep the full source photo
+   inside the newspaper photo well instead of cropping heads, helmets, or feet. */
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-hero {
+  overflow: hidden !important;
+  background: #ebe8e1 !important;
+}
+
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-hero img {
+  display: block !important;
+  width: 100% !important;
+  height: clamp(320px, 42vw, 610px) !important;
+  min-height: 0 !important;
+  max-height: 610px !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: #ebe8e1 !important;
+}
+
 /* Split-screen recruiting and film-study layouts. */
 .dhq-news-article[data-editorial-layout="insider"] .dhq-news-hero img,
 .dhq-news-article[data-editorial-layout="analysis"] .dhq-news-hero img {
@@ -51,6 +69,15 @@
     height: clamp(260px, 72vw, 390px) !important;
     min-height: 0 !important;
     max-height: 390px !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+  }
+
+  .dhq-news-article[data-audience="regional"] .dhq-enquirer-hero img {
+    width: 100% !important;
+    height: clamp(260px, 72vw, 460px) !important;
+    min-height: 0 !important;
+    max-height: 460px !important;
     object-fit: contain !important;
     object-position: center center !important;
   }

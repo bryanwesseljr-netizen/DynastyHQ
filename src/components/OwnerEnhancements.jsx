@@ -2,10 +2,11 @@ import WeekSetupPortal from './WeekSetupPortal.jsx';
 import GameweekFlowPortal from './GameweekFlowPortal.jsx';
 import QuickImportPortal from './QuickImportPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
-import CoverageReferencesPortal from './CoverageReferencesPortal.jsx';
+import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
+import CoverageDataIntakePortal from './CoverageDataIntakePortal.jsx';
+import RtgStatusIntakePortal from './RtgStatusIntakePortal.jsx';
 import CollegeGameCoverageRepairPortal from './CollegeGameCoverageRepairPortal.jsx';
 import CollegeCareerAgendaCardPortal from './CollegeCareerAgendaCardPortal.jsx';
-import RtgStatusScannerPortal from './RtgStatusScannerPortal.jsx';
 import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal.jsx';
 import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
 import PodcastArtworkHydrationPortal from './PodcastArtworkHydrationPortal.jsx';
@@ -32,9 +33,10 @@ const OwnerEnhancements = () => (
     <GameweekFlowPortal />
     <QuickImportPortal />
     <WeeklyAgendaV2Portal />
-    <CoverageReferencesPortal />
+    <WeeklyDataIntakePortal />
+    <RtgStatusIntakePortal />
+    <CoverageDataIntakePortal />
     <CollegeCareerAgendaCardPortal />
-    <RtgStatusScannerPortal />
     <CoachRecruitingWorkspaceV2Portal />
     <EditorialPhotoDirectorPortal />
     <NewsroomExactStoryRoutingPortal />

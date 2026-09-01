@@ -1,3 +1,5 @@
+import { recordAiScanUsage } from './aiUsageTracker.js';
+
 const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
   'game.teamTotalYards',
   'game.opponentTotalYards',
@@ -33,7 +35,14 @@ export const analyzeScreenshot = async ({
   rosterPlayers,
   uploadContext,
 }) => {
-  const response = await fetch('/api/analyze-screenshot', {
+  const useFreeCollegeScanner = careerPhase === 'Player'
+    && Boolean(player?.college)
+    && !uploadContext;
+  const endpoint = useFreeCollegeScanner
+    ? '/api/analyze-college-game-free'
+    : '/api/analyze-screenshot';
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -55,5 +64,6 @@ export const analyzeScreenshot = async ({
     throw error;
   }
 
+  if (useFreeCollegeScanner) recordAiScanUsage('game-data', body);
   return normalizeScreenshotAnalysis(body);
 };

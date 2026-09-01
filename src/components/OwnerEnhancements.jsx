@@ -5,6 +5,7 @@ import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
 import CoverageDataIntakePortal from './CoverageDataIntakePortal.jsx';
 import RtgStatusIntakePortal from './RtgStatusIntakePortal.jsx';
+import WeeklyAppearanceAndLocationPortal from './WeeklyAppearanceAndLocationPortal.jsx';
 import CollegeGameCoverageRepairPortal from './CollegeGameCoverageRepairPortal.jsx';
 import CollegeCareerAgendaCardPortal from './CollegeCareerAgendaCardPortal.jsx';
 import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal.jsx';
@@ -14,6 +15,9 @@ import PodcastLocalShowPortal from './PodcastLocalShowPortal.jsx';
 import PodcastMasterAudioPortalV2 from './PodcastMasterAudioPortalV2.jsx';
 import PodcastSeekControlsPortal from './PodcastSeekControlsPortal.jsx';
 import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
+import EditorialLanguageRealismPortal from './EditorialLanguageRealismPortal.jsx';
+import NewsroomGameLocationPortal from './NewsroomGameLocationPortal.jsx';
+import NewsroomUniformContextPortal from './NewsroomUniformContextPortal.jsx';
 import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
 import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
 import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
@@ -34,11 +38,15 @@ const OwnerEnhancements = () => (
     <QuickImportPortal />
     <WeeklyAgendaV2Portal />
     <WeeklyDataIntakePortal />
+    <WeeklyAppearanceAndLocationPortal />
     <RtgStatusIntakePortal />
     <CoverageDataIntakePortal />
     <CollegeCareerAgendaCardPortal />
     <CoachRecruitingWorkspaceV2Portal />
     <EditorialPhotoDirectorPortal />
+    <EditorialLanguageRealismPortal />
+    <NewsroomGameLocationPortal />
+    <NewsroomUniformContextPortal />
     <NewsroomExactStoryRoutingPortal />
     <NewsroomLibraryScrollGuardPortal />
     <NewsroomTeamHubPortal />

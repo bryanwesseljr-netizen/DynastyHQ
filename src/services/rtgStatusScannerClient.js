@@ -1,5 +1,7 @@
+import { recordAiScanUsage } from './aiUsageTracker.js';
+
 export const analyzeRtgStatusScreenshot = async ({ idToken, imageDataUrl, fileName, player }) => {
-  const response = await fetch('/api/analyze-rtg-status', {
+  const response = await fetch('/api/analyze-rtg-status-free', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -21,5 +23,6 @@ export const analyzeRtgStatusScreenshot = async ({ idToken, imageDataUrl, fileNa
     throw error;
   }
 
+  recordAiScanUsage('rtg-status', body);
   return body;
 };

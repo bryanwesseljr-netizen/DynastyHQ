@@ -3,6 +3,7 @@ import GameweekFlowPortal from './GameweekFlowPortal.jsx';
 import QuickImportPortal from './QuickImportPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
+import AiScanRoutingPortal from './AiScanRoutingPortal.jsx';
 import CoverageDataIntakePortal from './CoverageDataIntakePortal.jsx';
 import RtgStatusIntakePortal from './RtgStatusIntakePortal.jsx';
 import WeeklyAppearanceAndLocationPortal from './WeeklyAppearanceAndLocationPortal.jsx';
@@ -38,6 +39,7 @@ const OwnerEnhancements = () => (
     <QuickImportPortal />
     <WeeklyAgendaV2Portal />
     <WeeklyDataIntakePortal />
+    <AiScanRoutingPortal />
     <WeeklyAppearanceAndLocationPortal />
     <RtgStatusIntakePortal />
     <CoverageDataIntakePortal />

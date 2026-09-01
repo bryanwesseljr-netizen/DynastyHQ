@@ -1,3 +1,28 @@
+const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
+  'game.teamTotalYards',
+  'game.opponentTotalYards',
+]);
+
+export const normalizeScreenshotAnalysis = (analysis = {}) => ({
+  ...analysis,
+  facts: (analysis.facts || []).map((fact) => {
+    if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return fact;
+
+    const confidence = Number(fact.confidence);
+    const semanticMeaningIsResolved = Number.isFinite(confidence) && confidence >= 0.75;
+    const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offensive yards' : 'Opponent total offensive yards';
+    const evidence = String(fact.evidence || '').trim();
+    const semanticNote = 'Total Yards is treated as total offensive yards (rushing + passing only; kick and punt return yards excluded).';
+
+    return {
+      ...fact,
+      label: teamLabel,
+      ...(semanticMeaningIsResolved ? { userVerified: true } : {}),
+      evidence: evidence ? `${evidence} · ${semanticNote}` : semanticNote,
+    };
+  }),
+});
+
 export const analyzeScreenshot = async ({
   idToken,
   imageDataUrl,
@@ -30,5 +55,5 @@ export const analyzeScreenshot = async ({
     throw error;
   }
 
-  return body;
+  return normalizeScreenshotAnalysis(body);
 };

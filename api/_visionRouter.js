@@ -28,7 +28,7 @@ const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fal
   totalTokens: Number(usage.totalTokenCount ?? usage.total_tokens ?? usage.totalTokens ?? 0) || 0,
 });
 
-const lowConfidenceAnalysis = (analysis) => {
+export const visionAnalysisNeedsFallback = (analysis) => {
   if (!analysis || typeof analysis !== 'object') return true;
   const facts = Array.isArray(analysis.facts) ? analysis.facts : [];
   const screenTypes = Array.isArray(analysis.screenTypes) ? analysis.screenTypes : [];
@@ -70,12 +70,8 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
       generationConfig: {
         maxOutputTokens,
         temperature: 0,
-        responseFormat: {
-          text: {
-            mimeType: 'application/json',
-            schema,
-          },
-        },
+        responseMimeType: 'application/json',
+        responseSchema: schema,
       },
     }),
   });
@@ -166,7 +162,7 @@ export const analyzeVisionFreeFirst = async ({
   if (process.env.GEMINI_API_KEY) {
     try {
       const gemini = await requestGemini({ schema, instructions, userText, imageDataUrl, maxOutputTokens });
-      if (!lowConfidenceAnalysis(gemini.analysis)) return gemini;
+      if (!visionAnalysisNeedsFallback(gemini.analysis)) return gemini;
       geminiError = new Error('Gemini extraction was too uncertain for automatic acceptance.');
       geminiError.code = 'LOW_CONFIDENCE';
     } catch (error) {

@@ -18,11 +18,12 @@ const geminiText = (payload = {}) => (
     .trim()
 );
 
-const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fallbackReason = '' }) => ({
+const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fallbackReason = '', reviewRecommended = false }) => ({
   provider,
   model,
   fallbackUsed,
   fallbackReason,
+  reviewRecommended,
   inputTokens: Number(usage.promptTokenCount ?? usage.input_tokens ?? usage.inputTokens ?? 0) || 0,
   outputTokens: Number(usage.candidatesTokenCount ?? usage.output_tokens ?? usage.outputTokens ?? 0) || 0,
   totalTokens: Number(usage.totalTokenCount ?? usage.total_tokens ?? usage.totalTokens ?? 0) || 0,
@@ -159,10 +160,15 @@ export const analyzeVisionFreeFirst = async ({
   maxOutputTokens = 3000,
 }) => {
   let geminiError = null;
+  let geminiCandidate = null;
   if (process.env.GEMINI_API_KEY) {
     try {
       const gemini = await requestGemini({ schema, instructions, userText, imageDataUrl, maxOutputTokens });
       if (!visionAnalysisNeedsFallback(gemini.analysis)) return gemini;
+      geminiCandidate = {
+        ...gemini,
+        usage: { ...gemini.usage, reviewRecommended: true, fallbackReason: 'LOW_CONFIDENCE' },
+      };
       geminiError = new Error('Gemini extraction was too uncertain for automatic acceptance.');
       geminiError.code = 'LOW_CONFIDENCE';
     } catch (error) {
@@ -182,6 +188,16 @@ export const analyzeVisionFreeFirst = async ({
       fallbackReason,
     });
   } catch (openAiError) {
+    if (geminiCandidate && (Number(openAiError?.status) === 429 || openAiError?.code === 'OPENAI_FALLBACK_NOT_CONFIGURED')) {
+      return {
+        ...geminiCandidate,
+        usage: {
+          ...geminiCandidate.usage,
+          fallbackUnavailable: true,
+          fallbackFailureCode: openAiError?.code || String(openAiError?.status || ''),
+        },
+      };
+    }
     if (geminiError && !process.env.OPENAI_API_KEY) throw geminiError;
     const combined = new Error(openAiError?.message || geminiError?.message || 'Vision analysis failed.');
     combined.status = openAiError?.status || geminiError?.status || 502;

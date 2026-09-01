@@ -16,6 +16,7 @@ import PodcastMasterAudioPortalV2 from './PodcastMasterAudioPortalV2.jsx';
 import PodcastSeekControlsPortal from './PodcastSeekControlsPortal.jsx';
 import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
 import EditorialLanguageRealismPortal from './EditorialLanguageRealismPortal.jsx';
+import NewsroomGameLocationPortal from './NewsroomGameLocationPortal.jsx';
 import NewsroomUniformContextPortal from './NewsroomUniformContextPortal.jsx';
 import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
 import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
@@ -44,6 +45,7 @@ const OwnerEnhancements = () => (
     <CoachRecruitingWorkspaceV2Portal />
     <EditorialPhotoDirectorPortal />
     <EditorialLanguageRealismPortal />
+    <NewsroomGameLocationPortal />
     <NewsroomUniformContextPortal />
     <NewsroomExactStoryRoutingPortal />
     <NewsroomLibraryScrollGuardPortal />

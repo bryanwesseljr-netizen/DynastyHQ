@@ -39,7 +39,7 @@ export const analyzeScreenshot = async ({
     && Boolean(player?.college)
     && !uploadContext;
   const endpoint = useFreeCollegeScanner
-    ? '/api/analyze-college-game-free'
+    ? '/api/analyze-coverage-reference'
     : '/api/analyze-screenshot';
 
   const response = await fetch(endpoint, {
@@ -48,7 +48,16 @@ export const analyzeScreenshot = async ({
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers, uploadContext }),
+    body: JSON.stringify({
+      imageDataUrl,
+      fileName,
+      careerPhase,
+      player,
+      recruitingSchools,
+      rosterPlayers,
+      uploadContext,
+      ...(useFreeCollegeScanner ? { scanKind: 'game' } : {}),
+    }),
   });
 
   let body = {};

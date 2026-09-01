@@ -9,6 +9,15 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const stableJson = (value) => JSON.stringify(value || []);
 
+const careerAtPublication = (career = {}, publicationId = '') => {
+  const update = (career.weeklyUpdates || []).find((entry) => (
+    entry?.publicationId === publicationId || entry?.id === publicationId || entry?.weekKey === publicationId
+  ));
+  return update?.rtgSnapshot
+    ? { ...career, rtg: { ...(career.rtg || {}), ...update.rtgSnapshot } }
+    : career;
+};
+
 const EditorialLanguageRealismPortal = () => {
   const { user, career } = useOwnerCareer();
   const busyRef = useRef(false);
@@ -26,8 +35,13 @@ const EditorialLanguageRealismPortal = () => {
           const snapshot = await transaction.get(masterRef);
           if (!snapshot.exists()) return;
           const remote = snapshot.data();
-          const newsroomIssues = (remote.newsroomIssues || []).map((issue) => normalizeNewsroomIssueLanguage(issue, remote));
-          const podcastEpisodes = (remote.podcastEpisodes || []).map((episode) => normalizePodcastEpisodeLanguage(episode, remote));
+          const newsroomIssues = (remote.newsroomIssues || []).map((issue) => {
+            const publicationId = issue?.publicationId || issue?.id || '';
+            return normalizeNewsroomIssueLanguage(issue, careerAtPublication(remote, publicationId));
+          });
+          const podcastEpisodes = (remote.podcastEpisodes || []).map((episode) => (
+            normalizePodcastEpisodeLanguage(episode, careerAtPublication(remote, episode?.publicationId || ''))
+          ));
           if (stableJson(newsroomIssues) === stableJson(remote.newsroomIssues)
             && stableJson(podcastEpisodes) === stableJson(remote.podcastEpisodes)) return;
 

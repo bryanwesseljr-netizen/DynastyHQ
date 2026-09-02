@@ -5,25 +5,55 @@ const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
   'game.opponentTotalYards',
 ]);
 
-export const normalizeScreenshotAnalysis = (analysis = {}) => ({
+const PASSING_YARD_KEYS = new Set([
+  'game.passYds',
+  'game.teamPassYds',
+  'game.opponentPassYds',
+]);
+
+const looksLikePassingAttemptsOrCompletions = (fact = {}) => {
+  if (!PASSING_YARD_KEYS.has(fact?.key)) return false;
+  const label = String(fact.label || '').trim().toLowerCase();
+  const evidence = String(fact.evidence || '').trim().toLowerCase();
+  const labelIsWrongColumn = /\b(?:pass(?:ing)?\s*)?(?:att(?:empt)?s?|cmp|comp(?:letion)?s?)\b/.test(label);
+  if (labelIsWrongColumn) return true;
+
+  const evidenceNamesWrongColumn = /^(?:pass(?:ing)?\s*)?(?:att(?:empt)?s?|cmp|comp(?:letion)?s?)\b/.test(evidence);
+  const evidenceNamesYards = /\b(?:yds?|yards?)\b/.test(evidence);
+  return evidenceNamesWrongColumn && !evidenceNamesYards;
+};
+
+const normalizeCoreAnalysis = (analysis = {}) => ({
   ...analysis,
-  facts: (analysis.facts || []).map((fact) => {
-    if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return fact;
+  facts: (analysis.facts || [])
+    .filter((fact) => !looksLikePassingAttemptsOrCompletions(fact))
+    .map((fact) => {
+      if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return fact;
 
-    const confidence = Number(fact.confidence);
-    const semanticMeaningIsResolved = Number.isFinite(confidence) && confidence >= 0.75;
-    const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offensive yards' : 'Opponent total offensive yards';
-    const evidence = String(fact.evidence || '').trim();
-    const semanticNote = 'Total Yards is treated as total offensive yards (rushing + passing only; kick and punt return yards excluded).';
+      const confidence = Number(fact.confidence);
+      const semanticMeaningIsResolved = Number.isFinite(confidence) && confidence >= 0.75;
+      const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offensive yards' : 'Opponent total offensive yards';
+      const evidence = String(fact.evidence || '').trim();
+      const semanticNote = 'Total Yards, Total Offense, and Total Offensive Yards are treated as total offensive yards (rushing + passing only; kick and punt return yards excluded).';
 
-    return {
-      ...fact,
-      label: teamLabel,
-      ...(semanticMeaningIsResolved ? { userVerified: true } : {}),
-      evidence: evidence ? `${evidence} · ${semanticNote}` : semanticNote,
-    };
-  }),
+      return {
+        ...fact,
+        label: teamLabel,
+        ...(semanticMeaningIsResolved ? { userVerified: true } : {}),
+        evidence: evidence ? `${evidence} · ${semanticNote}` : semanticNote,
+      };
+    }),
 });
+
+export const normalizeScreenshotAnalysis = (payload = {}) => {
+  if (payload?.analysis && typeof payload.analysis === 'object') {
+    return {
+      ...payload,
+      analysis: normalizeCoreAnalysis(payload.analysis),
+    };
+  }
+  return normalizeCoreAnalysis(payload);
+};
 
 export const analyzeScreenshot = async ({
   idToken,

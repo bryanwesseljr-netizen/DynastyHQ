@@ -5,20 +5,6 @@ export const OPENAI_VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_M
 
 const GEMINI_GENERATE_URL = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
-export const toGeminiResponseSchema = (value) => {
-  if (Array.isArray(value)) return value.map((entry) => toGeminiResponseSchema(entry));
-  if (!value || typeof value !== 'object') return value;
-
-  const next = {};
-  Object.entries(value).forEach(([key, entry]) => {
-    // Keep Gemini's request schema intentionally simple. DynastyHQ still validates
-    // the parsed response against its own stricter field boundaries afterward.
-    if (key === 'additionalProperties') return;
-    next[key] = toGeminiResponseSchema(entry);
-  });
-  return next;
-};
-
 const parseImageDataUrl = (value = '') => {
   const match = String(value).match(/^data:(image\/(?:png|jpe?g|webp));base64,(.+)$/i);
   if (!match) throw new Error('Unsupported image data URL.');
@@ -85,12 +71,8 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
       generationConfig: {
         maxOutputTokens,
         temperature: 0,
-        responseFormat: {
-          text: {
-            mimeType: 'application/json',
-            schema: toGeminiResponseSchema(schema),
-          },
-        },
+        responseMimeType: 'application/json',
+        responseJsonSchema: schema,
       },
     }),
   });

@@ -1,11 +1,13 @@
+import { recordAiScanUsage } from './aiUsageTracker.js';
+
 export const analyzeRtgStatusScreenshot = async ({ idToken, imageDataUrl, fileName, player }) => {
-  const response = await fetch('/api/analyze-rtg-status', {
+  const response = await fetch('/api/analyze-coverage-reference', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ imageDataUrl, fileName, player }),
+    body: JSON.stringify({ imageDataUrl, fileName, player, scanKind: 'rtg' }),
   });
 
   let body = {};
@@ -21,5 +23,6 @@ export const analyzeRtgStatusScreenshot = async ({ idToken, imageDataUrl, fileNa
     throw error;
   }
 
+  recordAiScanUsage('rtg-status', body);
   return body;
 };

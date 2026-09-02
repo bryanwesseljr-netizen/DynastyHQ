@@ -1,27 +1,86 @@
+import { recordAiScanUsage } from './aiUsageTracker.js';
+
 const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
   'game.teamTotalYards',
   'game.opponentTotalYards',
 ]);
 
-export const normalizeScreenshotAnalysis = (analysis = {}) => ({
-  ...analysis,
-  facts: (analysis.facts || []).map((fact) => {
-    if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return fact;
+const PASSING_YARD_KEYS = new Set([
+  'game.passYds',
+  'game.teamPassYds',
+  'game.opponentPassYds',
+]);
 
-    const confidence = Number(fact.confidence);
-    const semanticMeaningIsResolved = Number.isFinite(confidence) && confidence >= 0.75;
-    const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offensive yards' : 'Opponent total offensive yards';
-    const evidence = String(fact.evidence || '').trim();
-    const semanticNote = 'Total Yards is treated as total offensive yards (rushing + passing only; kick and punt return yards excluded).';
+const looksLikePassingAttemptsOrCompletions = (fact = {}) => {
+  if (!PASSING_YARD_KEYS.has(fact?.key)) return false;
+  const label = String(fact.label || '').trim().toLowerCase();
+  const evidence = String(fact.evidence || '').trim().toLowerCase();
+  const labelIsWrongColumn = /\b(?:pass(?:ing)?\s*)?(?:att(?:empt)?s?|cmp|comp(?:letion)?s?)\b/.test(label);
+  if (labelIsWrongColumn) return true;
 
+  const evidenceNamesWrongColumn = /^(?:pass(?:ing)?\s*)?(?:att(?:empt)?s?|cmp|comp(?:letion)?s?)\b/.test(evidence);
+  const evidenceNamesYards = /\b(?:yds?|yards?)\b/.test(evidence);
+  return evidenceNamesWrongColumn && !evidenceNamesYards;
+};
+
+const totalSourceText = (fact = {}) => `${String(fact.label || '')} ${String(fact.evidence || '')}`.toLowerCase();
+
+const isExplicitTotalOffenseSource = (fact = {}) => {
+  if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return false;
+  const source = totalSourceText(fact);
+  return /\btotal\s+offense\b/.test(source) || /\btotal\s+offensive\s+yards?\b/.test(source);
+};
+
+const isGenericTotalYardsSource = (fact = {}) => {
+  if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return false;
+  const source = totalSourceText(fact);
+  return /\btotal\s+yards?\b/.test(source) && !isExplicitTotalOffenseSource(fact);
+};
+
+const normalizeCoreAnalysis = (analysis = {}) => {
+  const initialFacts = (analysis.facts || [])
+    .filter((fact) => !looksLikePassingAttemptsOrCompletions(fact));
+
+  // College Football 27 exposes both "Total Offense" and "Total Yards" as
+  // separate rows. DynastyHQ wants the offensive total only. Never let the
+  // generic Total Yards row compete with Total Offense for the same field.
+  const facts = initialFacts.filter((fact) => {
+    if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return true;
+    return isExplicitTotalOffenseSource(fact) || !isGenericTotalYardsSource(fact);
+  });
+
+  return {
+    ...analysis,
+    facts: facts.map((fact) => {
+      if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return fact;
+
+      const confidence = Number(fact.confidence);
+      const semanticMeaningIsResolved = isExplicitTotalOffenseSource(fact)
+        && Number.isFinite(confidence)
+        && confidence >= 0.75;
+      const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offense' : 'Opponent total offense';
+      const evidence = String(fact.evidence || '').trim();
+      const semanticNote = 'Uses the on-screen Total Offense value; the separate Total Yards row is ignored.';
+
+      return {
+        ...fact,
+        label: teamLabel,
+        ...(semanticMeaningIsResolved ? { userVerified: true } : {}),
+        evidence: evidence ? `${evidence} · ${semanticNote}` : semanticNote,
+      };
+    }),
+  };
+};
+
+export const normalizeScreenshotAnalysis = (payload = {}) => {
+  if (payload?.analysis && typeof payload.analysis === 'object') {
     return {
-      ...fact,
-      label: teamLabel,
-      ...(semanticMeaningIsResolved ? { userVerified: true } : {}),
-      evidence: evidence ? `${evidence} · ${semanticNote}` : semanticNote,
+      ...payload,
+      analysis: normalizeCoreAnalysis(payload.analysis),
     };
-  }),
-});
+  }
+  return normalizeCoreAnalysis(payload);
+};
 
 export const analyzeScreenshot = async ({
   idToken,
@@ -33,13 +92,29 @@ export const analyzeScreenshot = async ({
   rosterPlayers,
   uploadContext,
 }) => {
-  const response = await fetch('/api/analyze-screenshot', {
+  const useFreeCollegeScanner = careerPhase === 'Player'
+    && Boolean(player?.college)
+    && !uploadContext;
+  const endpoint = useFreeCollegeScanner
+    ? '/api/analyze-coverage-reference'
+    : '/api/analyze-screenshot';
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers, uploadContext }),
+    body: JSON.stringify({
+      imageDataUrl,
+      fileName,
+      careerPhase,
+      player,
+      recruitingSchools,
+      rosterPlayers,
+      uploadContext,
+      ...(useFreeCollegeScanner ? { scanKind: 'game' } : {}),
+    }),
   });
 
   let body = {};
@@ -55,5 +130,6 @@ export const analyzeScreenshot = async ({
     throw error;
   }
 
+  if (useFreeCollegeScanner) recordAiScanUsage('game-data', body);
   return normalizeScreenshotAnalysis(body);
 };

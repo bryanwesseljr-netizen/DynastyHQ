@@ -1,3 +1,5 @@
+import { recordAiScanUsage } from './aiUsageTracker.js';
+
 export const analyzeCoverageReference = async ({ idToken, imageDataUrl, fileName, school }) => {
   const response = await fetch('/api/analyze-coverage-reference', {
     method: 'POST',
@@ -5,7 +7,7 @@ export const analyzeCoverageReference = async ({ idToken, imageDataUrl, fileName
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ imageDataUrl, fileName, school }),
+    body: JSON.stringify({ imageDataUrl, fileName, school, scanKind: 'coverage' }),
   });
 
   let body = {};
@@ -21,5 +23,6 @@ export const analyzeCoverageReference = async ({ idToken, imageDataUrl, fileName
     throw error;
   }
 
+  recordAiScanUsage('coverage-data', body);
   return body;
 };

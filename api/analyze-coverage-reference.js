@@ -119,7 +119,8 @@ const GAME_INSTRUCTIONS = `You extract verified college-game facts from EA SPORT
 - PASSING TABLE RULE: game.passYds comes ONLY from the tracked player's YDS/YARDS column in a passing-stat row. Never map CMP/COMP, ATT/ATTEMPTS, C/ATT, completion percentage, TD, INT, LONG, or rating into game.passYds. If the YDS column cannot be aligned confidently with the tracked player's row, omit game.passYds.
 - game.teamPassYds and game.opponentPassYds come ONLY from a plainly labeled team-level Passing Yards/YDS value. Never use team pass attempts or completions for these keys.
 - team* facts refer to the tracked team and opponent* facts to the opponent regardless of venue.
-- IMPORTANT: Total Yards, Total Offense, and Total Offensive Yards all mean total OFFENSIVE yards for DynastyHQ: passing + rushing only. Kickoff/punt/other return yards are excluded. Map the visible value directly to teamTotalYards/opponentTotalYards; never ask whether returns are included. Label these returned facts Team total offensive yards or Opponent total offensive yards.
+- TOTALS RULE: College Football 27 shows separate rows named exactly "Total Offense" and "Total Yards". They are NOT synonyms. DynastyHQ's game.teamTotalYards/game.opponentTotalYards fields use ONLY the value from the exact on-screen "Total Offense" row (or an explicit "Total Offensive Yards" label if a future screen uses that wording). NEVER map the separate "Total Yards" row into these keys, and never return both rows as candidates for the same key.
+- Return accepted offensive-total facts with label "Team total offense" or "Opponent total offense" and evidence that cites the exact "Total Offense" row/value.
 - Never calculate team totals from individual rows. Extract First Downs, Turnovers, Rushing Yards and Passing Yards only when visibly labeled.
 - Rankings may be extracted only when the numeric rank is visibly attached to the correct team.
 - schoolName and subjectName are empty strings for game facts.

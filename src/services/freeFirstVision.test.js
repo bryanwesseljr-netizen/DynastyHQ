@@ -35,7 +35,7 @@ test('confidence gate keeps clear Gemini scans and escalates uncertain ones', ()
   assert.equal(visionAnalysisNeedsFallback({ screenType: 'known', facts: [] }), true);
 });
 
-test('Gemini schema adapter removes unsupported additionalProperties recursively', () => {
+test('Gemini schema adapter removes additionalProperties recursively', () => {
   const adapted = toGeminiResponseSchema(SIMPLE_SCHEMA);
   const serialized = JSON.stringify(adapted);
   assert.doesNotMatch(serialized, /additionalProperties/);
@@ -43,7 +43,7 @@ test('Gemini schema adapter removes unsupported additionalProperties recursively
   assert.deepEqual(adapted.properties.facts.items.required, ['confidence']);
 });
 
-test('actual Gemini request body uses the adapted schema instead of the OpenAI strict schema', async () => {
+test('actual Gemini request body uses current responseFormat JSON structure', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -74,8 +74,10 @@ test('actual Gemini request body uses the adapted schema instead of the OpenAI s
     });
 
     assert.equal(result.usage.provider, 'google');
-    assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
-    assert.doesNotMatch(JSON.stringify(requestBody.generationConfig.responseSchema), /additionalProperties/);
+    assert.equal(requestBody.generationConfig.responseFormat.text.mimeType, 'application/json');
+    assert.doesNotMatch(JSON.stringify(requestBody.generationConfig.responseFormat.text.schema), /additionalProperties/);
+    assert.equal(requestBody.generationConfig.responseMimeType, undefined);
+    assert.equal(requestBody.generationConfig.responseSchema, undefined);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
@@ -133,8 +135,9 @@ test('free-first scanner wiring preserves specialized boundaries and total-offen
 
   assert.match(router, /gemini-3\.1-flash-lite/);
   assert.match(router, /gpt-5\.6-luna/);
-  assert.match(router, /responseMimeType:\s*'application\/json'/);
-  assert.match(router, /responseSchema:\s*toGeminiResponseSchema\(schema\)/);
+  assert.match(router, /responseFormat:/);
+  assert.match(router, /mimeType:\s*'application\/json'/);
+  assert.match(router, /schema:\s*toGeminiResponseSchema\(schema\)/);
 
   assert.match(screenshotClient, /player\?\.college/);
   assert.match(screenshotClient, /!uploadContext/);

@@ -21,7 +21,7 @@ const SIMPLE_SCHEMA = {
         type: 'object',
         additionalProperties: false,
         required: ['confidence'],
-        properties: { confidence: { type: 'number' } },
+        properties: { confidence: { type: 'number', minimum: 0, maximum: 1 } },
       },
     },
   },
@@ -34,7 +34,7 @@ test('confidence gate keeps clear Gemini scans and escalates uncertain ones', ()
   assert.equal(visionAnalysisNeedsFallback({ screenType: 'known', facts: [] }), true);
 });
 
-test('actual Gemini request body uses responseMimeType plus responseJsonSchema', async () => {
+test('Gemini request uses JSON mode without provider-side schema enforcement', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -48,7 +48,7 @@ test('actual Gemini request body uses responseMimeType plus responseJsonSchema',
       ok: true,
       status: 200,
       json: async () => ({
-        candidates: [{ content: { parts: [{ text: JSON.stringify({ screenType: 'known', facts: [{ confidence: 0.96 }] }) }] } }],
+        candidates: [{ content: { parts: [{ text: JSON.stringify({ screenType: 'known', facts: [{ confidence: 0.96 }], invented: 'blocked' }) }] } }],
         usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 6, totalTokenCount: 16 },
       }),
     };
@@ -66,9 +66,50 @@ test('actual Gemini request body uses responseMimeType plus responseJsonSchema',
 
     assert.equal(result.usage.provider, 'google');
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
-    assert.deepEqual(requestBody.generationConfig.responseJsonSchema, SIMPLE_SCHEMA);
-    assert.equal(requestBody.generationConfig.responseFormat, undefined);
+    assert.equal(requestBody.generationConfig.responseJsonSchema, undefined);
     assert.equal(requestBody.generationConfig.responseSchema, undefined);
+    assert.match(requestBody.contents[0].parts[0].text, /OUTPUT SHAPE/);
+    assert.equal(result.analysis.invented, undefined);
+    assert.equal(result.analysis.facts[0].confidence, 0.96);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = originalGeminiKey;
+    if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalOpenAiKey;
+  }
+});
+
+test('app-side validation drops invalid enum values and out-of-range facts', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalGeminiKey = process.env.GEMINI_API_KEY;
+  const originalOpenAiKey = process.env.OPENAI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  delete process.env.OPENAI_API_KEY;
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({
+        screenType: 'not-allowed',
+        facts: [{ confidence: 1.5 }, { confidence: 0.95, extra: 'blocked' }],
+      }) }] } }],
+      usageMetadata: {},
+    }),
+  });
+
+  try {
+    const result = await analyzeVisionFreeFirst({
+      schema: SIMPLE_SCHEMA,
+      schemaName: 'test_schema',
+      instructions: 'Extract only visible facts.',
+      userText: 'Analyze the test screenshot.',
+      imageDataUrl: 'data:image/png;base64,AA==',
+      maxOutputTokens: 100,
+    });
+    assert.equal(result.analysis.screenType, undefined);
+    assert.deepEqual(result.analysis.facts, [{}, { confidence: 0.95 }]);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
@@ -127,7 +168,8 @@ test('free-first scanner wiring preserves specialized boundaries and total-offen
   assert.match(router, /gemini-3\.1-flash-lite/);
   assert.match(router, /gpt-5\.6-luna/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);
-  assert.match(router, /responseJsonSchema:\s*schema/);
+  assert.doesNotMatch(router, /responseJsonSchema:/);
+  assert.match(router, /sanitizeToSchema/);
 
   assert.match(screenshotClient, /player\?\.college/);
   assert.match(screenshotClient, /!uploadContext/);

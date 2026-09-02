@@ -29,6 +29,50 @@ const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fal
   totalTokens: Number(usage.totalTokenCount ?? usage.total_tokens ?? usage.totalTokens ?? 0) || 0,
 });
 
+const sanitizeToSchema = (value, schema = {}) => {
+  const type = schema?.type;
+
+  if (type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const properties = schema.properties || {};
+    const result = {};
+    Object.entries(properties).forEach(([key, childSchema]) => {
+      if (!(key in value)) return;
+      const sanitized = sanitizeToSchema(value[key], childSchema);
+      if (sanitized !== undefined) result[key] = sanitized;
+    });
+    return result;
+  }
+
+  if (type === 'array') {
+    if (!Array.isArray(value)) return undefined;
+    const items = value
+      .map((entry) => sanitizeToSchema(entry, schema.items || {}))
+      .filter((entry) => entry !== undefined);
+    const maxItems = Number(schema.maxItems);
+    return Number.isFinite(maxItems) ? items.slice(0, maxItems) : items;
+  }
+
+  if (type === 'string') {
+    if (typeof value !== 'string') return undefined;
+    if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return undefined;
+    return value;
+  }
+
+  if (type === 'number' || type === 'integer') {
+    const number = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(number)) return undefined;
+    if (type === 'integer' && !Number.isInteger(number)) return undefined;
+    if (Number.isFinite(Number(schema.minimum)) && number < Number(schema.minimum)) return undefined;
+    if (Number.isFinite(Number(schema.maximum)) && number > Number(schema.maximum)) return undefined;
+    if (Array.isArray(schema.enum) && !schema.enum.includes(number)) return undefined;
+    return number;
+  }
+
+  if (type === 'boolean') return typeof value === 'boolean' ? value : undefined;
+  return value;
+};
+
 export const visionAnalysisNeedsFallback = (analysis) => {
   if (!analysis || typeof analysis !== 'object') return true;
   const facts = Array.isArray(analysis.facts) ? analysis.facts : [];
@@ -54,6 +98,7 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
   }
 
   const image = parseImageDataUrl(imageDataUrl);
+  const schemaGuide = JSON.stringify(schema);
   const response = await fetch(GEMINI_GENERATE_URL(GEMINI_VISION_MODEL), {
     method: 'POST',
     headers: {
@@ -64,7 +109,9 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
       contents: [{
         role: 'user',
         parts: [
-          { text: `${instructions}\n\nTASK:\n${userText}` },
+          {
+            text: `${instructions}\n\nTASK:\n${userText}\n\nReturn ONLY valid JSON. Follow this output shape exactly. Do not add keys not listed here. If a screenshot value is unclear, omit that fact rather than guessing.\nOUTPUT SHAPE:\n${schemaGuide}`,
+          },
           { inlineData: { mimeType: image.mimeType, data: image.data } },
         ],
       }],
@@ -72,7 +119,6 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
         maxOutputTokens,
         temperature: 0,
         responseMimeType: 'application/json',
-        responseJsonSchema: schema,
       },
     }),
   });
@@ -88,13 +134,29 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
 
   const outputText = geminiText(payload);
   if (!outputText) {
-    const error = new Error('Gemini returned no structured analysis.');
+    const error = new Error('Gemini returned no JSON analysis.');
     error.code = 'GEMINI_EMPTY_OUTPUT';
     throw error;
   }
 
+  let parsed;
+  try {
+    parsed = JSON.parse(outputText);
+  } catch {
+    const error = new Error('Gemini returned malformed JSON analysis.');
+    error.code = 'GEMINI_INVALID_JSON';
+    throw error;
+  }
+
+  const analysis = sanitizeToSchema(parsed, schema);
+  if (!analysis || typeof analysis !== 'object') {
+    const error = new Error('Gemini returned an analysis outside the allowed DynastyHQ shape.');
+    error.code = 'GEMINI_SCHEMA_MISMATCH';
+    throw error;
+  }
+
   return {
-    analysis: JSON.parse(outputText),
+    analysis,
     usage: normalizeUsage({
       provider: 'google',
       model: GEMINI_VISION_MODEL,
@@ -198,6 +260,15 @@ export const analyzeVisionFreeFirst = async ({
           fallbackFailureCode: openAiError?.code || String(openAiError?.status || ''),
         },
       };
+    }
+    if (geminiError && Number(openAiError?.status) === 429) {
+      const combined = new Error(geminiError.message || 'Gemini primary scan failed before the paid fallback was available.');
+      combined.status = Number(geminiError?.status) || 502;
+      combined.code = geminiError?.code || 'GEMINI_FAILED';
+      combined.geminiError = geminiError?.message || '';
+      combined.geminiDetails = geminiError?.details || null;
+      combined.fallbackUnavailable = true;
+      throw combined;
     }
     if (geminiError && !process.env.OPENAI_API_KEY) throw geminiError;
     const combined = new Error(openAiError?.message || geminiError?.message || 'Vision analysis failed.');

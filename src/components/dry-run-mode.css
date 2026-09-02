@@ -1,0 +1,129 @@
+.dhq-dry-run-control {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, .1);
+  background: rgba(15, 23, 42, .45);
+}
+
+.dhq-dry-run-control.is-active {
+  border-bottom-color: rgba(251, 191, 36, .22);
+  background: linear-gradient(90deg, rgba(245, 158, 11, .10), rgba(15, 23, 42, .55));
+}
+
+.dhq-dry-run-control__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, .15);
+  border-radius: 8px;
+  color: #94a3b8;
+}
+
+.dhq-dry-run-control.is-active .dhq-dry-run-control__icon {
+  border-color: rgba(251, 191, 36, .28);
+  background: rgba(245, 158, 11, .08);
+  color: #fde68a;
+}
+
+.dhq-dry-run-control__copy span,
+.dhq-dry-run-control__copy strong {
+  display: block;
+}
+
+.dhq-dry-run-control__copy span {
+  color: #64748b;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-dry-run-control__copy strong {
+  margin-top: 2px;
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.dhq-dry-run-control__copy p {
+  max-width: 760px;
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.dhq-dry-run-control.is-active .dhq-dry-run-control__copy p {
+  color: #d6b96a;
+}
+
+.dhq-dry-run-control__toggle {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(96, 165, 250, .22);
+  border-radius: 8px;
+  background: rgba(59, 130, 246, .06);
+  color: #bfdbfe;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dhq-dry-run-control.is-active .dhq-dry-run-control__toggle {
+  border-color: rgba(251, 191, 36, .32);
+  background: rgba(245, 158, 11, .10);
+  color: #fde68a;
+}
+
+.dhq-weekly-agenda-workspace[data-dhq-dry-run="true"] [data-dhq-dry-run-blocked="true"] {
+  cursor: not-allowed !important;
+  filter: grayscale(.2);
+  opacity: .32 !important;
+  box-shadow: none !important;
+}
+
+.dhq-weekly-agenda-workspace[data-dhq-dry-run="true"] .dhq-postgame-review,
+.dhq-weekly-agenda-workspace[data-dhq-dry-run="true"] .dhq-intake-review {
+  position: relative;
+}
+
+.dhq-weekly-agenda-workspace[data-dhq-dry-run="true"] .dhq-postgame-review::before,
+.dhq-weekly-agenda-workspace[data-dhq-dry-run="true"] .dhq-intake-review::before {
+  content: "DRY RUN · NO SAVE";
+  position: absolute;
+  z-index: 20;
+  top: 8px;
+  right: 8px;
+  padding: 4px 7px;
+  border: 1px solid rgba(251, 191, 36, .32);
+  border-radius: 999px;
+  background: rgba(69, 42, 4, .92);
+  color: #fde68a;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .dhq-dry-run-control {
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .dhq-dry-run-control__toggle {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

@@ -11,8 +11,8 @@ export const toGeminiResponseSchema = (value) => {
 
   const next = {};
   Object.entries(value).forEach(([key, entry]) => {
-    // Gemini GenerateContent supports a JSON Schema subset and rejects
-    // additionalProperties even though OpenAI strict JSON Schema accepts it.
+    // Keep Gemini's request schema intentionally simple. DynastyHQ still validates
+    // the parsed response against its own stricter field boundaries afterward.
     if (key === 'additionalProperties') return;
     next[key] = toGeminiResponseSchema(entry);
   });
@@ -85,8 +85,12 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
       generationConfig: {
         maxOutputTokens,
         temperature: 0,
-        responseMimeType: 'application/json',
-        responseSchema: toGeminiResponseSchema(schema),
+        responseFormat: {
+          text: {
+            mimeType: 'application/json',
+            schema: toGeminiResponseSchema(schema),
+          },
+        },
       },
     }),
   });
@@ -96,6 +100,7 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
     const error = new Error(payload?.error?.message || `Gemini vision request failed (${response.status}).`);
     error.status = response.status;
     error.code = payload?.error?.status || payload?.error?.code || 'GEMINI_REQUEST_FAILED';
+    error.details = payload?.error?.details || null;
     throw error;
   }
 
@@ -217,6 +222,7 @@ export const analyzeVisionFreeFirst = async ({
     combined.status = openAiError?.status || geminiError?.status || 502;
     combined.code = openAiError?.code || geminiError?.code || 'VISION_ANALYSIS_FAILED';
     combined.geminiError = geminiError?.message || '';
+    combined.geminiDetails = geminiError?.details || null;
     throw combined;
   }
 };

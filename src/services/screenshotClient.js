@@ -23,18 +23,44 @@ const looksLikePassingAttemptsOrCompletions = (fact = {}) => {
   return evidenceNamesWrongColumn && !evidenceNamesYards;
 };
 
-const normalizeCoreAnalysis = (analysis = {}) => ({
-  ...analysis,
-  facts: (analysis.facts || [])
-    .filter((fact) => !looksLikePassingAttemptsOrCompletions(fact))
-    .map((fact) => {
+const totalSourceText = (fact = {}) => `${String(fact.label || '')} ${String(fact.evidence || '')}`.toLowerCase();
+
+const isExplicitTotalOffenseSource = (fact = {}) => {
+  if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return false;
+  const source = totalSourceText(fact);
+  return /\btotal\s+offense\b/.test(source) || /\btotal\s+offensive\s+yards?\b/.test(source);
+};
+
+const isGenericTotalYardsSource = (fact = {}) => {
+  if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return false;
+  const source = totalSourceText(fact);
+  return /\btotal\s+yards?\b/.test(source) && !isExplicitTotalOffenseSource(fact);
+};
+
+const normalizeCoreAnalysis = (analysis = {}) => {
+  const initialFacts = (analysis.facts || [])
+    .filter((fact) => !looksLikePassingAttemptsOrCompletions(fact));
+
+  // College Football 27 exposes both "Total Offense" and "Total Yards" as
+  // separate rows. DynastyHQ wants the offensive total only. Never let the
+  // generic Total Yards row compete with Total Offense for the same field.
+  const facts = initialFacts.filter((fact) => {
+    if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return true;
+    return isExplicitTotalOffenseSource(fact) || !isGenericTotalYardsSource(fact);
+  });
+
+  return {
+    ...analysis,
+    facts: facts.map((fact) => {
       if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return fact;
 
       const confidence = Number(fact.confidence);
-      const semanticMeaningIsResolved = Number.isFinite(confidence) && confidence >= 0.75;
-      const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offensive yards' : 'Opponent total offensive yards';
+      const semanticMeaningIsResolved = isExplicitTotalOffenseSource(fact)
+        && Number.isFinite(confidence)
+        && confidence >= 0.75;
+      const teamLabel = fact.key === 'game.teamTotalYards' ? 'Team total offense' : 'Opponent total offense';
       const evidence = String(fact.evidence || '').trim();
-      const semanticNote = 'Total Yards, Total Offense, and Total Offensive Yards are treated as total offensive yards (rushing + passing only; kick and punt return yards excluded).';
+      const semanticNote = 'Uses the on-screen Total Offense value; the separate Total Yards row is ignored.';
 
       return {
         ...fact,
@@ -43,7 +69,8 @@ const normalizeCoreAnalysis = (analysis = {}) => ({
         evidence: evidence ? `${evidence} · ${semanticNote}` : semanticNote,
       };
     }),
-});
+  };
+};
 
 export const normalizeScreenshotAnalysis = (payload = {}) => {
   if (payload?.analysis && typeof payload.analysis === 'object') {

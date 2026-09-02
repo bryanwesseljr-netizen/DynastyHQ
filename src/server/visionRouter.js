@@ -5,6 +5,20 @@ export const OPENAI_VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_M
 
 const GEMINI_GENERATE_URL = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
+export const toGeminiResponseSchema = (value) => {
+  if (Array.isArray(value)) return value.map((entry) => toGeminiResponseSchema(entry));
+  if (!value || typeof value !== 'object') return value;
+
+  const next = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    // Gemini GenerateContent supports a JSON Schema subset and rejects
+    // additionalProperties even though OpenAI strict JSON Schema accepts it.
+    if (key === 'additionalProperties') return;
+    next[key] = toGeminiResponseSchema(entry);
+  });
+  return next;
+};
+
 const parseImageDataUrl = (value = '') => {
   const match = String(value).match(/^data:(image\/(?:png|jpe?g|webp));base64,(.+)$/i);
   if (!match) throw new Error('Unsupported image data URL.');
@@ -72,7 +86,7 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
         maxOutputTokens,
         temperature: 0,
         responseMimeType: 'application/json',
-        responseSchema: schema,
+        responseSchema: toGeminiResponseSchema(schema),
       },
     }),
   });

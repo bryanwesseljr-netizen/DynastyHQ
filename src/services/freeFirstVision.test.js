@@ -158,7 +158,7 @@ test('a reviewable Gemini result survives when OpenAI fallback is unavailable', 
   }
 });
 
-test('free-first scanner wiring preserves specialized boundaries and total-offense semantics', () => {
+test('free-first scanner wiring preserves specialized boundaries and exact Total Offense semantics', () => {
   const router = read('../server/visionRouter.js');
   const sharedApi = read('../../api/analyze-coverage-reference.js');
   const screenshotClient = read('./screenshotClient.js');
@@ -179,7 +179,8 @@ test('free-first scanner wiring preserves specialized boundaries and total-offen
   assert.match(rtgClient, /scanKind:\s*'rtg'/);
   assert.match(coverageClient, /scanKind:\s*'coverage'/);
 
-  assert.match(sharedApi, /Total Offensive Yards/);
-  assert.match(sharedApi, /return yards are excluded/i);
+  assert.match(sharedApi, /Total Offense/);
+  assert.match(sharedApi, /They are NOT synonyms/);
+  assert.match(sharedApi, /NEVER map the separate "Total Yards" row/);
   assert.match(sharedApi, /analyzeVisionFreeFirst/);
 });

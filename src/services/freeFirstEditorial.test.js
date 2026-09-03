@@ -158,3 +158,16 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(router, /gpt-5\.6-terra/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);
 });
+
+test('editorial comparison route is read-only and never applies generated career state', () => {
+  const comparisonPage = read('../components/EditorialComparisonPage.jsx');
+  const main = read('../main.jsx');
+
+  assert.match(main, /editorialCompare/);
+  assert.match(main, /EditorialComparisonPage/);
+  assert.match(comparisonPage, /getDoc/);
+  assert.match(comparisonPage, /generateNewsroomEdition/);
+  assert.match(comparisonPage, /normalizeGeneratedNewsroomEdition/);
+  assert.doesNotMatch(comparisonPage, /setDoc|runTransaction|updateDoc|applyGeneratedNewsroomEdition|updateAppState/);
+  assert.match(comparisonPage, /No Firebase write, rewrite, publish, podcast invalidation, or career-state change occurs here/);
+});

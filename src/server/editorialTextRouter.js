@@ -14,22 +14,36 @@ const RESERVE_HEDGE_DELAY_MS = Math.max(FALLBACK_HEDGE_DELAY_MS, Number(process.
 const geminiGenerateUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
 export const EDITORIAL_PLAYER_REFERENCE_POLICY = `PLAYER REFERENCE VARIETY — THIS APPLIES TO EVERY NAMED PLAYER, NOT ONLY THE TRACKED PLAYER:
-- Write player references like a real college-football beat writer or podcast host. Do not fall into a long repetitive pattern of initial-plus-surname, surname, surname, surname when verified football context allows a more natural reference.
-- When a verified full name is supplied, use the full name on the first natural identification in an article or episode, then use the surname as the normal shorthand. Never shorten a known full name to an initial plus surname.
-- When the source supplies only an initial plus surname and no verified first name exists, you may use that initial-plus-surname once to establish identity. After that, prefer the surname or a verified team/position/role description. Never invent the missing first name.
+- Reader-facing Newsroom and Podcast copy must NEVER use an initial plus surname such as "S. Jones", "T. Smith", or "J. Brown". Source initials are internal identity/disambiguation data only; they are not publishable name style.
+- When a verified full name is supplied, introduce the player naturally with the full name, preferably inside verified football context when that context is available. Good patterns include "Cincinnati's signal-caller, Sam Jones" or "Sam Jones, Cincinnati's quarterback." After the introduction, use the surname as the normal shorthand.
+- When the source supplies only an initial plus surname and no verified first name exists, NEVER print the initial and never invent the missing first name. Introduce the player with the surname alone or, preferably, with verified football context such as "Hawaii's running back, Smith", "Cincinnati's signal-caller, Jones", or "the Bearcats' quarterback, Jones" when those team/role facts are actually supplied.
+- The first meaningful mention should tell the reader who the player is in football terms whenever the verified packet supports it. Do not default to a bare surname merely because the source name is abbreviated. Team + position, team + role, team nickname + role, verified class year + position, or a directly supported performance role are all more natural identity anchors when available.
+- If an exact roster position is not verified, you may use a directly supported statistical football role instead of guessing a position. Examples include "Hawaii's leading rusher, Smith", "Cincinnati's leading receiver, Brown", or "the game's leading passer, Jones" when the supplied facts explicitly support that distinction. A rushing line alone does not prove running back; receiving production alone does not prove wide receiver; passing production alone does not prove quarterback.
 - Surname remains the most common repeated reference, but when a player appears several times, naturally mix in a verified contextual reference roughly every two or three surname uses when the sentence benefits from it. Do not mechanically count or rotate phrases.
 - Team-affiliated constructions are encouraged when BOTH the team affiliation and the football role/position are verified. Natural patterns include "Cincinnati's quarterback," "Cincinnati's signal-caller," "Hawaii's running back," "the program's wide receiver," or an appositive such as "Cincinnati's signal-caller, Jones." These are style patterns, not permission to invent the underlying team or position.
 - For the tracked player, a team-affiliated phrase may wrap an approved playerReference descriptor. If playerReference allows "the signal-caller," then "Cincinnati's signal-caller" is also allowed when Cincinnati is the verified school. If playerReference does not support a role, archetype, height, or position label, do not create it through a team possessive.
-- For Cincinnati local coverage and conversational podcast copy, "Cincy" is an approved occasional shorthand, so phrases such as "Cincy's quarterback" or "Cincy's signal-caller, Jones" may be used sparingly. Prefer Cincinnati or the verified team identity in more formal regional/national copy. Do not invent informal shorthand for other schools unless it is explicitly supplied.
+- For Cincinnati local coverage and conversational podcast copy, "Cincy" is an approved occasional shorthand, so phrases such as "Cincy's quarterback", "Cincy's signal-caller, Jones", or "Cincy's senior running back, Johnson" may be used sparingly when every descriptive detail is verified. Prefer Cincinnati or the verified team identity in more formal regional/national copy. Do not invent informal shorthand for other schools unless it is explicitly supplied.
 - Team nickname constructions such as "the Bearcats' quarterback" are allowed only when that nickname is explicitly present in the supplied packet. Never guess a nickname.
 - A phrase such as "playmaker at wide receiver" is an editorial performance description, not a permanent player identity. Use "playmaker" only when supplied current performance facts clearly support that characterization; never use it merely because the player's position is wide receiver.
 - Class-year phrases such as "senior running back," "junior quarterback," or "freshman receiver" require an explicit verified class-year/eligibility fact for that player. Never infer senior/junior/sophomore/freshman from season number, age, career stage, or context.
-- Do not infer position from a stat category alone. A rushing line does not by itself prove a player is a running back; receiving production does not by itself prove wide receiver; passing production does not by itself prove quarterback. Use a position only when the packet, playerReference, or an explicit fact supplies it.
 - Height, archetype, starter/backup status, recruiting pedigree, hometown/native status, awards, class year, previous school, captaincy, and other biographical labels remain evidence-gated exactly as before.
-- Avoid repeating the exact same contextual descriptor in adjacent sentences. Also avoid a thesaurus-like carousel where every mention gets a different label. The goal is natural sportswriting rhythm: name, surname, football context, surname.
+- Avoid repeating the exact same contextual descriptor in adjacent sentences. Also avoid a thesaurus-like carousel where every mention gets a different label. The goal is natural sportswriting rhythm: contextual introduction, surname, football context, surname.
 - This policy expands the existing tracked-player reference rules; it does not weaken any grounding, historical-role, no-invention, or player-mention suppression rule.`;
 
 const withPlayerReferencePolicy = (instructions = '') => `${instructions}\n\n${EDITORIAL_PLAYER_REFERENCE_POLICY}`;
+
+const INITIAL_SURNAME_PATTERN = /\b[A-Z]\.\s+([A-Z][A-Za-z'’\-]{1,})\b/g;
+
+export const removeReaderFacingPlayerInitials = (value) => {
+  if (typeof value === 'string') return value.replace(INITIAL_SURNAME_PATTERN, '$1');
+  if (Array.isArray(value)) return value.map((entry) => removeReaderFacingPlayerInitials(entry));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, removeReaderFacingPlayerInitials(entry)]),
+    );
+  }
+  return value;
+};
 
 const geminiText = (payload = {}) => (
   (payload.candidates?.[0]?.content?.parts || [])
@@ -199,7 +213,7 @@ const requestGeminiEditorial = async ({
         contents: [{
           role: 'user',
           parts: [{
-            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys. If the output contains an articles array, return every allowed outletId exactly once with no duplicates.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
+            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys. If the output contains an articles array, return every allowed outletId exactly once with no duplicates. Source player initials are internal only: never copy an initial-plus-surname into reader-facing output.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
           }],
         }],
         generationConfig: {
@@ -251,7 +265,7 @@ const requestGeminiEditorial = async ({
     throw error;
   }
 
-  const data = sanitizeToSchema(parsed, schema);
+  const data = removeReaderFacingPlayerInitials(sanitizeToSchema(parsed, schema));
   if (!satisfiesSchemaShape(data, schema)) {
     const error = new Error('Gemini returned an editorial draft outside the allowed DynastyHQ structure.');
     error.code = 'GEMINI_SCHEMA_MISMATCH';
@@ -363,7 +377,7 @@ const requestOpenAiEditorial = async ({
     instructions: withPlayerReferencePolicy(instructions),
     input: [{
       role: 'user',
-      content: [{ type: 'input_text', text: `${userText}\n\nFor any articles array, return every requested outletId exactly once with no duplicates.` }],
+      content: [{ type: 'input_text', text: `${userText}\n\nFor any articles array, return every requested outletId exactly once with no duplicates. Source player initials are internal only: never copy an initial-plus-surname into reader-facing output.` }],
     }],
     text: {
       format: {
@@ -390,7 +404,7 @@ const requestOpenAiEditorial = async ({
     throw error;
   }
 
-  const data = sanitizeToSchema(parsed, schema);
+  const data = removeReaderFacingPlayerInitials(sanitizeToSchema(parsed, schema));
   if (!satisfiesSchemaShape(data, schema)) {
     const error = new Error('OpenAI returned an editorial draft outside the allowed DynastyHQ structure.');
     error.code = 'OPENAI_SCHEMA_MISMATCH';

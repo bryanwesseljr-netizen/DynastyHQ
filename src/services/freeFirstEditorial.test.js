@@ -33,6 +33,29 @@ const SIMPLE_SCHEMA = {
   },
 };
 
+const MULTI_OUTLET_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['articles'],
+  properties: {
+    articles: {
+      type: 'array',
+      minItems: 2,
+      maxItems: 2,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['outletId', 'headline', 'paragraphs'],
+        properties: {
+          outletId: { type: 'string', enum: ['college-local', 'college-regional'] },
+          headline: { type: 'string', maxLength: 75 },
+          paragraphs: { type: 'array', minItems: 2, maxItems: 3, items: { type: 'string' } },
+        },
+      },
+    },
+  },
+};
+
 const validEditorialPayload = () => ({
   candidates: [{
     content: {
@@ -75,6 +98,40 @@ test('editorial schema sanitizer strips invented keys and preserves required str
   assert.equal(satisfiesSchemaShape(sanitized, SIMPLE_SCHEMA), true);
 });
 
+test('newsroom schema rejects duplicate outlet ids even when the article count is correct', () => {
+  const duplicate = {
+    articles: [
+      {
+        outletId: 'college-local',
+        headline: 'Local angle one',
+        paragraphs: ['First paragraph.', 'Second paragraph.'],
+      },
+      {
+        outletId: 'college-local',
+        headline: 'Local angle two',
+        paragraphs: ['First paragraph.', 'Second paragraph.'],
+      },
+    ],
+  };
+  const complete = {
+    articles: [
+      {
+        outletId: 'college-local',
+        headline: 'Local angle',
+        paragraphs: ['First paragraph.', 'Second paragraph.'],
+      },
+      {
+        outletId: 'college-regional',
+        headline: 'Regional angle',
+        paragraphs: ['First paragraph.', 'Second paragraph.'],
+      },
+    ],
+  };
+
+  assert.equal(satisfiesSchemaShape(duplicate, MULTI_OUTLET_SCHEMA), false);
+  assert.equal(satisfiesSchemaShape(complete, MULTI_OUTLET_SCHEMA), true);
+});
+
 test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode with low thinking and natural player-reference guidance', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
@@ -108,6 +165,7 @@ test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode with low thin
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
     assert.equal(requestBody.generationConfig.thinkingConfig.thinkingLevel, 'low');
     assert.equal(requestBody.generationConfig.temperature, undefined);
+    assert.match(requestBody.contents[0].parts[0].text, /every requested outletId exactly once/);
     assert.match(systemText, /veteran college football beat writer/);
     assert.match(systemText, /PLAYER REFERENCE VARIETY/);
     assert.match(systemText, /Cincinnati's signal-caller, Jones/);
@@ -274,6 +332,8 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(router, /FALLBACK_HEDGE_DELAY_MS/);
   assert.match(router, /RESERVE_HEDGE_DELAY_MS/);
   assert.match(router, /runHedgedGeminiEditorial/);
+  assert.match(router, /actualOutletIds/);
+  assert.match(router, /every requested outletId exactly once/);
   assert.match(router, /thinkingLevel:\s*'low'/);
   assert.match(router, /thinkingLevel:\s*'minimal'/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);

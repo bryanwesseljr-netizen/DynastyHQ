@@ -1,7 +1,8 @@
 import OpenAI from 'openai';
 
-export const GEMINI_EDITORIAL_MODEL = process.env.GEMINI_EDITORIAL_MODEL || 'gemini-3.8-flash';
-export const GEMINI_EDITORIAL_FALLBACK_MODEL = process.env.GEMINI_EDITORIAL_FALLBACK_MODEL || 'gemini-3.7-flash';
+export const GEMINI_EDITORIAL_MODEL = process.env.GEMINI_EDITORIAL_MODEL || 'gemini-3.7-flash';
+export const GEMINI_EDITORIAL_FALLBACK_MODEL = process.env.GEMINI_EDITORIAL_FALLBACK_MODEL || 'gemini-3.6-flash';
+export const GEMINI_EDITORIAL_RESERVE_MODEL = process.env.GEMINI_EDITORIAL_RESERVE_MODEL || 'gemini-3.5-flash';
 export const OPENAI_EDITORIAL_FALLBACK_MODEL = process.env.OPENAI_EDITORIAL_FALLBACK_MODEL || 'gpt-5.6-terra';
 
 const geminiGenerateUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -319,6 +320,7 @@ export const generateEditorialJsonFreeFirst = async ({
     const models = [...new Set([
       GEMINI_EDITORIAL_MODEL,
       GEMINI_EDITORIAL_FALLBACK_MODEL,
+      GEMINI_EDITORIAL_RESERVE_MODEL,
     ].filter(Boolean))];
 
     for (let index = 0; index < models.length; index += 1) {

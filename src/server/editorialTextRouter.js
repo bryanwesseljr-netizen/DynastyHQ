@@ -122,6 +122,16 @@ export const satisfiesSchemaShape = (value, schema = {}) => {
     const maxItems = Number(schema.maxItems);
     if (Number.isFinite(minItems) && value.length < minItems) return false;
     if (Number.isFinite(maxItems) && value.length > maxItems) return false;
+
+    const outletEnum = schema?.items?.properties?.outletId?.enum;
+    if (Array.isArray(outletEnum) && outletEnum.length) {
+      const outletIds = value.map((entry) => entry?.outletId);
+      const actualOutletIds = new Set(outletIds);
+      if (outletIds.some((id) => typeof id !== 'string')) return false;
+      if (actualOutletIds.size !== outletIds.length) return false;
+      if (outletEnum.length === value.length && outletEnum.some((id) => !actualOutletIds.has(id))) return false;
+    }
+
     return value.every((entry) => satisfiesSchemaShape(entry, schema.items || {}));
   }
 
@@ -184,7 +194,7 @@ const requestGeminiEditorial = async ({
         contents: [{
           role: 'user',
           parts: [{
-            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
+            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys. If an articles array uses outletId values, return every requested outletId exactly once with no duplicates.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
           }],
         }],
         generationConfig: {
@@ -348,7 +358,7 @@ const requestOpenAiEditorial = async ({
     instructions: withPlayerReferencePolicy(instructions),
     input: [{
       role: 'user',
-      content: [{ type: 'input_text', text: userText }],
+      content: [{ type: 'input_text', text: `${userText}\n\nFor any articles array, return every requested outletId exactly once with no duplicates.` }],
     }],
     text: {
       format: {
@@ -366,8 +376,24 @@ const requestOpenAiEditorial = async ({
     throw error;
   }
 
+  let parsed;
+  try {
+    parsed = JSON.parse(response.output_text);
+  } catch {
+    const error = new Error('OpenAI returned malformed editorial JSON.');
+    error.code = 'OPENAI_INVALID_JSON';
+    throw error;
+  }
+
+  const data = sanitizeToSchema(parsed, schema);
+  if (!satisfiesSchemaShape(data, schema)) {
+    const error = new Error('OpenAI returned an editorial draft outside the allowed DynastyHQ structure.');
+    error.code = 'OPENAI_SCHEMA_MISMATCH';
+    throw error;
+  }
+
   return {
-    data: JSON.parse(response.output_text),
+    data,
     usage: normalizeUsage({
       provider: 'openai',
       model,

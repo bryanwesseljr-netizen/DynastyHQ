@@ -75,7 +75,7 @@ test('editorial schema sanitizer strips invented keys and preserves required str
   assert.equal(satisfiesSchemaShape(sanitized, SIMPLE_SCHEMA), true);
 });
 
-test('Gemini 3.8 Flash is the primary newsroom writer in JSON mode', async () => {
+test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -104,12 +104,12 @@ test('Gemini 3.8 Flash is the primary newsroom writer in JSON mode', async () =>
       temperature: 0.7,
     });
 
-    assert.match(requestUrl, /gemini-3\.8-flash:generateContent/);
+    assert.match(requestUrl, /gemini-3\.7-flash:generateContent/);
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
     assert.equal(requestBody.generationConfig.temperature, 0.7);
     assert.match(requestBody.systemInstruction.parts[0].text, /veteran college football beat writer/);
     assert.equal(result.usage.provider, 'google');
-    assert.equal(result.usage.model, 'gemini-3.8-flash');
+    assert.equal(result.usage.model, 'gemini-3.7-flash');
     assert.equal(result.usage.fallbackUsed, false);
     assert.equal(result.usage.freeFallbackUsed, false);
     assert.equal(result.data.articles[0].invented, undefined);
@@ -118,7 +118,7 @@ test('Gemini 3.8 Flash is the primary newsroom writer in JSON mode', async () =>
   }
 });
 
-test('temporary 3.8 capacity failure retries free and then uses Gemini 3.7 before OpenAI', async () => {
+test('temporary 3.7 capacity failure retries free and then uses Gemini 3.6 before OpenAI', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -152,14 +152,61 @@ test('temporary 3.8 capacity failure retries free and then uses Gemini 3.7 befor
     });
 
     assert.equal(urls.length, 3);
-    assert.match(urls[0], /gemini-3\.8-flash:generateContent/);
-    assert.match(urls[1], /gemini-3\.8-flash:generateContent/);
-    assert.match(urls[2], /gemini-3\.7-flash:generateContent/);
+    assert.match(urls[0], /gemini-3\.7-flash:generateContent/);
+    assert.match(urls[1], /gemini-3\.7-flash:generateContent/);
+    assert.match(urls[2], /gemini-3\.6-flash:generateContent/);
     assert.equal(result.usage.provider, 'google');
-    assert.equal(result.usage.model, 'gemini-3.7-flash');
+    assert.equal(result.usage.model, 'gemini-3.6-flash');
     assert.equal(result.usage.fallbackUsed, false);
     assert.equal(result.usage.freeFallbackUsed, true);
     assert.equal(result.usage.freeFallbackReason, 'UNAVAILABLE');
+  } finally {
+    restoreEnv({ originalFetch, originalGeminiKey, originalOpenAiKey });
+  }
+});
+
+test('free editorial routing reaches Gemini 3.5 Flash reserve before OpenAI', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalGeminiKey = process.env.GEMINI_API_KEY;
+  const originalOpenAiKey = process.env.OPENAI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  delete process.env.OPENAI_API_KEY;
+  const urls = [];
+
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    if (urls.length <= 3) {
+      return {
+        ok: false,
+        status: 503,
+        json: async () => ({ error: { status: 'UNAVAILABLE', message: 'This model is currently experiencing high demand.' } }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => validEditorialPayload(),
+    };
+  };
+
+  try {
+    const result = await generateEditorialJsonFreeFirst({
+      schema: SIMPLE_SCHEMA,
+      schemaName: 'test_newsroom',
+      instructions: 'Write the article.',
+      userText: 'Test reserve routing.',
+      maxOutputTokens: 1000,
+    });
+
+    assert.equal(urls.length, 4);
+    assert.match(urls[0], /gemini-3\.7-flash:generateContent/);
+    assert.match(urls[1], /gemini-3\.7-flash:generateContent/);
+    assert.match(urls[2], /gemini-3\.6-flash:generateContent/);
+    assert.match(urls[3], /gemini-3\.5-flash:generateContent/);
+    assert.equal(result.usage.provider, 'google');
+    assert.equal(result.usage.model, 'gemini-3.5-flash');
+    assert.equal(result.usage.fallbackUsed, false);
+    assert.equal(result.usage.freeFallbackUsed, true);
   } finally {
     restoreEnv({ originalFetch, originalGeminiKey, originalOpenAiKey });
   }
@@ -207,8 +254,9 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(newsroom, /NATURAL TRACKED-PLAYER REFERENCES/);
   assert.match(newsroom, /historical for this publication/);
   assert.match(newsroom, /Texas native/);
-  assert.match(router, /gemini-3\.8-flash/);
   assert.match(router, /gemini-3\.7-flash/);
+  assert.match(router, /gemini-3\.6-flash/);
+  assert.match(router, /gemini-3\.5-flash/);
   assert.match(router, /gpt-5\.6-terra/);
   assert.match(router, /requestGeminiWithRetry/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);

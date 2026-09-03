@@ -75,7 +75,7 @@ test('editorial schema sanitizer strips invented keys and preserves required str
   assert.equal(satisfiesSchemaShape(sanitized, SIMPLE_SCHEMA), true);
 });
 
-test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode', async () => {
+test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode with natural player-reference guidance', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -104,10 +104,17 @@ test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode', async () =>
       temperature: 0.7,
     });
 
+    const systemText = requestBody.systemInstruction.parts[0].text;
     assert.match(requestUrl, /gemini-3\.7-flash:generateContent/);
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
     assert.equal(requestBody.generationConfig.temperature, 0.7);
-    assert.match(requestBody.systemInstruction.parts[0].text, /veteran college football beat writer/);
+    assert.match(systemText, /veteran college football beat writer/);
+    assert.match(systemText, /PLAYER REFERENCE VARIETY/);
+    assert.match(systemText, /Cincinnati's signal-caller, Jones/);
+    assert.match(systemText, /Hawaii's running back/);
+    assert.match(systemText, /Cincy's quarterback/);
+    assert.match(systemText, /Class-year phrases/);
+    assert.match(systemText, /Do not infer position from a stat category alone/);
     assert.equal(result.usage.provider, 'google');
     assert.equal(result.usage.model, 'gemini-3.7-flash');
     assert.equal(result.usage.fallbackUsed, false);
@@ -258,6 +265,15 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(router, /gemini-3\.6-flash/);
   assert.match(router, /gemini-3\.5-flash/);
   assert.match(router, /gpt-5\.6-terra/);
+  assert.match(router, /PLAYER REFERENCE VARIETY/);
+  assert.match(router, /Cincinnati's signal-caller/);
+  assert.match(router, /Hawaii's running back/);
+  assert.match(router, /Cincy's quarterback/);
+  assert.match(router, /AbortController/);
+  assert.match(router, /PRIMARY_GEMINI_TIMEOUT_MS/);
+  assert.match(router, /FALLBACK_GEMINI_TIMEOUT_MS/);
+  assert.match(router, /RESERVE_GEMINI_TIMEOUT_MS/);
+  assert.match(router, /DEADLINE_EXCEEDED/);
   assert.match(router, /requestGeminiWithRetry/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);
 });
@@ -276,6 +292,11 @@ test('podcast endpoint is Gemini-first, keeps quality gates, and pays only after
   assert.match(podcast, /Texas native/);
   assert.match(podcast, /applyPodcastShowBookends/);
   assert.match(podcast, /provider:\s*generated\.usage\.provider/);
+  assert.match(router, /every named player/);
+  assert.match(router, /playmaker at wide receiver/);
+  assert.match(router, /senior running back/);
+  assert.match(router, /full name on the first natural identification/);
+  assert.match(router, /initial plus surname once/);
   assert.match(router, /export const generateEditorialJsonPaidFallback/);
 });
 

@@ -310,10 +310,10 @@ const normalizeStoryFormat = (value) => {
 
 const minimumArticleWords = (payload) => {
   const tier = payload.coverageDecision?.tier;
-  if (tier === 'brief') return 160;
-  if (tier === 'major') return 240;
-  if (tier === 'career-defining') return 280;
-  return 220;
+  if (tier === 'brief') return 120;
+  if (tier === 'major') return 160;
+  if (tier === 'career-defining') return 180;
+  return 140;
 };
 
 export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = '', generatedAt = new Date().toISOString() }) => {

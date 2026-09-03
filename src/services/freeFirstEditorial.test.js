@@ -154,12 +154,32 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(newsroom, /OPENAI_NEWSROOM_MODEL/);
   assert.match(newsroom, /temperature:\s*0\.7/);
   assert.match(newsroom, /provider:\s*generated\.usage\.provider/);
+  assert.match(newsroom, /NATURAL TRACKED-PLAYER REFERENCES/);
+  assert.match(newsroom, /historical for this publication/);
+  assert.match(newsroom, /Texas native/);
   assert.match(router, /gemini-3\.7-flash/);
   assert.match(router, /gpt-5\.6-terra/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);
 });
 
-test('editorial comparison route is read-only and never applies generated career state', () => {
+test('podcast endpoint is Gemini-first, keeps quality gates, and pays only after free repair', () => {
+  const podcast = read('../../api/generate-podcast.js');
+  const router = read('../server/editorialTextRouter.js');
+
+  assert.doesNotMatch(podcast, /import OpenAI from 'openai'/);
+  assert.match(podcast, /generateEditorialJsonFreeFirst/);
+  assert.match(podcast, /generateEditorialJsonPaidFallback/);
+  assert.match(podcast, /PODCAST_QUALITY_GATE/);
+  assert.match(podcast, /freeRepair/);
+  assert.match(podcast, /NATURAL TRACKED-PLAYER REFERENCES/);
+  assert.match(podcast, /role saved for this episode's historical week/);
+  assert.match(podcast, /Texas native/);
+  assert.match(podcast, /applyPodcastShowBookends/);
+  assert.match(podcast, /provider:\s*generated\.usage\.provider/);
+  assert.match(router, /export const generateEditorialJsonPaidFallback/);
+});
+
+test('editorial comparison route is read-only for newsroom and podcast', () => {
   const comparisonPage = read('../components/EditorialComparisonPage.jsx');
   const main = read('../main.jsx');
 
@@ -168,6 +188,9 @@ test('editorial comparison route is read-only and never applies generated career
   assert.match(comparisonPage, /getDoc/);
   assert.match(comparisonPage, /generateNewsroomEdition/);
   assert.match(comparisonPage, /normalizeGeneratedNewsroomEdition/);
-  assert.doesNotMatch(comparisonPage, /setDoc|runTransaction|updateDoc|applyGeneratedNewsroomEdition|updateAppState/);
-  assert.match(comparisonPage, /No Firebase write, rewrite, publish, podcast invalidation, or career-state change occurs here/);
+  assert.match(comparisonPage, /generatePodcastScript/);
+  assert.match(comparisonPage, /prepareAudio:\s*false/);
+  assert.match(comparisonPage, /normalizeGeneratedPodcast/);
+  assert.doesNotMatch(comparisonPage, /setDoc|runTransaction|updateDoc|applyGeneratedNewsroomEdition|updateAppState|upsertPodcastEpisode/);
+  assert.match(comparisonPage, /No Firebase write, rewrite, publish, podcast invalidation, audio generation, or career-state change occurs here/);
 });

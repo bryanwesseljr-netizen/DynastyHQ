@@ -1,9 +1,11 @@
 import OpenAI from 'openai';
 
-export const GEMINI_EDITORIAL_MODEL = process.env.GEMINI_EDITORIAL_MODEL || 'gemini-3.7-flash';
+export const GEMINI_EDITORIAL_MODEL = process.env.GEMINI_EDITORIAL_MODEL || 'gemini-3.8-flash';
+export const GEMINI_EDITORIAL_FALLBACK_MODEL = process.env.GEMINI_EDITORIAL_FALLBACK_MODEL || 'gemini-3.7-flash';
 export const OPENAI_EDITORIAL_FALLBACK_MODEL = process.env.OPENAI_EDITORIAL_FALLBACK_MODEL || 'gpt-5.6-terra';
 
 const geminiGenerateUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 const geminiText = (payload = {}) => (
   (payload.candidates?.[0]?.content?.parts || [])
@@ -12,11 +14,21 @@ const geminiText = (payload = {}) => (
     .trim()
 );
 
-const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fallbackReason = '' }) => ({
+const normalizeUsage = ({
+  provider,
+  model,
+  usage = {},
+  fallbackUsed = false,
+  fallbackReason = '',
+  freeFallbackUsed = false,
+  freeFallbackReason = '',
+}) => ({
   provider,
   model,
   fallbackUsed,
   fallbackReason,
+  freeFallbackUsed,
+  freeFallbackReason,
   inputTokens: Number(usage.promptTokenCount ?? usage.input_tokens ?? usage.inputTokens ?? 0) || 0,
   outputTokens: Number(usage.candidatesTokenCount ?? usage.output_tokens ?? usage.outputTokens ?? 0) || 0,
   totalTokens: Number(usage.totalTokenCount ?? usage.total_tokens ?? usage.totalTokens ?? 0) || 0,
@@ -109,7 +121,15 @@ export const satisfiesSchemaShape = (value, schema = {}) => {
   return true;
 };
 
+const isTransientGeminiError = (error) => {
+  const status = Number(error?.status) || 0;
+  const code = String(error?.code || '').toUpperCase();
+  return [429, 500, 502, 503, 504].includes(status)
+    || ['UNAVAILABLE', 'RESOURCE_EXHAUSTED', 'INTERNAL', 'DEADLINE_EXCEEDED'].includes(code);
+};
+
 const requestGeminiEditorial = async ({
+  model,
   schema,
   instructions,
   userText,
@@ -122,7 +142,7 @@ const requestGeminiEditorial = async ({
     throw error;
   }
 
-  const response = await fetch(geminiGenerateUrl(GEMINI_EDITORIAL_MODEL), {
+  const response = await fetch(geminiGenerateUrl(model), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -152,6 +172,7 @@ const requestGeminiEditorial = async ({
     error.status = response.status;
     error.code = payload?.error?.status || payload?.error?.code || 'GEMINI_REQUEST_FAILED';
     error.details = payload?.error?.details || null;
+    error.model = model;
     throw error;
   }
 
@@ -159,6 +180,7 @@ const requestGeminiEditorial = async ({
   if (!outputText) {
     const error = new Error('Gemini returned no editorial JSON.');
     error.code = 'GEMINI_EMPTY_OUTPUT';
+    error.model = model;
     throw error;
   }
 
@@ -168,6 +190,7 @@ const requestGeminiEditorial = async ({
   } catch {
     const error = new Error('Gemini returned malformed editorial JSON.');
     error.code = 'GEMINI_INVALID_JSON';
+    error.model = model;
     throw error;
   }
 
@@ -175,6 +198,7 @@ const requestGeminiEditorial = async ({
   if (!satisfiesSchemaShape(data, schema)) {
     const error = new Error('Gemini returned an editorial draft outside the allowed DynastyHQ structure.');
     error.code = 'GEMINI_SCHEMA_MISMATCH';
+    error.model = model;
     throw error;
   }
 
@@ -182,10 +206,24 @@ const requestGeminiEditorial = async ({
     data,
     usage: normalizeUsage({
       provider: 'google',
-      model: GEMINI_EDITORIAL_MODEL,
+      model,
       usage: payload.usageMetadata || {},
     }),
   };
+};
+
+const requestGeminiWithRetry = async ({ model, retries = 0, ...options }) => {
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await requestGeminiEditorial({ model, ...options });
+    } catch (error) {
+      lastError = error;
+      if (!isTransientGeminiError(error) || attempt >= retries) throw error;
+      await wait(650 * (attempt + 1));
+    }
+  }
+  throw lastError;
 };
 
 const requestOpenAiEditorial = async ({
@@ -275,25 +313,45 @@ export const generateEditorialJsonFreeFirst = async ({
   safetyIdentifier = '',
   openAiModel = '',
 }) => {
-  let geminiError = null;
+  const geminiErrors = [];
 
   if (process.env.GEMINI_API_KEY) {
-    try {
-      return await requestGeminiEditorial({
-        schema,
-        instructions,
-        userText,
-        maxOutputTokens,
-        temperature,
-      });
-    } catch (error) {
-      geminiError = error;
+    const models = [...new Set([
+      GEMINI_EDITORIAL_MODEL,
+      GEMINI_EDITORIAL_FALLBACK_MODEL,
+    ].filter(Boolean))];
+
+    for (let index = 0; index < models.length; index += 1) {
+      const model = models[index];
+      try {
+        const result = await requestGeminiWithRetry({
+          model,
+          retries: index === 0 ? 1 : 0,
+          schema,
+          instructions,
+          userText,
+          maxOutputTokens,
+          temperature,
+        });
+        if (index > 0) {
+          result.usage = {
+            ...result.usage,
+            freeFallbackUsed: true,
+            freeFallbackReason: geminiErrors[0]?.code || 'PRIMARY_GEMINI_FAILED',
+          };
+        }
+        return result;
+      } catch (error) {
+        geminiErrors.push(error);
+      }
     }
   } else {
-    geminiError = new Error('Gemini editorial writing is not configured.');
-    geminiError.code = 'GEMINI_NOT_CONFIGURED';
+    const error = new Error('Gemini editorial writing is not configured.');
+    error.code = 'GEMINI_NOT_CONFIGURED';
+    geminiErrors.push(error);
   }
 
+  const geminiError = geminiErrors[geminiErrors.length - 1] || null;
   const fallbackReason = geminiError?.code || 'GEMINI_FAILED';
   try {
     return await requestOpenAiEditorial({
@@ -308,7 +366,7 @@ export const generateEditorialJsonFreeFirst = async ({
     });
   } catch (openAiError) {
     if (geminiError && Number(openAiError?.status) === 429) {
-      const combined = new Error(geminiError.message || 'Gemini editorial writing failed before the paid fallback was available.');
+      const combined = new Error(geminiError.message || 'The free editorial models failed before the paid fallback was available.');
       combined.status = Number(geminiError?.status) || 502;
       combined.code = geminiError?.code || 'GEMINI_FAILED';
       combined.primaryProvider = 'google';

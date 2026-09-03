@@ -103,6 +103,20 @@ export const sanitizeToSchema = (value, schema = {}) => {
   return value;
 };
 
+const hasCompleteOutletCoverage = (value, schema = {}) => {
+  if (!Array.isArray(value) || schema?.items?.type !== 'object') return true;
+  const itemSchema = schema.items || {};
+  const required = Array.isArray(itemSchema.required) ? itemSchema.required : [];
+  const outletSchema = itemSchema.properties?.outletId;
+  const expectedOutletIds = Array.isArray(outletSchema?.enum) ? outletSchema.enum : [];
+  if (!required.includes('outletId') || expectedOutletIds.length < 2) return true;
+  if (value.length !== expectedOutletIds.length) return false;
+
+  const actualOutletIds = value.map((entry) => entry?.outletId);
+  if (new Set(actualOutletIds).size !== actualOutletIds.length) return false;
+  return expectedOutletIds.every((outletId) => actualOutletIds.includes(outletId));
+};
+
 export const satisfiesSchemaShape = (value, schema = {}) => {
   const type = schema?.type;
 
@@ -122,16 +136,7 @@ export const satisfiesSchemaShape = (value, schema = {}) => {
     const maxItems = Number(schema.maxItems);
     if (Number.isFinite(minItems) && value.length < minItems) return false;
     if (Number.isFinite(maxItems) && value.length > maxItems) return false;
-
-    const outletEnum = schema?.items?.properties?.outletId?.enum;
-    if (Array.isArray(outletEnum) && outletEnum.length) {
-      const outletIds = value.map((entry) => entry?.outletId);
-      const actualOutletIds = new Set(outletIds);
-      if (outletIds.some((id) => typeof id !== 'string')) return false;
-      if (actualOutletIds.size !== outletIds.length) return false;
-      if (outletEnum.length === value.length && outletEnum.some((id) => !actualOutletIds.has(id))) return false;
-    }
-
+    if (!hasCompleteOutletCoverage(value, schema)) return false;
     return value.every((entry) => satisfiesSchemaShape(entry, schema.items || {}));
   }
 
@@ -194,7 +199,7 @@ const requestGeminiEditorial = async ({
         contents: [{
           role: 'user',
           parts: [{
-            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys. If an articles array uses outletId values, return every requested outletId exactly once with no duplicates.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
+            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys. If the output contains an articles array, return every allowed outletId exactly once with no duplicates.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
           }],
         }],
         generationConfig: {

@@ -182,7 +182,7 @@ test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode with low thin
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
     assert.equal(requestBody.generationConfig.thinkingConfig.thinkingLevel, 'low');
     assert.equal(requestBody.generationConfig.temperature, undefined);
-    assert.match(requestBody.contents[0].parts[0].text, /every requested outletId exactly once/);
+    assert.match(requestBody.contents[0].parts[0].text, /every allowed outletId exactly once/);
     assert.match(requestBody.contents[0].parts[0].text, /Source player initials are internal only/);
     assert.match(systemText, /veteran college football beat writer/);
     assert.match(systemText, /PLAYER REFERENCE VARIETY/);
@@ -355,7 +355,7 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(router, /RESERVE_HEDGE_DELAY_MS/);
   assert.match(router, /runHedgedGeminiEditorial/);
   assert.match(router, /actualOutletIds/);
-  assert.match(router, /every requested outletId exactly once/);
+  assert.match(router, /every allowed outletId exactly once/);
   assert.match(router, /thinkingLevel:\s*'low'/);
   assert.match(router, /thinkingLevel:\s*'minimal'/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);

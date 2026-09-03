@@ -5,8 +5,30 @@ export const GEMINI_EDITORIAL_FALLBACK_MODEL = process.env.GEMINI_EDITORIAL_FALL
 export const GEMINI_EDITORIAL_RESERVE_MODEL = process.env.GEMINI_EDITORIAL_RESERVE_MODEL || 'gemini-3.5-flash';
 export const OPENAI_EDITORIAL_FALLBACK_MODEL = process.env.OPENAI_EDITORIAL_FALLBACK_MODEL || 'gpt-5.6-terra';
 
+const PRIMARY_GEMINI_TIMEOUT_MS = Math.max(8000, Number(process.env.GEMINI_EDITORIAL_PRIMARY_TIMEOUT_MS) || 28000);
+const FALLBACK_GEMINI_TIMEOUT_MS = Math.max(6000, Number(process.env.GEMINI_EDITORIAL_FALLBACK_TIMEOUT_MS) || 15000);
+const RESERVE_GEMINI_TIMEOUT_MS = Math.max(5000, Number(process.env.GEMINI_EDITORIAL_RESERVE_TIMEOUT_MS) || 10000);
+
 const geminiGenerateUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+export const EDITORIAL_PLAYER_REFERENCE_POLICY = `PLAYER REFERENCE VARIETY — THIS APPLIES TO EVERY NAMED PLAYER, NOT ONLY THE TRACKED PLAYER:
+- Write player references like a real college-football beat writer or podcast host. Do not fall into a long repetitive pattern of initial-plus-surname, surname, surname, surname when verified football context allows a more natural reference.
+- When a verified full name is supplied, use the full name on the first natural identification in an article or episode, then use the surname as the normal shorthand. Never shorten a known full name to an initial plus surname.
+- When the source supplies only an initial plus surname and no verified first name exists, you may use that initial-plus-surname once to establish identity. After that, prefer the surname or a verified team/position/role description. Never invent the missing first name.
+- Surname remains the most common repeated reference, but when a player appears several times, naturally mix in a verified contextual reference roughly every two or three surname uses when the sentence benefits from it. Do not mechanically count or rotate phrases.
+- Team-affiliated constructions are encouraged when BOTH the team affiliation and the football role/position are verified. Natural patterns include "Cincinnati's quarterback," "Cincinnati's signal-caller," "Hawaii's running back," "the program's wide receiver," or an appositive such as "Cincinnati's signal-caller, Jones." These are style patterns, not permission to invent the underlying team or position.
+- For the tracked player, a team-affiliated phrase may wrap an approved playerReference descriptor. If playerReference allows "the signal-caller," then "Cincinnati's signal-caller" is also allowed when Cincinnati is the verified school. If playerReference does not support a role, archetype, height, or position label, do not create it through a team possessive.
+- For Cincinnati local coverage and conversational podcast copy, "Cincy" is an approved occasional shorthand, so phrases such as "Cincy's quarterback" or "Cincy's signal-caller, Jones" may be used sparingly. Prefer Cincinnati or the verified team identity in more formal regional/national copy. Do not invent informal shorthand for other schools unless it is explicitly supplied.
+- Team nickname constructions such as "the Bearcats' quarterback" are allowed only when that nickname is explicitly present in the supplied packet. Never guess a nickname.
+- A phrase such as "playmaker at wide receiver" is an editorial performance description, not a permanent player identity. Use "playmaker" only when supplied current performance facts clearly support that characterization; never use it merely because the player's position is wide receiver.
+- Class-year phrases such as "senior running back," "junior quarterback," or "freshman receiver" require an explicit verified class-year/eligibility fact for that player. Never infer senior/junior/sophomore/freshman from season number, age, career stage, or context.
+- Do not infer position from a stat category alone. A rushing line does not by itself prove a player is a running back; receiving production does not by itself prove wide receiver; passing production does not by itself prove quarterback. Use a position only when the packet, playerReference, or an explicit fact supplies it.
+- Height, archetype, starter/backup status, recruiting pedigree, hometown/native status, awards, class year, previous school, captaincy, and other biographical labels remain evidence-gated exactly as before.
+- Avoid repeating the exact same contextual descriptor in adjacent sentences. Also avoid a thesaurus-like carousel where every mention gets a different label. The goal is natural sportswriting rhythm: name, surname, football context, surname.
+- This policy expands the existing tracked-player reference rules; it does not weaken any grounding, historical-role, no-invention, or player-mention suppression rule.`;
+
+const withPlayerReferencePolicy = (instructions = '') => `${instructions}\n\n${EDITORIAL_PLAYER_REFERENCE_POLICY}`;
 
 const geminiText = (payload = {}) => (
   (payload.candidates?.[0]?.content?.parts || [])
@@ -129,6 +151,10 @@ const isTransientGeminiError = (error) => {
     || ['UNAVAILABLE', 'RESOURCE_EXHAUSTED', 'INTERNAL', 'DEADLINE_EXCEEDED'].includes(code);
 };
 
+const isSameModelRetryable = (error) => (
+  isTransientGeminiError(error) && String(error?.code || '').toUpperCase() !== 'DEADLINE_EXCEEDED'
+);
+
 const requestGeminiEditorial = async ({
   model,
   schema,
@@ -136,6 +162,7 @@ const requestGeminiEditorial = async ({
   userText,
   maxOutputTokens,
   temperature,
+  timeoutMs = PRIMARY_GEMINI_TIMEOUT_MS,
 }) => {
   if (!process.env.GEMINI_API_KEY) {
     const error = new Error('Gemini editorial writing is not configured.');
@@ -143,29 +170,46 @@ const requestGeminiEditorial = async ({
     throw error;
   }
 
-  const response = await fetch(geminiGenerateUrl(model), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': process.env.GEMINI_API_KEY,
-    },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: instructions }],
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(geminiGenerateUrl(model), {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
       },
-      contents: [{
-        role: 'user',
-        parts: [{
-          text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: withPlayerReferencePolicy(instructions) }],
+        },
+        contents: [{
+          role: 'user',
+          parts: [{
+            text: `${userText}\n\nReturn ONLY valid JSON. Do not wrap it in Markdown or commentary. Match the output shape below exactly and do not invent keys.\nOUTPUT SHAPE:\n${JSON.stringify(schema)}`,
+          }],
         }],
-      }],
-      generationConfig: {
-        maxOutputTokens,
-        temperature,
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+        generationConfig: {
+          maxOutputTokens,
+          temperature,
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error(`Gemini editorial request exceeded ${timeoutMs}ms and was failed over.`);
+      timeoutError.status = 504;
+      timeoutError.code = 'DEADLINE_EXCEEDED';
+      timeoutError.model = model;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -220,7 +264,7 @@ const requestGeminiWithRetry = async ({ model, retries = 0, ...options }) => {
       return await requestGeminiEditorial({ model, ...options });
     } catch (error) {
       lastError = error;
-      if (!isTransientGeminiError(error) || attempt >= retries) throw error;
+      if (!isSameModelRetryable(error) || attempt >= retries) throw error;
       await wait(650 * (attempt + 1));
     }
   }
@@ -251,7 +295,7 @@ const requestOpenAiEditorial = async ({
     ...(safetyIdentifier ? { safety_identifier: safetyIdentifier } : {}),
     reasoning: { effort: 'low' },
     max_output_tokens: maxOutputTokens,
-    instructions,
+    instructions: withPlayerReferencePolicy(instructions),
     input: [{
       role: 'user',
       content: [{ type: 'input_text', text: userText }],
@@ -322,6 +366,11 @@ export const generateEditorialJsonFreeFirst = async ({
       GEMINI_EDITORIAL_FALLBACK_MODEL,
       GEMINI_EDITORIAL_RESERVE_MODEL,
     ].filter(Boolean))];
+    const timeoutByIndex = [
+      PRIMARY_GEMINI_TIMEOUT_MS,
+      FALLBACK_GEMINI_TIMEOUT_MS,
+      RESERVE_GEMINI_TIMEOUT_MS,
+    ];
 
     for (let index = 0; index < models.length; index += 1) {
       const model = models[index];
@@ -334,6 +383,7 @@ export const generateEditorialJsonFreeFirst = async ({
           userText,
           maxOutputTokens,
           temperature,
+          timeoutMs: timeoutByIndex[index] || RESERVE_GEMINI_TIMEOUT_MS,
         });
         if (index > 0) {
           result.usage = {

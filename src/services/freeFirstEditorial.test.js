@@ -292,11 +292,11 @@ test('podcast endpoint is Gemini-first, keeps quality gates, and pays only after
   assert.match(podcast, /Texas native/);
   assert.match(podcast, /applyPodcastShowBookends/);
   assert.match(podcast, /provider:\s*generated\.usage\.provider/);
-  assert.match(router, /every named player/);
+  assert.match(router, /every named player/i);
   assert.match(router, /playmaker at wide receiver/);
   assert.match(router, /senior running back/);
   assert.match(router, /full name on the first natural identification/);
-  assert.match(router, /initial plus surname once/);
+  assert.match(router, /initial-plus-surname once/);
   assert.match(router, /export const generateEditorialJsonPaidFallback/);
 });
 

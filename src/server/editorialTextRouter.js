@@ -2,15 +2,16 @@ import OpenAI from 'openai';
 
 export const GEMINI_EDITORIAL_MODEL = process.env.GEMINI_EDITORIAL_MODEL || 'gemini-3.7-flash';
 export const GEMINI_EDITORIAL_FALLBACK_MODEL = process.env.GEMINI_EDITORIAL_FALLBACK_MODEL || 'gemini-3.6-flash';
-export const GEMINI_EDITORIAL_RESERVE_MODEL = process.env.GEMINI_EDITORIAL_RESERVE_MODEL || 'gemini-3.5-flash';
+export const GEMINI_EDITORIAL_RESERVE_MODEL = process.env.GEMINI_EDITORIAL_RESERVE_MODEL || 'gemini-3.5-flash-lite';
 export const OPENAI_EDITORIAL_FALLBACK_MODEL = process.env.OPENAI_EDITORIAL_FALLBACK_MODEL || 'gpt-5.6-terra';
 
-const PRIMARY_GEMINI_TIMEOUT_MS = Math.max(8000, Number(process.env.GEMINI_EDITORIAL_PRIMARY_TIMEOUT_MS) || 28000);
-const FALLBACK_GEMINI_TIMEOUT_MS = Math.max(6000, Number(process.env.GEMINI_EDITORIAL_FALLBACK_TIMEOUT_MS) || 15000);
-const RESERVE_GEMINI_TIMEOUT_MS = Math.max(5000, Number(process.env.GEMINI_EDITORIAL_RESERVE_TIMEOUT_MS) || 10000);
+const PRIMARY_GEMINI_TIMEOUT_MS = Math.max(12000, Number(process.env.GEMINI_EDITORIAL_PRIMARY_TIMEOUT_MS) || 32000);
+const FALLBACK_GEMINI_TIMEOUT_MS = Math.max(10000, Number(process.env.GEMINI_EDITORIAL_FALLBACK_TIMEOUT_MS) || 28000);
+const RESERVE_GEMINI_TIMEOUT_MS = Math.max(8000, Number(process.env.GEMINI_EDITORIAL_RESERVE_TIMEOUT_MS) || 24000);
+const FALLBACK_HEDGE_DELAY_MS = Math.max(0, Number(process.env.GEMINI_EDITORIAL_FALLBACK_HEDGE_MS) || 4500);
+const RESERVE_HEDGE_DELAY_MS = Math.max(FALLBACK_HEDGE_DELAY_MS, Number(process.env.GEMINI_EDITORIAL_RESERVE_HEDGE_MS) || 9000);
 
 const geminiGenerateUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export const EDITORIAL_PLAYER_REFERENCE_POLICY = `PLAYER REFERENCE VARIETY — THIS APPLIES TO EVERY NAMED PLAYER, NOT ONLY THE TRACKED PLAYER:
 - Write player references like a real college-football beat writer or podcast host. Do not fall into a long repetitive pattern of initial-plus-surname, surname, surname, surname when verified football context allows a more natural reference.
@@ -144,25 +145,15 @@ export const satisfiesSchemaShape = (value, schema = {}) => {
   return true;
 };
 
-const isTransientGeminiError = (error) => {
-  const status = Number(error?.status) || 0;
-  const code = String(error?.code || '').toUpperCase();
-  return [429, 500, 502, 503, 504].includes(status)
-    || ['UNAVAILABLE', 'RESOURCE_EXHAUSTED', 'INTERNAL', 'DEADLINE_EXCEEDED'].includes(code);
-};
-
-const isSameModelRetryable = (error) => (
-  isTransientGeminiError(error) && String(error?.code || '').toUpperCase() !== 'DEADLINE_EXCEEDED'
-);
-
 const requestGeminiEditorial = async ({
   model,
   schema,
   instructions,
   userText,
   maxOutputTokens,
-  temperature,
+  thinkingLevel = 'low',
   timeoutMs = PRIMARY_GEMINI_TIMEOUT_MS,
+  externalSignal = null,
 }) => {
   if (!process.env.GEMINI_API_KEY) {
     const error = new Error('Gemini editorial writing is not configured.');
@@ -171,6 +162,11 @@ const requestGeminiEditorial = async ({
   }
 
   const controller = new AbortController();
+  const forwardAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', forwardAbort, { once: true });
+  }
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response;
   try {
@@ -193,14 +189,14 @@ const requestGeminiEditorial = async ({
         }],
         generationConfig: {
           maxOutputTokens,
-          temperature,
           responseMimeType: 'application/json',
+          thinkingConfig: { thinkingLevel },
         },
       }),
     });
   } catch (error) {
     if (error?.name === 'AbortError') {
-      const timeoutError = new Error(`Gemini editorial request exceeded ${timeoutMs}ms and was failed over.`);
+      const timeoutError = new Error(`Gemini editorial request exceeded its latency window and was failed over.`);
       timeoutError.status = 504;
       timeoutError.code = 'DEADLINE_EXCEEDED';
       timeoutError.model = model;
@@ -209,6 +205,7 @@ const requestGeminiEditorial = async ({
     throw error;
   } finally {
     clearTimeout(timeout);
+    if (externalSignal) externalSignal.removeEventListener('abort', forwardAbort);
   }
 
   const payload = await response.json().catch(() => ({}));
@@ -257,19 +254,72 @@ const requestGeminiEditorial = async ({
   };
 };
 
-const requestGeminiWithRetry = async ({ model, retries = 0, ...options }) => {
-  let lastError = null;
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    try {
-      return await requestGeminiEditorial({ model, ...options });
-    } catch (error) {
-      lastError = error;
-      if (!isSameModelRetryable(error) || attempt >= retries) throw error;
-      await wait(650 * (attempt + 1));
-    }
-  }
-  throw lastError;
-};
+const runHedgedGeminiEditorial = async ({
+  models,
+  schema,
+  instructions,
+  userText,
+  maxOutputTokens,
+}) => new Promise((resolve, reject) => {
+  const errors = new Array(models.length);
+  const started = new Array(models.length).fill(false);
+  const controllers = models.map(() => new AbortController());
+  const timers = [];
+  let settled = false;
+  let completed = 0;
+
+  const finish = (result, index) => {
+    if (settled) return;
+    settled = true;
+    timers.forEach(clearTimeout);
+    controllers.forEach((controller, controllerIndex) => {
+      if (controllerIndex !== index) controller.abort();
+    });
+    const firstPrimaryError = errors[0];
+    resolve({
+      result,
+      index,
+      fallbackReason: index === 0
+        ? ''
+        : (firstPrimaryError?.code || (started[0] ? 'PRIMARY_SLOW_HEDGE' : 'PRIMARY_NOT_STARTED')),
+    });
+  };
+
+  const failIfDone = () => {
+    if (settled || completed < models.length) return;
+    settled = true;
+    timers.forEach(clearTimeout);
+    reject({ errors });
+  };
+
+  const launch = (index) => {
+    if (settled || index >= models.length || started[index]) return;
+    started[index] = true;
+    const config = models[index];
+    requestGeminiEditorial({
+      model: config.model,
+      schema,
+      instructions,
+      userText,
+      maxOutputTokens,
+      thinkingLevel: config.thinkingLevel,
+      timeoutMs: config.timeoutMs,
+      externalSignal: controllers[index].signal,
+    }).then((result) => {
+      finish(result, index);
+    }).catch((error) => {
+      if (settled) return;
+      errors[index] = error;
+      completed += 1;
+      if (index + 1 < models.length) launch(index + 1);
+      failIfDone();
+    });
+  };
+
+  launch(0);
+  timers.push(setTimeout(() => launch(1), FALLBACK_HEDGE_DELAY_MS));
+  timers.push(setTimeout(() => launch(2), RESERVE_HEDGE_DELAY_MS));
+});
 
 const requestOpenAiEditorial = async ({
   schema,
@@ -288,7 +338,7 @@ const requestOpenAiEditorial = async ({
   }
 
   const model = openAiModel || OPENAI_EDITORIAL_FALLBACK_MODEL;
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 20000 });
   const response = await client.responses.create({
     model,
     store: false,
@@ -354,48 +404,48 @@ export const generateEditorialJsonFreeFirst = async ({
   instructions,
   userText,
   maxOutputTokens = 8000,
-  temperature = 0.65,
   safetyIdentifier = '',
   openAiModel = '',
 }) => {
-  const geminiErrors = [];
+  let geminiErrors = [];
 
   if (process.env.GEMINI_API_KEY) {
-    const models = [...new Set([
-      GEMINI_EDITORIAL_MODEL,
-      GEMINI_EDITORIAL_FALLBACK_MODEL,
-      GEMINI_EDITORIAL_RESERVE_MODEL,
-    ].filter(Boolean))];
-    const timeoutByIndex = [
-      PRIMARY_GEMINI_TIMEOUT_MS,
-      FALLBACK_GEMINI_TIMEOUT_MS,
-      RESERVE_GEMINI_TIMEOUT_MS,
-    ];
+    const modelConfigs = [
+      {
+        model: GEMINI_EDITORIAL_MODEL,
+        timeoutMs: PRIMARY_GEMINI_TIMEOUT_MS,
+        thinkingLevel: 'low',
+      },
+      {
+        model: GEMINI_EDITORIAL_FALLBACK_MODEL,
+        timeoutMs: FALLBACK_GEMINI_TIMEOUT_MS,
+        thinkingLevel: 'low',
+      },
+      {
+        model: GEMINI_EDITORIAL_RESERVE_MODEL,
+        timeoutMs: RESERVE_GEMINI_TIMEOUT_MS,
+        thinkingLevel: 'minimal',
+      },
+    ].filter((entry, index, entries) => entry.model && entries.findIndex((other) => other.model === entry.model) === index);
 
-    for (let index = 0; index < models.length; index += 1) {
-      const model = models[index];
-      try {
-        const result = await requestGeminiWithRetry({
-          model,
-          retries: index === 0 ? 1 : 0,
-          schema,
-          instructions,
-          userText,
-          maxOutputTokens,
-          temperature,
-          timeoutMs: timeoutByIndex[index] || RESERVE_GEMINI_TIMEOUT_MS,
-        });
-        if (index > 0) {
-          result.usage = {
-            ...result.usage,
-            freeFallbackUsed: true,
-            freeFallbackReason: geminiErrors[0]?.code || 'PRIMARY_GEMINI_FAILED',
-          };
-        }
-        return result;
-      } catch (error) {
-        geminiErrors.push(error);
+    try {
+      const hedged = await runHedgedGeminiEditorial({
+        models: modelConfigs,
+        schema,
+        instructions,
+        userText,
+        maxOutputTokens,
+      });
+      if (hedged.index > 0) {
+        hedged.result.usage = {
+          ...hedged.result.usage,
+          freeFallbackUsed: true,
+          freeFallbackReason: hedged.fallbackReason || 'PRIMARY_SLOW_HEDGE',
+        };
       }
+      return hedged.result;
+    } catch (aggregate) {
+      geminiErrors = Array.isArray(aggregate?.errors) ? aggregate.errors.filter(Boolean) : [];
     }
   } else {
     const error = new Error('Gemini editorial writing is not configured.');

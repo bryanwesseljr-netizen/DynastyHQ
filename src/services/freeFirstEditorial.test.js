@@ -33,6 +33,32 @@ const SIMPLE_SCHEMA = {
   },
 };
 
+const validEditorialPayload = () => ({
+  candidates: [{
+    content: {
+      parts: [{
+        text: JSON.stringify({
+          articles: [{
+            outletId: 'local',
+            headline: 'Bearcats Turn One Possession Into a Statement',
+            paragraphs: ['The game turned on one possession.', 'Cincinnati carried that edge through the finish.'],
+            invented: 'blocked',
+          }],
+        }),
+      }],
+    },
+  }],
+  usageMetadata: { promptTokenCount: 40, candidatesTokenCount: 30, totalTokenCount: 70 },
+});
+
+const restoreEnv = ({ originalFetch, originalGeminiKey, originalOpenAiKey }) => {
+  globalThis.fetch = originalFetch;
+  if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+  else process.env.GEMINI_API_KEY = originalGeminiKey;
+  if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
+  else process.env.OPENAI_API_KEY = originalOpenAiKey;
+};
+
 test('editorial schema sanitizer strips invented keys and preserves required structure', () => {
   const sanitized = sanitizeToSchema({
     articles: [{
@@ -49,7 +75,7 @@ test('editorial schema sanitizer strips invented keys and preserves required str
   assert.equal(satisfiesSchemaShape(sanitized, SIMPLE_SCHEMA), true);
 });
 
-test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode', async () => {
+test('Gemini 3.8 Flash is the primary newsroom writer in JSON mode', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -64,23 +90,7 @@ test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode', async () =>
     return {
       ok: true,
       status: 200,
-      json: async () => ({
-        candidates: [{
-          content: {
-            parts: [{
-              text: JSON.stringify({
-                articles: [{
-                  outletId: 'local',
-                  headline: 'Bearcats Turn One Possession Into a Statement',
-                  paragraphs: ['The game turned on one possession.', 'Cincinnati carried that edge through the finish.'],
-                  invented: 'blocked',
-                }],
-              }),
-            }],
-          },
-        }],
-        usageMetadata: { promptTokenCount: 40, candidatesTokenCount: 30, totalTokenCount: 70 },
-      }),
+      json: async () => validEditorialPayload(),
     };
   };
 
@@ -94,24 +104,68 @@ test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode', async () =>
       temperature: 0.7,
     });
 
-    assert.match(requestUrl, /gemini-3\.7-flash:generateContent/);
+    assert.match(requestUrl, /gemini-3\.8-flash:generateContent/);
     assert.equal(requestBody.generationConfig.responseMimeType, 'application/json');
     assert.equal(requestBody.generationConfig.temperature, 0.7);
     assert.match(requestBody.systemInstruction.parts[0].text, /veteran college football beat writer/);
     assert.equal(result.usage.provider, 'google');
-    assert.equal(result.usage.model, 'gemini-3.7-flash');
+    assert.equal(result.usage.model, 'gemini-3.8-flash');
     assert.equal(result.usage.fallbackUsed, false);
+    assert.equal(result.usage.freeFallbackUsed, false);
     assert.equal(result.data.articles[0].invented, undefined);
   } finally {
-    globalThis.fetch = originalFetch;
-    if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
-    else process.env.GEMINI_API_KEY = originalGeminiKey;
-    if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = originalOpenAiKey;
+    restoreEnv({ originalFetch, originalGeminiKey, originalOpenAiKey });
   }
 });
 
-test('invalid Gemini editorial structure is rejected when no fallback is configured', async () => {
+test('temporary 3.8 capacity failure retries free and then uses Gemini 3.7 before OpenAI', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalGeminiKey = process.env.GEMINI_API_KEY;
+  const originalOpenAiKey = process.env.OPENAI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  delete process.env.OPENAI_API_KEY;
+  const urls = [];
+
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    if (urls.length <= 2) {
+      return {
+        ok: false,
+        status: 503,
+        json: async () => ({ error: { status: 'UNAVAILABLE', message: 'This model is currently experiencing high demand.' } }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => validEditorialPayload(),
+    };
+  };
+
+  try {
+    const result = await generateEditorialJsonFreeFirst({
+      schema: SIMPLE_SCHEMA,
+      schemaName: 'test_newsroom',
+      instructions: 'Write the article.',
+      userText: 'Test.',
+      maxOutputTokens: 1000,
+    });
+
+    assert.equal(urls.length, 3);
+    assert.match(urls[0], /gemini-3\.8-flash:generateContent/);
+    assert.match(urls[1], /gemini-3\.8-flash:generateContent/);
+    assert.match(urls[2], /gemini-3\.7-flash:generateContent/);
+    assert.equal(result.usage.provider, 'google');
+    assert.equal(result.usage.model, 'gemini-3.7-flash');
+    assert.equal(result.usage.fallbackUsed, false);
+    assert.equal(result.usage.freeFallbackUsed, true);
+    assert.equal(result.usage.freeFallbackReason, 'UNAVAILABLE');
+  } finally {
+    restoreEnv({ originalFetch, originalGeminiKey, originalOpenAiKey });
+  }
+});
+
+test('invalid Gemini editorial structure is rejected when no paid fallback is configured', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -138,11 +192,7 @@ test('invalid Gemini editorial structure is rejected when no fallback is configu
       (error) => error?.code === 'GEMINI_SCHEMA_MISMATCH',
     );
   } finally {
-    globalThis.fetch = originalFetch;
-    if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
-    else process.env.GEMINI_API_KEY = originalGeminiKey;
-    if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = originalOpenAiKey;
+    restoreEnv({ originalFetch, originalGeminiKey, originalOpenAiKey });
   }
 });
 
@@ -157,8 +207,10 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(newsroom, /NATURAL TRACKED-PLAYER REFERENCES/);
   assert.match(newsroom, /historical for this publication/);
   assert.match(newsroom, /Texas native/);
+  assert.match(router, /gemini-3\.8-flash/);
   assert.match(router, /gemini-3\.7-flash/);
   assert.match(router, /gpt-5\.6-terra/);
+  assert.match(router, /requestGeminiWithRetry/);
   assert.match(router, /responseMimeType:\s*'application\/json'/);
 });
 

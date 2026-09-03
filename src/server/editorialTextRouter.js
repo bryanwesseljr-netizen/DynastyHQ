@@ -245,6 +245,26 @@ const requestOpenAiEditorial = async ({
   };
 };
 
+export const generateEditorialJsonPaidFallback = async ({
+  schema,
+  schemaName,
+  instructions,
+  userText,
+  maxOutputTokens = 8000,
+  safetyIdentifier = '',
+  openAiModel = '',
+  fallbackReason = 'QUALITY_GATE',
+}) => requestOpenAiEditorial({
+  schema,
+  schemaName,
+  instructions,
+  userText,
+  maxOutputTokens,
+  safetyIdentifier,
+  openAiModel,
+  fallbackReason,
+});
+
 export const generateEditorialJsonFreeFirst = async ({
   schema,
   schemaName,

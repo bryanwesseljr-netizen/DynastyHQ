@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { generateEditorialJsonFreeFirst } from '../src/server/editorialTextRouter.js';
 
-const MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
+const OPENAI_FALLBACK_MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
 const text = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
@@ -312,7 +312,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method not allowed.' });
   }
-  if (!process.env.OPENAI_API_KEY) return json(res, 503, { error: 'Newsroom writing is not configured yet.' });
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
+    return json(res, 503, { error: 'Newsroom writing is not configured yet.' });
+  }
 
   let user;
   try {
@@ -332,7 +334,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const assignmentSummary = payload.articleBriefs
       .map((brief) => `${brief.outletName}: ${brief.audience || 'general'} ${brief.storyType || 'story'}, ${brief.targetWordRange.min}-${brief.targetWordRange.max} words, player policy ${brief.playerMentionPolicy || 'relevance-based'}`)
       .join('; ');
@@ -341,32 +342,35 @@ export default async function handler(req, res) {
       : 'none';
     const reach = payload.coverageDecision?.audienceReach || {};
     const reachSummary = `${reach.level || 'local'}; national eligible=${Boolean(reach.nationalEligible)}${reach.nationalReasons?.length ? `; national reasons=${reach.nationalReasons.join(', ')}` : ''}`;
+    const userText = `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`;
 
-    const response = await client.responses.create({
-      model: MODEL,
-      store: false,
-      safety_identifier: user.localId,
-      reasoning: { effort: 'low' },
-      max_output_tokens: 10000,
+    const generated = await generateEditorialJsonFreeFirst({
+      schema: schemaFor(payload),
+      schemaName: 'dynastyhq_newsroom_edition',
       instructions: INSTRUCTIONS,
-      input: [{
-        role: 'user',
-        content: [{
-          type: 'input_text',
-          text: `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`,
-        }],
-      }],
-      text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },
+      userText,
+      maxOutputTokens: 10000,
+      temperature: 0.7,
+      safetyIdentifier: user.localId,
+      openAiModel: OPENAI_FALLBACK_MODEL,
     });
-    if (!response.output_text) return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
-    return json(res, 200, { edition: JSON.parse(response.output_text), model: MODEL });
+
+    return json(res, 200, {
+      edition: generated.data,
+      model: generated.usage.model,
+      provider: generated.usage.provider,
+      fallbackUsed: Boolean(generated.usage.fallbackUsed),
+      fallbackReason: generated.usage.fallbackReason || '',
+    });
   } catch (error) {
-    console.error('OpenAI newsroom generation failed', error);
-    const status = error?.status === 429 ? 429 : 502;
+    console.error('Newsroom generation failed', error);
+    const status = Number(error?.status) === 429 ? 429 : 502;
+    const fallbackUnavailable = Boolean(error?.fallbackUnavailable);
     return json(res, status, {
-      error: status === 429
-        ? 'The newsroom desk is busy. Try writing the edition again shortly.'
+      error: fallbackUnavailable
+        ? 'The free newsroom writer could not complete this edition, and the paid fallback is out of available API credit. Your existing articles were preserved.'
         : 'The newsroom edition could not be completed. Your existing articles were preserved.',
+      code: error?.code || 'NEWSROOM_GENERATION_FAILED',
     });
   }
 }

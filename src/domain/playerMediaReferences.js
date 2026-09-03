@@ -90,6 +90,55 @@ export const naturalHeightDescription = (height, position = 'QB') => {
   return `${parsed.feet}-foot-${parsed.inches} ${positionNoun(position)}`;
 };
 
+export const buildPlayerMediaReferenceFromFields = ({
+  fullName = '',
+  position = '',
+  archetype = '',
+  height = '',
+  role = '',
+  previousRole = '',
+  roleSource = '',
+} = {}) => {
+  const safeFullName = clean(fullName, 120);
+  const safePosition = clean(position, 20).toUpperCase();
+  const safeArchetype = clean(archetype, 80);
+  const safeHeight = clean(height, 40);
+  const safeRole = clean(role, 60);
+  const safePreviousRole = clean(previousRole, 60);
+  const noun = positionNoun(safePosition);
+  const roleDescription = naturalRoleDescription(safeRole, safePosition);
+  const previousRoleDescription = naturalRoleDescription(safePreviousRole, safePosition);
+  const roleIndex = roleNumber(safeRole);
+  const descriptors = [];
+
+  if (noun !== 'player') descriptors.push(`the ${noun}`);
+  if (noun === 'quarterback') descriptors.push('the signal-caller');
+
+  if (roleDescription) {
+    descriptors.push(`the ${roleDescription}`);
+    if (noun === 'quarterback' && roleIndex && roleIndex > 1) descriptors.push('the backup quarterback');
+    if (noun === 'quarterback' && roleIndex && roleIndex > 2) descriptors.push('the reserve quarterback');
+  }
+
+  if (noun === 'quarterback' && /\bdual[-\s]?threat\b/i.test(safeArchetype)) descriptors.push('the dual-threat quarterback');
+  const heightDescription = naturalHeightDescription(safeHeight, safePosition);
+  if (heightDescription) descriptors.push(`the ${heightDescription}`);
+
+  return {
+    fullName: safeFullName,
+    surname: surnameFromFullName(safeFullName),
+    position: safePosition,
+    archetype: safeArchetype,
+    height: safeHeight,
+    role: safeRole,
+    previousRole: safePreviousRole,
+    roleSource: clean(roleSource, 40),
+    roleDescription,
+    previousRoleDescription,
+    descriptors: [...new Set(descriptors.filter(Boolean))].slice(0, 10),
+  };
+};
+
 const exactUpdateFor = (state = {}, issue = {}) => (state.weeklyUpdates || []).find((entry) => publicationMatches(entry, issue)) || null;
 
 const exactRoleFactFor = (state = {}, issue = {}) => (state.factLedger || []).find((fact) => (
@@ -109,12 +158,6 @@ const isCurrentIssue = (state = {}, issue = {}) => (
 
 export const buildVerifiedPlayerMediaReference = (state = {}, issue = {}) => {
   const player = state.player || {};
-  const fullName = clean(player.name, 120);
-  const surname = surnameFromFullName(fullName);
-  const position = clean(player.pos, 20).toUpperCase();
-  const noun = positionNoun(position);
-  const archetype = clean(player.archetype, 80);
-  const height = clean(player.height, 40);
   const exactUpdate = exactUpdateFor(state, issue);
   const exactRoleFact = exactRoleFactFor(state, issue);
 
@@ -129,38 +172,15 @@ export const buildVerifiedPlayerMediaReference = (state = {}, issue = {}) => {
     roleSource = role ? 'current-state' : '';
   }
 
-  const previousRole = clean(previousRoleFor(state, issue), 60);
-  const roleDescription = naturalRoleDescription(role, position);
-  const previousRoleDescription = naturalRoleDescription(previousRole, position);
-  const roleIndex = roleNumber(role);
-  const descriptors = [];
-
-  if (noun !== 'player') descriptors.push(`the ${noun}`);
-  if (noun === 'quarterback') descriptors.push('the signal-caller');
-
-  if (roleDescription) {
-    descriptors.push(`the ${roleDescription}`);
-    if (noun === 'quarterback' && roleIndex && roleIndex > 1) descriptors.push('the backup quarterback');
-    if (noun === 'quarterback' && roleIndex && roleIndex > 2) descriptors.push('the reserve quarterback');
-  }
-
-  if (noun === 'quarterback' && /\bdual[-\s]?threat\b/i.test(archetype)) descriptors.push('the dual-threat quarterback');
-  const heightDescription = naturalHeightDescription(height, position);
-  if (heightDescription) descriptors.push(`the ${heightDescription}`);
-
-  return {
-    fullName,
-    surname,
-    position,
-    archetype,
-    height,
+  return buildPlayerMediaReferenceFromFields({
+    fullName: player.name,
+    position: player.pos,
+    archetype: player.archetype,
+    height: player.height,
     role,
-    previousRole,
+    previousRole: previousRoleFor(state, issue),
     roleSource,
-    roleDescription,
-    previousRoleDescription,
-    descriptors: [...new Set(descriptors.filter(Boolean))].slice(0, 10),
-  };
+  });
 };
 
 export const createPlayerReferenceNormalizer = (reference = {}) => {

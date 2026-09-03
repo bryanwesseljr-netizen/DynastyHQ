@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 import {
   generateEditorialJsonFreeFirst,
+  removeReaderFacingPlayerInitials,
   sanitizeToSchema,
   satisfiesSchemaShape,
 } from '../server/editorialTextRouter.js';
@@ -98,6 +99,22 @@ test('editorial schema sanitizer strips invented keys and preserves required str
   assert.equal(satisfiesSchemaShape(sanitized, SIMPLE_SCHEMA), true);
 });
 
+test('reader-facing editorial cleanup removes initial-plus-surname references everywhere', () => {
+  const cleaned = removeReaderFacingPlayerInitials({
+    headline: 'S. Jones changes the game',
+    paragraphs: [
+      "Cincinnati's signal-caller, S. Jones, escaped pressure.",
+      'Hawaii answered through T. Smith in the second half.',
+    ],
+    sidebar: { item: 'J. Brown led the receiving group.' },
+  });
+
+  assert.equal(cleaned.headline, 'Jones changes the game');
+  assert.equal(cleaned.paragraphs[0], "Cincinnati's signal-caller, Jones, escaped pressure.");
+  assert.equal(cleaned.paragraphs[1], 'Hawaii answered through Smith in the second half.');
+  assert.equal(cleaned.sidebar.item, 'Brown led the receiving group.');
+});
+
 test('newsroom schema rejects duplicate outlet ids even when the article count is correct', () => {
   const duplicate = {
     articles: [
@@ -166,13 +183,16 @@ test('Gemini 3.7 Flash is the primary newsroom writer in JSON mode with low thin
     assert.equal(requestBody.generationConfig.thinkingConfig.thinkingLevel, 'low');
     assert.equal(requestBody.generationConfig.temperature, undefined);
     assert.match(requestBody.contents[0].parts[0].text, /every requested outletId exactly once/);
+    assert.match(requestBody.contents[0].parts[0].text, /Source player initials are internal only/);
     assert.match(systemText, /veteran college football beat writer/);
     assert.match(systemText, /PLAYER REFERENCE VARIETY/);
-    assert.match(systemText, /Cincinnati's signal-caller, Jones/);
-    assert.match(systemText, /Hawaii's running back/);
-    assert.match(systemText, /Cincy's quarterback/);
+    assert.match(systemText, /NEVER use an initial plus surname/);
+    assert.match(systemText, /Cincinnati's signal-caller, Sam Jones/);
+    assert.match(systemText, /Hawaii's running back, Smith/);
+    assert.match(systemText, /Cincy's senior running back, Johnson/);
+    assert.match(systemText, /leading rusher/);
     assert.match(systemText, /Class-year phrases/);
-    assert.match(systemText, /Do not infer position from a stat category alone/);
+    assert.match(systemText, /does not prove running back/);
     assert.equal(result.usage.provider, 'google');
     assert.equal(result.usage.model, 'gemini-3.7-flash');
     assert.equal(result.usage.fallbackUsed, false);
@@ -325,9 +345,11 @@ test('newsroom endpoint is wired free-first with Terra retained only as fallback
   assert.match(router, /gemini-3\.5-flash-lite/);
   assert.match(router, /gpt-5\.6-terra/);
   assert.match(router, /PLAYER REFERENCE VARIETY/);
+  assert.match(router, /NEVER use an initial plus surname/);
   assert.match(router, /Cincinnati's signal-caller/);
   assert.match(router, /Hawaii's running back/);
-  assert.match(router, /Cincy's quarterback/);
+  assert.match(router, /Cincy's senior running back/);
+  assert.match(router, /removeReaderFacingPlayerInitials/);
   assert.match(router, /AbortController/);
   assert.match(router, /FALLBACK_HEDGE_DELAY_MS/);
   assert.match(router, /RESERVE_HEDGE_DELAY_MS/);
@@ -356,8 +378,9 @@ test('podcast endpoint is Gemini-first, keeps quality gates, and pays only after
   assert.match(router, /every named player/i);
   assert.match(router, /playmaker at wide receiver/);
   assert.match(router, /senior running back/);
-  assert.match(router, /full name on the first natural identification/);
-  assert.match(router, /initial-plus-surname once/);
+  assert.match(router, /full name is supplied/);
+  assert.match(router, /NEVER print the initial/);
+  assert.match(router, /leading receiver/);
   assert.match(router, /export const generateEditorialJsonPaidFallback/);
 });
 

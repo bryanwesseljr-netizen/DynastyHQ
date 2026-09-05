@@ -3,7 +3,7 @@ import { decodeFirestoreDocument } from '../src/domain/firestoreRest.js';
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID
   || process.env.VITE_FIREBASE_PROJECT_ID
   || 'dynastyhq-a380c';
-const APP_NAMESPACE = 'dynasty-hq';
+const APP_NAMESPACE = process.env.VERCEL_ENV === 'production' ? 'dynasty-hq' : 'dynasty-hq-preview';
 
 const CONTEXT_FIELDS = Object.freeze([
   'careerPhase',

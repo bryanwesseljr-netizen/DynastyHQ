@@ -133,7 +133,7 @@ test('desktop workspaces use compact route-aware spacing without changing mobile
 
   assert.match(appSource, /<main data-active-tab=\{activeTab\} className=\{`dhq-page-main/);
   assert.match(globalStyles, /\.dhq-page-main\[data-active-tab\]:not\(\[data-active-tab="dashboard"\]\)/);
-  assert.match(globalStyles, /padding: 76px 16px 14px !important/);
+  assert.match(globalStyles, /padding: 139px 16px 14px !important/);
   assert.match(globalStyles, /data-active-tab="recruiting"/);
   assert.match(globalStyles, /data-active-tab="newsroom"/);
   assert.match(globalStyles, /data-active-tab="chronicle"/);

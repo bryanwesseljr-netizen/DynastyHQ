@@ -354,6 +354,9 @@ ${handlerTarget}`
 })
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_DHQ_DEPLOYMENT_ENV': JSON.stringify(globalThis.process?.env?.VERCEL_ENV || 'development'),
+  },
   server: {
     host: '0.0.0.0',
     allowedHosts: ['terminal.local'],

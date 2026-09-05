@@ -25,6 +25,10 @@ const emptyForm = {
   type: WEEK_SETUP_TYPES.GAME,
   phase: WEEK_PHASES.REGULAR,
   label: '',
+  opponent: '',
+  opponentRecord: '',
+  kickoff: '',
+  venue: '',
   note: '',
   overall: '',
   rank: '',
@@ -64,6 +68,10 @@ const formFromCareer = (career = {}) => {
     type,
     phase,
     label: saved.customLabel || saved.label || '',
+    opponent: saved.opponent || '',
+    opponentRecord: saved.opponentRecord || '',
+    kickoff: saved.kickoff || '',
+    venue: saved.venue || '',
     note: saved.note || '',
     overall: career.player?.overall ?? '',
     rank: career.rtg?.rank ?? '',
@@ -117,7 +125,6 @@ const WeekSetupPanel = () => {
 
   useEffect(() => {
     if (!user || !db) {
-      setCareer(null);
       return undefined;
     }
     const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
@@ -188,6 +195,10 @@ const WeekSetupPanel = () => {
         phase: setup.phase,
         label: setup.label,
         customLabel: form.label.trim(),
+        opponent: setup.opponent,
+        opponentRecord: setup.opponentRecord,
+        kickoff: setup.kickoff,
+        venue: setup.venue,
         note: setup.note,
       },
     };
@@ -248,6 +259,23 @@ const WeekSetupPanel = () => {
             <input className={inputClass} type="text" value={form.label} onChange={(event) => updateForm({ label: event.target.value })} placeholder={suggestedLabel} />
           </Field>
         </div>
+
+        {!isBye ? (
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Field label="Opponent" hint="Optional until the matchup is known.">
+              <input className={inputClass} type="text" value={form.opponent} onChange={(event) => updateForm({ opponent: event.target.value })} placeholder="School or team name" />
+            </Field>
+            <Field label="Opponent Record">
+              <input className={inputClass} type="text" value={form.opponentRecord} onChange={(event) => updateForm({ opponentRecord: event.target.value })} placeholder="Example: 5-3 (3-2)" />
+            </Field>
+            <Field label="Kickoff">
+              <input className={inputClass} type="text" value={form.kickoff} onChange={(event) => updateForm({ kickoff: event.target.value })} placeholder="Example: Saturday, 7:30 PM" />
+            </Field>
+            <Field label="Venue">
+              <input className={inputClass} type="text" value={form.venue} onChange={(event) => updateForm({ venue: event.target.value })} placeholder="Stadium and city" />
+            </Field>
+          </div>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-blue-400/20 bg-blue-500/5 p-4">
           <div className="flex items-start gap-3">

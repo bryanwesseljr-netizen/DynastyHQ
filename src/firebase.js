@@ -2,7 +2,10 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-export const appId = 'dynasty-hq';
+export const productionAppId = 'dynasty-hq';
+export const deploymentEnvironment = import.meta.env.VITE_DHQ_DEPLOYMENT_ENV || 'development';
+export const isPreviewDeployment = deploymentEnvironment !== 'production';
+export const appId = isPreviewDeployment ? 'dynasty-hq-preview' : productionAppId;
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

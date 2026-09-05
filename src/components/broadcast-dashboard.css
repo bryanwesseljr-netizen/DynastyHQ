@@ -317,6 +317,12 @@
 .dhq-broadcast-footer > div i { position: absolute; top: -18px; right: 51px; width: 13px; height: 90px; background: var(--broadcast-red); transform: skew(-34deg); }
 .dhq-broadcast-footer > div i:last-child { right: 28px; }
 
+@media (max-width: 1400px) and (min-width: 768px) {
+  .dhq-broadcast-workflow-card { grid-template-columns: 190px repeat(3, minmax(0, 1fr)); padding: 0 16px; }
+  .dhq-broadcast-workflow-fragment { grid-template-columns: minmax(0,1fr) 28px; }
+  .dhq-broadcast-workflow-step { gap: 9px; }
+}
+
 @media (max-width: 767px) {
   .dhq-broadcast-dashboard { min-height: calc(100dvh - 106px); }
   .dhq-broadcast-main { width: calc(100% - 24px); padding: 12px 0 18px; }

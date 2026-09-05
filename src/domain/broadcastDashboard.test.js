@@ -26,10 +26,14 @@ test('broadcast dashboard uses the approved hero, wider lower cards, and real wo
 });
 
 test('mobile dashboard preserves the compact two-column information grid', async () => {
-  const styles = await readFile(stylesUrl, 'utf8');
+  const [styles, siteStyles] = await Promise.all([
+    readFile(stylesUrl, 'utf8'),
+    readFile(new URL('../index.css', import.meta.url), 'utf8'),
+  ]);
   assert.match(styles, /@media \(max-width: 767px\)/);
   assert.match(styles, /\.dhq-broadcast-cards \{ grid-template-columns: repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.dhq-broadcast-lower-row \{ grid-template-columns: 1fr/);
+  assert.match(siteStyles, /\.dhq-broadcast-header \.dhq-primary-nav-item \{ order: initial !important/);
 });
 
 test('preview builds use an isolated Firebase namespace and seed only that copy', async () => {

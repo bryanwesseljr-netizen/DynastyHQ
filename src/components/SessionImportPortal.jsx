@@ -15,7 +15,7 @@ import {
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './session-import.css';
 
-const MAX_SCREENSHOTS = 12;
+const MAX_SCREENSHOTS = 30;
 
 const clean = (value) => String(value || '').trim();
 

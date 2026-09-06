@@ -10,6 +10,7 @@ import matchupHelmets from '../assets/matchup-helmets.webp';
 import { buildDashboardV2 } from '../domain/dashboardV2';
 import { buildGameweekFlow } from '../domain/gameweekFlow';
 import './broadcast-dashboard.css';
+import './broadcast-reference.css';
 
 const numberValue = (value, fallback = 0) => {
   const parsed = Number(value);

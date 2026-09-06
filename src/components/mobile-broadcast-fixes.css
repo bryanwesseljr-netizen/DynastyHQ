@@ -1,0 +1,5 @@
+@media (max-width: 767px) {
+  .dhq-broadcast-header__profile {
+    position: relative !important;
+  }
+}

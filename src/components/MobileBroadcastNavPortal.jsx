@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import './mobile-broadcast.css';
+import './mobile-broadcast-fixes.css';
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 

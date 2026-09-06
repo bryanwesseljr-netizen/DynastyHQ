@@ -1,6 +1,7 @@
 import WeekSetupPortal from './WeekSetupPortal.jsx';
 import GameweekFlowPortal from './GameweekFlowPortal.jsx';
 import QuickImportPortal from './QuickImportPortal.jsx';
+import SessionImportPortal from './SessionImportPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
 import DryRunModePortal from './DryRunModePortal.jsx';
@@ -38,6 +39,7 @@ const OwnerEnhancements = () => (
     <WeekSetupPortal />
     <GameweekFlowPortal />
     <QuickImportPortal />
+    <SessionImportPortal />
     <WeeklyAgendaV2Portal />
     <WeeklyDataIntakePortal />
     <DryRunModePortal />

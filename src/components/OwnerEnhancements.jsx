@@ -4,6 +4,7 @@ import QuickImportPortal from './QuickImportPortal.jsx';
 import SessionImportPortal from './SessionImportPortal.jsx';
 import CareerOverviewPortal from './CareerOverviewPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
+import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
@@ -46,6 +47,7 @@ const OwnerEnhancements = () => (
     <SessionImportPortal />
     <CareerOverviewPortal />
     <GameHubPortal />
+    <GameHubMobilePolishPortal />
     <WeeklyAgendaV2Portal />
     <WeeklyDataIntakePortal />
     <DryRunModePortal />

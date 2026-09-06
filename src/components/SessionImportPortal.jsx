@@ -54,6 +54,7 @@ const waitForScannerInput = (timeoutMs = 8000) => new Promise((resolve, reject) 
 const handoffFiles = async (files) => {
   const gameHubButton = findButton(/^game hub$/i);
   if (!gameHubButton) throw new Error('Game Hub is not available from this screen.');
+  window.__dhqAllowLegacyGameHubOnce = true;
   gameHubButton.click();
   const input = await waitForScannerInput();
   if (typeof DataTransfer === 'undefined') {
@@ -84,6 +85,7 @@ const SessionImportPortal = () => {
   const season = career?.currentSeason || 1;
   const week = career?.currentWeek ?? 1;
   const opponent = clean(career?.currentWeekSetup?.opponent) || 'Current week';
+  const publicationId = `season-${Number(season) || 1}-week-${Number(week) || 1}`;
   const totalBytes = useMemo(() => files.reduce((total, file) => total + Number(file.size || 0), 0), [files]);
 
   useEffect(() => {
@@ -114,7 +116,7 @@ const SessionImportPortal = () => {
     if (home) {
       window.setTimeout(() => findButton(/^home$/i)?.click(), 30);
     } else if (focusApplied) {
-      window.setTimeout(() => document.querySelector('.dhq-agenda-v3-applied-ready')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
+      window.setTimeout(() => findButton(/^game hub$/i)?.click(), 50);
     }
   };
 
@@ -135,6 +137,12 @@ const SessionImportPortal = () => {
   }, []);
 
   useEffect(() => {
+    const openFromGameHub = () => openWorkspace();
+    window.addEventListener('dynastyhq:open-session-import', openFromGameHub);
+    return () => window.removeEventListener('dynastyhq:open-session-import', openFromGameHub);
+  }, []);
+
+  useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
     const refresh = () => {
       const review = document.querySelector('.dhq-postgame-review');
@@ -143,13 +151,16 @@ const SessionImportPortal = () => {
         setPhase('review');
         return;
       }
-      if (!review && applied && phaseRef.current === 'review') setPhase('applied');
+      if (!review && applied && phaseRef.current === 'review') {
+        try { window.sessionStorage?.setItem('dhq-session-applied-week', publicationId); } catch { /* session hint only */ }
+        setPhase('applied');
+      }
     };
     refresh();
     const observer = new MutationObserver(refresh);
     observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, attributes: true });
     return () => observer.disconnect();
-  }, [open, phase]);
+  }, [open, phase, publicationId]);
 
   useEffect(() => () => {
     document.body.classList.remove('dhq-session-import-mode', 'dhq-session-import-review');
@@ -290,7 +301,7 @@ const SessionImportPortal = () => {
             <div className="dhq-session-import__complete-icon"><CheckCircle2 size={38} /></div>
             <span>SESSION CONFIRMED</span>
             <h1 id="dhq-session-import-title">Verified data is ready in Game Hub.</h1>
-            <p>Your reviewed scanner draft has been applied to the current week. Nothing was invented, and the week is still yours to finalize from Game Hub.</p>
+            <p>Your reviewed scanner draft has been applied to the current week. Nothing was invented, and the week is still yours to publish from Game Hub.</p>
             <div className="dhq-session-import__complete-actions">
               <button type="button" className="is-secondary" onClick={() => closeWorkspace({ home: true })}>RETURN HOME</button>
               <button type="button" className="is-primary" onClick={() => closeWorkspace({ focusApplied: true })}>CONTINUE TO GAME HUB <ChevronRight size={16} /></button>

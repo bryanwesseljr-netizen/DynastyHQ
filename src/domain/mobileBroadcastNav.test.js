@@ -20,6 +20,17 @@ test('mobile uses the same primary broadcast destinations as desktop', async () 
   assert.match(portal, /dhq-mobile-broadcast-nav/);
 });
 
+test('mobile broadcast nav waits for the header and remounts if React replaces it', async () => {
+  const portal = await readFile(portalUrl, 'utf8');
+
+  assert.match(portal, /const ensureHost = \(\) =>/);
+  assert.match(portal, /document\.querySelector\('\.dhq-broadcast-header'\)/);
+  assert.match(portal, /header\?\.querySelector\('\.dhq-score-ticker'\)/);
+  assert.match(portal, /new MutationObserver\(ensureHost\)/);
+  assert.match(portal, /observer\.observe\(root, \{ childList: true, subtree: true \}\)/);
+  assert.match(portal, /header\.insertBefore\(navHost, ticker\)/);
+});
+
 test('mobile avatar no longer opens the legacy tile navigation', async () => {
   const [portal, styles] = await Promise.all([
     readFile(portalUrl, 'utf8'),

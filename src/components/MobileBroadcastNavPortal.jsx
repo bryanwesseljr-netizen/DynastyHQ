@@ -57,20 +57,38 @@ const MobileBroadcastNavPortal = () => {
   }, [moreOpen]);
 
   useEffect(() => {
-    const header = document.querySelector('.dhq-broadcast-header');
-    const ticker = header?.querySelector('.dhq-score-ticker');
-    if (!header || !ticker) return undefined;
+    const root = document.getElementById('root');
+    if (!root) return undefined;
 
-    let navHost = document.getElementById('dhq-mobile-broadcast-nav-host');
-    if (!navHost) {
-      navHost = document.createElement('div');
-      navHost.id = 'dhq-mobile-broadcast-nav-host';
-      ticker.before(navHost);
-    }
-    setHost(navHost);
+    const ensureHost = () => {
+      const header = document.querySelector('.dhq-broadcast-header');
+      const ticker = header?.querySelector('.dhq-score-ticker');
+      if (!header || !ticker) {
+        setHost((current) => (current?.isConnected ? current : null));
+        return;
+      }
+
+      let navHost = document.getElementById('dhq-mobile-broadcast-nav-host');
+      if (!navHost || navHost.parentElement !== header) {
+        navHost?.remove();
+        navHost = document.createElement('div');
+        navHost.id = 'dhq-mobile-broadcast-nav-host';
+        header.insertBefore(navHost, ticker);
+      } else if (navHost.nextElementSibling !== ticker) {
+        header.insertBefore(navHost, ticker);
+      }
+
+      setHost((current) => (current === navHost ? current : navHost));
+    };
+
+    ensureHost();
+    const observer = new MutationObserver(ensureHost);
+    observer.observe(root, { childList: true, subtree: true });
 
     return () => {
-      navHost?.remove();
+      observer.disconnect();
+      document.getElementById('dhq-mobile-broadcast-nav-host')?.remove();
+      setHost(null);
     };
   }, []);
 

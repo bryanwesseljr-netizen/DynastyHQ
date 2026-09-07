@@ -221,6 +221,7 @@ export default async function handler(req, res) {
       userText: task.userText,
       imageDataUrl: body.imageDataUrl,
       maxOutputTokens: task.maxOutputTokens,
+      allowPaidFallback: body.allowPaidFallback === true,
     });
     return json(res, 200, {
       analysis: result.analysis,
@@ -233,10 +234,13 @@ export default async function handler(req, res) {
     console.error(`Free-first ${task.kind} screenshot analysis failed`, error);
     const status = Number(error?.status) === 429 ? 429 : 502;
     const label = task.kind === 'rtg' ? 'RTG screenshot' : task.kind === 'game' ? 'Game screenshot' : 'Coverage';
+    const noPaidFallbackMessage = error?.paidFallbackBlocked
+      ? `${label} could not produce a safe automatic Gemini result and No Paid Fallback is on. Try another screenshot or review manually.`
+      : '';
     return json(res, status, {
-      error: status === 429
+      error: noPaidFallbackMessage || (status === 429
         ? `${label} analysis is out of available AI quota right now. Try again later.`
-        : `${label} analysis failed. No saved career data was changed.`,
+        : `${label} analysis failed. No saved career data was changed.`),
     });
   }
 }

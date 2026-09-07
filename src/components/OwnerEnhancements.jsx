@@ -37,11 +37,13 @@ import NewsroomLibraryScrollGuardPortal from './NewsroomLibraryScrollGuardPortal
 import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
 import PublicMediaProfileSharePortal from './PublicMediaProfileSharePortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
+import DynamicMatchupHelmetPortal from './DynamicMatchupHelmetPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 
 const OwnerEnhancements = () => (
   <OwnerCareerProvider>
     <TeamAccentPortal />
+    <DynamicMatchupHelmetPortal />
     <MobileBroadcastNavPortal />
     <FreshStartPortal />
     <ImmersionPortal />

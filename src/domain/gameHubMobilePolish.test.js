@@ -29,19 +29,17 @@ test('Game Hub mobile hero separates teams, scores, result and action vertically
   assert.match(styles, /\.dhq-gh-hero__actions \{[\s\S]*bottom: 14px !important;/);
 });
 
-test('Game Hub enables natural browser panning while mobile pinch zoom is active', async () => {
+test('Game Hub uses normal mobile document flow so browser zoom and pan stay native', async () => {
   const [portal, styles] = await Promise.all([
     readFile(portalUrl, 'utf8'),
     readFile(stylesUrl, 'utf8'),
   ]);
 
-  assert.match(portal, /window\.visualViewport/);
-  assert.match(portal, /viewport\.scale > 1\.01/);
-  assert.match(portal, /dhq-game-hub-zoom-pan/);
-  assert.match(portal, /viewport\.addEventListener\('resize', syncZoomPan\)/);
-  assert.match(portal, /viewport\.addEventListener\('scroll', syncZoomPan\)/);
-  assert.match(styles, /touch-action: pan-x pan-y pinch-zoom;/);
-  assert.match(styles, /body\.dhq-game-hub-open\.dhq-game-hub-zoom-pan \{[\s\S]*overflow: auto !important;/);
-  assert.match(styles, /body\.dhq-game-hub-zoom-pan \.dhq-game-hub \{[\s\S]*position: absolute !important;/);
-  assert.match(styles, /body\.dhq-game-hub-zoom-pan \.dhq-game-hub__scroll \{[\s\S]*overflow: visible !important;/);
+  assert.doesNotMatch(portal, /window\.visualViewport/);
+  assert.doesNotMatch(portal, /dhq-game-hub-zoom-pan/);
+  assert.match(styles, /body\.dhq-game-hub-open \{[\s\S]*overflow: auto !important;/);
+  assert.match(styles, /body\.dhq-game-hub-open main\.dhq-page-main \{[\s\S]*display: none !important;/);
+  assert.match(styles, /\.dhq-game-hub \{[\s\S]*position: relative !important;[\s\S]*padding-top: 150px;/);
+  assert.match(styles, /\.dhq-game-hub__scroll \{[\s\S]*height: auto !important;[\s\S]*overflow: visible !important;/);
+  assert.match(styles, /touch-action: pan-x pan-y pinch-zoom !important;/);
 });

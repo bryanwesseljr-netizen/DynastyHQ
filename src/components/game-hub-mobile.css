@@ -1,4 +1,28 @@
 @media (max-width: 767px) {
+  .dhq-game-hub,
+  .dhq-game-hub__scroll {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  body.dhq-game-hub-open.dhq-game-hub-zoom-pan {
+    overflow: auto !important;
+  }
+
+  body.dhq-game-hub-zoom-pan .dhq-game-hub {
+    position: absolute !important;
+    inset: 150px 0 auto !important;
+    min-height: calc(100dvh - 150px);
+    overflow: visible !important;
+  }
+
+  body.dhq-game-hub-zoom-pan .dhq-game-hub__scroll {
+    height: auto !important;
+    min-height: calc(100dvh - 150px);
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .dhq-game-hub__frame {
     width: calc(100% - 16px) !important;
     padding-top: 10px !important;

@@ -28,3 +28,20 @@ test('Game Hub mobile hero separates teams, scores, result and action vertically
   assert.match(styles, /\.dhq-gh-versus \{[\s\S]*top: 299px !important;/);
   assert.match(styles, /\.dhq-gh-hero__actions \{[\s\S]*bottom: 14px !important;/);
 });
+
+test('Game Hub enables natural browser panning while mobile pinch zoom is active', async () => {
+  const [portal, styles] = await Promise.all([
+    readFile(portalUrl, 'utf8'),
+    readFile(stylesUrl, 'utf8'),
+  ]);
+
+  assert.match(portal, /window\.visualViewport/);
+  assert.match(portal, /viewport\.scale > 1\.01/);
+  assert.match(portal, /dhq-game-hub-zoom-pan/);
+  assert.match(portal, /viewport\.addEventListener\('resize', syncZoomPan\)/);
+  assert.match(portal, /viewport\.addEventListener\('scroll', syncZoomPan\)/);
+  assert.match(styles, /touch-action: pan-x pan-y pinch-zoom;/);
+  assert.match(styles, /body\.dhq-game-hub-open\.dhq-game-hub-zoom-pan \{[\s\S]*overflow: auto !important;/);
+  assert.match(styles, /body\.dhq-game-hub-zoom-pan \.dhq-game-hub \{[\s\S]*position: absolute !important;/);
+  assert.match(styles, /body\.dhq-game-hub-zoom-pan \.dhq-game-hub__scroll \{[\s\S]*overflow: visible !important;/);
+});

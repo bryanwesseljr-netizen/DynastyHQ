@@ -166,8 +166,8 @@ export const buildImmersionModel = (state = {}, options = {}) => {
   const podcastPlan = !focusGame
     ? { level: 'none', label: 'No episode needed yet', reason: 'Wait for a verified result or major career event.' }
     : podcastReasons.length
-      ? { level: 'feature', label: 'Full Nippert Notebook episode', reason: podcastReasons.join(' · ') }
-      : { level: 'quick', label: 'Quick Nippert Notebook recap', reason: 'Standard verified game package.' };
+      ? { level: 'feature', label: 'Full The Huddle Podcast episode', reason: podcastReasons.join(' · ') }
+      : { level: 'quick', label: 'Quick The Huddle Podcast recap', reason: 'Standard verified game package.' };
 
   const postgameWrap = focusGame ? {
     result: clean(focusGame.result).toUpperCase(),

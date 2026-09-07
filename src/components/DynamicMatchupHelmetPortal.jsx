@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
+import { catalogTeamBrand } from '../domain/teamBrandResolver.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import DynamicMatchupHelmets from './DynamicMatchupHelmets.jsx';
 import './dynamic-matchup-helmets.css';
@@ -8,6 +9,7 @@ import './dynamic-matchup-helmets.css';
 const clean = (value) => String(value ?? '').trim();
 const numberOf = (value) => Number(value) || 0;
 const publicationIdFor = (season, week) => `season-${numberOf(season) || 1}-week-${numberOf(week) || 1}`;
+const isFbsTeam = (name) => catalogTeamBrand(name).source === 'fbs-2026';
 
 const currentSchoolFor = (state = {}) => {
   const stage = deriveCareerStage(state);
@@ -38,7 +40,6 @@ const DynamicMatchupHelmetPortal = () => {
         return;
       }
 
-      source.classList.add('dhq-dynamic-helmet-source-hidden');
       let host = document.getElementById(id);
       if (!host || host.previousElementSibling !== source) {
         host?.remove();
@@ -88,10 +89,14 @@ const DynamicMatchupHelmetPortal = () => {
     const stage = deriveCareerStage(state);
     const setup = state.currentWeekSetup || {};
     const draftGame = state.weeklyAgendaDraft?.newGame || state.weeklyAgendaDraft?.game || {};
+    const school = currentSchoolFor(state);
+    const opponent = clean(setup.opponent || draftGame.opponent) || 'NEXT OPPONENT';
+    const highSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
     return {
-      school: currentSchoolFor(state),
-      opponent: clean(setup.opponent || draftGame.opponent) || 'NEXT OPPONENT',
-      highSchool: stage === CAREER_STAGES.HIGH_SCHOOL,
+      school,
+      opponent,
+      highSchool,
+      dynamic: !highSchool && isFbsTeam(school) && isFbsTeam(opponent),
     };
   }, [career]);
 
@@ -107,35 +112,55 @@ const DynamicMatchupHelmetPortal = () => {
       : games.find((game) => publicationIdFor(game.season, game.week) === selectedValue) || null;
 
     if (selectedGame) {
+      const school = historicalSchoolFor(selectedGame, currentSchool);
+      const opponent = clean(selectedGame.opponent) || 'OPPONENT';
+      const highSchool = selectedGame.stage === 'high-school' || Boolean(selectedGame.evaluation);
       return {
-        school: historicalSchoolFor(selectedGame, currentSchool),
-        opponent: clean(selectedGame.opponent) || 'OPPONENT',
-        highSchool: selectedGame.stage === 'high-school' || Boolean(selectedGame.evaluation),
+        school,
+        opponent,
+        highSchool,
+        dynamic: !highSchool && isFbsTeam(school) && isFbsTeam(opponent),
       };
     }
 
+    const opponent = clean(state.currentWeekSetup?.opponent) || 'OPPONENT TBD';
+    const highSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
     return {
       school: currentSchool,
-      opponent: clean(state.currentWeekSetup?.opponent) || 'OPPONENT TBD',
-      highSchool: stage === CAREER_STAGES.HIGH_SCHOOL,
+      opponent,
+      highSchool,
+      dynamic: !highSchool && isFbsTeam(currentSchool) && isFbsTeam(opponent),
     };
   }, [career, selectionRevision, gameHubHost]);
 
+  useEffect(() => {
+    const homeSource = document.querySelector('.dhq-broadcast-hero > img.dhq-broadcast-helmets');
+    const gameHubSource = document.querySelector('.dhq-game-hub .dhq-gh-hero > img');
+
+    homeSource?.classList.toggle('dhq-dynamic-helmet-source-hidden', homeModel.dynamic);
+    gameHubSource?.classList.toggle('dhq-dynamic-helmet-source-hidden', gameHubModel.dynamic);
+    if (homeHost) homeHost.hidden = !homeModel.dynamic;
+    if (gameHubHost) gameHubHost.hidden = !gameHubModel.dynamic;
+
+    return () => {
+      homeSource?.classList.remove('dhq-dynamic-helmet-source-hidden');
+      gameHubSource?.classList.remove('dhq-dynamic-helmet-source-hidden');
+    };
+  }, [homeHost, gameHubHost, homeModel.dynamic, gameHubModel.dynamic]);
+
   return (
     <>
-      {homeHost ? createPortal(
+      {homeHost && homeModel.dynamic ? createPortal(
         <DynamicMatchupHelmets
           homeTeam={homeModel.school}
           awayTeam={homeModel.opponent}
-          highSchool={homeModel.highSchool}
         />,
         homeHost,
       ) : null}
-      {gameHubHost ? createPortal(
+      {gameHubHost && gameHubModel.dynamic ? createPortal(
         <DynamicMatchupHelmets
           homeTeam={gameHubModel.school}
           awayTeam={gameHubModel.opponent}
-          highSchool={gameHubModel.highSchool}
         />,
         gameHubHost,
       ) : null}

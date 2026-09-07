@@ -6,6 +6,7 @@ import CareerOverviewPortal from './CareerOverviewPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
 import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
+import FreshStartPortal from './FreshStartPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
 import DryRunModePortal from './DryRunModePortal.jsx';
@@ -39,6 +40,7 @@ const OwnerEnhancements = () => (
   <OwnerCareerProvider>
     <TeamAccentPortal />
     <MobileBroadcastNavPortal />
+    <FreshStartPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />
     <WeekSetupPortal />

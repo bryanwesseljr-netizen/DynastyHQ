@@ -8,23 +8,32 @@ import {
   resolvePodcastShow,
 } from './podcastShow.js';
 
-test('Cincinnati uses Nippert Notebook with the existing Mark and Sarah host identities', () => {
+test('The Huddle Podcast keeps one career-wide identity while using current-team context', () => {
   const show = resolvePodcastShow({ player: { college: 'Cincinnati' }, newsroomIssues: [] });
-  assert.equal(show.name, 'Nippert Notebook');
-  assert.equal(show.subtitle, 'Cincinnati Football Podcast');
+  assert.equal(show.name, 'The Huddle Podcast');
+  assert.equal(show.shortName, 'The Huddle');
+  assert.equal(show.subtitle, 'Cincinnati Football · Weekly Preview & Review');
   assert.equal(show.nickname, 'Bearcats');
   assert.deepEqual(PODCAST_PUBLIC_HOSTS.map((host) => host.name), ['Mark Thompson', 'Sarah Chen']);
 });
 
-test('podcast identity follows a future current team instead of staying Cincinnati-branded', () => {
+test('podcast identity follows a future current team without renaming the show', () => {
   const show = resolvePodcastShow({
     player: { college: 'Michigan' },
     newsroomIssues: [{ outletProfile: { school: 'Michigan', localOutletName: 'Ann Arbor Saturday' } }],
   });
   assert.equal(show.school, 'Michigan');
-  assert.match(show.name, /Michigan/);
-  assert.notEqual(show.name, PODCAST_SHOW.name);
+  assert.equal(show.name, PODCAST_SHOW.name);
+  assert.equal(show.name, 'The Huddle Podcast');
+  assert.match(show.subtitle, /Michigan Football/);
   assert.notEqual(show.primary, '#e00122');
+});
+
+test('fresh uncommitted careers do not assume Cincinnati or another college', () => {
+  const show = resolvePodcastShow({ player: { college: '', school: '' }, newsroomIssues: [] });
+  assert.equal(show.name, 'The Huddle Podcast');
+  assert.equal(show.school, 'Road to Glory');
+  assert.equal(show.subtitle, 'Road to Glory · Weekly Preview & Review');
 });
 
 test('program-specific artwork is accepted by the legacy Current Week player', () => {

@@ -119,7 +119,7 @@ test('app-side validation drops invalid enum values and out-of-range facts', asy
   }
 });
 
-test('a reviewable Gemini result survives when OpenAI fallback is unavailable', async () => {
+test('a reviewable Gemini result survives while paid fallback remains blocked by default', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -147,7 +147,8 @@ test('a reviewable Gemini result survives when OpenAI fallback is unavailable', 
 
     assert.equal(result.usage.provider, 'google');
     assert.equal(result.usage.reviewRecommended, true);
-    assert.equal(result.usage.fallbackUnavailable, true);
+    assert.equal(result.usage.paidFallbackBlocked, true);
+    assert.equal(result.usage.fallbackUnavailable, undefined);
     assert.equal(result.analysis.facts[0].confidence, 0.63);
   } finally {
     globalThis.fetch = originalFetch;

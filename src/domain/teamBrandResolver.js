@@ -1,3 +1,5 @@
+import { resolveTeamMediaProfile } from './teamMediaProfile.js';
+
 const ESPN_TEAMS_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=500';
 const CACHE_KEY = 'dynastyhq-college-team-brands-v1';
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -51,6 +53,16 @@ export const fallbackTeamBrand = (name, options = {}) => {
   };
 };
 
+export const catalogTeamBrand = (name) => {
+  const profile = resolveTeamMediaProfile({ school: name });
+  if (profile?.profileSource !== 'fbs-2026') return fallbackTeamBrand(name);
+  return fallbackTeamBrand(profile.school || name, {
+    primaryColor: profile.primary,
+    secondaryColor: profile.secondary,
+    source: 'fbs-2026',
+  });
+};
+
 const teamAliases = (team = {}) => {
   const aliases = new Set([
     team.displayName,
@@ -69,16 +81,19 @@ const teamAliases = (team = {}) => {
   return [...aliases];
 };
 
-const toBrand = (team = {}) => ({
-  id: clean(team.id) || null,
-  displayName: clean(team.displayName || team.shortDisplayName || team.location || team.name) || 'Team',
-  abbreviation: clean(team.abbreviation) || initialsFor(team.displayName || team.location || team.name),
-  primaryColor: ensureHex(team.color, '#23313f'),
-  secondaryColor: ensureHex(team.alternateColor, '#d7dee5'),
-  logo: team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href || team.logos?.[0]?.href || '',
-  aliases: teamAliases(team),
-  source: 'espn',
-});
+const toBrand = (team = {}) => {
+  const catalog = catalogTeamBrand(team.location || team.shortDisplayName || team.displayName);
+  return {
+    id: clean(team.id) || null,
+    displayName: clean(team.displayName || team.shortDisplayName || team.location || team.name) || 'Team',
+    abbreviation: clean(team.abbreviation) || initialsFor(team.displayName || team.location || team.name),
+    primaryColor: catalog.source === 'fbs-2026' ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
+    secondaryColor: catalog.source === 'fbs-2026' ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
+    logo: team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href || team.logos?.[0]?.href || '',
+    aliases: teamAliases(team),
+    source: 'espn+fbs-2026',
+  };
+};
 
 const readCache = () => {
   if (typeof window === 'undefined' || !window.localStorage) return null;
@@ -148,7 +163,8 @@ const scoreCandidate = (query, team) => {
 
 export const resolveCollegeTeamBrand = async (name) => {
   const query = normalizeTeamName(name);
-  if (!query) return fallbackTeamBrand(name);
+  const catalog = catalogTeamBrand(name);
+  if (!query) return catalog;
 
   try {
     const index = await getIndex();
@@ -160,9 +176,9 @@ export const resolveCollegeTeamBrand = async (name) => {
       .filter((entry) => entry.score > 0)
       .sort((left, right) => right.score - left.score);
 
-    return ranked[0]?.team || fallbackTeamBrand(name);
+    return ranked[0]?.team || catalog;
   } catch {
-    return fallbackTeamBrand(name);
+    return catalog;
   }
 };
 

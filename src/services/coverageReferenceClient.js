@@ -1,4 +1,5 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
+import { readPaidVisionFallbackEnabled } from './visionFallbackPreference.js';
 
 export const analyzeCoverageReference = async ({ idToken, imageDataUrl, fileName, school }) => {
   const response = await fetch('/api/analyze-coverage-reference', {
@@ -7,7 +8,13 @@ export const analyzeCoverageReference = async ({ idToken, imageDataUrl, fileName
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ imageDataUrl, fileName, school, scanKind: 'coverage' }),
+    body: JSON.stringify({
+      imageDataUrl,
+      fileName,
+      school,
+      scanKind: 'coverage',
+      allowPaidFallback: readPaidVisionFallbackEnabled(),
+    }),
   });
 
   let body = {};

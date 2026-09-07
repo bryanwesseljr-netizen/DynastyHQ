@@ -31,7 +31,7 @@ test('mobile broadcast nav waits for the header and remounts if React replaces i
   assert.match(portal, /header\.insertBefore\(navHost, ticker\)/);
 });
 
-test('mobile avatar no longer opens the legacy tile navigation', async () => {
+test('mobile avatar no longer opens the visible legacy tile navigation', async () => {
   const [portal, styles] = await Promise.all([
     readFile(portalUrl, 'utf8'),
     readFile(stylesUrl, 'utf8'),
@@ -41,6 +41,20 @@ test('mobile avatar no longer opens the legacy tile navigation', async () => {
   assert.match(portal, /event\.stopImmediatePropagation\?\.\(\)/);
   assert.match(styles, /\.dhq-broadcast-mobile-menu,[\s\S]*#mobile-primary-navigation[\s\S]*display: none !important;/);
   assert.match(styles, /\.dhq-mobile-more-sheet/);
+});
+
+test('More sheet mounts the hidden legacy menu so secondary tools remain navigable', async () => {
+  const portal = await readFile(portalUrl, 'utf8');
+
+  assert.match(portal, /bypassProfileCaptureRef/);
+  assert.match(portal, /legacyMenuOpenedByPortalRef/);
+  assert.match(portal, /document\.getElementById\('mobile-primary-navigation'\)/);
+  assert.match(portal, /bypassProfileCaptureRef\.current = true;[\s\S]*profileButton\.click\(\)/);
+  assert.match(portal, /setNavigationRevision\(\(revision\) => revision \+ 1\)/);
+  assert.match(portal, /secondaryItems\.filter\(\(item\) => findNavigationButton\(item\.matcher\)\)/);
+  ['Recruiting', 'Settings', 'Career Handbook'].forEach((label) => {
+    assert.match(portal, new RegExp(`label: '${label}'`));
+  });
 });
 
 test('mobile broadcast framing reserves room for header nav and ticker without crushing the homepage', async () => {

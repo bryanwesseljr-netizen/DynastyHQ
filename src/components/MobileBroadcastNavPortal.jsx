@@ -14,6 +14,7 @@ import './mobile-broadcast.css';
 import './mobile-broadcast-fixes.css';
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
 
 const primaryItems = [
   { id: 'dashboard', label: 'Home', matcher: /^home$/i },
@@ -64,6 +65,13 @@ const MobileBroadcastNavPortal = () => {
     if (!root) return undefined;
 
     const ensureHost = () => {
+      if (!isMobileViewport()) {
+        document.getElementById('dhq-mobile-broadcast-nav-host')?.remove();
+        setHost(null);
+        setMoreOpen(false);
+        return;
+      }
+
       const header = document.querySelector('.dhq-broadcast-header');
       const ticker = header?.querySelector('.dhq-score-ticker');
       if (!header || !ticker) {
@@ -87,9 +95,11 @@ const MobileBroadcastNavPortal = () => {
     ensureHost();
     const observer = new MutationObserver(ensureHost);
     observer.observe(root, { childList: true, subtree: true });
+    window.addEventListener('resize', ensureHost);
 
     return () => {
       observer.disconnect();
+      window.removeEventListener('resize', ensureHost);
       document.getElementById('dhq-mobile-broadcast-nav-host')?.remove();
       setHost(null);
     };
@@ -184,7 +194,7 @@ const MobileBroadcastNavPortal = () => {
     window.setTimeout(() => setActive(currentActive()), 40);
   };
 
-  if (!host) return null;
+  if (!host || !isMobileViewport()) return null;
 
   return createPortal(
     <>

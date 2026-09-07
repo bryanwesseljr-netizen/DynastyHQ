@@ -41,7 +41,7 @@ test('matchup helmet component applies team colors and an unmirrored logo decal'
   assert.match(component, /<g transform=\{mirror\}>[\s\S]*<\/g>[\s\S]*\{brand\.logo \?/);
 });
 
-test('dynamic helmet portal replaces Home and Game Hub static matchup art', async () => {
+test('dynamic helmet portal replaces Home and Game Hub static art only for verified FBS matchups', async () => {
   const [portal, owner, styles] = await Promise.all([
     readFile(portalUrl, 'utf8'),
     readFile(ownerUrl, 'utf8'),
@@ -53,15 +53,21 @@ test('dynamic helmet portal replaces Home and Game Hub static matchup art', asyn
   assert.match(portal, /\.dhq-game-hub \.dhq-gh-hero > img/);
   assert.match(portal, /currentWeekSetup/);
   assert.match(portal, /publicationIdFor\(game\.season, game\.week\) === selectedValue/);
+  assert.match(portal, /catalogTeamBrand\(name\)\.source === 'fbs-2026'/);
+  assert.match(portal, /dynamic: !highSchool && isFbsTeam\(school\) && isFbsTeam\(opponent\)/);
+  assert.match(portal, /classList\.toggle\('dhq-dynamic-helmet-source-hidden', homeModel\.dynamic\)/);
+  assert.match(portal, /classList\.toggle\('dhq-dynamic-helmet-source-hidden', gameHubModel\.dynamic\)/);
   assert.match(styles, /\.dhq-dynamic-helmet-source-hidden/);
   assert.match(styles, /\.dhq-gh-matchup-helmets/);
 });
 
-test('high-school matchup helmets never pretend to be an FBS program', async () => {
+test('high-school and unresolved matchups preserve the original polished helmet art', async () => {
   const portal = await readFile(portalUrl, 'utf8');
-  const component = await readFile(componentUrl, 'utf8');
 
   assert.match(portal, /stage === CAREER_STAGES\.HIGH_SCHOOL/);
-  assert.match(component, /source: 'high-school'/);
-  assert.match(component, /fallbackTeamBrand/);
+  assert.match(portal, /dynamic: !highSchool/);
+  assert.match(portal, /homeHost && homeModel\.dynamic \? createPortal/);
+  assert.match(portal, /gameHubHost && gameHubModel\.dynamic \? createPortal/);
+  assert.match(portal, /homeHost\.hidden = !homeModel\.dynamic/);
+  assert.match(portal, /gameHubHost\.hidden = !gameHubModel\.dynamic/);
 });

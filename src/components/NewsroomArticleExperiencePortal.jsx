@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../newsroom-article-polish.css';
@@ -32,6 +32,11 @@ const findTeamNewsButton = (root) => [...root.querySelectorAll('nav[aria-label="
 
 const NewsroomArticleExperiencePortal = () => {
   const { career } = useOwnerCareer();
+  const careerRef = useRef(career);
+
+  useEffect(() => {
+    careerRef.current = career;
+  }, [career]);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -42,9 +47,20 @@ const NewsroomArticleExperiencePortal = () => {
     let homeResetGeneration = 0;
     let wasNewsroomActive = false;
 
+    const cancelHomeReset = () => {
+      homeResetGeneration += 1;
+    };
+
     const forceNewsroomHome = () => {
       const generation = ++homeResetGeneration;
       const delays = [0, 40, 120, 240, 450, 750, 1100, 1600, 2200, 3000];
+      let hasScrolledForThisNavigation = false;
+
+      const scrollOnce = () => {
+        if (hasScrolledForThisNavigation) return;
+        hasScrolledForThisNavigation = true;
+        scrollNewsroomTop();
+      };
 
       delays.forEach((delay) => {
         window.setTimeout(() => {
@@ -53,19 +69,20 @@ const NewsroomArticleExperiencePortal = () => {
           const backButton = findBackButton(root);
           if (backButton) {
             backButton.click();
-            scrollNewsroomTop();
+            scrollOnce();
             return;
           }
 
           const teamButton = findTeamNewsButton(root);
-          if (teamButton) {
-            // Once the all-articles home exists, one Team News selection is enough.
-            // Cancel the remaining delayed resets so an intentional Regional/National
-            // click immediately after refresh cannot be pulled back to Team News.
-            if (teamButton.getAttribute('data-active') !== 'true') teamButton.click();
-            if (generation === homeResetGeneration) homeResetGeneration += 1;
-          }
-          scrollNewsroomTop();
+          if (!teamButton) return;
+
+          // Once the all-articles home exists, one Team News selection is enough.
+          // Scroll only when the destination is actually ready. The old behavior
+          // scrolled on every retry timer, which fought normal mobile swipes while
+          // lazy Newsroom content was still mounting.
+          if (teamButton.getAttribute('data-active') !== 'true') teamButton.click();
+          scrollOnce();
+          if (generation === homeResetGeneration) homeResetGeneration += 1;
         }, delay);
       });
     };
@@ -110,10 +127,11 @@ const NewsroomArticleExperiencePortal = () => {
       else if (audience === 'regional') newsroomRoot.classList.add('dhq-newsroom-reader-regional');
       else if (audience === 'national' || audience === 'national-lead') newsroomRoot.classList.add('dhq-newsroom-reader-national');
 
-      const selectedIssue = (career?.newsroomIssues || []).find((issue) => issue.id === issueSelect?.value)
-        || (career?.newsroomIssues || []).find((issue) => issue.publicationId === issueSelect?.value);
+      const currentCareer = careerRef.current;
+      const selectedIssue = (currentCareer?.newsroomIssues || []).find((issue) => issue.id === issueSelect?.value)
+        || (currentCareer?.newsroomIssues || []).find((issue) => issue.publicationId === issueSelect?.value);
       if (selectedIssue) {
-        const profile = resolveIssueTeamMediaProfile(selectedIssue, career);
+        const profile = resolveIssueTeamMediaProfile(selectedIssue, currentCareer);
         const primary = profile.primary || '#e00122';
         const secondary = profile.secondary || '#050505';
         const accent = profile.accent || '#ffffff';
@@ -167,7 +185,7 @@ const NewsroomArticleExperiencePortal = () => {
     const handleNewsroomPointerDown = (event) => {
       if (isNewsroomDeskButton(event)) {
         // Explicit desk navigation always wins over any refresh/login home-reset timers.
-        homeResetGeneration += 1;
+        cancelHomeReset();
         return;
       }
       if (!isNewsroomTopNavButton(event)) return;
@@ -176,11 +194,21 @@ const NewsroomArticleExperiencePortal = () => {
 
     const handleNewsroomClick = (event) => {
       if (isNewsroomDeskButton(event)) {
-        homeResetGeneration += 1;
+        cancelHomeReset();
         return;
       }
       if (!isNewsroomTopNavButton(event)) return;
       forceNewsroomHome();
+    };
+
+    const handleUserScrollIntent = () => {
+      const main = root.querySelector('main[data-active-tab="newsroom"]');
+      if (main) cancelHomeReset();
+    };
+
+    const handleScrollKey = (event) => {
+      if (!['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) return;
+      handleUserScrollIntent();
     };
 
     sync();
@@ -193,15 +221,21 @@ const NewsroomArticleExperiencePortal = () => {
     });
     document.addEventListener('pointerdown', handleNewsroomPointerDown, true);
     document.addEventListener('click', handleNewsroomClick, true);
+    document.addEventListener('wheel', handleUserScrollIntent, { capture: true, passive: true });
+    document.addEventListener('touchmove', handleUserScrollIntent, { capture: true, passive: true });
+    document.addEventListener('keydown', handleScrollKey, true);
 
     return () => {
-      homeResetGeneration += 1;
+      cancelHomeReset();
       observer.disconnect();
       document.removeEventListener('pointerdown', handleNewsroomPointerDown, true);
       document.removeEventListener('click', handleNewsroomClick, true);
+      document.removeEventListener('wheel', handleUserScrollIntent, true);
+      document.removeEventListener('touchmove', handleUserScrollIntent, true);
+      document.removeEventListener('keydown', handleScrollKey, true);
       root.querySelector('main')?.classList.remove('dhq-newsroom-article-main');
     };
-  }, [career]);
+  }, []);
 
   return null;
 };

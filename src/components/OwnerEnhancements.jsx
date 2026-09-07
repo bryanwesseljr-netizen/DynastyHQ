@@ -1,6 +1,15 @@
 import WeekSetupPortal from './WeekSetupPortal.jsx';
 import GameweekFlowPortal from './GameweekFlowPortal.jsx';
 import QuickImportPortal from './QuickImportPortal.jsx';
+import SessionImportPortal from './SessionImportPortal.jsx';
+import CareerOverviewPortal from './CareerOverviewPortal.jsx';
+import GameHubPortal from './GameHubPortal.jsx';
+import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
+import WeekHubRoutingPortal from './WeekHubRoutingPortal.jsx';
+import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
+import FreshStartPortal from './FreshStartPortal.jsx';
+import ImmersionPortal from './ImmersionPortal.jsx';
+import PodcastUniversalBrandPortal from './PodcastUniversalBrandPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
 import DryRunModePortal from './DryRunModePortal.jsx';
@@ -33,11 +42,20 @@ import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 const OwnerEnhancements = () => (
   <OwnerCareerProvider>
     <TeamAccentPortal />
+    <MobileBroadcastNavPortal />
+    <FreshStartPortal />
+    <ImmersionPortal />
+    <PodcastUniversalBrandPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />
     <WeekSetupPortal />
     <GameweekFlowPortal />
     <QuickImportPortal />
+    <SessionImportPortal />
+    <CareerOverviewPortal />
+    <WeekHubRoutingPortal />
+    <GameHubPortal />
+    <GameHubMobilePolishPortal />
     <WeeklyAgendaV2Portal />
     <WeeklyDataIntakePortal />
     <DryRunModePortal />

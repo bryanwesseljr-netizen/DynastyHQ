@@ -18,12 +18,13 @@ const geminiText = (payload = {}) => (
     .trim()
 );
 
-const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fallbackReason = '', reviewRecommended = false }) => ({
+const normalizeUsage = ({ provider, model, usage = {}, fallbackUsed = false, fallbackReason = '', reviewRecommended = false, paidFallbackBlocked = false }) => ({
   provider,
   model,
   fallbackUsed,
   fallbackReason,
   reviewRecommended,
+  paidFallbackBlocked,
   inputTokens: Number(usage.promptTokenCount ?? usage.input_tokens ?? usage.inputTokens ?? 0) || 0,
   outputTokens: Number(usage.candidatesTokenCount ?? usage.output_tokens ?? usage.outputTokens ?? 0) || 0,
   totalTokens: Number(usage.totalTokenCount ?? usage.total_tokens ?? usage.totalTokens ?? 0) || 0,
@@ -221,6 +222,7 @@ export const analyzeVisionFreeFirst = async ({
   userText,
   imageDataUrl,
   maxOutputTokens = 3000,
+  allowPaidFallback = false,
 }) => {
   let geminiError = null;
   let geminiCandidate = null;
@@ -240,6 +242,29 @@ export const analyzeVisionFreeFirst = async ({
   }
 
   const fallbackReason = geminiError?.code || (process.env.GEMINI_API_KEY ? 'GEMINI_FAILED' : 'GEMINI_NOT_CONFIGURED');
+
+  if (!allowPaidFallback) {
+    if (geminiCandidate) {
+      return {
+        ...geminiCandidate,
+        usage: {
+          ...geminiCandidate.usage,
+          paidFallbackBlocked: true,
+          fallbackReason: 'PAID_FALLBACK_DISABLED',
+          reviewRecommended: true,
+        },
+      };
+    }
+
+    const blocked = new Error(geminiError?.message || 'Gemini primary scan failed and paid fallback is disabled.');
+    blocked.status = Number(geminiError?.status) || 502;
+    blocked.code = geminiError?.code || 'GEMINI_FAILED';
+    blocked.geminiError = geminiError?.message || '';
+    blocked.geminiDetails = geminiError?.details || null;
+    blocked.paidFallbackBlocked = true;
+    throw blocked;
+  }
+
   try {
     return await requestOpenAiLuna({
       schema,

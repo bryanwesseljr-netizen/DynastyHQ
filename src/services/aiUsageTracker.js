@@ -27,6 +27,7 @@ export const recordAiScanUsage = (kind, responseBody = {}) => {
     fallbackUsed: Boolean(usage.fallbackUsed),
     fallbackReason: String(usage.fallbackReason || ''),
     fallbackUnavailable: Boolean(usage.fallbackUnavailable),
+    paidFallbackBlocked: Boolean(usage.paidFallbackBlocked),
     reviewRecommended: Boolean(usage.reviewRecommended),
     inputTokens: Number(usage.inputTokens) || 0,
     outputTokens: Number(usage.outputTokens) || 0,
@@ -51,6 +52,7 @@ export const summarizeAiScanUsage = (events = readAiScanUsage()) => {
     if (event.provider === 'openai') summary.openai += 1;
     if (event.fallbackUsed) summary.fallbacks += 1;
     if (event.fallbackUnavailable) summary.unavailableFallbacks += 1;
+    if (event.paidFallbackBlocked) summary.blockedPaidFallbacks += 1;
     if (event.reviewRecommended) summary.reviewRecommended += 1;
     summary.totalTokens += Number(event.totalTokens) || 0;
     return summary;
@@ -60,6 +62,7 @@ export const summarizeAiScanUsage = (events = readAiScanUsage()) => {
     openai: 0,
     fallbacks: 0,
     unavailableFallbacks: 0,
+    blockedPaidFallbacks: 0,
     reviewRecommended: 0,
     totalTokens: 0,
   });

@@ -9,7 +9,7 @@ import {
   HeartPulse, Briefcase, DollarSign, Users, AlertTriangle,
   Camera, CheckCircle, Plus, Trash2, Medal,
   Calendar, Megaphone, TrendingUp, GripVertical, FileText, CheckCircle2, Pencil, ScanLine,
-  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen, Menu
+  Share2, Mail, ClipboardSignature, Printer, Copy, BookOpen, Bell, ChevronDown, ChevronRight
 } from 'lucide-react';
 
 // --- FIREBASE CLOUD DATABASE IMPORTS ---
@@ -24,7 +24,7 @@ import {
   linkWithCredential 
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc, runTransaction } from 'firebase/firestore';
-import { appId, auth, db, firebaseApp } from './firebase';
+import { appId, auth, db, firebaseApp, isPreviewDeployment, productionAppId } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
 import CareerArchive from './components/CareerArchive';
 import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
@@ -154,7 +154,7 @@ const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));
 const GroundedNewsroom = lazy(() => import('./components/GroundedNewsroom'));
 const NewsroomEmptyState = lazy(() => import('./components/NewsroomEmptyState'));
 const MilestoneRecorder = lazy(() => import('./components/MilestoneRecorder'));
-const CareerCommandCenter = lazy(() => import('./components/CareerCommandCenter'));
+const CareerCommandCenter = lazy(() => import('./components/BroadcastDashboard'));
 const PersonnelCfoWorkspace = lazy(() => import('./components/PersonnelCfoWorkspace'));
 const OffseasonPlanner = lazy(() => import('./components/OffseasonPlanner'));
 const PodcastStudio = lazy(() => import('./components/PodcastStudio'));
@@ -390,7 +390,27 @@ const App = () => {
         }
       } else {
         const localAudio = await loadLegacyPodcastAudioLocal();
-        const freshState = { ...defaultState, podcastAudio: localAudio || '' };
+        let previewSeed = null;
+        if (isPreviewDeployment) {
+          try {
+            const productionRef = doc(db, 'artifacts', productionAppId, 'users', userState.uid, 'hq_data', 'main');
+            const productionSnapshot = await getDoc(productionRef);
+            if (productionSnapshot.exists()) previewSeed = migrateCareerState(productionSnapshot.data(), defaultState);
+          } catch (error) {
+            console.warn('Preview seed could not be copied; starting with a blank preview career.', error);
+          }
+        }
+        const freshState = {
+          ...(previewSeed || defaultState),
+          podcastAudio: localAudio || '',
+          ...(isPreviewDeployment ? {
+            _preview: {
+              isolated: true,
+              seededFromProduction: Boolean(previewSeed),
+              createdAt: new Date().toISOString(),
+            },
+          } : {}),
+        };
         setDoc(docRef, freshState).catch(console.error);
         setAppState(freshState);
         setRtgUpdate(freshState.rtg);
@@ -2023,7 +2043,10 @@ const handleSaveGameClick = () => {
       ...(!isReadOnly ? [{ id: 'settings', icon: Settings, label: 'Settings' }] : []),
       ...(!isReadOnly ? [{ id: 'rules', icon: FileText, label: 'Career Handbook' }] : []),
     ];
-    const desktopNavItems = navItems.filter((item) => !['frontOffice', 'offseason', 'rules'].includes(item.id));
+    const desktopNavOrder = ['dashboard', 'trophies', 'dataEntry', 'newsroom', 'chronicle', 'podcast'];
+    const desktopNavItems = desktopNavOrder
+      .map((id) => navItems.find((item) => item.id === id))
+      .filter(Boolean);
     const mobileNavItems = [
       ...navItems.filter((item) => item.id === 'dashboard'),
       ...navItems.filter((item) => item.id === 'dataEntry'),
@@ -2036,6 +2059,26 @@ const handleSaveGameClick = () => {
         : (saveStatus.state === 'conflict'
           ? 'Reload required'
           : (saveStatus.state === 'error' ? 'Retry needed' : 'Cloud save ready')));
+    const initials = (appState.player?.name || appState.coach?.name || 'BW')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'BW';
+    const tickerSchool = String(appState.player?.college || appState.player?.school || 'TEAM').trim();
+    const abbreviate = (value, fallback = 'TBD') => {
+      const text = String(value || fallback).trim().toUpperCase();
+      const words = text.split(/\s+/).filter(Boolean);
+      return words.length > 1
+        ? words.map((word) => word[0]).join('').slice(0, 4)
+        : text.slice(0, 4);
+    };
+    const tickerGames = [...(appState.gameLogs || [])]
+      .filter((game) => game?.opponent)
+      .sort((left, right) => (Number(left?.season || 1) - Number(right?.season || 1)) || (Number(left?.week || 0) - Number(right?.week || 0)))
+      .slice(-4)
+      .reverse();
 
     const openNavItem = (item) => {
       if (item.id === 'rules') {
@@ -2059,18 +2102,20 @@ const handleSaveGameClick = () => {
     };
 
     return (
-      <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print">
-        <div className="flex h-[64px] w-full items-stretch px-4 2xl:px-6">
-          <button type="button" onClick={() => openNavItem({ id: 'dashboard' })} className="flex shrink-0 items-center gap-2.5 pr-7 text-left 2xl:pr-9" aria-label="Open Dynasty HQ dashboard">
-            <span className="flex h-8 w-7 items-center justify-center border border-amber-400 bg-amber-500/10 text-amber-400 [clip-path:polygon(50%_0,94%_20%,88%_78%,50%_100%,12%_78%,6%_20%)]">
-              <Trophy size={14} />
-            </span>
+      <header className="fixed inset-x-0 top-0 z-[120] border-b border-slate-800/90 bg-[#02070a]/98 shadow-xl shadow-black/50 backdrop-blur-xl no-print dhq-broadcast-header">
+        <div className="dhq-broadcast-header__main flex h-[64px] w-full items-stretch px-4 2xl:px-6">
+          <button type="button" onClick={() => openNavItem({ id: 'dashboard' })} className="dhq-broadcast-header-logo flex shrink-0 items-center pr-7 text-left 2xl:pr-9" aria-label="Open Dynasty HQ dashboard">
             <span className="whitespace-nowrap text-[18px] font-black uppercase tracking-[0.08em] text-slate-100">Dynasty <span className="text-amber-400">HQ</span></span>
+            {isPreviewDeployment ? <small>SAFE PREVIEW</small> : null}
           </button>
 
           <nav className="dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden min-[1200px]:flex" aria-label="Primary navigation">
             {desktopNavItems.map((item) => {
               const selected = activeTab === item.id;
+              let displayLabel = item.id === 'podcast' ? 'Podcast' : item.label;
+              if (item.id === 'dashboard') displayLabel = 'Home';
+              if (item.id === 'dataEntry') displayLabel = 'Game Hub';
+              if (item.id === 'trophies') displayLabel = 'Career';
               return (
                 <button
                   key={item.id}
@@ -2080,20 +2125,37 @@ const handleSaveGameClick = () => {
                   onClick={() => openNavItem(item)}
                   className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap font-black uppercase transition-colors ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <span>{item.id === 'podcast' ? 'Podcast' : item.label}</span>
+                  <span>{displayLabel}</span>
                   {selected ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" /> : null}
                 </button>
               );
             })}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center min-[1200px]:hidden">
-            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="flex h-9 items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-white min-[1200px]:hidden"><Menu size={16} /> Menu</button>
+          <div className="dhq-broadcast-header__actions ml-auto flex shrink-0 items-center">
+            <button type="button" onClick={() => openNavItem({ id: 'chronicle' })} className="dhq-broadcast-header__icon" aria-label="Open latest career updates"><Bell size={19} /><i /></button>
+            <button type="button" onClick={() => openNavItem({ id: 'settings' })} className="dhq-broadcast-header__icon hidden min-[1200px]:grid" aria-label="Settings"><Settings size={20} /></button>
+            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="dhq-broadcast-header__profile">{initials}</button>
+            <button type="button" onClick={() => setMobileNavOpen((open) => !open)} className="dhq-broadcast-header__chevron hidden min-[1200px]:grid" aria-label="Open profile menu"><ChevronDown size={17} /></button>
           </div>
         </div>
 
+        <div className="dhq-score-ticker" aria-label="Latest career scores">
+          <div className="dhq-score-ticker__live"><i /><strong>LIVE SCORES</strong></div>
+          {tickerGames.length ? tickerGames.map((game, index) => (
+            <button type="button" onClick={() => openNavItem({ id: 'chronicle' })} className="dhq-score-ticker__game" key={`${game.season || 1}-${game.week || index}-${game.opponent}`}>
+              <span>WK {game.week ?? '—'}</span><b>{abbreviate(tickerSchool)}</b><strong>{game.homeScore ?? '—'}</strong><i>–</i><strong>{game.awayScore ?? '—'}</strong><b>{abbreviate(game.opponent)}</b>
+            </button>
+          )) : (
+            <button type="button" onClick={() => openNavItem({ id: 'dataEntry' })} className="dhq-score-ticker__game dhq-score-ticker__empty">
+              <span>SEASON {appState.currentSeason || 1}</span><b>WEEK {appState.currentWeek ?? 1}</b><strong>AWAITING VERIFIED RESULT</strong>
+            </button>
+          )}
+          <button type="button" className="dhq-score-ticker__all" onClick={() => openNavItem({ id: 'chronicle' })}>ALL SCORES <ChevronRight size={18} /></button>
+        </div>
+
         {mobileNavOpen ? (
-          <div id="mobile-primary-navigation" className="max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl min-[1200px]:hidden">
+          <div id="mobile-primary-navigation" className="dhq-broadcast-mobile-menu max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain border-t border-slate-800 bg-[#071019] px-4 py-4 shadow-2xl">
             <nav className="mx-auto grid max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Mobile primary navigation">
               {mobileNavItems.map((item) => {
                 const Icon = item.icon;
@@ -2124,6 +2186,20 @@ const handleSaveGameClick = () => {
           readOnly={isReadOnly}
           onNavigate={(tab) => {
             if (tab === 'newsroom') setNewsroomFocusId('');
+            if (tab === 'importSession' || tab === 'gameHub') {
+              setActiveTab('dataEntry');
+              window.setTimeout(() => {
+                const target = tab === 'importSession'
+                  ? document.querySelector('[data-weekly-data-intake], [data-gameweek-scanner]')
+                  : document.querySelector('[data-week-setup-panel], #dhq-gameweek-flow-agenda, .dhq-weekly-agenda-workspace');
+                target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 180);
+              return;
+            }
+            if (tab === 'career') {
+              setActiveTab('chronicle');
+              return;
+            }
             if (tab === 'commandCenter') {
               setActiveTab('dashboard');
               window.setTimeout(() => {
@@ -3990,7 +4066,7 @@ const handleSaveGameClick = () => {
        {renderNav()}
        
        {/* Main Content Area */}
-       <main data-active-tab={activeTab} className={`dhq-page-main relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[64px]' : 'px-4 pb-4 pt-24 md:px-8 md:pb-8 md:pt-28'}`}>
+       <main data-active-tab={activeTab} className={`dhq-page-main relative w-full flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'px-0 pb-0 pt-[127px] max-[767px]:pt-[106px]' : 'px-4 pb-4 pt-[122px] md:px-8 md:pb-8 md:pt-[147px]'}`}>
          {/* Background Image */}
          <div className="pointer-events-none absolute inset-0 z-0 fixed" aria-hidden="true" data-background-sport="football">
             <img src={getBgImage()} className="h-full w-full object-cover opacity-[0.72]" alt="" />

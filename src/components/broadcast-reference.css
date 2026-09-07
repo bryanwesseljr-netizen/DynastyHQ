@@ -1,0 +1,133 @@
+/* Desktop framing matched to the approved DynastyHQ broadcast reference. */
+@media (min-width: 768px) {
+  .dhq-broadcast-header {
+    height: 108px !important;
+    background: rgba(1, 8, 14, 0.985) !important;
+    border-bottom-color: rgba(123, 139, 152, 0.24) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.36) !important;
+  }
+
+  .dhq-broadcast-header__main {
+    height: 66px !important;
+    padding-right: 36px !important;
+    padding-left: 36px !important;
+    border-bottom: 1px solid rgba(139, 154, 168, 0.2) !important;
+  }
+
+  .dhq-broadcast-header-logo {
+    width: 292px !important;
+  }
+
+  .dhq-broadcast-header-logo > span {
+    font-size: 2.02rem !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .dhq-broadcast-header-logo > small {
+    bottom: 5px !important;
+    font-size: 0.43rem !important;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav {
+    gap: clamp(34px, 3.55vw, 65px) !important;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav-item {
+    font-size: 0.83rem !important;
+    font-weight: 900 !important;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav-item > span:last-child {
+    bottom: 0 !important;
+    height: 2px !important;
+  }
+
+  .dhq-broadcast-header__actions {
+    width: 292px !important;
+    gap: 12px !important;
+  }
+
+  .dhq-broadcast-header__icon,
+  .dhq-broadcast-header__chevron {
+    height: 36px !important;
+  }
+
+  .dhq-broadcast-header__profile {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .dhq-score-ticker {
+    height: 42px !important;
+    padding: 0 34px !important;
+    background: rgba(1, 8, 14, 0.985) !important;
+  }
+
+  .dhq-score-ticker__live {
+    width: 132px !important;
+    gap: 8px !important;
+  }
+
+  .dhq-score-ticker__live i {
+    width: 9px !important;
+    height: 9px !important;
+  }
+
+  .dhq-score-ticker__live strong,
+  .dhq-score-ticker__all {
+    font-size: 0.62rem !important;
+  }
+
+  .dhq-score-ticker__game {
+    width: 300px !important;
+    gap: 12px !important;
+  }
+
+  .dhq-score-ticker__game span {
+    font-size: 0.62rem !important;
+  }
+
+  .dhq-score-ticker__game b,
+  .dhq-score-ticker__game strong {
+    font-size: 0.66rem !important;
+  }
+
+  .dhq-score-ticker__empty {
+    width: 450px !important;
+    padding-left: 28px !important;
+  }
+
+  .dhq-score-ticker__all {
+    width: 126px !important;
+  }
+
+  .dhq-page-main[data-active-tab="dashboard"] {
+    padding-top: 108px !important;
+  }
+
+  .dhq-page-main[data-active-tab="dashboard"] [data-background-sport="football"] img {
+    opacity: 0.88 !important;
+    filter: saturate(0.92) contrast(1.04) brightness(0.91);
+  }
+
+  .dhq-page-main[data-active-tab="dashboard"] [data-background-sport="football"] > div {
+    background: linear-gradient(
+      to bottom,
+      rgba(2, 8, 15, 0.2),
+      rgba(2, 8, 15, 0.28) 46%,
+      rgba(2, 8, 15, 0.48)
+    ) !important;
+  }
+}
+
+@media (max-width: 1199px) and (min-width: 768px) {
+  .dhq-broadcast-header-logo {
+    width: auto !important;
+    min-width: 220px;
+  }
+
+  .dhq-broadcast-header__actions {
+    width: auto !important;
+  }
+}

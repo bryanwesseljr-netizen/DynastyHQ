@@ -1,4 +1,4 @@
-import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress';
+import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress.js';
 
 export const WEEK_SETUP_TYPES = Object.freeze({
   GAME: 'game',
@@ -42,12 +42,17 @@ export const normalizeWeekSetup = (setup = {}, state = {}) => {
   const phase = Object.values(WEEK_PHASES).includes(setup.phase) ? setup.phase : WEEK_PHASES.REGULAR;
   const type = Object.values(WEEK_SETUP_TYPES).includes(setup.type) ? setup.type : WEEK_SETUP_TYPES.GAME;
   const customLabel = String(setup.label || '').trim();
+  const matchupText = (value) => (type === WEEK_SETUP_TYPES.GAME ? String(value || '').trim() : '');
   return {
     week,
     type,
     phase,
     label: customLabel || defaultWeekLabel({ week, type, phase }),
     customLabel,
+    opponent: matchupText(setup.opponent),
+    opponentRecord: matchupText(setup.opponentRecord),
+    kickoff: matchupText(setup.kickoff),
+    venue: matchupText(setup.venue),
     note: String(setup.note || '').trim(),
   };
 };
@@ -296,6 +301,10 @@ export const createByeWeekPublication = ({ state = {}, setup: rawSetup = {}, rtg
       type: WEEK_SETUP_TYPES.GAME,
       phase: nextPhase,
       label: '',
+      opponent: '',
+      opponentRecord: '',
+      kickoff: '',
+      venue: '',
       note: '',
     },
     weeklyUpdates: [...(state.weeklyUpdates || []), weeklyUpdate],

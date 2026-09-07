@@ -1,4 +1,5 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
+import { readPaidVisionFallbackEnabled } from './visionFallbackPreference.js';
 
 const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
   'game.teamTotalYards',
@@ -98,6 +99,7 @@ export const analyzeScreenshot = async ({
   const endpoint = useFreeCollegeScanner
     ? '/api/analyze-coverage-reference'
     : '/api/analyze-screenshot';
+  const allowPaidFallback = readPaidVisionFallbackEnabled();
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -113,6 +115,7 @@ export const analyzeScreenshot = async ({
       recruitingSchools,
       rosterPlayers,
       uploadContext,
+      allowPaidFallback,
       ...(useFreeCollegeScanner ? { scanKind: 'game' } : {}),
     }),
   });
@@ -130,6 +133,6 @@ export const analyzeScreenshot = async ({
     throw error;
   }
 
-  if (useFreeCollegeScanner) recordAiScanUsage('game-data', body);
+  recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
   return normalizeScreenshotAnalysis(body);
 };

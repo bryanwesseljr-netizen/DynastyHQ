@@ -33,6 +33,79 @@ textarea {
   letter-spacing: 0.06em;
 }
 
+.dhq-broadcast-header {
+  height: 127px;
+  color: #f3f4f5;
+  font-family: "Arial Narrow", "Roboto Condensed", "Aptos Narrow", Arial, sans-serif;
+}
+
+.dhq-broadcast-header__main {
+  height: 79px !important;
+  padding-right: 42px !important;
+  padding-left: 42px !important;
+  border-bottom: 1px solid rgba(139, 154, 168, 0.19);
+}
+
+.dhq-broadcast-header-logo {
+  position: relative;
+  width: 300px;
+  padding: 0 !important;
+}
+
+.dhq-broadcast-header-logo > span {
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 2.4rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  transform: skew(-5deg);
+}
+
+.dhq-broadcast-header-logo .text-amber-400 { color: #ee1637 !important; }
+.dhq-broadcast-header-logo > span .text-amber-400 { margin-left: -0.08em; }
+.dhq-broadcast-header-logo > small { position: absolute; bottom: 9px; left: 2px; color: #9ca7b0; font-family: Arial, sans-serif; font-size: 0.48rem; font-style: normal; font-weight: 900; letter-spacing: 0.16em; }
+.dhq-broadcast-header .dhq-primary-nav { justify-content: center; gap: clamp(40px, 4vw, 77px); }
+.dhq-broadcast-header .dhq-primary-nav-item { order: initial !important; padding: 0; font-size: 1rem; letter-spacing: 0.01em; text-transform: none; }
+.dhq-broadcast-header .dhq-primary-nav-item > span:last-child { bottom: 4px; background: #ee1637; box-shadow: none; }
+
+.dhq-broadcast-header__actions { width: 300px; justify-content: flex-end; gap: 15px; }
+.dhq-broadcast-header__icon,
+.dhq-broadcast-header__chevron { position: relative; display: grid; width: 35px; height: 40px; place-items: center; border: 0; background: transparent; color: #f3f4f5; }
+.dhq-broadcast-header__icon i { position: absolute; top: 7px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #ee1637; }
+.dhq-broadcast-header__profile { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #afb5bb; border-radius: 50%; background: transparent; color: white; font-size: 0.93rem; font-style: italic; font-weight: 900; }
+.dhq-broadcast-header__chevron { width: 20px; color: #c2c7cc; }
+
+.dhq-score-ticker {
+  display: flex;
+  height: 48px;
+  align-items: stretch;
+  overflow-x: auto;
+  padding: 0 43px;
+  border-bottom: 1px solid rgba(139, 154, 168, 0.19);
+  background: rgba(2, 9, 16, 0.97);
+  scrollbar-width: none;
+}
+
+.dhq-score-ticker::-webkit-scrollbar { display: none; }
+.dhq-score-ticker__live,
+.dhq-score-ticker__game,
+.dhq-score-ticker__all { display: flex; flex: 0 0 auto; align-items: center; }
+.dhq-score-ticker__live { width: 149px; gap: 10px; border-right: 1px solid rgba(139,154,168,0.23); }
+.dhq-score-ticker__live i { width: 12px; height: 12px; border-radius: 50%; background: #ee1637; }
+.dhq-score-ticker__live strong,
+.dhq-score-ticker__all { font-size: 0.72rem; letter-spacing: 0.05em; }
+.dhq-score-ticker__game { width: 344px; justify-content: center; gap: 16px; border: 0; border-right: 1px solid rgba(139,154,168,0.23); background: transparent; color: #f3f4f5; }
+.dhq-score-ticker__game span { color: #757d86; font-size: 0.73rem; }
+.dhq-score-ticker__game b { font-size: 0.77rem; letter-spacing: 0.06em; }
+.dhq-score-ticker__game strong { font-size: 0.81rem; }
+.dhq-score-ticker__game i { color: #88929c; font-style: normal; }
+.dhq-score-ticker__empty { width: 520px; justify-content: flex-start; padding-left: 35px; }
+.dhq-score-ticker__empty strong { color: #9aa3ac; font-size: 0.72rem; letter-spacing: 0.06em; }
+.dhq-score-ticker__all { width: 140px; justify-content: center; gap: 10px; border: 0; background: transparent; color: white; }
+
+.dhq-broadcast-mobile-menu { top: 127px; max-height: calc(100dvh - 127px) !important; }
+
 .dhq-command-title {
   font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
   font-size: clamp(2.45rem, 3.1vw, 3.55rem);
@@ -756,7 +829,7 @@ textarea {
      stay in the first viewport. Long records still scroll inside their own
      lists instead of forcing oversized page-level whitespace. */
   .dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) {
-    padding: 76px 16px 14px !important;
+    padding: 139px 16px 14px !important;
     scrollbar-gutter: stable;
   }
 
@@ -960,6 +1033,37 @@ textarea {
   .dhq-command-title > span {
     white-space: normal;
   }
+}
+
+@media (max-width: 1199px) {
+  .dhq-broadcast-header__actions { width: auto; }
+}
+
+@media (max-width: 767px) {
+  .dhq-broadcast-header { height: 106px; }
+  .dhq-broadcast-header__main {
+    height: 64px !important;
+    padding-right: 14px !important;
+    padding-left: 14px !important;
+  }
+  .dhq-broadcast-header-logo { width: auto; }
+  .dhq-broadcast-header-logo > span { font-size: 1.78rem; }
+  .dhq-broadcast-header-logo > small { display: none; }
+  .dhq-broadcast-header__actions { gap: 4px; }
+  .dhq-broadcast-header__icon { width: 32px; height: 42px; }
+  .dhq-broadcast-header__profile { width: 37px; height: 37px; font-size: 0.8rem; }
+  .dhq-score-ticker { height: 42px; padding: 0 14px; }
+  .dhq-score-ticker__live { width: 126px; gap: 8px; }
+  .dhq-score-ticker__live i { width: 9px; height: 9px; }
+  .dhq-score-ticker__live strong,
+  .dhq-score-ticker__all { font-size: 0.72rem; }
+  .dhq-score-ticker__game { width: 242px; gap: 9px; }
+  .dhq-score-ticker__game span,
+  .dhq-score-ticker__game b,
+  .dhq-score-ticker__game strong { font-size: 0.72rem; }
+  .dhq-score-ticker__empty { width: 270px; padding-left: 22px; }
+  .dhq-score-ticker__all { width: 112px; }
+  .dhq-broadcast-mobile-menu { max-height: calc(100dvh - 106px) !important; }
 }
 
 @media print {

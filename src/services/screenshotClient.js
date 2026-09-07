@@ -97,7 +97,7 @@ export const analyzeScreenshot = async ({
     && !uploadContext;
   const endpoint = useFreeCollegeScanner
     ? '/api/analyze-coverage-reference'
-    : '/api/analyze-screenshot';
+    : '/api/analyze-screenshot-free-first';
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -130,6 +130,6 @@ export const analyzeScreenshot = async ({
     throw error;
   }
 
-  if (useFreeCollegeScanner) recordAiScanUsage('game-data', body);
+  recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
   return normalizeScreenshotAnalysis(body);
 };

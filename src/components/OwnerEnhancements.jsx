@@ -8,6 +8,8 @@ import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
 import WeekHubRoutingPortal from './WeekHubRoutingPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
 import FreshStartPortal from './FreshStartPortal.jsx';
+import ImmersionPortal from './ImmersionPortal.jsx';
+import PodcastUniversalBrandPortal from './PodcastUniversalBrandPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
 import DryRunModePortal from './DryRunModePortal.jsx';
@@ -42,6 +44,8 @@ const OwnerEnhancements = () => (
     <TeamAccentPortal />
     <MobileBroadcastNavPortal />
     <FreshStartPortal />
+    <ImmersionPortal />
+    <PodcastUniversalBrandPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />
     <WeekSetupPortal />

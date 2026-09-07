@@ -1,0 +1,26 @@
+#dynastyhq-command-center .dhq-broadcast-podcast-copy > strong[data-podcast-show],
+.dhq-game-hub .dhq-gh-podcast-panel .dhq-gh-card__heading > span[data-podcast-show] {
+  font-size: 0 !important;
+}
+
+#dynastyhq-command-center .dhq-broadcast-podcast-copy > strong[data-podcast-show]::after,
+.dhq-game-hub .dhq-gh-podcast-panel .dhq-gh-card__heading > span[data-podcast-show]::after {
+  content: attr(data-podcast-show);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-game-hub .dhq-gh-podcast-panel .dhq-gh-card__heading > span[data-podcast-show] svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 767px) {
+  #dynastyhq-command-center .dhq-broadcast-podcast-copy > strong[data-podcast-show]::after,
+  .dhq-game-hub .dhq-gh-podcast-panel .dhq-gh-card__heading > span[data-podcast-show]::after {
+    font-size: 8px;
+    letter-spacing: .13em;
+  }
+}

@@ -1,3 +1,8 @@
+.dhq-dynamic-helmet-source-hidden {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 .dhq-dynamic-matchup-helmets {
   display: flex;
   align-items: center;

@@ -17,7 +17,7 @@ test('Game Hub mobile polish uses the canonical podcast show identity', async ()
   assert.match(portal, /resolvePodcastShow/);
   assert.match(portal, /dataset\.podcastShow/);
   assert.match(owner, /<GameHubMobilePolishPortal \/>/);
-  assert.match(podcastShow, /name: 'Nippert Notebook'/);
+  assert.match(podcastShow, /name: 'The Huddle Podcast'/);
 });
 
 test('Game Hub mobile hero separates teams, scores, result and action vertically', async () => {

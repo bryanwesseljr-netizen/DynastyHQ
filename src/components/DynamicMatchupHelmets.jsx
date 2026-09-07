@@ -6,6 +6,8 @@ const Helmet = ({ brand, side, teamName }) => {
   const mirror = side === 'right' ? 'translate(280 0) scale(-1 1)' : undefined;
   const shineId = `helmet-shine-${uid}`;
   const clipId = `shell-clip-${uid}`;
+  const decalX = side === 'right' ? 117 : 96;
+  const decalCenterX = side === 'right' ? 148 : 132;
 
   return (
     <svg
@@ -14,19 +16,19 @@ const Helmet = ({ brand, side, teamName }) => {
       role="img"
       aria-label={`${teamName || brand.displayName} helmet`}
     >
-      <g transform={mirror}>
-        <defs>
-          <linearGradient id={shineId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.34" />
-            <stop offset="0.28" stopColor="#ffffff" stopOpacity="0.08" />
-            <stop offset="0.65" stopColor="#000000" stopOpacity="0.03" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.34" />
-          </linearGradient>
-          <clipPath id={clipId}>
-            <path d="M28 104C28 49 70 16 142 16c72 0 111 37 111 95 0 18-4 34-11 48h-51c-3-24-15-42-35-51l-9 50H94l-13-28H49v30H22c4-17 6-36 6-56Z" />
-          </clipPath>
-        </defs>
+      <defs>
+        <linearGradient id={shineId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.34" />
+          <stop offset="0.28" stopColor="#ffffff" stopOpacity="0.08" />
+          <stop offset="0.65" stopColor="#000000" stopOpacity="0.03" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.34" />
+        </linearGradient>
+        <clipPath id={clipId}>
+          <path d="M28 104C28 49 70 16 142 16c72 0 111 37 111 95 0 18-4 34-11 48h-51c-3-24-15-42-35-51l-9 50H94l-13-28H49v30H22c4-17 6-36 6-56Z" />
+        </clipPath>
+      </defs>
 
+      <g transform={mirror}>
         <path
           d="M28 104C28 49 70 16 142 16c72 0 111 37 111 95 0 18-4 34-11 48h-51c-3-24-15-42-35-51l-9 50H94l-13-28H49v30H22c4-17 6-36 6-56Z"
           fill={brand.primaryColor}
@@ -41,24 +43,6 @@ const Helmet = ({ brand, side, teamName }) => {
         />
         <path d="M124 18c8-2 17-2 25-1l2 78-11 3-12-4Z" fill={brand.secondaryColor} opacity="0.92" />
         <path d="M48 130h34l13 28h52l9-50c21 9 34 26 37 51h-24l-8-18h-38l-6 25H64l-7-18H48Z" fill="#091018" fillOpacity="0.9" />
-
-        {brand.logo ? (
-          <image
-            href={brand.logo}
-            x="96"
-            y="52"
-            width="67"
-            height="56"
-            preserveAspectRatio="xMidYMid meet"
-            opacity="0.98"
-          />
-        ) : (
-          <g>
-            <circle cx="132" cy="80" r="29" fill="#02070b" fillOpacity="0.3" stroke={brand.secondaryColor} strokeWidth="2" />
-            <text x="132" y="88" textAnchor="middle" fill={brand.secondaryColor} fontFamily="Arial Black, sans-serif" fontSize="21" fontWeight="900">{brand.abbreviation}</text>
-          </g>
-        )}
-
         <g fill="none" stroke={brand.secondaryColor} strokeLinecap="round" strokeLinejoin="round">
           <path d="M188 109c30 2 48 8 61 18" strokeWidth="7" />
           <path d="M192 124h64" strokeWidth="7" />
@@ -67,6 +51,23 @@ const Helmet = ({ brand, side, teamName }) => {
         </g>
         <circle cx="177" cy="101" r="5" fill={brand.secondaryColor} stroke="#05090d" strokeWidth="2" />
       </g>
+
+      {brand.logo ? (
+        <image
+          href={brand.logo}
+          x={decalX}
+          y="52"
+          width="67"
+          height="56"
+          preserveAspectRatio="xMidYMid meet"
+          opacity="0.98"
+        />
+      ) : (
+        <g>
+          <circle cx={decalCenterX} cy="80" r="29" fill="#02070b" fillOpacity="0.3" stroke={brand.secondaryColor} strokeWidth="2" />
+          <text x={decalCenterX} y="88" textAnchor="middle" fill={brand.secondaryColor} fontFamily="Arial Black, sans-serif" fontSize="21" fontWeight="900">{brand.abbreviation}</text>
+        </g>
+      )}
     </svg>
   );
 };

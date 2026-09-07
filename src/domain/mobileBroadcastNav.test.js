@@ -31,6 +31,16 @@ test('mobile broadcast nav waits for the header and remounts if React replaces i
   assert.match(portal, /header\.insertBefore\(navHost, ticker\)/);
 });
 
+test('mobile broadcast nav never renders into the desktop header', async () => {
+  const portal = await readFile(portalUrl, 'utf8');
+
+  assert.match(portal, /const isMobileViewport = \(\) => window\.matchMedia\('\(max-width: 767px\)'\)\.matches;/);
+  assert.match(portal, /if \(!isMobileViewport\(\)\) \{[\s\S]*dhq-mobile-broadcast-nav-host[\s\S]*setHost\(null\)/);
+  assert.match(portal, /window\.addEventListener\('resize', ensureHost\)/);
+  assert.match(portal, /window\.removeEventListener\('resize', ensureHost\)/);
+  assert.match(portal, /if \(!host \|\| !isMobileViewport\(\)\) return null;/);
+});
+
 test('mobile avatar no longer opens the visible legacy tile navigation', async () => {
   const [portal, styles] = await Promise.all([
     readFile(portalUrl, 'utf8'),

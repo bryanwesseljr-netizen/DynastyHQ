@@ -15,7 +15,7 @@ const GameHubMobilePolishPortal = () => {
     const sync = () => {
       scheduled = false;
       const heading = document.querySelector('.dhq-game-hub .dhq-gh-podcast-panel .dhq-gh-card__heading > span');
-      if (heading) heading.dataset.podcastShow = show.name || 'Nippert Notebook';
+      if (heading) heading.dataset.podcastShow = show.name || 'The Huddle Podcast';
     };
 
     const schedule = () => {

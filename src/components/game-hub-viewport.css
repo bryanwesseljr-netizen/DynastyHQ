@@ -1,0 +1,71 @@
+/*
+ * Game Hub viewport model
+ *
+ * Game Hub is rendered through a portal directly under <body>. Keep it in
+ * normal document flow so browser pinch-zoom can pan the layout viewport on
+ * Android/Chrome (including Request desktop site mode) instead of pinning the
+ * Hub to the visual viewport with position: fixed.
+ */
+
+:root {
+  --dhq-game-hub-header-height: 127px;
+}
+
+html.dhq-game-hub-document-open,
+body.dhq-game-hub-open {
+  overflow: auto !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+/* The React shell normally fills the viewport. When the body portal is open,
+   retain only the broadcast-header footprint so the portal does not begin a
+   full screen below the visible header. */
+body.dhq-game-hub-open #root {
+  width: 100%;
+  height: var(--dhq-game-hub-header-height) !important;
+  min-height: var(--dhq-game-hub-header-height) !important;
+  overflow: visible !important;
+}
+
+body.dhq-game-hub-open main.dhq-page-main {
+  display: none !important;
+}
+
+body.dhq-game-hub-open .dhq-game-hub {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 110;
+  width: 100%;
+  min-height: calc(100dvh - var(--dhq-game-hub-header-height));
+  overflow: visible !important;
+  padding-top: 0 !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+body.dhq-game-hub-open .dhq-game-hub__background {
+  position: absolute !important;
+  inset: 0 !important;
+  min-height: 100%;
+  pointer-events: none;
+}
+
+body.dhq-game-hub-open .dhq-game-hub__scroll {
+  position: relative;
+  height: auto !important;
+  min-height: calc(100dvh - var(--dhq-game-hub-header-height));
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --dhq-game-hub-header-height: 150px;
+  }
+
+  body.dhq-game-hub-open .dhq-game-hub {
+    padding-top: 0 !important;
+  }
+}

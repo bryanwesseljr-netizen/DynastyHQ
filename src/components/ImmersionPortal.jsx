@@ -80,7 +80,7 @@ const PostgameWrap = ({ model }) => {
     <section className="dhq-immersion-wrap" aria-label="DynastyHQ broadcast wrap">
       <div className="dhq-immersion-wrap__result"><span>DYNASTYHQ BROADCAST WRAP</span><strong>{wrap.result || 'FINAL'} · {wrap.score}</strong><small>vs {wrap.opponent}</small></div>
       <div className="dhq-immersion-wrap__performance"><span>PLAYER LINE</span><strong>{wrap.playerLine}</strong>{wrap.impact[0] ? <small>{wrap.impact.join(' · ')}</small> : null}</div>
-      <div className="dhq-immersion-wrap__podcast"><Headphones size={18} /><span>NIPPERT NOTEBOOK</span><strong>{model.podcastPlan.label}</strong><small>{model.podcastPlan.reason}</small></div>
+      <div className="dhq-immersion-wrap__podcast"><Headphones size={18} /><span>THE HUDDLE PODCAST</span><strong>{model.podcastPlan.label}</strong><small>{model.podcastPlan.reason}</small></div>
     </section>
   );
 };

@@ -244,7 +244,7 @@ export default async function handler(req, res) {
   }
   if (!user) return json(res, 401, { error: 'Sign in before analyzing screenshots.' });
 
-  const { imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers, uploadContext } = req.body || {};
+  const { imageDataUrl, fileName, careerPhase, player, recruitingSchools, rosterPlayers, uploadContext, allowPaidFallback } = req.body || {};
   if (!validImageDataUrl(imageDataUrl)) {
     return json(res, 400, { error: 'Upload a PNG, JPEG, or WebP screenshot under the size limit.' });
   }
@@ -257,6 +257,7 @@ export default async function handler(req, res) {
       userText: `Analyze screenshot ${String(fileName || 'upload').slice(0, 160)}. Guided upload routing: ${uploadGuidance(uploadContext)} Career context: ${buildContext({ careerPhase, player, recruitingSchools, rosterPlayers })}`,
       imageDataUrl,
       maxOutputTokens: 4000,
+      allowPaidFallback: allowPaidFallback === true,
     });
 
     return json(res, 200, {
@@ -267,9 +268,11 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Free-first screenshot analysis failed', error);
     const status = Number(error?.status) === 429 ? 429 : 502;
-    const message = status === 429
-      ? 'Screenshot analysis is temporarily busy. Try again shortly.'
-      : 'The screenshot analysis service failed. Your career data was not changed.';
+    const message = error?.paidFallbackBlocked
+      ? 'Gemini could not produce a safe automatic result and No Paid Fallback is on. Try another screenshot or review manually.'
+      : status === 429
+        ? 'Screenshot analysis is temporarily busy. Try again shortly.'
+        : 'The screenshot analysis service failed. Your career data was not changed.';
     return json(res, status, { error: message });
   }
 }

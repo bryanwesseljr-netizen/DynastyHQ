@@ -1,7 +1,6 @@
-import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { analyzeVisionFreeFirst } from '../src/server/visionRouter.js';
 
-const MODEL = process.env.OPENAI_VISION_MODEL || 'gpt-5.6';
 const MAX_DATA_URL_LENGTH = 3_500_000;
 
 export const config = { maxDuration: 60 };
@@ -136,10 +135,7 @@ const OUTPUT_SCHEMA = {
   additionalProperties: false,
   required: ['screenTypes', 'screenTitle', 'summary', 'facts'],
   properties: {
-    screenTypes: {
-      type: 'array',
-      items: { type: 'string', enum: SCREEN_TYPES },
-    },
+    screenTypes: { type: 'array', items: { type: 'string', enum: SCREEN_TYPES } },
     screenTitle: { type: 'string' },
     summary: { type: 'string' },
     facts: {
@@ -171,9 +167,7 @@ const validImageDataUrl = (value) => (
 const normalizeUploadContext = (value = {}) => {
   if (value?.kind === 'high_school_moment') {
     const momentNumber = Number(value.momentNumber);
-    if (momentNumber >= 1 && momentNumber <= 4) {
-      return { kind: 'high_school_moment', momentNumber };
-    }
+    if (momentNumber >= 1 && momentNumber <= 4) return { kind: 'high_school_moment', momentNumber };
   }
   if (value?.kind === 'high_school_postgame') return { kind: 'high_school_postgame' };
   return null;
@@ -198,12 +192,8 @@ const buildContext = ({ careerPhase, player, recruitingSchools, rosterPlayers })
     position: String(player?.pos || '').slice(0, 20),
     number: String(player?.number || '').slice(0, 20),
   },
-  knownRecruitingSchools: (recruitingSchools || []).slice(0, 100).map((school) => ({
-    name: String(school?.name || '').slice(0, 120),
-  })),
-  knownRosterPlayers: (rosterPlayers || []).slice(0, 120).map((rosterPlayer) => ({
-    name: String(rosterPlayer?.name || '').slice(0, 120),
-  })),
+  knownRecruitingSchools: (recruitingSchools || []).slice(0, 100).map((school) => ({ name: String(school?.name || '').slice(0, 120) })),
+  knownRosterPlayers: (rosterPlayers || []).slice(0, 120).map((rosterPlayer) => ({ name: String(rosterPlayer?.name || '').slice(0, 120) })),
 });
 
 const INSTRUCTIONS = `You extract facts from EA SPORTS College Football 27 screenshots for a private career tracker.
@@ -215,21 +205,22 @@ Rules:
 - If text is cropped, obscured, or ambiguous, omit the fact instead of guessing.
 - Use the supplied tracked player and school only to identify which row belongs to the user's career. Do not treat supplied context as screenshot evidence.
 - game.homeScore means the tracked player's TEAM score and game.awayScore means the OPPONENT score, regardless of the real venue.
-- If an official team ranking is plainly visible next to the tracked team or opponent on the supplied game screen (for example #8, No. 8, or an equivalent clearly labeled rank), emit game.teamRank or game.opponentRank with the numeric rank only. A ranking is evidence only when visibly attached to the correct team in the screenshot. Never infer a ranking from a logo, matchup reputation, record, supplied career context, or outside knowledge, and never convert recruiting.teamRank into a game ranking.
-- On a postgame team-comparison or team-stats screen, use game.team* for the tracked player's team column and game.opponent* for the opposing team column, regardless of home/away venue. Extract only plainly labeled values for Total Yards/Total Offense, First Downs, Turnovers, Rushing Yards, and Passing Yards. Use teamTotalYards/opponentTotalYards, teamFirstDowns/opponentFirstDowns, teamTurnovers/opponentTurnovers, teamRushYds/opponentRushYds, and teamPassYds/opponentPassYds. Do not calculate these totals from individual players and do not guess which column belongs to which team if the headers are unclear. A single screenshot may contain both team context and the tracked player's stat line when both are clearly visible.
-- High school uses five evaluation games with four playable moments, not a box score. Classify a visible objective/moment screen as high_school_moments. A standard moment has two objectives: use objective1/objective2 and objective1Result/objective2Result, with Passed or Failed values. Its overall moment result is success when both pass, partial when one passes, and failed when neither passes. A scholarship challenge has one major objective: set type=scholarship, preserve the plainly visible school in scholarshipSchool, use objective1/objective1Result, omit objective2 fields, and use only success or failed for the overall result. Use type=standard for a plainly identified standard moment. Never treat a passed scholarship challenge as a verified offer; recruiting.offer=true requires a separate official offer screen. Preserve concise visible objective descriptions. Use highSchool.teamImpact only for a plainly visible named impact or a user-entered note; never infer it from gameplay. A user-selected guided upload slot is trusted routing metadata for the destination Moment number, but it is never evidence that an objective passed, failed, or existed.
-- For game.result, use W or L only when a final score and the tracked team are clear.
-- For RTG recruiting facts, schoolName must identify the clearly visible school. Expand only these unambiguous game abbreviations when they appear: E. Michigan = Eastern Michigan, W. Michigan = Western Michigan, C. Michigan = Central Michigan, Miami (OH) = Miami (Ohio), and NIU = Northern Illinois. Preserve the exact on-screen wording in evidence. For coach recruiting facts, schoolName must contain the exact visible prospect name, including a new target not yet present in the supplied entries. Use an empty schoolName for non-recruiting facts.
+- If an official team ranking is plainly visible next to the tracked team or opponent, emit game.teamRank or game.opponentRank with the numeric rank only. Never infer rankings.
+- On postgame team-comparison screens, use game.team* for the tracked team column and game.opponent* for the opponent. Extract only plainly labeled Total Offense, First Downs, Turnovers, Rushing Yards, and Passing Yards. Never calculate or guess column ownership.
+- High school uses five evaluation games with four playable moments, not a box score. Classify visible objective/moment screens as high_school_moments. Standard moments have two objectives. Scholarship challenges have one major objective and a plainly visible scholarshipSchool. Never treat a passed scholarship challenge as an official offer.
+- A user-selected guided upload slot is trusted routing metadata only; it is never evidence that an objective passed, failed, or existed.
+- For game.result, use W or L only when a final score and tracked team are clear.
+- For RTG recruiting facts, schoolName must identify the clearly visible school. Expand only these unambiguous abbreviations: E. Michigan = Eastern Michigan, W. Michigan = Western Michigan, C. Michigan = Central Michigan, Miami (OH) = Miami (Ohio), NIU = Northern Illinois.
 - For the player's RTG recruiting profile, use recruiting.recruitStars, tapeScore, nationalRank, stateRank, positionRank, gameNumber, and topSchoolsSelected with an empty schoolName.
-- The RTG My Top Schools screen is an ordered preference list. Emit one recruiting.preferenceRank fact for every fully visible numbered school row, including rows with an empty progress bar or no offer. The fact value is the visible 1-10 rank and schoolName identifies that row's school. Also emit recruiting.topSchoolsSelected from a visible count such as 10/10. Do not omit a school merely because its interest bar is empty. Never convert the colored progress bar into a percentage; describe its visible state with progressStage (for example empty, partial, near, or complete).
-- Use schemeFit only when YES or NO SCHEME FIT is explicitly visible. Use tapeScoreAssessed and tapeScoreRequired for the two visible values around the requirement bar.
-- On a school overview, projectedRole is QB1/QB2/QB3 when visible. Store team ratings, offensive scheme, run/pass and aggressive/conservative percentages, coach details, and depth-chart summaries only when plainly legible.
-- For depthQB1/depthQB2/depthQB3, preserve one concise visible string in the form "Player name | OVR | Class". Do not infer missing pieces.
-- On an official offer screen, use offer=true and the six bonus fields. Zero is a valid visible bonus. Do not treat the standard scholarship letter language as a player evaluation.
+- The RTG My Top Schools screen is an ordered preference list. Emit recruiting.preferenceRank for every fully visible numbered school row, including rows with no offer or empty progress. Never convert the progress bar into a percentage.
+- Use schemeFit only when YES or NO SCHEME FIT is explicitly visible. Use tapeScoreAssessed and tapeScoreRequired only when visible.
+- On school overviews, preserve projected role, ratings, scheme, tendencies, coach details, and depth chart only when plainly legible.
+- For depthQB1/depthQB2/depthQB3, preserve one concise visible string in the form "Player name | OVR | Class" and do not infer missing pieces.
+- On an official offer screen, use offer=true and the visible bonus fields. Zero is a valid visible bonus.
 - For retention.* facts, subjectName must contain the exact visible player name. Use an empty subjectName for all other facts.
-- Map visible roster-position totals and explicit needs into roster.<group>.count or roster.<group>.need. Group offensive line together as ol, defensive line as dl, safeties as s, and kickers/punters as st. Never calculate a need that is not displayed.
-- Use recruiting.status to preserve a visible classification such as Transfer Portal, Committed, Signed, or JUCO.
-- Dynasty Points, NIL, staff, facilities, roster, scholarship, and portal values must use coach.* keys and only when both the visible label and value are clear.
+- Map visible roster totals and explicit needs only; never calculate needs.
+- Use recruiting.status for plainly visible classifications such as Transfer Portal, Committed, Signed, or JUCO.
+- Dynasty Points, NIL, staff, facilities, roster, scholarship, and portal values must use coach.* keys only when both label and value are clear.
 - Evidence must be a short description of the visible label/value, not a fabricated quotation.
 - Confidence should exceed 0.90 only when the relevant label and value are plainly legible.
 - Return unknown as the only screen type when the screenshot cannot be reliably classified.`;
@@ -240,7 +231,7 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Method not allowed.' });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
     return json(res, 503, { error: 'Screenshot analysis is not configured yet.' });
   }
 
@@ -259,42 +250,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const response = await client.responses.create({
-      model: MODEL,
-      store: false,
-      reasoning: { effort: 'low' },
-      max_output_tokens: 4000,
+    const result = await analyzeVisionFreeFirst({
+      schema: OUTPUT_SCHEMA,
+      schemaName: 'cfb_screenshot_analysis',
       instructions: INSTRUCTIONS,
-      input: [{
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: `Analyze screenshot ${String(fileName || 'upload').slice(0, 160)}. Guided upload routing: ${uploadGuidance(uploadContext)} Career context: ${buildContext({ careerPhase, player, recruitingSchools, rosterPlayers })}`,
-          },
-          { type: 'input_image', image_url: imageDataUrl, detail: 'original' },
-        ],
-      }],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'cfb_screenshot_analysis',
-          strict: true,
-          schema: OUTPUT_SCHEMA,
-        },
-      },
+      userText: `Analyze screenshot ${String(fileName || 'upload').slice(0, 160)}. Guided upload routing: ${uploadGuidance(uploadContext)} Career context: ${buildContext({ careerPhase, player, recruitingSchools, rosterPlayers })}`,
+      imageDataUrl,
+      maxOutputTokens: 4000,
     });
 
-    if (!response.output_text) {
-      return json(res, 422, { error: 'The screenshot could not be analyzed safely.' });
-    }
-
-    const analysis = JSON.parse(response.output_text);
-    return json(res, 200, { analysis, model: MODEL });
+    return json(res, 200, {
+      analysis: result.analysis,
+      model: result.usage?.model || '',
+      usage: result.usage,
+    });
   } catch (error) {
-    console.error('OpenAI screenshot analysis failed', error);
-    const status = error?.status === 429 ? 429 : 502;
+    console.error('Free-first screenshot analysis failed', error);
+    const status = Number(error?.status) === 429 ? 429 : 502;
     const message = status === 429
       ? 'Screenshot analysis is temporarily busy. Try again shortly.'
       : 'The screenshot analysis service failed. Your career data was not changed.';

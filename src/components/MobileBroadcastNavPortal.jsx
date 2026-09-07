@@ -50,7 +50,10 @@ const MobileBroadcastNavPortal = () => {
   const [host, setHost] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [active, setActive] = useState(() => currentActive());
+  const [navigationRevision, setNavigationRevision] = useState(0);
   const moreRef = useRef(moreOpen);
+  const bypassProfileCaptureRef = useRef(false);
+  const legacyMenuOpenedByPortalRef = useRef(false);
 
   useEffect(() => {
     moreRef.current = moreOpen;
@@ -99,6 +102,12 @@ const MobileBroadcastNavPortal = () => {
     const captureProfile = (event) => {
       const button = event.target?.closest?.('button.dhq-broadcast-header__profile');
       if (!button || window.innerWidth >= 768) return;
+
+      if (bypassProfileCaptureRef.current) {
+        bypassProfileCaptureRef.current = false;
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
@@ -108,6 +117,36 @@ const MobileBroadcastNavPortal = () => {
     root.addEventListener('click', captureProfile, true);
     return () => root.removeEventListener('click', captureProfile, true);
   }, []);
+
+  useEffect(() => {
+    const profileButton = document.querySelector('button.dhq-broadcast-header__profile');
+    if (!profileButton || window.innerWidth >= 768) return undefined;
+
+    if (moreOpen) {
+      if (!document.getElementById('mobile-primary-navigation')) {
+        legacyMenuOpenedByPortalRef.current = true;
+        bypassProfileCaptureRef.current = true;
+        profileButton.click();
+      }
+
+      const refreshNow = window.setTimeout(() => setNavigationRevision((revision) => revision + 1), 0);
+      const refreshAfterReact = window.setTimeout(() => setNavigationRevision((revision) => revision + 1), 80);
+      return () => {
+        window.clearTimeout(refreshNow);
+        window.clearTimeout(refreshAfterReact);
+      };
+    }
+
+    if (legacyMenuOpenedByPortalRef.current) {
+      legacyMenuOpenedByPortalRef.current = false;
+      if (document.getElementById('mobile-primary-navigation')) {
+        bypassProfileCaptureRef.current = true;
+        profileButton.click();
+      }
+    }
+
+    return undefined;
+  }, [moreOpen]);
 
   useEffect(() => {
     const refresh = () => setActive(currentActive());
@@ -131,12 +170,17 @@ const MobileBroadcastNavPortal = () => {
     return () => document.removeEventListener('click', closeOnOutside, true);
   }, [moreOpen]);
 
-  const availableSecondary = useMemo(() => secondaryItems.filter((item) => findNavigationButton(item.matcher)), [host, moreOpen, active]);
+  const availableSecondary = useMemo(
+    () => secondaryItems.filter((item) => findNavigationButton(item.matcher)),
+    [host, moreOpen, active, navigationRevision],
+  );
 
   const navigate = (item) => {
-    setMoreOpen(false);
     const button = findNavigationButton(item.matcher);
-    button?.click();
+    if (!button) return;
+    legacyMenuOpenedByPortalRef.current = false;
+    setMoreOpen(false);
+    button.click();
     window.setTimeout(() => setActive(currentActive()), 40);
   };
 
@@ -164,11 +208,13 @@ const MobileBroadcastNavPortal = () => {
             <button type="button" onClick={() => setMoreOpen(false)} aria-label="Close menu"><X size={17} /></button>
           </div>
           <div className="dhq-mobile-more-sheet__links">
-            {availableSecondary.map(({ id, label, Icon, matcher }) => (
+            {availableSecondary.length ? availableSecondary.map(({ id, label, Icon, matcher }) => (
               <button key={id} type="button" onClick={() => navigate({ id, label, Icon, matcher })}>
                 <span><Icon size={16} /> {label}</span><ChevronRight size={15} />
               </button>
-            ))}
+            )) : (
+              <div className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Loading secondary tools…</div>
+            )}
           </div>
           <p><BookOpen size={13} /> Primary pages stay in the broadcast nav above. This menu is only for secondary tools.</p>
         </div>

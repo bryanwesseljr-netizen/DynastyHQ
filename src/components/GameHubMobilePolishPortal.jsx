@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { resolvePodcastShow } from '../domain/podcastShow.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './game-hub-mobile.css';
+import './game-hub-viewport.css';
 
 const GameHubMobilePolishPortal = () => {
   const { career } = useOwnerCareer();
@@ -29,6 +30,24 @@ const GameHubMobilePolishPortal = () => {
     observer.observe(root, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [show.name]);
+
+  useEffect(() => {
+    const syncDocumentMode = () => {
+      document.documentElement.classList.toggle(
+        'dhq-game-hub-document-open',
+        document.body.classList.contains('dhq-game-hub-open'),
+      );
+    };
+
+    syncDocumentMode();
+    const observer = new MutationObserver(syncDocumentMode);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.classList.remove('dhq-game-hub-document-open');
+    };
+  }, []);
 
   return null;
 };

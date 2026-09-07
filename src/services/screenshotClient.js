@@ -97,7 +97,7 @@ export const analyzeScreenshot = async ({
     && !uploadContext;
   const endpoint = useFreeCollegeScanner
     ? '/api/analyze-coverage-reference'
-    : '/api/analyze-screenshot-free-first';
+    : '/api/analyze-screenshot';
 
   const response = await fetch(endpoint, {
     method: 'POST',

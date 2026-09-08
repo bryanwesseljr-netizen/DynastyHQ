@@ -321,7 +321,7 @@ const CareerStandbyPortal = () => {
         <label><span>Jersey #</span><input value={form.number} onChange={(event) => updateForm('number', event.target.value)} inputMode="numeric" placeholder="6" /></label>
         <label><span>Recruit rating</span><select value={form.stars} onChange={(event) => updateForm('stars', event.target.value)}>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}-star</option>)}</select></label>
         <label><span>Overall</span><input type="number" min="1" max="99" value={form.overall} onChange={(event) => updateForm('overall', event.target.value)} placeholder="Optional" /></label>
-        <label><span>Height</span><input value={form.height} onChange={(event) => updateForm('height', event.target.value)} placeholder="6'1\"" /></label>
+        <label><span>Height</span><input value={form.height} onChange={(event) => updateForm('height', event.target.value)} placeholder={'6\'1"'} /></label>
         <label><span>Weight</span><input value={form.weight} onChange={(event) => updateForm('weight', event.target.value)} placeholder="205 lbs" /></label>
         <div className="dhq-standby-form__action">
           <p><ShieldCheck size={14} /> High-school history stays archived. Empty bench weeks will not be manufactured.</p>

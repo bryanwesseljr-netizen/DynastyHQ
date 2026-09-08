@@ -1,0 +1,66 @@
+/*
+ * Career Overview viewport model
+ *
+ * Career Overview is rendered through a portal directly under <body>. Keep it
+ * in normal document flow so browser pinch-zoom can pan the layout viewport on
+ * Android/Chrome (including Request desktop site mode), matching Game Hub.
+ */
+
+:root {
+  --dhq-career-overview-header-height: 127px;
+}
+
+html.dhq-career-overview-document-open,
+html.dhq-career-overview-document-open body.dhq-career-overview-open {
+  overflow: auto !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+body.dhq-career-overview-open #root {
+  width: 100%;
+  height: var(--dhq-career-overview-header-height) !important;
+  min-height: var(--dhq-career-overview-header-height) !important;
+  overflow: visible !important;
+}
+
+body.dhq-career-overview-open main.dhq-page-main {
+  display: none !important;
+}
+
+body.dhq-career-overview-open .dhq-career-overview {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 116;
+  width: 100%;
+  min-height: calc(100dvh - var(--dhq-career-overview-header-height));
+  overflow: visible !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+  backdrop-filter: none !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(18, 49, 73, .22), transparent 43%),
+    linear-gradient(180deg, rgba(1, 6, 10, .34), rgba(1, 6, 10, .68)),
+    url('../assets/dynastyhq-football-stadium-bg.webp') center top / cover no-repeat;
+}
+
+body.dhq-career-overview-open .dhq-career-overview__scroll {
+  position: relative;
+  width: 100%;
+  height: auto !important;
+  min-height: calc(100dvh - var(--dhq-career-overview-header-height));
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.dhq-career-overview-open .dhq-career-overview__frame {
+  min-height: calc(100dvh - var(--dhq-career-overview-header-height));
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --dhq-career-overview-header-height: 150px;
+  }
+}

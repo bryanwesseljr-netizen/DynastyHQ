@@ -1,0 +1,390 @@
+#dhq-career-standby-card-host {
+  margin-top: 14px;
+}
+
+.dhq-standby-card {
+  --standby-red: #ee1637;
+  --standby-border: rgba(151, 165, 178, .42);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--standby-border);
+  border-radius: 8px;
+  padding: 24px;
+  color: #f4f5f6;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(238, 22, 55, .16), transparent 34%),
+    linear-gradient(135deg, rgba(5, 20, 33, .98), rgba(2, 10, 17, .97));
+  box-shadow: 0 18px 42px rgba(0,0,0,.32);
+  font-family: "Arial Narrow", "Roboto Condensed", "Aptos Narrow", Arial, sans-serif;
+}
+
+.dhq-standby-card::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  content: '';
+  background: linear-gradient(180deg, var(--standby-red), transparent 75%);
+}
+
+.dhq-standby-card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #ff4963;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.dhq-standby-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.dhq-standby-card__heading h2 {
+  margin: 0;
+  color: #fff;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(26px, 3vw, 38px);
+  font-style: italic;
+  letter-spacing: .025em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dhq-standby-card__heading p {
+  max-width: 800px;
+  margin: 8px 0 0;
+  color: #aeb8c0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dhq-standby-badge {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 73, 99, .35);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #ff9aaa;
+  background: rgba(238, 22, 55, .08);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-standby-badge.is-live {
+  color: #fff;
+  background: rgba(238, 22, 55, .18);
+}
+
+.dhq-standby-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.dhq-standby-form label,
+.dhq-standby-activate label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dhq-standby-form label > span,
+.dhq-standby-activate label > span {
+  color: #8996a1;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-standby-form input,
+.dhq-standby-form select,
+.dhq-standby-activate input,
+.dhq-standby-activate select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(151,165,178,.3);
+  border-radius: 6px;
+  padding: 10px 11px;
+  color: #fff;
+  background: rgba(1, 8, 14, .84);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+.dhq-standby-form input:focus,
+.dhq-standby-form select:focus,
+.dhq-standby-activate input:focus,
+.dhq-standby-activate select:focus {
+  border-color: #ff4963;
+  box-shadow: 0 0 0 2px rgba(238,22,55,.1);
+}
+
+.dhq-standby-form__action {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(151,165,178,.16);
+}
+
+.dhq-standby-form__action p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #9ba7b0;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.dhq-standby-form button,
+.dhq-standby-activate button,
+.dhq-home-standby button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #ff2949;
+  border-radius: 6px;
+  padding: 11px 15px;
+  color: #fff;
+  background: linear-gradient(#e41737, #a90720);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(192,8,38,.22);
+}
+
+.dhq-standby-form button:disabled,
+.dhq-standby-activate button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.dhq-standby-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dhq-standby-status-grid > div {
+  border: 1px solid rgba(151,165,178,.2);
+  border-radius: 6px;
+  padding: 13px;
+  background: rgba(1, 8, 14, .62);
+}
+
+.dhq-standby-status-grid span {
+  display: block;
+  color: #7f8b95;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.dhq-standby-status-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dhq-standby-activate {
+  display: grid;
+  grid-template-columns: 160px minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(151,165,178,.16);
+}
+
+.dhq-standby-message {
+  margin-top: 12px;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.dhq-standby-message.is-success {
+  border: 1px solid rgba(52,211,153,.28);
+  color: #a7f3d0;
+  background: rgba(16,185,129,.08);
+}
+
+.dhq-standby-message.is-error {
+  border: 1px solid rgba(248,113,113,.32);
+  color: #fecaca;
+  background: rgba(239,68,68,.08);
+}
+
+.dhq-broadcast-hero.dhq-career-standby-home > .dhq-broadcast-hero__kicker,
+.dhq-broadcast-hero.dhq-career-standby-home > h1,
+.dhq-broadcast-hero.dhq-career-standby-home > .dhq-broadcast-helmets,
+.dhq-broadcast-hero.dhq-career-standby-home > .dhq-dynamic-matchup-helmets,
+.dhq-broadcast-hero.dhq-career-standby-home > .dhq-broadcast-team,
+.dhq-broadcast-hero.dhq-career-standby-home > .dhq-broadcast-versus,
+.dhq-broadcast-hero.dhq-career-standby-home > .dhq-broadcast-hero__buttons {
+  visibility: hidden !important;
+}
+
+#dhq-career-standby-home-host {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+}
+
+.dhq-home-standby {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 28px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(25, 66, 89, .2), transparent 31%),
+    linear-gradient(110deg, rgba(2,12,20,.16), rgba(36,3,12,.28));
+}
+
+.dhq-home-standby__kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ff4963;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.dhq-home-standby__kicker span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ee1637;
+  box-shadow: 0 0 14px rgba(238,22,55,.72);
+}
+
+.dhq-home-standby h1 {
+  margin: 8px 0 0;
+  color: #fff;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(38px, 6vw, 68px);
+  font-style: italic;
+  letter-spacing: .02em;
+  line-height: .94;
+  text-transform: uppercase;
+  text-shadow: 0 5px 0 rgba(0,0,0,.28);
+}
+
+.dhq-home-standby__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: #c7d0d6;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dhq-home-standby__identity strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.dhq-home-standby p {
+  max-width: 720px;
+  margin: 12px 0 16px;
+  color: #aeb8c0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .dhq-standby-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dhq-standby-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  #dhq-career-standby-card-host {
+    margin-top: 8px;
+  }
+
+  .dhq-standby-card {
+    padding: 17px 15px;
+  }
+
+  .dhq-standby-card__heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dhq-standby-card__heading h2 {
+    font-size: 27px;
+  }
+
+  .dhq-standby-form,
+  .dhq-standby-status-grid,
+  .dhq-standby-activate {
+    grid-template-columns: 1fr;
+  }
+
+  .dhq-standby-form__action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dhq-standby-form button,
+  .dhq-standby-activate button {
+    width: 100%;
+  }
+
+  .dhq-home-standby {
+    padding: 20px 18px;
+  }
+
+  .dhq-home-standby h1 {
+    font-size: 40px;
+  }
+
+  .dhq-home-standby__identity {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .dhq-home-standby p {
+    margin: 9px 0 13px;
+    font-size: 11px;
+  }
+}

@@ -374,6 +374,7 @@ export default defineConfig({
   ],
   build: {
     rolldownOptions: {
+      input: { main: "index.html", redesign: "redesign-demo.html" },
       output: {
         codeSplitting: {
           groups: [

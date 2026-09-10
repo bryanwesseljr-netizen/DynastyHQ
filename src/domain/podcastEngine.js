@@ -5,6 +5,10 @@ import {
 } from './podcastShow.js';
 import { buildProgramCoverageContext } from './programCoverage.js';
 import { resolveCurrentProgramSchool, resolveIssueTeamMediaProfile } from './teamMediaProfile.js';
+import {
+  buildVerifiedPlayerMediaReference,
+  createPlayerReferenceNormalizer,
+} from './playerMediaReferences.js';
 
 const WORDS_PER_MINUTE = 145;
 const MIN_SCRIPT_WORDS = 400;
@@ -193,6 +197,7 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
   if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
+  const playerReference = buildVerifiedPlayerMediaReference(state, issue);
   if (coverageStage === 'college-player' && !coverageContext?.coverageDecision?.podcastEligible) {
     const error = new Error('No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.');
     error.code = 'NO_NEWSWORTHY_PODCAST';
@@ -248,6 +253,7 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
       result: text(currentGame?.result, 20),
       didPlay: weekType.includes('bye') ? false : currentGame?.didPlay !== false,
     },
+    playerReference,
     brief,
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
@@ -271,10 +277,12 @@ const isShowBookend = (segment = {}) => /^show-(?:open|close)-/i.test(text(segme
 export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) => {
   const allowedKeys = new Set(payload.facts.map((fact) => fact.key));
   const hostIds = new Set(PODCAST_HOSTS.map((host) => host.id));
+  const normalizeMetadataReference = createPlayerReferenceNormalizer(payload.playerReference);
+  const normalizeSpokenReference = createPlayerReferenceNormalizer(payload.playerReference);
   const chapters = (generated?.chapters || []).slice(0, 8).map((chapter, index) => ({
     id: text(chapter.id, 80) || `chapter-${index + 1}`,
     title: text(chapter.title, 120) || `Chapter ${index + 1}`,
-    summary: text(chapter.summary, 400),
+    summary: normalizeMetadataReference(text(chapter.summary, 400)),
     segmentStart: Math.max(0, Number(chapter.segmentStart) || 0),
   }));
   const chapterIds = new Set(chapters.map((chapter) => chapter.id));
@@ -282,7 +290,7 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     id: text(segment.id, 80) || `segment-${index + 1}`,
     hostId: hostIds.has(segment.hostId) ? segment.hostId : PODCAST_HOSTS[index % PODCAST_HOSTS.length].id,
     chapterId: chapterIds.has(segment.chapterId) ? segment.chapterId : (chapters[0]?.id || ''),
-    text: text(segment.text, 1800),
+    text: normalizeSpokenReference(text(segment.text, 1800)),
     deliveryStyle: normalizeDelivery(segment.deliveryStyle),
     citedFactKeys: normalizeCitations(segment.citedFactKeys, allowedKeys),
   })).filter((segment) => segment.text);
@@ -315,8 +323,8 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     showSchool: text(generated?.showSchool || payload?.show?.school, 160),
     showNickname: text(generated?.showNickname || payload?.show?.nickname, 120),
     opponent: text(generated?.opponent || payload?.episodeContext?.opponent, 160),
-    title: text(generated.title, 240) || payload.brief.title,
-    summary: text(generated.summary, 700) || payload.brief.summary,
+    title: normalizeMetadataReference(text(generated.title, 240) || payload.brief.title),
+    summary: normalizeMetadataReference(text(generated.summary, 700) || payload.brief.summary),
     generatedAt: new Date().toISOString(),
     status: 'scripted',
     audioStatus: 'not-generated',

@@ -1,4 +1,8 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
+import {
+  buildVerifiedPlayerMediaReference,
+  createPlayerReferenceNormalizer,
+} from './playerMediaReferences.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const wordCount = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
@@ -191,6 +195,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   if (!issue?.articles?.length) throw new Error('Choose a published newsroom edition first.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
+  const playerReference = buildVerifiedPlayerMediaReference(state, issue);
   if (coverageStage === 'college-player' && coverageContext?.coverageDecision?.articleCount < 1) {
     const error = new Error('No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.');
     error.code = 'NO_NEWSWORTHY_NEWSROOM';
@@ -280,7 +285,9 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       position: clean(state.player?.pos, 40),
       number: clean(state.player?.number, 20),
       archetype: clean(state.player?.archetype, 80),
+      height: clean(state.player?.height, 40),
     },
+    playerReference,
     facts,
     articleBriefs: cappedBriefs,
   };
@@ -303,10 +310,10 @@ const normalizeStoryFormat = (value) => {
 
 const minimumArticleWords = (payload) => {
   const tier = payload.coverageDecision?.tier;
-  if (tier === 'brief') return 160;
-  if (tier === 'major') return 240;
-  if (tier === 'career-defining') return 280;
-  return 220;
+  if (tier === 'brief') return 120;
+  if (tier === 'major') return 160;
+  if (tier === 'career-defining') return 180;
+  return 140;
 };
 
 export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = '', generatedAt = new Date().toISOString() }) => {
@@ -321,15 +328,18 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     const outletId = clean(entry.outletId, 80);
     const brief = briefsById.get(outletId);
     if (!brief) return null;
-    const paragraphs = (entry.paragraphs || []).map((paragraph) => clean(paragraph, 2200)).filter(Boolean).slice(0, 8);
+    const normalizeReference = createPlayerReferenceNormalizer(payload.playerReference);
+    const headline = normalizeReference(clean(entry.headline, 260));
+    const dek = normalizeReference(clean(entry.dek, 500));
+    const paragraphs = (entry.paragraphs || []).map((paragraph) => normalizeReference(clean(paragraph, 2200))).filter(Boolean).slice(0, 8);
     const articleWords = paragraphs.reduce((total, paragraph) => total + wordCount(paragraph), 0);
     if (paragraphs.length < 4 || articleWords < minWords) return null;
     const citedFactKeys = normalizeCitations(entry.citedFactIds, payload);
     if (!citedFactKeys.length) return null;
-    const sectionHeadings = (entry.sectionHeadings || []).map((heading) => clean(heading, 100)).filter(Boolean).slice(0, 3);
+    const sectionHeadings = (entry.sectionHeadings || []).map((heading) => normalizeReference(clean(heading, 100))).filter(Boolean).slice(0, 3);
     const sidebars = (entry.sidebars || []).map((section) => ({
-      title: clean(section?.title, 80),
-      items: (section?.items || []).map((item) => clean(item, 220)).filter(Boolean).slice(0, 5),
+      title: normalizeReference(clean(section?.title, 80)),
+      items: (section?.items || []).map((item) => normalizeReference(clean(item, 220))).filter(Boolean).slice(0, 5),
     })).filter((section) => section.title && section.items.length >= 1).slice(0, 3);
     if (sectionHeadings.length < 1 || sidebars.length < 1) return null;
 
@@ -337,14 +347,14 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       outletId,
       storyImportance: normalizeImportance(entry.storyImportance),
       storyFormat: normalizeStoryFormat(entry.storyFormat),
-      kicker: clean(entry.kicker, 80),
-      headline: clean(entry.headline, 260),
-      dek: clean(entry.dek, 500),
+      kicker: normalizeReference(clean(entry.kicker, 80)),
+      headline,
+      dek,
       byline: brief.byline,
       dateline: clean(entry.dateline, 100),
       paragraphs,
       sectionHeadings,
-      pullQuote: clean(entry.pullQuote, 320),
+      pullQuote: normalizeReference(clean(entry.pullQuote, 320)),
       sidebars,
       citedFactKeys,
       readingMinutes: Math.max(1, Math.round(articleWords / 225)),

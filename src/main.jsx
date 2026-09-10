@@ -7,6 +7,7 @@ import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
 import PublicShareGuard from './components/PublicShareGuard.jsx'
 import PublicNewsroomArticlePage from './components/PublicNewsroomArticlePage.jsx'
 import PublicMediaProfilePage from './components/PublicMediaProfilePage.jsx'
+import EditorialComparisonPage from './components/EditorialComparisonPage.jsx'
 import { resolveViewContext } from './domain/viewMode.js'
 import { readSharedNewsroomArticleId } from './domain/newsroomArticleShare.js'
 import { readPublicMediaProfileId } from './domain/publicMediaProfile.js'
@@ -28,10 +29,13 @@ import './podcast-seek-controls.css'
 const viewContext = resolveViewContext(window.location.search)
 const sharedArticleId = readSharedNewsroomArticleId(window.location.search)
 const mediaProfileId = readPublicMediaProfileId(window.location.search)
+const editorialCompare = new URLSearchParams(window.location.search).get('editorialCompare') === '1'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {sharedArticleId ? (
+    {editorialCompare ? (
+      <EditorialComparisonPage />
+    ) : sharedArticleId ? (
       <PublicNewsroomArticlePage shareId={sharedArticleId} />
     ) : mediaProfileId ? (
       <PublicMediaProfilePage ownerId={mediaProfileId} />

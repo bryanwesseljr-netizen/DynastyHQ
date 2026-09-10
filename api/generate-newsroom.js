@@ -1,7 +1,8 @@
-import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { generateEditorialJsonFreeFirst } from '../src/server/editorialTextRouter.js';
+import { buildPlayerMediaReferenceFromFields } from '../src/domain/playerMediaReferences.js';
 
-const MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
+const OPENAI_FALLBACK_MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
 const text = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
@@ -101,6 +102,27 @@ const validatePayload = (body = {}) => {
   const program = body.coveragePlan?.program || {};
   const programGames = Number(program.games) || 0;
   const sharedPlayerPolicy = text(body.coveragePlan?.playerMentionPolicy || coverageDecision.playerMentionPolicy, 80);
+  const suppressPlayer = sharedPlayerPolicy === 'omit' && coverageStage === 'college-player';
+  const player = {
+    name: suppressPlayer ? '' : text(body.player?.name, 120),
+    school: text(body.player?.school, 160),
+    college: text(body.player?.college, 160),
+    position: suppressPlayer ? '' : text(body.player?.position, 40),
+    number: suppressPlayer ? '' : text(body.player?.number, 20),
+    archetype: suppressPlayer ? '' : text(body.player?.archetype, 80),
+    height: suppressPlayer ? '' : text(body.player?.height, 40),
+  };
+  const playerReference = suppressPlayer ? buildPlayerMediaReferenceFromFields() : buildPlayerMediaReferenceFromFields({
+    fullName: player.name,
+    position: player.position,
+    archetype: player.archetype,
+    height: player.height,
+    role: text(relevance.currentRole, 40),
+    previousRole: text(relevance.previousRole, 40),
+    roleSource: ['weekly-snapshot', 'fact-ledger', 'current-state'].includes(body.playerReference?.roleSource)
+      ? body.playerReference.roleSource
+      : '',
+  });
 
   return {
     publicationId: text(body.publicationId, 140),
@@ -129,24 +151,18 @@ const validatePayload = (body = {}) => {
       },
       playerRelevance: {
         level: ['low', 'developing', 'high', 'primary'].includes(relevance.level) ? relevance.level : 'low',
-        currentRole: sharedPlayerPolicy === 'omit' ? '' : text(relevance.currentRole, 40),
-        previousRole: sharedPlayerPolicy === 'omit' ? '' : text(relevance.previousRole, 40),
-        roleChanged: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.roleChanged),
-        promoted: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.promoted),
-        demoted: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.demoted),
-        didPlay: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.didPlay),
-        firstAppearance: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.firstAppearance),
-        starter: sharedPlayerPolicy === 'omit' ? false : Boolean(relevance.starter),
+        currentRole: suppressPlayer ? '' : text(relevance.currentRole, 40),
+        previousRole: suppressPlayer ? '' : text(relevance.previousRole, 40),
+        roleChanged: suppressPlayer ? false : Boolean(relevance.roleChanged),
+        promoted: suppressPlayer ? false : Boolean(relevance.promoted),
+        demoted: suppressPlayer ? false : Boolean(relevance.demoted),
+        didPlay: suppressPlayer ? false : Boolean(relevance.didPlay),
+        firstAppearance: suppressPlayer ? false : Boolean(relevance.firstAppearance),
+        starter: suppressPlayer ? false : Boolean(relevance.starter),
       },
     } : null,
-    player: {
-      name: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.name, 120),
-      school: text(body.player?.school, 160),
-      college: text(body.player?.college, 160),
-      position: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.position, 40),
-      number: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.number, 20),
-      archetype: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.archetype, 80),
-    },
+    player,
+    playerReference,
     facts,
     articleBriefs,
   };
@@ -218,6 +234,17 @@ CENTRAL COLLEGE PHILOSOPHY:
 - The tracked player becomes the story only when his football relevance makes him the story.
 - If coveragePlan.playerMentionPolicy is "omit", do not name or discuss the tracked player at all and do not build a quarterback story around his backup status.
 - Legitimate player events include promotion/demotion, first appearance, meaningful playing time, a start, meaningful production, transfer decision, award, milestone, or another consequential supplied football event.
+
+NATURAL TRACKED-PLAYER REFERENCES:
+- playerReference is a verified allow-list for how the tracked player may be described. It is not a list of phrases that must all be used.
+- On the first natural identification in an article, the full name may be used once. After that, prefer playerReference.surname and occasional context-appropriate entries from playerReference.descriptors.
+- Never abbreviate the tracked player as an initial plus surname such as "S. Jones" when a full name is supplied; use the surname instead.
+- Rotate references only when it sounds natural. Surname alone should usually be the most common repeated reference. Do not mechanically cycle through descriptors.
+- A descriptor such as "the backup quarterback," "the dual-threat quarterback," "the signal-caller," or "the 6-foot-4 quarterback" is allowed only if that exact phrase appears in playerReference.descriptors.
+- playerReference.role is historical for this publication. Treat it as the role saved for this week, not the player's current role today. Never substitute a later/current role into an older story.
+- Prefer playerReference.roleDescription or another natural allowed descriptor over exposing raw depth-chart codes such as QB2 or QB3 in reader-facing prose.
+- Never invent hometown, state/native status, recruiting-star history, former-school history, class year, captaincy, awards, accolades, physical measurements, or biographical labels. Terms such as "Texas native," "former four-star recruit," or "All-American" are forbidden unless separately supplied as verified facts.
+- If playerReference lacks a role, height, archetype descriptor, or other detail, simply do not describe the player that way.
 
 EDITORIAL SALIENCE:
 - Factual does not automatically mean newsworthy. Lead with consequence, change, tension, performance and meaningful football questions.
@@ -312,7 +339,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method not allowed.' });
   }
-  if (!process.env.OPENAI_API_KEY) return json(res, 503, { error: 'Newsroom writing is not configured yet.' });
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
+    return json(res, 503, { error: 'Newsroom writing is not configured yet.' });
+  }
 
   let user;
   try {
@@ -332,7 +361,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const assignmentSummary = payload.articleBriefs
       .map((brief) => `${brief.outletName}: ${brief.audience || 'general'} ${brief.storyType || 'story'}, ${brief.targetWordRange.min}-${brief.targetWordRange.max} words, player policy ${brief.playerMentionPolicy || 'relevance-based'}`)
       .join('; ');
@@ -341,32 +369,35 @@ export default async function handler(req, res) {
       : 'none';
     const reach = payload.coverageDecision?.audienceReach || {};
     const reachSummary = `${reach.level || 'local'}; national eligible=${Boolean(reach.nationalEligible)}${reach.nationalReasons?.length ? `; national reasons=${reach.nationalReasons.join(', ')}` : ''}`;
+    const userText = `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`;
 
-    const response = await client.responses.create({
-      model: MODEL,
-      store: false,
-      safety_identifier: user.localId,
-      reasoning: { effort: 'low' },
-      max_output_tokens: 10000,
+    const generated = await generateEditorialJsonFreeFirst({
+      schema: schemaFor(payload),
+      schemaName: 'dynastyhq_newsroom_edition',
       instructions: INSTRUCTIONS,
-      input: [{
-        role: 'user',
-        content: [{
-          type: 'input_text',
-          text: `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`,
-        }],
-      }],
-      text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },
+      userText,
+      maxOutputTokens: 10000,
+      temperature: 0.7,
+      safetyIdentifier: user.localId,
+      openAiModel: OPENAI_FALLBACK_MODEL,
     });
-    if (!response.output_text) return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
-    return json(res, 200, { edition: JSON.parse(response.output_text), model: MODEL });
+
+    return json(res, 200, {
+      edition: generated.data,
+      model: generated.usage.model,
+      provider: generated.usage.provider,
+      fallbackUsed: Boolean(generated.usage.fallbackUsed),
+      fallbackReason: generated.usage.fallbackReason || '',
+    });
   } catch (error) {
-    console.error('OpenAI newsroom generation failed', error);
-    const status = error?.status === 429 ? 429 : 502;
+    console.error('Newsroom generation failed', error);
+    const status = Number(error?.status) === 429 ? 429 : 502;
+    const fallbackUnavailable = Boolean(error?.fallbackUnavailable);
     return json(res, status, {
-      error: status === 429
-        ? 'The newsroom desk is busy. Try writing the edition again shortly.'
+      error: fallbackUnavailable
+        ? 'The free newsroom writer could not complete this edition, and the paid fallback is out of available API credit. Your existing articles were preserved.'
         : 'The newsroom edition could not be completed. Your existing articles were preserved.',
+      code: error?.code || 'NEWSROOM_GENERATION_FAILED',
     });
   }
 }

@@ -6,6 +6,7 @@ import CareerOverviewPortal from './CareerOverviewPortal.jsx';
 import CareerOverviewViewportPortal from './CareerOverviewViewportPortal.jsx';
 import CareerStandbyPortal from './CareerStandbyPortal.jsx';
 import StandbyStatusUpdatePortal from './StandbyStatusUpdatePortal.jsx';
+import CareerEditorialEventPortal from './CareerEditorialEventPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
 import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
 import GameHubCareerHandoffPortal from './GameHubCareerHandoffPortal.jsx';
@@ -62,6 +63,7 @@ const OwnerEnhancements = () => (
     <CareerOverviewViewportPortal />
     <CareerStandbyPortal />
     <StandbyStatusUpdatePortal />
+    <CareerEditorialEventPortal />
     <WeekHubRoutingPortal />
     <GameHubPortal />
     <GameHubMobilePolishPortal />

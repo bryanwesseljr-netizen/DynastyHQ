@@ -1,6 +1,6 @@
 /* Current-program publication accents.
    Legacy local/regional layout class names are retained for compatibility, but
-   their accent color now follows the school captured on each newsroom issue. */
+   their visible identity follows the school captured on each newsroom issue. */
 
 .dhq-news-article[data-audience="local"] .dhq-bearcats-masthead {
   background:
@@ -49,6 +49,65 @@
 
 .dhq-news-article[data-audience="regional"] .dhq-enquirer-footer__mark {
   border-bottom-color: var(--article-team-primary, #c41724) !important;
+}
+
+/* The legacy publication shells use Cincinnati-named CSS classes. The actual
+   Bearcats image asset must only survive on Cincinnati editions. */
+.dhq-news-article:not([data-program="Cincinnati"]) .dhq-bearcats-mark,
+.dhq-news-article:not([data-program="Cincinnati"]) .dhq-bearcats-footer__left b,
+.dhq-news-article:not([data-program="Cincinnati"]) .dhq-enquirer-footer__mark {
+  background-image: none !important;
+  text-indent: 0 !important;
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-mark {
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--article-team-accent, #fff) 55%, transparent);
+  background: color-mix(in srgb, var(--article-team-primary, #333) 88%, #050505) !important;
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-mark > span {
+  display: block !important;
+  color: var(--article-team-accent, #fff) !important;
+  font-size: 34px !important;
+  font-weight: 1000;
+  font-style: italic;
+  line-height: 1;
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-mark > i {
+  display: none !important;
+}
+
+.dhq-news-article:not([data-program="Cincinnati"]) .dhq-bearcats-footer__left b,
+.dhq-news-article:not([data-program="Cincinnati"]) .dhq-enquirer-footer__mark {
+  display: inline-grid !important;
+  place-items: center;
+  color: var(--article-team-primary, #333) !important;
+  font-size: 22px !important;
+  font-weight: 1000;
+  font-style: italic;
+  line-height: 1 !important;
+}
+
+/* Oregon is the active program in this career. The generic mark resolver uses
+   the nickname initial, so explicitly show the school O in publication marks. */
+.dhq-news-article[data-program="Oregon"] .dhq-bearcats-mark > span,
+.dhq-news-article[data-program="Oregon"] .dhq-bearcats-footer__left b,
+.dhq-news-article[data-program="Oregon"] .dhq-enquirer-footer__mark {
+  font-size: 0 !important;
+}
+
+.dhq-news-article[data-program="Oregon"] .dhq-bearcats-mark > span::before,
+.dhq-news-article[data-program="Oregon"] .dhq-bearcats-footer__left b::before,
+.dhq-news-article[data-program="Oregon"] .dhq-enquirer-footer__mark::before {
+  content: 'O';
+  color: inherit;
+  font-size: 28px;
+  font-weight: 1000;
+  font-style: italic;
+  line-height: 1;
 }
 
 @media (max-width: 900px) {

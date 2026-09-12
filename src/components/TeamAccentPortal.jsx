@@ -5,6 +5,29 @@ import '../newsroom-program-theme.css';
 
 const safeLabel = (value) => String(value || '').trim();
 
+const parseHex = (value) => {
+  const match = /^#([0-9a-f]{6})$/i.exec(safeLabel(value));
+  if (!match) return null;
+  return [0, 2, 4].map((index) => Number.parseInt(match[1].slice(index, index + 2), 16));
+};
+
+// Secondary colors such as Oregon yellow or Michigan maize make excellent
+// highlights on the dark DynastyHQ shell. Neutral secondaries (black, white,
+// silver/gray) fall back to the program primary so Cincinnati still reads red,
+// Michigan State reads green, Ohio State reads scarlet, etc.
+const resolveProgramHighlight = (primary, secondary) => {
+  const fallback = safeLabel(primary) || '#64748b';
+  const rgb = parseHex(secondary);
+  if (!rgb) return fallback;
+  const max = Math.max(...rgb);
+  const min = Math.min(...rgb);
+  const chroma = max - min;
+  const neutral = chroma < 44;
+  const tooDark = max < 72;
+  const nearWhite = min > 218 && chroma < 55;
+  return neutral || tooDark || nearWhite ? fallback : safeLabel(secondary);
+};
+
 const TeamAccentPortal = () => {
   const { career } = useOwnerCareer();
   const profile = useMemo(() => resolveCareerTeamMediaProfile(career || {}), [career]);
@@ -18,9 +41,15 @@ const TeamAccentPortal = () => {
       return undefined;
     }
 
-    root.style.setProperty('--dhq-team-primary', profile.primary || '#e00122');
-    root.style.setProperty('--dhq-team-secondary', profile.secondary || '#050505');
-    root.style.setProperty('--dhq-team-accent', profile.accent || '#ffffff');
+    const primary = profile.primary || '#64748b';
+    const secondary = profile.secondary || '#cbd5e1';
+    const accent = profile.accent || '#ffffff';
+    const highlight = resolveProgramHighlight(primary, secondary);
+
+    root.style.setProperty('--dhq-team-primary', primary);
+    root.style.setProperty('--dhq-team-secondary', secondary);
+    root.style.setProperty('--dhq-team-accent', accent);
+    root.style.setProperty('--dhq-team-highlight', highlight);
     body?.setAttribute('data-dhq-team-accent', 'true');
     body?.setAttribute('data-dhq-team-school', safeLabel(profile.shortName || profile.school));
 
@@ -52,6 +81,7 @@ const TeamAccentPortal = () => {
       root.style.removeProperty('--dhq-team-primary');
       root.style.removeProperty('--dhq-team-secondary');
       root.style.removeProperty('--dhq-team-accent');
+      root.style.removeProperty('--dhq-team-highlight');
     };
   }, [career, profile]);
 

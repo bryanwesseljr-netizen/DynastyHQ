@@ -1,0 +1,57 @@
+/* Program-aware accents layered over the legacy local/regional print layouts.
+   Cincinnati keeps its original art direction; every other current program uses
+   the team colors resolved by NewsroomArticleReader. */
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-masthead {
+  background:
+    radial-gradient(circle at 72% -20%, color-mix(in srgb, var(--article-team-secondary) 30%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--article-team-primary) 82%, #050505), #050505 100%);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-mark i,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-footer__left b {
+  background: var(--article-team-secondary);
+  border-color: var(--article-team-secondary);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-brand strong,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-motto strong {
+  color: var(--article-team-secondary);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-motto {
+  border-color: var(--article-team-secondary);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-byline-copy strong,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-news-copy h2,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-bearcats-footer button {
+  color: var(--article-team-primary);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="local"] .dhq-news-sidebar h2 {
+  background: var(--article-team-primary);
+  color: var(--article-team-accent);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-beat strong,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-sidebar li::first-line,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-footer button {
+  color: var(--article-team-primary);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-masthead__meta,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-sidebar section,
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-footer__mark {
+  border-color: var(--article-team-primary);
+}
+
+.dhq-news-article:not([data-program="Cincinnati"])[data-audience="regional"] .dhq-enquirer-sidebar h2::after {
+  background: var(--article-team-primary);
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-primary,
+body[data-dhq-team-accent="true"] .dhq-newsroom-story-card__action,
+body[data-dhq-team-accent="true"] .dhq-local-podcast__live {
+  accent-color: var(--dhq-team-primary);
+}

@@ -1,0 +1,58 @@
+/* Current-program publication accents.
+   Legacy local/regional layout class names are retained for compatibility, but
+   their accent color now follows the school captured on each newsroom issue. */
+
+.dhq-news-article[data-audience="local"] .dhq-bearcats-masthead {
+  background:
+    radial-gradient(circle at 72% -20%, color-mix(in srgb, var(--article-team-primary, #c8102e) 22%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--article-team-secondary, #0a0a0a) 0%, #050505 100%) !important;
+}
+
+.dhq-news-article[data-audience="local"] .dhq-bearcats-mark i,
+.dhq-news-article[data-audience="local"] .dhq-news-sidebar h2 {
+  background: var(--article-team-primary, #c8102e) !important;
+}
+
+.dhq-news-article[data-audience="local"] .dhq-bearcats-brand strong,
+.dhq-news-article[data-audience="local"] .dhq-bearcats-motto strong,
+.dhq-news-article[data-audience="local"] .dhq-bearcats-byline-copy strong,
+.dhq-news-article[data-audience="local"] .dhq-news-copy h2,
+.dhq-news-article[data-audience="local"] .dhq-bearcats-footer button {
+  color: var(--article-team-primary, #c8102e) !important;
+}
+
+.dhq-news-article[data-audience="local"] .dhq-bearcats-motto {
+  border-left-color: var(--article-team-primary, #c8102e) !important;
+}
+
+.dhq-news-article[data-audience="local"] .dhq-bearcats-footer__left b {
+  border-bottom-color: var(--article-team-primary, #c8102e) !important;
+}
+
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-beat strong,
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-sidebar li::first-line,
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-footer button {
+  color: var(--article-team-primary, #c41724) !important;
+}
+
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-masthead__meta {
+  border-bottom-color: var(--article-team-primary, #c41724) !important;
+}
+
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-sidebar section {
+  border-top-color: var(--article-team-primary, #c41724) !important;
+}
+
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-sidebar h2::after {
+  background: var(--article-team-primary, #c41724) !important;
+}
+
+.dhq-news-article[data-audience="regional"] .dhq-enquirer-footer__mark {
+  border-bottom-color: var(--article-team-primary, #c41724) !important;
+}
+
+@media (max-width: 900px) {
+  .dhq-news-article[data-audience="local"] .dhq-bearcats-motto {
+    border-left-color: transparent !important;
+  }
+}

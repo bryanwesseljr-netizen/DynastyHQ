@@ -39,7 +39,10 @@ const PodcastLocalShowPortal = () => {
   const teamKey = useMemo(() => teamKeyFor(show.school), [show.school]);
   const careerArtwork = career?.podcastBranding?.teamArtwork?.[teamKey] || {};
   const artwork = { ...careerArtwork, ...persistedArtwork };
-  const primaryArtwork = artwork.primary || career?.outletImages?.podcast || '';
+  // Never inherit the old global podcast cover across schools. Program artwork is
+  // explicitly keyed to the current team; otherwise the current chapter uses the
+  // neutral fallback until its own cover is uploaded.
+  const primaryArtwork = artwork.primary || '';
 
   // Podcast artwork gets its own tiny cloud record in addition to the master career.
   // The master career is rewritten often by normal DynastyHQ saves; this dedicated
@@ -112,17 +115,20 @@ const PodcastLocalShowPortal = () => {
       }
 
       // The original episode player owns a second artwork slot. Keep it synchronized
-      // with the program-specific cover so the Current Week card never shows a stale
-      // or blank legacy image.
-      if (primaryArtwork) {
-        const currentWeekLabel = [...podcastRoot.querySelectorAll('p')].find((node) => /^current week$/i.test(clean(node.textContent)));
-        const currentWeekSection = currentWeekLabel?.closest('section');
-        if (currentWeekSection) {
-          currentWeekSection.classList.add('dhq-podcast-current-episode');
-          currentWeekSection.querySelectorAll('img').forEach((image) => {
+      // with the program-specific cover, and hide any legacy cross-school image when
+      // this chapter does not yet have its own artwork.
+      const currentWeekLabel = [...podcastRoot.querySelectorAll('p')].find((node) => /^current week$/i.test(clean(node.textContent)));
+      const currentWeekSection = currentWeekLabel?.closest('section');
+      if (currentWeekSection) {
+        currentWeekSection.classList.add('dhq-podcast-current-episode');
+        currentWeekSection.querySelectorAll('img').forEach((image) => {
+          if (primaryArtwork) {
+            image.style.removeProperty('display');
             if (image.src !== primaryArtwork) image.src = primaryArtwork;
-          });
-        }
+          } else {
+            image.style.setProperty('display', 'none');
+          }
+        });
       }
 
       [...podcastRoot.querySelectorAll('button')].forEach((button) => {
@@ -217,6 +223,8 @@ const PodcastLocalShowPortal = () => {
           '_sync.deviceId': data?._sync?.deviceId || 'podcast-artwork-manager',
           '_sync.updatedAt': savedAt,
         };
+        // Keep the legacy global field synchronized for older readers, but the
+        // current-program UI never consumes it without a matching team key.
         if (slot === 'primary') patch.outletImages = { ...(data.outletImages || {}), podcast: uploaded.downloadUrl };
 
         transaction.update(careerRef, patch);

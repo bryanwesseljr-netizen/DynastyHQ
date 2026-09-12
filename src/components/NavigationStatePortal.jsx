@@ -139,22 +139,53 @@ const NavigationStatePortal = () => {
     document.head.appendChild(resetStyle);
 
     let pendingTarget = '';
+    let pendingStartedAt = 0;
     let pendingUntil = 0;
+    let pendingStableSince = 0;
     let releaseTimer = 0;
     let frame = 0;
+
+    const minimumIntentHold = 360;
+    const stableTargetWindow = 180;
+    const intentTimeout = 1400;
+
+    const clearPending = () => {
+      pendingTarget = '';
+      pendingStartedAt = 0;
+      pendingUntil = 0;
+      pendingStableSince = 0;
+    };
 
     const sync = () => {
       const actual = activeFromDom();
       const now = performance.now();
 
       if (pendingTarget) {
-        if (actual === pendingTarget || now >= pendingUntil) {
-          pendingTarget = '';
-          pendingUntil = 0;
-        } else {
+        if (actual === pendingTarget) {
+          if (!pendingStableSince) pendingStableSince = now;
+
+          const heldLongEnough = now - pendingStartedAt >= minimumIntentHold;
+          const stableLongEnough = now - pendingStableSince >= stableTargetWindow;
+
+          if (heldLongEnough && stableLongEnough) {
+            clearPending();
+            applyVisualActive(actual);
+            return;
+          }
+
           applyVisualActive(pendingTarget);
           return;
         }
+
+        // Any transient route (especially dashboard/Home while opening a portal)
+        // must not visually steal the active state from the user's destination.
+        pendingStableSince = 0;
+        if (now < pendingUntil) {
+          applyVisualActive(pendingTarget);
+          return;
+        }
+
+        clearPending();
       }
 
       applyVisualActive(actual);
@@ -170,15 +201,19 @@ const NavigationStatePortal = () => {
 
     const setIntent = (target) => {
       if (!target) return;
+      const now = performance.now();
       pendingTarget = target;
-      pendingUntil = performance.now() + 1000;
+      pendingStartedAt = now;
+      pendingUntil = now + intentTimeout;
+      pendingStableSince = 0;
       applyVisualActive(target);
+
       window.clearTimeout(releaseTimer);
       releaseTimer = window.setTimeout(() => {
-        pendingTarget = '';
-        pendingUntil = 0;
+        // Do not blindly release to Home/dashboard. Re-check the real DOM state;
+        // sync() will keep the intent if the destination is still settling.
         sync();
-      }, 1020);
+      }, intentTimeout + 20);
     };
 
     const captureIntent = (event) => {

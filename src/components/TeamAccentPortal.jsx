@@ -24,7 +24,29 @@ const TeamAccentPortal = () => {
     body?.setAttribute('data-dhq-team-accent', 'true');
     body?.setAttribute('data-dhq-team-school', safeLabel(profile.shortName || profile.school));
 
+    const appRoot = document.getElementById('root');
+    let scheduled = false;
+    const syncCurrentProgramExamples = () => {
+      scheduled = false;
+      if (!appRoot) return;
+      appRoot.querySelectorAll('textarea[placeholder*="Freshman arrival at Cincinnati"]').forEach((field) => {
+        field.setAttribute(
+          'placeholder',
+          `Example: Freshman arrival at ${profile.school}; opening bye before Week 1.`,
+        );
+      });
+    };
+    const schedule = () => {
+      if (scheduled) return;
+      scheduled = true;
+      window.requestAnimationFrame(syncCurrentProgramExamples);
+    };
+    syncCurrentProgramExamples();
+    const observer = appRoot ? new MutationObserver(schedule) : null;
+    observer?.observe(appRoot, { childList: true, subtree: true });
+
     return () => {
+      observer?.disconnect();
       body?.removeAttribute('data-dhq-team-accent');
       body?.removeAttribute('data-dhq-team-school');
       root.style.removeProperty('--dhq-team-primary');

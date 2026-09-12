@@ -21,9 +21,12 @@ test('earned national coverage keeps the ESPN-style national desk shell', async 
   assert.match(reader, /nationalAsideSections/);
   assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) minmax\(230px, 300px\)/);
   assert.match(styles, /color: #e3181e/);
-  assert.match(newsroom, /return 'Bearcats Insider'/);
-  assert.match(newsroom, /return 'Cincinnati Enquirer'/);
+  assert.match(newsroom, /resolveIssueTeamMediaProfile/);
+  assert.match(newsroom, /team\.localOutletName/);
+  assert.match(newsroom, /team\.regionalOutletName/);
   assert.match(newsroom, /return 'ESPN'/);
+  assert.doesNotMatch(newsroom, /return 'Bearcats Insider'/);
+  assert.doesNotMatch(newsroom, /return 'Cincinnati Enquirer'/);
 });
 
 test('national sidebar rendering does not invent placeholder statistics', async () => {

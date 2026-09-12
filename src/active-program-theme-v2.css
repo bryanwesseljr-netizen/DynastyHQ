@@ -1,0 +1,388 @@
+/* DynastyHQ active-program theme v2
+ * Loaded after the legacy broadcast-workspace skin. This layer makes the
+ * CURRENT player's/coaching program own the complete app chrome and card
+ * family, while preserving true semantic loss/error/injury states.
+ */
+
+body[data-dhq-team-accent="true"] {
+  --dhq-program-deepest: color-mix(in srgb, var(--dhq-program-primary) 66%, #010609);
+  --dhq-program-deep: color-mix(in srgb, var(--dhq-program-primary) 52%, #02080d);
+  --dhq-program-mid: color-mix(in srgb, var(--dhq-program-primary) 38%, #06111a);
+  --dhq-program-surface: color-mix(in srgb, var(--dhq-program-primary) 25%, #07111b);
+  --dhq-program-surface-soft: color-mix(in srgb, var(--dhq-program-primary) 14%, #07111b);
+  --dhq-program-highlight-soft: color-mix(in srgb, var(--dhq-program-highlight) 11%, #07111b);
+  --dhq-program-highlight-border: color-mix(in srgb, var(--dhq-program-highlight) 48%, #68747e);
+  --dhq-program-muted: color-mix(in srgb, var(--dhq-program-primary) 24%, #9aa4ad);
+}
+
+/* ========================================================================== */
+/* GLOBAL HEADER / NAV / TICKER                                                */
+/* ========================================================================== */
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-header {
+  border-bottom-color: color-mix(in srgb, var(--dhq-program-highlight) 32%, #26333d) !important;
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--dhq-program-primary) 36%, #01070c),
+      color-mix(in srgb, var(--dhq-program-primary) 18%, #02090f) 56%,
+      color-mix(in srgb, var(--dhq-program-primary) 28%, #01070c)) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.42) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-header__main {
+  border-bottom-color: color-mix(in srgb, var(--dhq-program-primary) 44%, rgba(139,154,168,.18)) !important;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dhq-program-primary) 32%, #01070c),
+    color-mix(in srgb, var(--dhq-program-primary) 15%, #02090f)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] #dhq-mobile-broadcast-nav-host {
+  border-top-color: color-mix(in srgb, var(--dhq-program-highlight) 14%, transparent) !important;
+  border-bottom-color: color-mix(in srgb, var(--dhq-program-primary) 46%, #26333d) !important;
+  background: linear-gradient(90deg,
+    var(--dhq-program-deepest),
+    color-mix(in srgb, var(--dhq-program-primary) 25%, #02090f),
+    var(--dhq-program-deepest)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 18%, #94a0aa) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active {
+  color: var(--dhq-program-highlight) !important;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 20%, transparent);
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 15%, #a0aab3) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] {
+  color: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 55%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-score-ticker {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 38%, #26333d) !important;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dhq-program-primary) 27%, #01070c),
+    color-mix(in srgb, var(--dhq-program-primary) 11%, #01070c)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-score-ticker__live {
+  background: color-mix(in srgb, var(--dhq-program-primary) 25%, transparent) !important;
+}
+
+/* ========================================================================== */
+/* HOME                                                                        */
+/* ========================================================================== */
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-card,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-workflow-card,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-podcast-card {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 40%, rgba(149,165,179,.48)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 23%, rgba(5,18,30,.97)),
+    color-mix(in srgb, var(--dhq-program-primary) 11%, rgba(2,10,17,.96))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-cards .dhq-broadcast-card:nth-child(2n) {
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-highlight) 6%, var(--dhq-program-surface)),
+    color-mix(in srgb, var(--dhq-program-primary) 12%, #020a11)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-card h2 i,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-waveform i {
+  background: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-podcast-card {
+  background: linear-gradient(90deg,
+    var(--dhq-program-deepest),
+    color-mix(in srgb, var(--dhq-program-primary) 42%, #06111a)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-footer {
+  border-top-color: color-mix(in srgb, var(--dhq-program-highlight) 30%, rgba(203,211,218,.7)) !important;
+  background: linear-gradient(135deg,
+    var(--dhq-program-deep),
+    #030a11 55%,
+    color-mix(in srgb, var(--dhq-program-primary) 26%, #06111c)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-footer::before {
+  border-right-color: color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--dhq-program-primary) 30%, rgba(13,28,42,.92)),
+    rgba(2,8,14,.92)) !important;
+}
+
+/* ========================================================================== */
+/* OLD BROADCAST WORKSPACE SKIN -> CURRENT PROGRAM                             */
+/* ========================================================================== */
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) {
+  --dhq-broadcast-red: var(--dhq-program-highlight) !important;
+  --dhq-broadcast-red-deep: var(--dhq-program-primary) !important;
+  --dhq-broadcast-panel: var(--dhq-program-surface) !important;
+  --dhq-broadcast-panel-soft: var(--dhq-program-surface-soft) !important;
+  --dhq-broadcast-panel-deep: var(--dhq-program-deepest) !important;
+  --dhq-broadcast-inset: color-mix(in srgb, var(--dhq-program-primary) 12%, #040d16) !important;
+  --dhq-broadcast-border: color-mix(in srgb, var(--dhq-program-primary) 38%, rgba(149,165,179,.48)) !important;
+  --dhq-broadcast-border-soft: color-mix(in srgb, var(--dhq-program-primary) 24%, rgba(149,165,179,.22)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"])::before {
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--dhq-program-primary) 30%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--dhq-program-primary) 16%, rgba(1,8,14,.36)), transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is(section, article, aside, details, form, header):is(
+  [class*="bg-slate-9"], [class*="bg-slate-8"], [class*="bg-blue-95"], [class*="bg-black"], [class*="backdrop-blur"]
+) {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 38%, rgba(149,165,179,.44)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 20%, rgba(5,18,30,.97)),
+    color-mix(in srgb, var(--dhq-program-primary) 9%, rgba(2,10,17,.96))) !important;
+  background-image: none !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is(
+  [class~="text-blue-200"], [class~="text-blue-300"], [class~="text-blue-400"], [class~="text-blue-500"],
+  [class~="text-amber-200"], [class~="text-amber-300"], [class~="text-amber-400"], [class~="text-amber-500"]
+) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is(
+  [class*="bg-blue-950/"], [class*="bg-blue-900/"], [class*="bg-blue-500/"],
+  [class*="bg-amber-950/"], [class*="bg-amber-900/"], [class*="bg-amber-500/"]
+) {
+  background: color-mix(in srgb, var(--dhq-program-primary) 22%, #07111b) !important;
+  background-image: none !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is(
+  [class*="border-blue-"], [class*="border-amber-"]
+) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 42%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is(input, select, textarea):focus {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 78%, white) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dhq-program-highlight) 14%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) button:is(
+  [class~="bg-blue-600"], [class~="bg-blue-500"], [class~="bg-amber-600"], [class~="bg-amber-500"]
+):not(:disabled) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 66%, white) !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--dhq-program-primary) 86%, white),
+    color-mix(in srgb, var(--dhq-program-primary) 76%, #010609)) !important;
+  color: var(--dhq-program-on-primary) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.18), 0 8px 22px color-mix(in srgb, var(--dhq-program-primary) 34%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > :not([data-background-sport="football"]) > header,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > :not([data-background-sport="football"]) > div:first-child:is([class*="rounded"], [class*="border"]) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 24%, var(--dhq-program-primary)) !important;
+  background: linear-gradient(90deg,
+    var(--dhq-program-deepest),
+    color-mix(in srgb, var(--dhq-program-primary) 27%, #04121e) 62%,
+    color-mix(in srgb, var(--dhq-program-highlight) 8%, var(--dhq-program-deep))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > :not([data-background-sport="football"])::before {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--dhq-program-highlight) 36%, transparent) !important;
+}
+
+/* ========================================================================== */
+/* CAREER + STANDBY                                                            */
+/* ========================================================================== */
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-career-stat-grid article,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-career-panel {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 42%, rgba(151,165,178,.42)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 23%, rgba(5,18,30,.97)),
+    color-mix(in srgb, var(--dhq-program-primary) 9%, rgba(2,10,17,.96))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-career-stat-grid article:nth-child(even) {
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-highlight) 6%, var(--dhq-program-surface)),
+    var(--dhq-program-surface-soft)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-standby-card {
+  --standby-red: var(--dhq-program-highlight) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 42%, rgba(151,165,178,.42)) !important;
+  background:
+    radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--dhq-program-highlight) 11%, transparent), transparent 34%),
+    linear-gradient(135deg, var(--dhq-program-mid), var(--dhq-program-deepest)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] :is(.dhq-standby-card__eyebrow, .dhq-home-standby__kicker) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-standby-badge {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 38%, transparent) !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 72%, white) !important;
+  background: color-mix(in srgb, var(--dhq-program-highlight) 9%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] :is(
+  .dhq-standby-form input:focus, .dhq-standby-form select:focus,
+  .dhq-standby-activate input:focus, .dhq-standby-activate select:focus
+) {
+  border-color: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dhq-program-highlight) 12%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] :is(
+  .dhq-standby-form button, .dhq-standby-activate button, .dhq-home-standby button
+) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 68%, white) !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--dhq-program-primary) 88%, white),
+    color-mix(in srgb, var(--dhq-program-primary) 78%, #010609)) !important;
+  color: var(--dhq-program-on-primary) !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--dhq-program-primary) 32%, transparent) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-home-standby {
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--dhq-program-highlight) 8%, var(--dhq-program-primary)), transparent 31%),
+    linear-gradient(110deg, color-mix(in srgb, var(--dhq-program-primary) 22%, transparent), color-mix(in srgb, var(--dhq-program-primary) 36%, transparent)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-home-standby__kicker span {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--dhq-program-highlight) 70%, transparent) !important;
+}
+
+/* ========================================================================== */
+/* GAME HUB                                                                    */
+/* ========================================================================== */
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] :is(
+  .dhq-gh-card, .dhq-gh-wide-card, .dhq-gh-media-section, .dhq-gh-advanced, .dhq-gh-progress
+) {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 40%, rgba(146,158,169,.42)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 22%, rgba(5,19,31,.97)),
+    color-mix(in srgb, var(--dhq-program-primary) 9%, rgba(2,10,17,.96))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-gh-card:nth-child(even) {
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-highlight) 6%, var(--dhq-program-surface)),
+    var(--dhq-program-surface-soft)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-gh-card__heading > span::before,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-gh-section-title > div > span::before {
+  background: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-gh-progress > div.is-complete > span {
+  border-color: var(--dhq-program-highlight) !important;
+  background: var(--dhq-program-primary) !important;
+  color: var(--dhq-program-on-primary) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] :is(
+  .dhq-gh-hero__actions .is-primary,
+  .dhq-gh-ready-card button,
+  .dhq-gh-newsroom-feature button,
+  .dhq-gh-podcast-panel button
+) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 68%, white) !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--dhq-program-primary) 88%, white),
+    color-mix(in srgb, var(--dhq-program-primary) 78%, #010609)) !important;
+  color: var(--dhq-program-on-primary) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.17), 0 8px 22px color-mix(in srgb, var(--dhq-program-primary) 32%, transparent) !important;
+}
+
+/* ========================================================================== */
+/* NEWSROOM / CHRONICLE / PODCAST                                              */
+/* ========================================================================== */
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="newsroom"] .dhq-newsroom-story-card {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 42%, rgba(149,165,179,.48)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 22%, rgba(5,18,30,.97)),
+    color-mix(in srgb, var(--dhq-program-primary) 9%, rgba(2,10,17,.96))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="newsroom"] :is(
+  .dhq-newsroom-story-card__outlet, .dhq-newsroom-story-card__action
+) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="newsroom"] .dhq-newsroom-story-card:hover {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 62%, transparent) !important;
+  background: linear-gradient(150deg, var(--dhq-program-mid), var(--dhq-program-deepest)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="newsroom"] > div > section:first-child > div:first-child {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dhq-program-primary) 34%, #07111b),
+    var(--dhq-program-deepest)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="chronicle"] :is(section, article, blockquote)[class*="bg-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 34%, rgba(149,165,179,.28)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 20%, rgba(5,18,30,.96)),
+    color-mix(in srgb, var(--dhq-program-primary) 8%, rgba(2,10,17,.95))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="chronicle"] > div > div.rounded-2xl,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="chronicle"] > div > header:first-child {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 30%, var(--dhq-program-primary)) !important;
+  background:
+    radial-gradient(circle at 84% 20%, color-mix(in srgb, var(--dhq-program-highlight) 9%, transparent), transparent 35%),
+    linear-gradient(120deg, var(--dhq-program-deepest), var(--dhq-program-mid)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="podcast"] :is(section, aside, article, header)[class*="bg-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 38%, rgba(149,165,179,.44)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 20%, rgba(4,17,28,.97)),
+    color-mix(in srgb, var(--dhq-program-primary) 8%, rgba(2,10,17,.95))) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="podcast"] :is(
+  [class~="text-red-300"], [class~="text-red-400"], [class~="text-red-500"]
+) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="podcast"] audio {
+  accent-color: var(--dhq-program-highlight) !important;
+}
+
+/* Current-career settings/recruiting/front-office cards inherit school shades. */
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="recruiting"] .dhq-player-recruiting-workspace :is(section, article, aside, div)[class*="bg-slate-9"],
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="frontOffice"] :is(section, article, aside)[class*="bg-"],
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main[data-active-tab="offseason"] :is(section, article, aside)[class*="bg-"],
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is([class*="shadow-2xl"], [class*="shadow-xl"])[class*="bg-slate-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 38%, rgba(149,165,179,.44)) !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--dhq-program-primary) 21%, rgba(4,17,28,.96)),
+    color-mix(in srgb, var(--dhq-program-primary) 8%, rgba(2,10,17,.94))) !important;
+}

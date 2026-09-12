@@ -66,14 +66,32 @@ const CINCINNATI_MEDIA_OVERRIDE = Object.freeze({
   podcastHostsLabel: 'Mark Thompson · Sarah Chen',
 });
 
+const OREGON_MEDIA_OVERRIDE = Object.freeze({
+  localOutletName: 'Eugene Sports Chronicle',
+  regionalOutletName: 'Oregon Gridiron Ledger',
+  nationalOutletName: 'College Football Central',
+  teamNewsLabel: 'Oregon Football',
+  teamNewsTagline: 'News, analysis and every week of the Ducks season.',
+  localMotto: 'Ducks football. Eugene perspective.',
+  podcastSubtitle: 'Oregon Football Podcast',
+  podcastTagline: 'Local coverage. Ducks focused. Eugene connected.',
+  podcastHostsLabel: 'Mark Thompson · Sarah Chen',
+});
+
+const PROGRAM_MEDIA_OVERRIDES = Object.freeze({
+  Cincinnati: CINCINNATI_MEDIA_OVERRIDE,
+  Oregon: OREGON_MEDIA_OVERRIDE,
+});
+
 const catalogProfileFor = (school = '') => {
   const match = fbsProfileFor(school);
   if (!match) return null;
   return {
     school: match.school,
-    profile: match.school === 'Cincinnati'
-      ? { ...match.profile, ...CINCINNATI_MEDIA_OVERRIDE }
-      : match.profile,
+    profile: {
+      ...match.profile,
+      ...(PROGRAM_MEDIA_OVERRIDES[match.school] || {}),
+    },
   };
 };
 
@@ -154,18 +172,18 @@ export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, sta
   const accent = clean(override.accent || catalogProfile.accent) || readableAccent(primary);
   const localOutletName = clean(
     override.localOutletName
-    || effectiveOutletProfile?.localOutletName
-    || catalogProfile.localOutletName,
+    || catalogProfile.localOutletName
+    || effectiveOutletProfile?.localOutletName,
   ) || `${nickname} Insider`;
   const regionalOutletName = clean(
     override.regionalOutletName
-    || effectiveOutletProfile?.regionalOutletName
-    || catalogProfile.regionalOutletName,
+    || catalogProfile.regionalOutletName
+    || effectiveOutletProfile?.regionalOutletName,
   ) || `${city} College Sports`;
   const nationalOutletName = clean(
     override.nationalOutletName
-    || effectiveOutletProfile?.nationalOutletName
-    || catalogProfile.nationalOutletName,
+    || catalogProfile.nationalOutletName
+    || effectiveOutletProfile?.nationalOutletName,
   ) || 'College Football Central';
   const teamNewsLabel = clean(override.teamNewsLabel || catalogProfile.teamNewsLabel) || `${shortName} Football`;
   const podcastName = clean(override.podcastName || catalogProfile.podcastName) || `${shortName} Football Notebook`;

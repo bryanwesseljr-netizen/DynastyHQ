@@ -1,0 +1,101 @@
+/* DynastyHQ navigation-state v6
+ * Final nav reset for the broadcast header. Older CSS styled `> span:last-child`
+ * as an underline, which also matches the text label whenever a button does not
+ * have a dedicated underline span. That made inactive tabs look partially active.
+ * v6 makes the button itself own the only visible active indicator.
+ */
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item {
+  position: relative !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: color 90ms linear !important;
+}
+
+/* Never allow a child span to become a bar/highlight. This neutralizes the
+ * legacy `span:last-child` rule and the React-rendered underline span alike. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item > span {
+  position: static !important;
+  inset: auto !important;
+  bottom: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item > span.absolute {
+  display: none !important;
+}
+
+/* Kill every legacy pseudo-element indicator. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item::before,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item::after {
+  display: none !important;
+  content: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Plain inactive state regardless of stale aria-current, portal helper classes,
+ * hover, focus or a touch browser's sticky hover state. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:not(.dhq-nav-visual-active):is(:hover, :focus, :focus-visible, :active) {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 18%, #abb4ae) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transform: none !important;
+}
+
+/* Exactly one active tab. The underline is an inset shadow on the BUTTON, so
+ * no child span or pseudo-element can be mistaken for an active indicator. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active:is(:hover, :focus, :focus-visible, :active) {
+  color: var(--dhq-program-highlight) !important;
+  background: transparent !important;
+  box-shadow: inset 0 -3px 0 var(--dhq-program-highlight) !important;
+  text-shadow: 0 0 9px color-mix(in srgb, var(--dhq-program-highlight) 16%, transparent) !important;
+  transform: none !important;
+}
+
+/* The compact broadcast nav uses the same one-owner rule. */
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: color 90ms linear !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button::before,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button::after {
+  display: none !important;
+  content: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button:not(.dhq-nav-visual-active):is(:hover, :focus, :focus-visible, :active) {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 18%, #abb4ae) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transform: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active:is(:hover, :focus, :focus-visible, :active) {
+  color: var(--dhq-program-highlight) !important;
+  background: transparent !important;
+  box-shadow: inset 0 -3px 0 var(--dhq-program-highlight) !important;
+  text-shadow: 0 0 9px color-mix(in srgb, var(--dhq-program-highlight) 16%, transparent) !important;
+  transform: none !important;
+}

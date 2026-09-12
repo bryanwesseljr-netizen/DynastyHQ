@@ -1,3 +1,5 @@
+import { resolveTeamMediaProfile, sameProgram } from './teamMediaProfile.js';
+
 const clean = (value, maxLength = 120) => String(value || '').trim().slice(0, maxLength);
 
 export const NATIONAL_COLLEGE_OUTLET = Object.freeze({
@@ -84,28 +86,37 @@ export const addCollegeNewsroomStop = ({
 
 export const getActiveCollegeNewsroomStop = (value = {}, school = '') => {
   const normalized = normalizeCollegeNewsroom(value);
-  return normalized.stops.find((stop) => stop.id === normalized.activeStopId)
-    || [...normalized.stops].reverse().find((stop) => !school || stop.school === school)
-    || null;
+  const requestedSchool = clean(school);
+  const active = normalized.stops.find((stop) => stop.id === normalized.activeStopId) || null;
+
+  if (active && (!requestedSchool || sameProgram(active.school, requestedSchool))) return active;
+  return [...normalized.stops].reverse().find((stop) => (
+    !requestedSchool || sameProgram(stop.school, requestedSchool)
+  )) || null;
 };
 
 export const createCollegeOutletSet = (value = {}, school = '') => {
   const stop = getActiveCollegeNewsroomStop(value, school);
-  const suggestions = suggestCollegeOutlets({ school, city: stop?.city, state: stop?.state });
+  const media = resolveTeamMediaProfile({ school });
+  const suggestions = suggestCollegeOutlets({
+    school,
+    city: stop?.city || media.city,
+    state: stop?.state || '',
+  });
   return [
     {
       id: 'college-local',
-      name: stop?.localOutletName || suggestions.localOutletName,
-      desk: stop?.city ? `${stop.city} Sports` : 'Local Sports',
+      name: stop?.localOutletName || media.localOutletName || suggestions.localOutletName,
+      desk: stop?.city ? `${stop.city} Sports` : media.city ? `${media.city} Sports` : 'Local Sports',
       theme: 'local',
     },
     {
       id: 'college-regional',
-      name: stop?.regionalOutletName || suggestions.regionalOutletName,
-      desk: stop?.state ? `${stop.state} College Football` : 'Regional College Football',
+      name: stop?.regionalOutletName || media.regionalOutletName || suggestions.regionalOutletName,
+      desk: stop?.state ? `${stop.state} College Football` : `${media.school} Football`,
       theme: 'regional',
     },
     { id: 'filmroom', name: 'The Film Room', desk: 'Numbers & Analysis', theme: 'filmroom' },
-    { ...NATIONAL_COLLEGE_OUTLET, name: stop?.nationalOutletName || NATIONAL_COLLEGE_OUTLET.name },
+    { ...NATIONAL_COLLEGE_OUTLET, name: stop?.nationalOutletName || media.nationalOutletName || NATIONAL_COLLEGE_OUTLET.name },
   ];
 };

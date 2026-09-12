@@ -8,6 +8,7 @@ import NewsroomArticleReader from './NewsroomArticleReader';
 import PostgameFrontPage from './PostgameFrontPage';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { presentationVariables, resolveNewsroomPresentation } from '../domain/newsroomPresentation';
+import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
 import { appId, auth, db } from '../firebase';
 
 const iconForOutlet = (outletId) => ({
@@ -17,10 +18,11 @@ const iconForOutlet = (outletId) => ({
   national: BookOpen,
 }[outletId] || Newspaper);
 
-const publicationLabelForStory = (story = {}) => {
+const publicationLabelForStory = (story = {}, issue = {}) => {
   const presentation = resolveNewsroomPresentation(story);
-  if (presentation.audience === 'local') return 'Bearcats Insider';
-  if (presentation.audience === 'regional') return 'Cincinnati Enquirer';
+  const team = resolveIssueTeamMediaProfile(issue);
+  if (presentation.audience === 'local') return team.localOutletName;
+  if (presentation.audience === 'regional') return team.regionalOutletName;
   if (presentation.audience === 'national' || presentation.audience === 'national-lead') return 'ESPN';
   return story.outletName;
 };
@@ -28,7 +30,7 @@ const publicationLabelForStory = (story = {}) => {
 const tabsForIssue = (issue) => (issue?.articles || []).map((story) => ({
   theme: story.theme || story.outletId,
   outletId: story.outletId,
-  label: publicationLabelForStory(story),
+  label: publicationLabelForStory(story, issue),
   icon: iconForOutlet(story.outletId),
 }));
 

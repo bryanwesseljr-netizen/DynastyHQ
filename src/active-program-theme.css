@@ -1,0 +1,307 @@
+/*
+ * DynastyHQ active-program theme
+ *
+ * The football-stadium / navy presentation is the permanent product shell.
+ * Program color is dynamic: TeamAccentPortal resolves the CURRENT playing or
+ * coaching school and writes the variables below. This layer is loaded last so
+ * old Cincinnati-era component CSS can no longer own current-career branding.
+ * Historical Newsroom articles keep their issue-scoped data-program theme.
+ */
+
+:root {
+  --dhq-team-primary: #64748b;
+  --dhq-team-secondary: #cbd5e1;
+  --dhq-team-accent: #ffffff;
+  --dhq-team-highlight: #94a3b8;
+}
+
+body[data-dhq-team-accent="true"] {
+  --dhq-program-primary: var(--dhq-team-primary);
+  --dhq-program-secondary: var(--dhq-team-secondary);
+  --dhq-program-highlight: var(--dhq-team-highlight);
+  --dhq-program-on-primary: var(--dhq-team-accent);
+  --dhq-program-soft: color-mix(in srgb, var(--dhq-team-primary) 20%, transparent);
+  --dhq-program-soft-strong: color-mix(in srgb, var(--dhq-team-primary) 34%, transparent);
+  --dhq-program-border: color-mix(in srgb, var(--dhq-team-highlight) 52%, #52606d);
+  --dhq-program-deep: color-mix(in srgb, var(--dhq-team-primary) 52%, #02070b);
+}
+
+/* -------------------------------------------------------------------------- */
+/* GLOBAL BROADCAST CHROME                                                     */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header-logo .text-amber-400,
+body[data-dhq-team-accent="true"] .dhq-mobile-more-sheet__head span {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header__icon i,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header__profile::after,
+body[data-dhq-team-accent="true"] .dhq-score-ticker__live i {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header {
+  border-bottom-color: color-mix(in srgb, var(--dhq-program-primary) 44%, rgba(123, 139, 152, .26)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-more-sheet__head {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 18, 30, .98),
+      color-mix(in srgb, var(--dhq-program-primary) 30%, rgba(4, 18, 30, .98))
+    ) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-more-sheet,
+body[data-dhq-team-accent="true"] #dhq-mobile-broadcast-nav-host {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 26%, rgba(143,157,170,.3)) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* HOME / BROADCAST DASHBOARD                                                  */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-dashboard {
+  --broadcast-red: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-hero {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 28%, rgba(153,166,178,.58)) !important;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(2, 13, 23, .985),
+      rgba(4, 17, 28, .88) 46%,
+      color-mix(in srgb, var(--dhq-program-primary) 38%, #07111b)
+    ),
+    radial-gradient(circle at 50% 57%, color-mix(in srgb, var(--dhq-program-primary) 18%, #283745), transparent 55%) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-hero::before {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--dhq-program-primary) 13%, rgba(15, 42, 68, .17)),
+      transparent 43%,
+      color-mix(in srgb, var(--dhq-program-primary) 28%, transparent)
+    ),
+    repeating-linear-gradient(133deg, transparent 0 41px, rgba(255,255,255,.018) 42px 43px) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-hero__angles {
+  background:
+    linear-gradient(135deg, transparent 44%, color-mix(in srgb, var(--dhq-program-secondary) 25%, transparent) 45% 48%, transparent 49%),
+    linear-gradient(225deg, transparent 44%, color-mix(in srgb, var(--dhq-program-primary) 34%, transparent) 45% 48%, transparent 49%) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-primary {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 72%, white) !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--dhq-program-primary) 88%, white),
+    color-mix(in srgb, var(--dhq-program-primary) 78%, #02070b)
+  ) !important;
+  color: var(--dhq-program-on-primary) !important;
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.2),
+    0 8px 22px color-mix(in srgb, var(--dhq-program-primary) 30%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-card,
+body[data-dhq-team-accent="true"] .dhq-broadcast-workflow-card,
+body[data-dhq-team-accent="true"] .dhq-broadcast-podcast-card {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 18%, rgba(149,165,179,.55)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-card:hover,
+body[data-dhq-team-accent="true"] .dhq-broadcast-workflow-card:hover {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 42%, rgba(149,165,179,.55)) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* CAREER OVERVIEW / CAREER STANDBY                                            */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-career-overview {
+  --career-red: var(--dhq-program-highlight) !important;
+  --career-red-dark: color-mix(in srgb, var(--dhq-program-primary) 70%, #02070b) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-active::after {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-hero {
+  background:
+    linear-gradient(
+      100deg,
+      rgba(4,18,30,.98) 0%,
+      rgba(5,20,32,.96) 56%,
+      color-mix(in srgb, var(--dhq-program-primary) 42%, #07111b) 100%
+    ) !important;
+}
+
+body[data-dhq-team-accent="true"] :is(
+  .dhq-career-kicker,
+  .dhq-career-panel__heading span,
+  .dhq-career-hero__chapter > span,
+  .dhq-career-hero__record > span,
+  .dhq-career-stat-grid article > span,
+  .dhq-career-stars .is-filled,
+  .dhq-career-panel__heading,
+  .dhq-career-rivalries strong,
+  .dhq-career-honors > div:not(.dhq-career-empty)
+) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-card-icon {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 66%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-timeline__item i {
+  border-color: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 40%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] [class*="dhq-career-standby"] {
+  --career-red: var(--dhq-program-highlight) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* GAME HUB                                                                    */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-game-hub__toolbar {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 24%, rgba(142,155,167,.34)) !important;
+  background: linear-gradient(
+    90deg,
+    rgba(3,14,24,.94),
+    rgba(6,23,37,.91) 68%,
+    color-mix(in srgb, var(--dhq-program-primary) 34%, #07111b)
+  ) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub__toolbar > div:first-child span,
+body[data-dhq-team-accent="true"] .dhq-gh-hero__kicker {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-hero {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 26%, rgba(166,177,187,.5)) !important;
+  background:
+    radial-gradient(circle at 18% 52%, color-mix(in srgb, var(--dhq-program-secondary) 16%, rgba(22,63,91,.42)), transparent 26%),
+    radial-gradient(circle at 82% 52%, color-mix(in srgb, var(--dhq-program-primary) 38%, transparent), transparent 25%),
+    linear-gradient(90deg, rgba(4,21,35,.98), rgba(4,16,28,.98) 48%, color-mix(in srgb, var(--dhq-program-primary) 40%, #07111b)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-hero__angles::after {
+  background: linear-gradient(245deg, color-mix(in srgb, var(--dhq-program-primary) 30%, transparent), transparent 62%) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* CAREER CHRONICLE                                                            */
+/* Blue is the old neutral product accent here; current-program color replaces it.
+   Win/loss, warning and danger colors remain semantic and are deliberately untouched. */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="chronicle"] > div:not(.pointer-events-none) > header:first-child {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 28%, transparent) !important;
+  background:
+    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--dhq-program-primary) 24%, transparent), transparent 32%),
+    linear-gradient(120deg, rgba(2,8,15,.96), color-mix(in srgb, var(--dhq-program-primary) 13%, rgba(10,18,29,.94))) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="chronicle"] [class*="text-blue-"] {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="chronicle"] [class*="border-blue-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 50%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="chronicle"] [class*="bg-blue-"] {
+  background-color: color-mix(in srgb, var(--dhq-program-primary) 22%, #07111b) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > section:first-child > div.absolute {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--dhq-program-highlight) 64%, transparent), rgba(51,65,85,.7), transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="chronicle"] div.grid.gap-6.lg\:grid-cols-\[minmax\(320px\,0\.82fr\)_minmax\(0\,1\.5fr\)\] > article > div:first-child {
+  background: linear-gradient(135deg, rgba(2,8,15,.8), color-mix(in srgb, var(--dhq-program-primary) 15%, rgba(2,8,15,.8))) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* PODCAST / CURRENT MEDIA                                                     */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="podcast"] [class*="text-cyan-"] {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="podcast"] [class*="border-cyan-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 44%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance] .shadow-inner {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 30%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance] .shadow-inner button[aria-label="Play episode"],
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance] .shadow-inner button[aria-label="Pause episode"],
+body[data-dhq-team-accent="true"] .dhq-page-main[data-active-tab="podcast"] section[data-episode-importance] .shadow-inner .bg-blue-500 {
+  background: var(--dhq-program-highlight) !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 12%, #02070b) !important;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--dhq-program-highlight) 24%, transparent) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* SHARED CURRENT-CAREER WORKSPACES                                            */
+/* Replace generic blue product accents with the active program. Red error,
+   injury, loss and destructive-action states stay red and retain their meaning. */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-page-main:not([data-active-tab="newsroom"]) :is(
+  [class~="text-blue-300"],
+  [class~="text-blue-400"],
+  [class~="text-blue-500"]
+) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main:not([data-active-tab="newsroom"]) :is(
+  [class~="border-blue-400"],
+  [class~="border-blue-500"],
+  [class~="border-blue-500/20"],
+  [class~="border-blue-500/25"],
+  [class~="border-blue-500/30"]
+) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 46%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-page-main:not([data-active-tab="newsroom"]) :is(
+  [class~="bg-blue-950/10"],
+  [class~="bg-blue-950/20"],
+  [class~="bg-blue-950/45"]
+) {
+  background-color: color-mix(in srgb, var(--dhq-program-primary) 20%, #07111b) !important;
+}
+
+body[data-dhq-team-accent="true"] :focus-visible {
+  outline-color: var(--dhq-program-highlight);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
+  body[data-dhq-team-accent="true"] .dhq-career-active::after {
+    transition: background-color .18s ease, box-shadow .18s ease;
+  }
+}

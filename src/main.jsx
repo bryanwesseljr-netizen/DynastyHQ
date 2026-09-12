@@ -25,6 +25,7 @@ import './global-team-accent.css'
 import './newsroom-backstage-compact.css'
 import './podcast-seek-controls.css'
 import './newsroom-current-program-overrides.css'
+import './active-program-theme.css'
 
 const viewContext = resolveViewContext(window.location.search)
 const sharedArticleId = readSharedNewsroomArticleId(window.location.search)

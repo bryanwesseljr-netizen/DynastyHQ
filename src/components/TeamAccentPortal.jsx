@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { resolveCareerTeamMediaProfile } from '../domain/teamMediaProfile';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
+import '../newsroom-program-theme.css';
 
 const safeLabel = (value) => String(value || '').trim();
 

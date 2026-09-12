@@ -2,17 +2,12 @@ import { Clock3, Share2 } from 'lucide-react';
 import {
   buildEditorialExtras, presentationVariables, resolveNewsroomPresentation,
 } from '../domain/newsroomPresentation';
+import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
 import '../newsroom-v3.css';
 import '../newsroom-local-bearcats.css';
 import '../newsroom-regional-enquirer.css';
 import '../newsroom-national-espn.css';
 
-const LOCAL_OUTLET = 'Bearcats Insider';
-const LOCAL_AUTHOR = 'Justin Williams';
-const LOCAL_AUTHOR_ROLE = 'Senior Staff Writer, Bearcats Insider';
-const REGIONAL_OUTLET = 'Cincinnati Enquirer';
-const REGIONAL_AUTHOR = 'Alex Harrison';
-const REGIONAL_AUTHOR_ROLE = 'Senior Sports Writer';
 const NATIONAL_OUTLET = 'ESPN';
 
 const dateFrom = (value) => {
@@ -68,19 +63,37 @@ const nationalSidebarParts = (item = '') => {
   return { value, detail: detail || text };
 };
 
+const brandParts = (name = '') => {
+  const words = String(name).trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return { lead: words[0] || 'LOCAL', accent: 'SPORTS' };
+  return { lead: words.slice(0, -1).join(' '), accent: words.at(-1) };
+};
+
+const markFor = (profile = {}) => String(profile.nickname || profile.school || 'C').trim().charAt(0).toUpperCase() || 'C';
+
 const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => {
   const presentation = resolveNewsroomPresentation(story);
   const extras = buildEditorialExtras({ story, issue });
+  const team = resolveIssueTeamMediaProfile(issue);
   const isLocal = extras.audience === 'local';
   const isRegional = extras.audience === 'regional';
   const isNational = extras.audience === 'national' || extras.audience === 'national-lead';
   const displayOutletName = isLocal
-    ? LOCAL_OUTLET
+    ? team.localOutletName
     : isRegional
-      ? REGIONAL_OUTLET
+      ? team.regionalOutletName
       : isNational
         ? NATIONAL_OUTLET
         : story.outletName;
+  const localBrand = brandParts(team.localOutletName);
+  const teamMark = markFor(team);
+  const schoolLabel = String(team.school || issue?.outletProfile?.school || 'College').toUpperCase();
+  const nicknameLabel = String(team.nickname || 'Football').toUpperCase();
+  const cityLabel = String(team.city || team.school || 'College').toUpperCase();
+  const localAuthor = story.byline || `${team.localOutletName} Staff`;
+  const localAuthorRole = `Staff Writer, ${team.localOutletName}`;
+  const regionalAuthor = story.byline || `${team.regionalOutletName} Staff`;
+  const regionalAuthorRole = `Senior Sports Writer, ${team.regionalOutletName}`;
   const paragraphs = Array.isArray(story.paragraphs) ? story.paragraphs : [];
   const sectionAt = new Map(headingPositions(paragraphs.length, extras.sectionHeadings.length)
     .map((position, index) => [position, extras.sectionHeadings[index]]));
@@ -105,6 +118,12 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
   const regionalLeadCount = Math.min(2, paragraphs.length);
   const regionalLeadParagraphs = paragraphs.slice(0, regionalLeadCount);
   const regionalRemainingParagraphs = paragraphs.slice(regionalLeadCount);
+  const articleStyle = {
+    ...presentationVariables(presentation),
+    '--article-team-primary': team.primary,
+    '--article-team-secondary': team.secondary,
+    '--article-team-accent': team.accent,
+  };
 
   const shareDigitalEdition = async () => {
     if (typeof window === 'undefined') return;
@@ -141,36 +160,37 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
       data-headline-size={headlineSize(story.headline)}
       data-story-importance={extras.importance}
       data-story-format={extras.storyFormat}
-      style={presentationVariables(presentation)}
+      data-program={team.school}
+      style={articleStyle}
     >
       {isLocal ? (
         <header className="dhq-news-masthead dhq-bearcats-masthead">
           <div className="dhq-bearcats-mark" aria-hidden="true">
-            <span>C</span>
+            <span>{teamMark}</span>
             <i />
           </div>
           <div className="dhq-news-masthead__identity dhq-bearcats-identity">
-            <div className="dhq-bearcats-brand" aria-label="Bearcats Insider">
-              <span>BEARCATS</span>
-              <strong>INSIDER</strong>
+            <div className="dhq-bearcats-brand" aria-label={team.localOutletName}>
+              <span>{localBrand.lead.toUpperCase()}</span>
+              <strong>{localBrand.accent.toUpperCase()}</strong>
             </div>
-            <div className="dhq-news-masthead__strapline">YOUR SOURCE FOR CINCINNATI BEARCATS FOOTBALL</div>
+            <div className="dhq-news-masthead__strapline">YOUR SOURCE FOR {schoolLabel} {nicknameLabel} FOOTBALL</div>
           </div>
           <div className="dhq-bearcats-motto">
             <span>NEWS. ANALYSIS.</span>
-            <strong>CINCINNATI TOUGH.</strong>
+            <strong>{String(team.localMotto || `${team.nickname} football, covered locally.`).toUpperCase()}</strong>
           </div>
         </header>
       ) : isRegional ? (
         <header className="dhq-enquirer-masthead">
           <div className="dhq-enquirer-masthead__top">
-            <div className="dhq-enquirer-name">Cincinnati Enquirer</div>
+            <div className="dhq-enquirer-name">{team.regionalOutletName}</div>
             <div className="dhq-enquirer-sports">SPORTS</div>
-            <div className="dhq-enquirer-beat"><strong>BEARCATS</strong><span>FOOTBALL</span></div>
+            <div className="dhq-enquirer-beat"><strong>{nicknameLabel}</strong><span>FOOTBALL</span></div>
           </div>
           <div className="dhq-enquirer-masthead__meta">
             {publishedDate && <time>{publishedDate.toUpperCase()}</time>}
-            <div><span>CINCINNATI.COM</span><i aria-hidden="true" /> <b>1B</b></div>
+            <div><span>{cityLabel} SPORTS</span><i aria-hidden="true" /> <b>1B</b></div>
           </div>
         </header>
       ) : isNational ? (
@@ -276,8 +296,8 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
           <section className="dhq-enquirer-main-grid">
             <div className="dhq-enquirer-lead-copy">
               <div className="dhq-enquirer-byline">
-                <strong>By {REGIONAL_AUTHOR}</strong>
-                <span>{REGIONAL_AUTHOR_ROLE}</span>
+                <strong>By {regionalAuthor}</strong>
+                <span>{regionalAuthorRole}</span>
               </div>
               {regionalLeadParagraphs.map((paragraph, index) => (
                 <div key={`${story.id}-regional-lead-${index}`}>
@@ -347,9 +367,9 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
                 <div className="dhq-bearcats-byline-row">
                   <div className="dhq-bearcats-byline-copy">
                     <span>By</span>
-                    <strong>{LOCAL_AUTHOR}</strong>
+                    <strong>{localAuthor}</strong>
                     <i aria-hidden="true" />
-                    <span>{LOCAL_AUTHOR_ROLE}</span>
+                    <span>{localAuthorRole}</span>
                   </div>
                   {publishedDate && <time>{publishedDate}</time>}
                 </div>
@@ -427,16 +447,16 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
 
       {isLocal ? (
         <footer className="dhq-bearcats-footer">
-          <span className="dhq-bearcats-footer__left"><b aria-hidden="true">C</b> BEARCATS FOOTBALL</span>
-          <span>CINCINNATI BEARCATS</span>
-          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">GOBEARCATS.COM</button>
+          <span className="dhq-bearcats-footer__left"><b aria-hidden="true">{teamMark}</b> {nicknameLabel} FOOTBALL</span>
+          <span>{schoolLabel} {nicknameLabel}</span>
+          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">SHARE DIGITAL EDITION</button>
         </footer>
       ) : isRegional ? (
         <footer className="dhq-enquirer-footer">
-          <span className="dhq-enquirer-footer__mark" aria-hidden="true">C</span>
-          <strong>BEARCAT NATION:</strong>
-          <span>For the latest on Cincinnati football, recruiting and more, visit</span>
-          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">Cincinnati.com/bearcats</button>
+          <span className="dhq-enquirer-footer__mark" aria-hidden="true">{teamMark}</span>
+          <strong>{schoolLabel} FOOTBALL:</strong>
+          <span>Latest {team.school} football, recruiting and career coverage from {team.regionalOutletName}</span>
+          <button type="button" onClick={shareDigitalEdition} title="Create or share the public DynastyHQ edition">Share edition</button>
         </footer>
       ) : isNational ? (
         <footer className="dhq-espn-footer">

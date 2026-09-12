@@ -29,6 +29,7 @@ import './active-program-theme.css'
 import './active-program-theme-v2.css'
 import './active-program-theme-v3.css'
 import './active-program-theme-v4.css'
+import './navigation-state-v5.css'
 
 const viewContext = resolveViewContext(window.location.search)
 const sharedArticleId = readSharedNewsroomArticleId(window.location.search)

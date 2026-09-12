@@ -1,0 +1,122 @@
+/* DynastyHQ navigation-state v5
+ * One visual active tab at a time. This layer intentionally overrides the
+ * older aria-current / portal helper classes so transitions cannot show two
+ * selected tabs and touch browsers cannot leave a sticky hover block behind.
+ */
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item {
+  position: relative;
+  background: transparent !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 20%, #a7b0aa) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* Hide the React-rendered underline. v5 draws one consistent indicator from
+ * the single visual-active class instead. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item > span.absolute {
+  opacity: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px !important;
+  content: "";
+  opacity: 0 !important;
+  transform: scaleX(0);
+  transform-origin: center;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+/* Neutralize every older active source unless the central controller says the
+ * tab is the one visual owner. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active:not(.dhq-nav-visual-active) {
+  background: transparent !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 20%, #a7b0aa) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:not(.dhq-nav-visual-active)::after,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]:not(.dhq-nav-visual-active)::after,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active:not(.dhq-nav-visual-active)::after,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active:not(.dhq-nav-visual-active)::after {
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active {
+  background: transparent !important;
+  color: var(--dhq-program-highlight) !important;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 18%, transparent) !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active::after {
+  opacity: 1 !important;
+  transform: scaleX(1) !important;
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 11px color-mix(in srgb, var(--dhq-program-highlight) 54%, transparent) !important;
+}
+
+/* Touch/desktop-mode Android keeps :hover after a tap. Never let hover/focus
+ * create a second active-looking filled block. */
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:is(:hover, :focus, :focus-visible) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:not(.dhq-nav-visual-active):is(:hover, :focus, :focus-visible) {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 24%, #b4bcb7) !important;
+  text-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active:is(:hover, :focus, :focus-visible) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+/* Keep the custom mobile broadcast nav on the exact same single-owner model. */
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button {
+  background: transparent !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 20%, #a7b0aa) !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active:not(.dhq-nav-visual-active),
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button:not(.dhq-nav-visual-active):is(:hover, :focus, :focus-visible) {
+  background: transparent !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 20%, #a7b0aa) !important;
+  text-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button:not(.dhq-nav-visual-active)::after {
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active {
+  background: transparent !important;
+  color: var(--dhq-program-highlight) !important;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 18%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active::after {
+  opacity: 1 !important;
+  transform: scaleX(1) !important;
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 50%, transparent) !important;
+}

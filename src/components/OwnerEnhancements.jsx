@@ -12,6 +12,7 @@ import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
 import GameHubCareerHandoffPortal from './GameHubCareerHandoffPortal.jsx';
 import WeekHubRoutingPortal from './WeekHubRoutingPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
+import NavigationStatePortal from './NavigationStatePortal.jsx';
 import FreshStartPortal from './FreshStartPortal.jsx';
 import ImmersionPortal from './ImmersionPortal.jsx';
 import PodcastUniversalBrandPortal from './PodcastUniversalBrandPortal.jsx';
@@ -48,6 +49,7 @@ import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 const OwnerEnhancements = () => (
   <OwnerCareerProvider>
     <TeamAccentPortal />
+    <NavigationStatePortal />
     <DynamicMatchupHelmetPortal />
     <MobileBroadcastNavPortal />
     <FreshStartPortal />

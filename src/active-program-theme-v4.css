@@ -1,0 +1,133 @@
+/* DynastyHQ active-program refinements v4
+ * Exact fixes from the final Oregon preview audit:
+ * 1) Career/Game Hub overlays must own the nav exclusively (Home cannot remain active).
+ * 2) Any legacy/custom info cards inside those portals must inherit the current program palette.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* EXCLUSIVE NAV STATE                                                        */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item {
+  background: transparent !important;
+}
+
+body[data-dhq-team-accent="true"]:is(.dhq-career-overview-open, .dhq-game-hub-open)
+  .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]:not(.dhq-career-active):not(.dhq-game-hub-active) {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 16%, #9aa59e) !important;
+  background: transparent !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"]:is(.dhq-career-overview-open, .dhq-game-hub-open)
+  .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]:not(.dhq-career-active):not(.dhq-game-hub-active) > span:last-child {
+  opacity: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active {
+  color: var(--dhq-program-highlight) !important;
+  background: transparent !important;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 18%, transparent) !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active::after,
+body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active::after,
+body[data-dhq-team-accent="true"] .dhq-career-active::after {
+  height: 3px !important;
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 11px color-mix(in srgb, var(--dhq-program-highlight) 56%, transparent) !important;
+}
+
+/* The hidden legacy mobile nav can still carry stale selection classes. */
+body[data-dhq-team-accent="true"]:is(.dhq-career-overview-open, .dhq-game-hub-open)
+  #mobile-primary-navigation button:not(.dhq-career-active):not(.dhq-game-hub-active) {
+  background: transparent !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* GAME HUB: CATCH LEGACY / CUSTOM INFO CARDS                                 */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] .dhq-game-hub article {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 54%, #6a756d) !important;
+  background: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+  background-image: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub [class*="grid"] > article:nth-child(3n + 1) {
+  background: linear-gradient(145deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub [class*="grid"] > article:nth-child(3n + 2) {
+  background: linear-gradient(145deg, var(--dhq-program-900), var(--dhq-program-800)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub [class*="grid"] > article:nth-child(3n + 3) {
+  background: linear-gradient(145deg, var(--dhq-program-850), var(--dhq-program-700)) !important;
+}
+
+/* Utility-class cards injected by older Game Hub helpers. */
+body[data-dhq-team-accent="true"] .dhq-game-hub [class*="grid"] > div[class*="border"][class*="bg-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 50%, #68736b) !important;
+  background: linear-gradient(145deg, var(--dhq-program-950), var(--dhq-program-800)) !important;
+  background-image: linear-gradient(145deg, var(--dhq-program-950), var(--dhq-program-800)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub article svg,
+body[data-dhq-team-accent="true"] .dhq-game-hub article [class*="text-red-"],
+body[data-dhq-team-accent="true"] .dhq-game-hub article [class*="text-rose-"] {
+  color: var(--dhq-program-highlight) !important;
+  stroke: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub article [class*="border-red-"],
+body[data-dhq-team-accent="true"] .dhq-game-hub article [class*="border-rose-"] {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 42%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-game-hub article [class*="bg-red-"],
+body[data-dhq-team-accent="true"] .dhq-game-hub article [class*="bg-rose-"] {
+  background: color-mix(in srgb, var(--dhq-program-highlight) 9%, var(--dhq-program-900)) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* CAREER: CATCH RECORD-BOOK / LEGACY CARD REMNANTS                           */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open article {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 50%, #6b756e) !important;
+}
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open article:nth-of-type(3n + 1) {
+  background: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open article:nth-of-type(3n + 2) {
+  background: linear-gradient(150deg, var(--dhq-program-900), var(--dhq-program-800)) !important;
+}
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open article:nth-of-type(3n + 3) {
+  background: linear-gradient(150deg, var(--dhq-program-850), var(--dhq-program-700)) !important;
+}
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open .dhq-career-footer button {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 72%, white) !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--dhq-program-primary) 84%, white),
+    var(--dhq-program-primary)) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--dhq-program-primary) 35%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open :is([class*="text-red-"], [class*="text-rose-"]) {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"].dhq-career-overview-open :is([class*="border-red-"], [class*="border-rose-"]) {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 42%, transparent) !important;
+}

@@ -17,7 +17,10 @@ const PodcastArtworkHydrationPortal = () => {
   const teamKey = useMemo(() => teamKeyFor(show.school), [show.school]);
   const careerArtwork = career?.podcastBranding?.teamArtwork?.[teamKey] || {};
   const artwork = { ...careerArtwork, ...persistedArtwork };
-  const primaryArtwork = artwork.primary || career?.outletImages?.podcast || '';
+  // The legacy outletImages.podcast field is global to the career and can belong
+  // to a previous school. Only hydrate artwork that is explicitly keyed to the
+  // active program.
+  const primaryArtwork = artwork.primary || '';
 
   // Subscribe as soon as the owner session exists. This intentionally does not
   // depend on Studio Controls being opened; listener-facing artwork should be
@@ -116,6 +119,7 @@ const PodcastArtworkHydrationPortal = () => {
           .find((node) => /^current week$/i.test(clean(node.textContent)));
         const currentWeekSection = currentWeekLabel?.closest('section');
         currentWeekSection?.querySelectorAll('img').forEach((image) => {
+          image.style.removeProperty('display');
           if (image.src !== primaryArtwork) image.src = primaryArtwork;
         });
       }

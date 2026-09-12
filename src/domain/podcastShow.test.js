@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   isManagedPodcastCoverUrl,
@@ -29,6 +30,19 @@ test('podcast identity follows a future current team without renaming the show',
   assert.notEqual(show.primary, '#e00122');
 });
 
+test('Oregon podcast context follows the Ducks chapter without Cincinnati branding', () => {
+  const show = resolvePodcastShow({
+    player: { college: 'Oregon', school: 'Oregon' },
+    newsroomIssues: [{ outletProfile: { school: 'Cincinnati', localOutletName: 'Bearcats Insider' } }],
+  });
+  assert.equal(show.school, 'Oregon');
+  assert.equal(show.nickname, 'Ducks');
+  assert.equal(show.name, 'The Huddle Podcast');
+  assert.equal(show.subtitle, 'Oregon Football · Weekly Preview & Review');
+  assert.equal(show.primary.toLowerCase(), '#154733');
+  assert.equal(show.secondary.toLowerCase(), '#fee123');
+});
+
 test('fresh uncommitted careers do not assume Cincinnati or another college', () => {
   const show = resolvePodcastShow({ player: { college: '', school: '' }, newsroomIssues: [] });
   assert.equal(show.name, 'The Huddle Podcast');
@@ -40,4 +54,17 @@ test('program-specific artwork is accepted by the legacy Current Week player', (
   assert.equal(isManagedPodcastCoverUrl('https://assets.public.blob.vercel-storage.com/podcast-cincinnati-primary-12345.webp'), true);
   assert.equal(isManagedPodcastCoverUrl('https://assets.public.blob.vercel-storage.com/podcast-cincinnati-hosts-12345.webp'), true);
   assert.equal(isManagedPodcastCoverUrl('https://example.com/podcast-cincinnati-primary-12345.webp'), false);
+});
+
+test('current podcast surfaces do not inherit the old global cover across schools', async () => {
+  const [localShow, hydration] = await Promise.all([
+    readFile(new URL('../components/PodcastLocalShowPortal.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../components/PodcastArtworkHydrationPortal.jsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(localShow, /const primaryArtwork = artwork\.primary \|\| ''/);
+  assert.match(hydration, /const primaryArtwork = artwork\.primary \|\| ''/);
+  assert.doesNotMatch(localShow, /artwork\.primary \|\| career\?\.outletImages\?\.podcast/);
+  assert.doesNotMatch(hydration, /artwork\.primary \|\| career\?\.outletImages\?\.podcast/);
+  assert.match(localShow, /image\.style\.setProperty\('display', 'none'\)/);
 });

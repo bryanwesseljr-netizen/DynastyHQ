@@ -159,7 +159,7 @@ const CustomNewsroomPhotoCreator = ({ mediaLibrary = [], defaultFolder = NEWSROO
                 value={prompt}
                 disabled={busy}
                 onChange={(event) => setPrompt(event.target.value.slice(0, 2200))}
-                placeholder="Example: Photorealistic sideline photo of my Cincinnati quarterback under the stadium lights after warmups, black uniform, helmet in one hand, shallow depth of field, shot from waist height with a 70-200mm sports lens…"
+                placeholder="Example: Photorealistic sideline photo of my current-school quarterback under the stadium lights after warmups, authentic team uniform, helmet in one hand, shallow depth of field, shot from waist height with a 70-200mm sports lens…"
                 rows={4}
                 className="mt-1 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-medium normal-case tracking-normal text-slate-100 outline-none placeholder:text-slate-600 focus:border-violet-500 disabled:opacity-50"
               />

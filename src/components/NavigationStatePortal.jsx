@@ -42,14 +42,55 @@ const activeFromDom = () => {
   return 'home';
 };
 
+const hardResetButtonVisuals = (button, active) => {
+  if (!button) return;
+
+  button.style.setProperty('background', 'transparent', 'important');
+  button.style.setProperty('background-color', 'transparent', 'important');
+  button.style.setProperty('background-image', 'none', 'important');
+  button.style.setProperty('border-color', 'transparent', 'important');
+  button.style.setProperty('text-shadow', 'none', 'important');
+  button.style.setProperty('transform', 'none', 'important');
+  button.style.setProperty('filter', 'none', 'important');
+  button.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
+  button.style.setProperty('color', active ? '#f7faf8' : '#a9b3ad', 'important');
+  button.style.setProperty(
+    'box-shadow',
+    active ? 'inset 0 -3px 0 var(--dhq-program-highlight)' : 'none',
+    'important',
+  );
+
+  [...button.children].forEach((child) => {
+    if (!(child instanceof HTMLElement) || child.tagName !== 'SPAN') return;
+    child.style.setProperty('background', 'transparent', 'important');
+    child.style.setProperty('background-color', 'transparent', 'important');
+    child.style.setProperty('background-image', 'none', 'important');
+    child.style.setProperty('box-shadow', 'none', 'important');
+    child.style.setProperty('text-shadow', 'none', 'important');
+    child.style.setProperty('color', 'inherit', 'important');
+    child.style.setProperty('transform', 'none', 'important');
+
+    if (child.classList.contains('absolute')) {
+      child.style.setProperty('display', 'none', 'important');
+      child.style.setProperty('opacity', '0', 'important');
+    } else {
+      child.style.removeProperty('display');
+      child.style.setProperty('opacity', '1', 'important');
+    }
+  });
+};
+
 const applyVisualActive = (target) => {
   if (!target) return;
   document.body.dataset.dhqNavVisualActive = target;
+
   navButtons().forEach((button) => {
     const buttonTarget = targetFromButton(button);
-    button.classList.toggle('dhq-nav-visual-active', buttonTarget === target);
+    const active = buttonTarget === target;
+    button.classList.toggle('dhq-nav-visual-active', active);
     if (buttonTarget) button.dataset.dhqNavTarget = buttonTarget;
     else delete button.dataset.dhqNavTarget;
+    hardResetButtonVisuals(button, active);
   });
 };
 
@@ -57,6 +98,45 @@ const NavigationStatePortal = () => {
   useEffect(() => {
     const root = document.getElementById('root');
     if (!root) return undefined;
+
+    const resetStyle = document.createElement('style');
+    resetStyle.id = 'dhq-navigation-hard-reset';
+    resetStyle.textContent = `
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item,
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item:hover,
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item:focus,
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item:active {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        transform: none !important;
+      }
+
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item > span {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item > span.absolute {
+        display: none !important;
+        opacity: 0 !important;
+      }
+
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item::before,
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item::after,
+      html body[data-dhq-team-accent="true"] #root .dhq-mobile-broadcast-nav button::before,
+      html body[data-dhq-team-accent="true"] #root .dhq-mobile-broadcast-nav button::after {
+        display: none !important;
+        content: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+    `;
+    document.getElementById(resetStyle.id)?.remove();
+    document.head.appendChild(resetStyle);
 
     let pendingTarget = '';
     let pendingUntil = 0;
@@ -91,14 +171,14 @@ const NavigationStatePortal = () => {
     const setIntent = (target) => {
       if (!target) return;
       pendingTarget = target;
-      pendingUntil = performance.now() + 700;
+      pendingUntil = performance.now() + 1000;
       applyVisualActive(target);
       window.clearTimeout(releaseTimer);
       releaseTimer = window.setTimeout(() => {
         pendingTarget = '';
         pendingUntil = 0;
         sync();
-      }, 720);
+      }, 1020);
     };
 
     const captureIntent = (event) => {
@@ -110,7 +190,12 @@ const NavigationStatePortal = () => {
       if (!isPrimaryNav && !isHomeLogo) return;
 
       const target = targetFromButton(button);
-      if (target) setIntent(target);
+      if (!target) return;
+
+      setIntent(target);
+      if (event.type === 'pointerdown') {
+        window.requestAnimationFrame(() => button.blur?.());
+      }
     };
 
     document.addEventListener('pointerdown', captureIntent, true);
@@ -124,7 +209,7 @@ const NavigationStatePortal = () => {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['data-active-tab', 'aria-current'],
+      attributeFilter: ['data-active-tab', 'aria-current', 'class'],
     });
 
     sync();
@@ -136,9 +221,14 @@ const NavigationStatePortal = () => {
       rootObserver.disconnect();
       window.clearTimeout(releaseTimer);
       if (frame) window.cancelAnimationFrame(frame);
+      resetStyle.remove();
       navButtons().forEach((button) => {
         button.classList.remove('dhq-nav-visual-active');
         delete button.dataset.dhqNavTarget;
+        button.removeAttribute('style');
+        [...button.children].forEach((child) => {
+          if (child instanceof HTMLElement && child.tagName === 'SPAN') child.removeAttribute('style');
+        });
       });
       delete document.body.dataset.dhqNavVisualActive;
     };

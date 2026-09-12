@@ -1,0 +1,289 @@
+/*
+ * DynastyHQ active-program refinements v3
+ *
+ * Screenshot-driven polish for the current-school experience. This layer is
+ * intentionally loaded after the broad v1/v2 program themes. It gives the
+ * current program a real shade hierarchy instead of a flat tint and catches
+ * custom portal states (Career/Game Hub) that do not rely on aria-current.
+ */
+
+body[data-dhq-team-accent="true"] {
+  --dhq-program-950: color-mix(in srgb, var(--dhq-program-primary) 72%, #010504);
+  --dhq-program-900: color-mix(in srgb, var(--dhq-program-primary) 60%, #020806);
+  --dhq-program-850: color-mix(in srgb, var(--dhq-program-primary) 51%, #04100b);
+  --dhq-program-800: color-mix(in srgb, var(--dhq-program-primary) 43%, #07140e);
+  --dhq-program-700: color-mix(in srgb, var(--dhq-program-primary) 34%, #0b1a12);
+  --dhq-program-600: color-mix(in srgb, var(--dhq-program-primary) 27%, #102117);
+  --dhq-program-highlight-faint: color-mix(in srgb, var(--dhq-program-highlight) 6%, var(--dhq-program-950));
+  --dhq-program-highlight-soft: color-mix(in srgb, var(--dhq-program-highlight) 12%, var(--dhq-program-900));
+  --dhq-program-highlight-mid: color-mix(in srgb, var(--dhq-program-highlight) 22%, var(--dhq-program-850));
+  --dhq-program-line: color-mix(in srgb, var(--dhq-program-highlight) 38%, var(--dhq-program-primary));
+}
+
+/* Header + navigation: dark program shell, bright secondary for the active tab. */
+body[data-dhq-team-accent="true"] .dhq-broadcast-header {
+  background:
+    radial-gradient(circle at 72% 0%, color-mix(in srgb, var(--dhq-program-primary) 30%, transparent), transparent 40%),
+    linear-gradient(90deg, var(--dhq-program-950), var(--dhq-program-900) 44%, var(--dhq-program-850)) !important;
+  border-bottom-color: color-mix(in srgb, var(--dhq-program-highlight) 22%, var(--dhq-program-primary)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header__main,
+body[data-dhq-team-accent="true"] #dhq-mobile-broadcast-nav-host {
+  background: linear-gradient(90deg, var(--dhq-program-950), var(--dhq-program-900) 52%, var(--dhq-program-850)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 15%, var(--dhq-program-primary)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header-logo b,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header-logo .text-amber-400 {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button {
+  color: color-mix(in srgb, var(--dhq-program-highlight) 24%, #d9e2dc) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item:is(:hover, :focus-visible),
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button:is(:hover, :focus-visible) {
+  color: #fff !important;
+  background: color-mix(in srgb, var(--dhq-program-primary) 22%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"],
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-game-hub-active,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-career-active,
+body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-game-hub-active,
+body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-career-active,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active,
+body[data-dhq-team-accent="true"] #mobile-primary-navigation button.dhq-game-hub-active,
+body[data-dhq-team-accent="true"] #mobile-primary-navigation button.dhq-career-active {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-game-hub-active::after,
+body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-career-active::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-game-hub-active::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-career-active::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"]::after,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
+body[data-dhq-team-accent="true"] .dhq-career-active::after {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-game-hub-active > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-career-active > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-game-hub-active > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-career-active > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 56%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-score-ticker {
+  background: linear-gradient(90deg, var(--dhq-program-950), var(--dhq-program-900), var(--dhq-program-950)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 54%, #28352d) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-score-ticker__live {
+  background: color-mix(in srgb, var(--dhq-program-primary) 34%, var(--dhq-program-950)) !important;
+}
+
+/* Game Hub hero and card family: no leftover Cincinnati/navy identity. */
+body[data-dhq-team-accent="true"] .dhq-gh-hero {
+  background:
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--dhq-program-primary) 20%, transparent), transparent 31%),
+    radial-gradient(circle at 82% 46%, color-mix(in srgb, var(--dhq-program-highlight) 10%, transparent), transparent 28%),
+    linear-gradient(100deg, var(--dhq-program-950), var(--dhq-program-900) 52%, var(--dhq-program-700)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 28%, var(--dhq-program-primary)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-hero__kicker,
+body[data-dhq-team-accent="true"] .dhq-game-hub__toolbar > div:first-child span {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-progress {
+  background: linear-gradient(90deg, var(--dhq-program-950), var(--dhq-program-900)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 58%, #58635c) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-progress > div.is-complete > span {
+  border-color: var(--dhq-program-highlight) !important;
+  background: var(--dhq-program-primary) !important;
+  color: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 22%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-card,
+body[data-dhq-team-accent="true"] .dhq-gh-wide-card,
+body[data-dhq-team-accent="true"] .dhq-gh-media-section,
+body[data-dhq-team-accent="true"] .dhq-gh-advanced {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 52%, #66736a) !important;
+  background: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-900)) !important;
+}
+
+body[data-dhq-team-accent="true"] :is(.dhq-gh-pregame-grid, .dhq-gh-summary-grid, .dhq-gh-story-grid) > .dhq-gh-card:nth-child(1) {
+  background: linear-gradient(145deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+body[data-dhq-team-accent="true"] :is(.dhq-gh-pregame-grid, .dhq-gh-summary-grid, .dhq-gh-story-grid) > .dhq-gh-card:nth-child(2) {
+  background: linear-gradient(145deg, var(--dhq-program-900), var(--dhq-program-800)) !important;
+}
+body[data-dhq-team-accent="true"] :is(.dhq-gh-pregame-grid, .dhq-gh-summary-grid, .dhq-gh-story-grid) > .dhq-gh-card:nth-child(3) {
+  background: linear-gradient(145deg, var(--dhq-program-850), var(--dhq-program-700)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-card__heading > span::before,
+body[data-dhq-team-accent="true"] .dhq-gh-section-title > div > span::before {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--dhq-program-highlight) 34%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-card__heading svg,
+body[data-dhq-team-accent="true"] .dhq-gh-section-title svg,
+body[data-dhq-team-accent="true"] .dhq-gh-story-director svg {
+  color: var(--dhq-program-highlight) !important;
+  stroke: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-hero__actions .is-primary,
+body[data-dhq-team-accent="true"] .dhq-gh-ready-card button,
+body[data-dhq-team-accent="true"] .dhq-gh-newsroom-feature button,
+body[data-dhq-team-accent="true"] .dhq-gh-podcast-panel button {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 76%, white) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--dhq-program-primary) 84%, white), var(--dhq-program-primary)) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--dhq-program-primary) 38%, transparent) !important;
+}
+
+/* Keep EA SPORTS as a distinct official-media brand, but remove the giant maroon block. */
+body[data-dhq-team-accent="true"] .dhq-gh-official-card {
+  background: linear-gradient(100deg, var(--dhq-program-950), var(--dhq-program-900) 62%, var(--dhq-program-800)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 58%, #66736a) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-official-card .dhq-gh-wide-card__brand {
+  background: linear-gradient(135deg, var(--dhq-program-900), var(--dhq-program-800)) !important;
+  border-right-color: color-mix(in srgb, var(--dhq-program-highlight) 26%, var(--dhq-program-primary)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-gh-official-card .dhq-gh-wide-card__brand svg {
+  color: #ef4444 !important;
+  stroke: #ef4444 !important;
+}
+
+/* Career: forest hierarchy with yellow emphasis, not one flat green wash. */
+body[data-dhq-team-accent="true"] .dhq-career-hero {
+  background:
+    radial-gradient(circle at 86% 20%, color-mix(in srgb, var(--dhq-program-highlight) 9%, transparent), transparent 28%),
+    linear-gradient(100deg, var(--dhq-program-950), var(--dhq-program-900) 54%, var(--dhq-program-700)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 54%, #6f7b72) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-hero__chapter {
+  background: color-mix(in srgb, var(--dhq-program-primary) 10%, transparent) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-hero__record {
+  background: color-mix(in srgb, var(--dhq-program-highlight) 5%, var(--dhq-program-primary) 12%) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article,
+body[data-dhq-team-accent="true"] .dhq-career-panel {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 48%, #6b766e) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article:nth-child(4n + 1) {
+  background: linear-gradient(145deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article:nth-child(4n + 2) {
+  background: linear-gradient(145deg, var(--dhq-program-900), var(--dhq-program-800)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article:nth-child(4n + 3) {
+  background: linear-gradient(145deg, var(--dhq-program-850), var(--dhq-program-700)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article:nth-child(4n + 4) {
+  background: linear-gradient(145deg, var(--dhq-program-highlight-faint), var(--dhq-program-900)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article::after {
+  background: linear-gradient(180deg, var(--dhq-program-highlight), transparent 78%) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-card-icon,
+body[data-dhq-team-accent="true"] .dhq-career-panel__heading,
+body[data-dhq-team-accent="true"] .dhq-career-panel__heading span,
+body[data-dhq-team-accent="true"] .dhq-career-kicker,
+body[data-dhq-team-accent="true"] .dhq-career-stat-grid article > span {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-career-main-grid > .dhq-career-panel {
+  background: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-side-stack > .dhq-career-panel:nth-child(odd) {
+  background: linear-gradient(150deg, var(--dhq-program-900), var(--dhq-program-800)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-side-stack > .dhq-career-panel:nth-child(even) {
+  background: linear-gradient(150deg, var(--dhq-program-850), var(--dhq-program-700)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-lower-grid > .dhq-career-panel:nth-child(odd) {
+  background: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-800)) !important;
+}
+body[data-dhq-team-accent="true"] .dhq-career-lower-grid > .dhq-career-panel:nth-child(even) {
+  background: linear-gradient(150deg, var(--dhq-program-highlight-faint), var(--dhq-program-850)) !important;
+}
+
+/* Standby should read as a premium dark program card rather than a neon block. */
+body[data-dhq-team-accent="true"] .dhq-standby-card {
+  --standby-red: var(--dhq-program-highlight) !important;
+  --standby-border: color-mix(in srgb, var(--dhq-program-primary) 54%, #718078) !important;
+  background:
+    radial-gradient(circle at 86% 0%, color-mix(in srgb, var(--dhq-program-highlight) 8%, transparent), transparent 34%),
+    linear-gradient(135deg, var(--dhq-program-850), var(--dhq-program-700)) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-standby-card__eyebrow,
+body[data-dhq-team-accent="true"] .dhq-home-standby__kicker {
+  color: var(--dhq-program-highlight) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-home-standby__kicker span {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-standby-badge {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 30%, transparent) !important;
+  color: color-mix(in srgb, var(--dhq-program-highlight) 74%, white) !important;
+  background: var(--dhq-program-highlight-faint) !important;
+}
+
+body[data-dhq-team-accent="true"] :is(.dhq-standby-form, .dhq-standby-activate) :is(input, select):focus {
+  border-color: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dhq-program-highlight) 14%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] :is(.dhq-standby-form, .dhq-standby-activate, .dhq-home-standby) button {
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 74%, white) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--dhq-program-primary) 80%, white), var(--dhq-program-primary)) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--dhq-program-primary) 34%, transparent) !important;
+}
+
+/* Internal workspace cards keep program variety even when old broadcast CSS wins specificity. */
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) :is(section, article, aside, details, form, header):is([class*="bg-slate-9"], [class*="bg-slate-8"], [class*="bg-blue-95"], [class*="bg-black"], [class*="backdrop-blur"]) {
+  border-color: color-mix(in srgb, var(--dhq-program-primary) 48%, #69766d) !important;
+  background: linear-gradient(150deg, var(--dhq-program-950), var(--dhq-program-850)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > :not([data-background-sport="football"]) > header,
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > :not([data-background-sport="football"]) > div:first-child:is([class*="rounded"], [class*="border"]) {
+  background: linear-gradient(95deg, var(--dhq-program-950), var(--dhq-program-900) 58%, var(--dhq-program-700)) !important;
+  border-color: color-mix(in srgb, var(--dhq-program-highlight) 22%, var(--dhq-program-primary)) !important;
+}
+
+html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] main.dhq-page-main[data-active-tab]:not([data-active-tab="dashboard"]) > :not([data-background-sport="football"])::before {
+  background: var(--dhq-program-highlight) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--dhq-program-highlight) 30%, transparent) !important;
+}

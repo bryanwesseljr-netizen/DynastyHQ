@@ -114,7 +114,7 @@ const CoverageDataScanner = ({ user, career }) => {
   return (
     <div data-coverage-intake-scanner>
       <div className="dhq-coverage-intake-top">
-        <p>Optional: upload teammate/opponent Player Stats, Scoring Summary, and EA SPORTS Network article screenshots. Article facts are official in-game media context for Newsroom and Podcast; they never overwrite verified game stats or your RTG data.</p>
+        <p>Optional: upload teammate/opponent Player Stats, Scoring Summary, and EA SPORTS Network article screenshots. These references are editorial-only and never write into your player stat line, RTG data, or verified game totals. EA SPORTS Network article facts are official in-game media context for Newsroom and Podcast.</p>
         <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className="dhq-coverage-intake-upload">
           {busy ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />} {busy ? 'Working…' : saved ? 'Replace Coverage' : 'Upload Coverage'}
         </button>

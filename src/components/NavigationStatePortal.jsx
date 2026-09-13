@@ -31,6 +31,11 @@ const navButtons = () => [...document.querySelectorAll(
 )];
 
 const activeFromDom = () => {
+  // Portals render outside the normal page route. If one is visibly mounted,
+  // it is the authoritative destination even if the underlying app briefly
+  // reports dashboard/Home while the portal handoff is settling.
+  if (document.querySelector('.dhq-career-overview')) return 'career';
+  if (document.querySelector('.dhq-game-hub')) return 'gameHub';
   if (document.body.classList.contains('dhq-career-overview-open')) return 'career';
   if (document.body.classList.contains('dhq-game-hub-open')) return 'gameHub';
 
@@ -210,8 +215,6 @@ const NavigationStatePortal = () => {
 
       window.clearTimeout(releaseTimer);
       releaseTimer = window.setTimeout(() => {
-        // Do not blindly release to Home/dashboard. Re-check the real DOM state;
-        // sync() will keep the intent if the destination is still settling.
         sync();
       }, intentTimeout + 20);
     };
@@ -228,16 +231,25 @@ const NavigationStatePortal = () => {
       if (!target) return;
 
       setIntent(target);
-      if (event.type === 'pointerdown') {
+      if (event.type === 'pointerdown' || event.type === 'touchstart') {
         window.requestAnimationFrame(() => button.blur?.());
       }
     };
 
+    document.addEventListener('touchstart', captureIntent, { capture: true, passive: true });
     document.addEventListener('pointerdown', captureIntent, true);
     document.addEventListener('click', captureIntent, true);
 
+    // Observe both body classes and portal insertion/removal. Career/Game Hub
+    // render as body-level portals, outside #root, so watching only #root misses
+    // the most authoritative state change.
     const bodyObserver = new MutationObserver(scheduleSync);
-    bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    bodyObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
 
     const rootObserver = new MutationObserver(scheduleSync);
     rootObserver.observe(root, {
@@ -250,6 +262,7 @@ const NavigationStatePortal = () => {
     sync();
 
     return () => {
+      document.removeEventListener('touchstart', captureIntent, true);
       document.removeEventListener('pointerdown', captureIntent, true);
       document.removeEventListener('click', captureIntent, true);
       bodyObserver.disconnect();

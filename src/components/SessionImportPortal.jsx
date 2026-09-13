@@ -28,24 +28,62 @@ const findButton = (matcher, root = document) => {
     || null;
 };
 
-const findScannerInput = (root = document) => {
-  const labels = [...root.querySelectorAll('label')];
-  const matches = labels.filter((entry) => /choose weekly screenshots/i.test(entry.textContent || ''));
-  const visibleMatch = matches.find((entry) => visible(entry) && entry.querySelector('input[type="file"]'));
-  const label = visibleMatch || matches.find((entry) => entry.querySelector('input[type="file"]'));
-  return label?.querySelector('input[type="file"]') || null;
+const findDataEntryWorkspace = () => (
+  document.querySelector('main.dhq-page-main[data-active-tab="dataEntry"] .dhq-weekly-agenda-workspace')
+  || document.querySelector('.dhq-weekly-agenda-workspace')
+);
+
+const findScannerInput = () => {
+  const workspace = findDataEntryWorkspace();
+  if (!workspace) return null;
+  const inputs = [...workspace.querySelectorAll('input[type="file"][accept*="image"]')];
+  return inputs.find((input) => (
+    input.multiple
+    && /choose weekly screenshots/i.test(input.closest('label')?.textContent || '')
+  )) || inputs.find((input) => (
+    input.multiple
+    && !input.closest('[data-rtg-intake-scanner], [data-coverage-intake-scanner]')
+  )) || null;
+};
+
+const findDataEntryButton = () => {
+  const buttons = [...document.querySelectorAll('.dhq-primary-nav button')];
+  return buttons.find((button) => /weekly agenda/i.test(clean(button.getAttribute('title'))))
+    || buttons.find((button) => /^game hub$/i.test(clean(button.textContent)))
+    || null;
+};
+
+const requestDataEntryWorkspace = () => {
+  if (findDataEntryWorkspace()) return true;
+  const button = findDataEntryButton();
+  if (!button) return false;
+  window.__dhqAllowLegacyGameHubOnce = true;
+  button.click();
+  return true;
 };
 
 const waitForScannerInput = (timeoutMs = 12000) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
+  let lastNavigationAttempt = 0;
+
   const check = () => {
     const input = findScannerInput();
     if (input) {
       resolve(input);
       return;
     }
-    if (Date.now() - startedAt >= timeoutMs) {
-      reject(new Error('DynastyHQ could not locate the verified scanner after opening the data-entry workspace.'));
+
+    const now = Date.now();
+    if (!findDataEntryWorkspace() && now - lastNavigationAttempt >= 300) {
+      lastNavigationAttempt = now;
+      requestDataEntryWorkspace();
+    }
+
+    if (now - startedAt >= timeoutMs) {
+      const activeTab = document.querySelector('main.dhq-page-main')?.dataset?.activeTab || 'unknown';
+      const workspace = findDataEntryWorkspace();
+      const fileInputs = workspace?.querySelectorAll('input[type="file"]').length || 0;
+      reject(new Error(`DynastyHQ could not mount the verified scanner (active tab: ${activeTab}; workspace: ${workspace ? 'mounted' : 'missing'}; file inputs: ${fileInputs}).`));
       return;
     }
     window.setTimeout(check, 90);
@@ -53,43 +91,9 @@ const waitForScannerInput = (timeoutMs = 12000) => new Promise((resolve, reject)
   check();
 });
 
-const findReactOwnedGameHubButton = () => {
-  const buttons = [...document.querySelectorAll('.dhq-primary-nav button')];
-  return buttons.find((button) => /^game hub$/i.test(clean(button.textContent)))
-    || buttons.find((button) => /weekly agenda|game hub/i.test(clean(button.getAttribute('title'))))
-    || null;
-};
-
-const invokeReactOnClick = (button) => {
-  if (!button) return false;
-  const propsKey = Object.getOwnPropertyNames(button)
-    .find((key) => key.startsWith('__reactProps$'));
-  const onClick = propsKey ? button[propsKey]?.onClick : null;
-  if (typeof onClick !== 'function') return false;
-  onClick();
-  return true;
-};
-
-const openVerifiedScannerDirectly = () => {
-  if (findScannerInput()) return true;
-  const button = findReactOwnedGameHubButton();
-  if (!button) return false;
-
-  // Calling React's own handler skips the document/root capture listeners used by
-  // the modern Game Hub portal. Those listeners are correct for normal user nav,
-  // but a synthetic .click() from Session Import can be swallowed before App's
-  // dataEntry handler runs. Fall back to the legacy click only on React versions
-  // where the DOM node does not expose its current props object.
-  if (invokeReactOnClick(button)) return true;
-
-  window.__dhqAllowLegacyGameHubOnce = true;
-  button.click();
-  return true;
-};
-
 const handoffFiles = async (files) => {
-  const opened = openVerifiedScannerDirectly();
-  if (!opened) throw new Error('Game Hub is not available from this screen.');
+  const opened = requestDataEntryWorkspace();
+  if (!opened) throw new Error('DynastyHQ could not find the internal Weekly Agenda route.');
   const input = await waitForScannerInput();
   if (typeof DataTransfer === 'undefined') {
     throw new Error('This browser cannot hand the screenshots to the verified scanner automatically.');

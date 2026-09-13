@@ -1,0 +1,32 @@
+/*
+ * Session Import verification layering
+ *
+ * The real WeeklyReviewPanel remains mounted inside #root so its React handlers stay
+ * intact. Session Import itself is portaled to document.body. During Verify, raise
+ * the app root above that body-level overlay while hiding every root descendant
+ * except the real review panel. This avoids cloning/reparenting the review DOM and
+ * keeps all verify/apply controls wired to App state.
+ */
+body.dhq-session-import-review #root {
+  position: relative !important;
+  z-index: 10050 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.dhq-session-import-review #root .dhq-postgame-review,
+body.dhq-session-import-review #root .dhq-postgame-review * {
+  visibility: visible !important;
+}
+
+body.dhq-session-import-review #root .dhq-postgame-review {
+  top: 194px !important;
+  z-index: 10061 !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 720px) {
+  body.dhq-session-import-review #root .dhq-postgame-review {
+    top: 160px !important;
+  }
+}

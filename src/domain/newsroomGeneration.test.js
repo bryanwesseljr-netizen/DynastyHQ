@@ -35,6 +35,7 @@ const state = {
 };
 
 const paragraph = 'The early list puts a clear regional shape around the recruitment, creating real choices without pretending a personal preference is the same thing as an offer. The next evaluation now carries more weight because every new result can change the conversation around fit, opportunity, and momentum.';
+const conciseParagraph = 'The early board gives the recruitment a clear regional shape without overstating what the preference list means. Eastern Michigan and Western Michigan sit near the front, while the upcoming evaluation still has room to change the order and the larger conversation.';
 
 test('builds a recruiting-writer brief from current published facts', () => {
   const payload = buildNewsroomGenerationPayload(state, publicationId);
@@ -77,6 +78,29 @@ test('merges generated editorial copy while preserving article identity and medi
   assert.match(story.pullQuote, /regional race/);
   assert.equal(story.citedFactKeys.includes('recruiting.eastern.preferenceRank'), true);
   assert.equal(story.editorialStatus, 'generated');
+});
+
+test('accepts a concise complete four-paragraph article instead of forcing a retry for a word quota', () => {
+  const payload = buildNewsroomGenerationPayload(state, publicationId);
+  const generated = {
+    articles: [{
+      outletId: 'recruiting',
+      kicker: 'Recruiting Notebook',
+      headline: 'Regional programs shape the early recruiting picture',
+      dek: 'The first preference list sets an early direction while leaving room for the evaluation to matter.',
+      dateline: '',
+      paragraphs: [conciseParagraph, conciseParagraph, conciseParagraph, conciseParagraph],
+      sectionHeadings: ['Early shape', 'What comes next'],
+      pullQuote: 'The early order matters, but the evaluation still has room to reshape it.',
+      sidebars: [{ title: 'At a glance', items: ['Eastern Michigan is first in the current preference order.', 'Western Michigan is second.'] }],
+      citedFactIds: payload.articleBriefs[0].focusFactIds,
+    }],
+  };
+
+  const edition = normalizeGeneratedNewsroomEdition({ generated, payload, model: 'test-model' });
+  assert.equal(edition.articles.length, 1);
+  assert.equal(edition.articles[0].paragraphs.length, 4);
+  assert.ok(edition.articles[0].readingMinutes >= 1);
 });
 
 test('reader keeps internal source keys out of the public article layout', async () => {

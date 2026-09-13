@@ -5,6 +5,7 @@ import test from 'node:test';
 const routingPortalUrl = new URL('../components/SessionImportRoutingPortal.jsx', import.meta.url);
 const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const routingClientUrl = new URL('../services/sessionScreenshotRouterClient.js', import.meta.url);
+const coverageApiUrl = new URL('../../api/analyze-coverage-reference.js', import.meta.url);
 
 test('Session Import routing bridge is mounted beside the existing import workspace', async () => {
   const [portalSource, ownerSource] = await Promise.all([
@@ -14,45 +15,56 @@ test('Session Import routing bridge is mounted beside the existing import worksp
 
   assert.match(ownerSource, /import SessionImportRoutingPortal from '\.\/SessionImportRoutingPortal\.jsx';/);
   assert.match(ownerSource, /<SessionImportPortal \/>[\s\S]*<SessionImportRoutingPortal \/>/);
-  assert.match(portalSource, /\.dhq-weekly-agenda-workspace/);
-  assert.match(portalSource, /input\.multiple/);
-  assert.match(portalSource, /accept\.includes\('image'\)/);
+  assert.match(portalSource, /dynastyhq:session-import-files/);
   assert.match(portalSource, /data-rtg-intake-scanner/);
   assert.match(portalSource, /data-coverage-intake-scanner/);
 });
 
-test('Session Import captures either Weekly Agenda image input but excludes specialized lane inputs', async () => {
+test('Session Import no longer uses a Weekly Agenda file input as the mixed-batch transport', async () => {
   const portalSource = await readFile(routingPortalUrl, 'utf8');
 
-  assert.match(portalSource, /input\.closest\('\[data-rtg-intake-scanner\], \[data-coverage-intake-scanner\]'\)/);
-  assert.match(portalSource, /return Boolean\(input\.closest\('\.dhq-weekly-agenda-workspace'\)\)/);
-  assert.match(portalSource, /__dhqSessionRoutingInterceptedAt/);
+  assert.match(portalSource, /window\.addEventListener\('dynastyhq:session-import-files', processBatch\)/);
+  assert.doesNotMatch(portalSource, /document\.addEventListener\('change', intercept, true\)/);
+  assert.match(portalSource, /findCollegeGameInput/);
+  assert.match(portalSource, /choose weekly screenshots/i);
+  assert.match(portalSource, /findHighSchoolPostgameInput/);
 });
 
-test('Session Import routes RTG, coverage and game screenshots without silently dropping uncertain screens', async () => {
+test('Session Import routes game, RTG, coverage and high-school screens without spraying unknowns across lanes', async () => {
   const portalSource = await readFile(routingPortalUrl, 'utf8');
 
   assert.match(portalSource, /lanes\.has\('game'\)/);
   assert.match(portalSource, /lanes\.has\('rtg'\)/);
   assert.match(portalSource, /lanes\.has\('coverage'\)/);
-  assert.match(portalSource, /unknown\.forEach/);
-  assert.match(portalSource, /game\.push\(file\)/);
-  assert.match(portalSource, /rtg\.push\(file\)/);
-  assert.match(portalSource, /coverage\.push\(file\)/);
-  assert.match(portalSource, /dispatchGameFiles\(input, groups\.game\.length \? groups\.game : files\)/);
+  assert.match(portalSource, /lanes\.has\('high_school'\)/);
+  assert.match(portalSource, /high_school_postgame/);
+  assert.match(portalSource, /high_school_moment/);
+  assert.match(portalSource, /Unknown college screens get one final chance in the verified Game Data desk only/);
+  assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*rtg\.push/);
+  assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*coverage\.push/);
 });
 
-test('session screenshot router reuses the existing free-first endpoint and recognizes all three lanes', async () => {
-  const source = await readFile(routingClientUrl, 'utf8');
+test('Session Import refuses to send college Game Data into the high-school Postgame Tape Score lane', async () => {
+  const portalSource = await readFile(routingPortalUrl, 'utf8');
 
-  assert.match(source, /fetch\('\/api\/analyze-coverage-reference'/);
-  assert.match(source, /scanKind: 'coverage'/);
-  assert.match(source, /scanKind: 'rtg'/);
-  assert.match(source, /coverageType === 'scoring_summary'/);
-  assert.match(source, /coverageType === 'team_stats'/);
-  assert.match(source, /coverageType === 'player_stats'/);
-  assert.match(source, /containsTrackedPlayer \? \['game', 'coverage'\] : \['coverage'\]/);
-  assert.match(source, /lanes: \['rtg'\]/);
-  assert.match(source, /lanes: \['game'\]/);
-  assert.match(source, /allowPaidFallback: false/);
+  assert.match(portalSource, /current Weekly Agenda does not expose the college Game Data scanner/);
+  assert.match(portalSource, /Nothing was sent to the high-school Postgame Tape Score lane/);
+  assert.doesNotMatch(portalSource, /dispatchGameFiles\(input, groups\.game/);
+});
+
+test('session screenshot router performs one lightweight free-first classification pass per screenshot', async () => {
+  const [clientSource, apiSource] = await Promise.all([
+    readFile(routingClientUrl, 'utf8'),
+    readFile(coverageApiUrl, 'utf8'),
+  ]);
+
+  assert.match(clientSource, /fetch\('\/api\/analyze-coverage-reference'/);
+  assert.match(clientSource, /scanKind: 'route'/);
+  assert.doesNotMatch(clientSource, /scanKind: 'coverage'/);
+  assert.doesNotMatch(clientSource, /scanKind: 'rtg'/);
+  assert.match(clientSource, /allowPaidFallback: false/);
+  assert.match(apiSource, /cfb27_session_import_route/);
+  assert.match(apiSource, /ea_network_article/);
+  assert.match(apiSource, /high_school_moment/);
+  assert.match(apiSource, /Never send an unknown screen to every lane/);
 });

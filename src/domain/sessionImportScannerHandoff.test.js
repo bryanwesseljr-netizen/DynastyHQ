@@ -22,7 +22,7 @@ test('Session Import bypasses capture listeners by invoking the React-owned Game
 test('Session Import waits for the real verified scanner before dispatching files', async () => {
   const sessionImport = await readFile(sessionImportUrl, 'utf8');
 
-  assert.match(sessionImport, /waitForScannerInput\(timeoutMs = 12000\)/);
+  assert.match(sessionImport, /waitForScannerInput = \(timeoutMs = 12000\)/);
   assert.match(sessionImport, /const input = await waitForScannerInput\(\)/);
   assert.match(sessionImport, /input\.dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/);
   assert.match(sessionImport, /if \(invokeReactOnClick\(button\)\) return true/);

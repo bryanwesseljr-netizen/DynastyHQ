@@ -54,6 +54,15 @@ const dispatchFiles = (input, files) => {
   input.dispatchEvent(new Event('change', { bubbles: true }));
 };
 
+const dispatchGameFiles = (input, files) => {
+  window.__dhqSessionRouterBypass = true;
+  try {
+    dispatchFiles(input, files);
+  } finally {
+    window.setTimeout(() => { window.__dhqSessionRouterBypass = false; }, 0);
+  }
+};
+
 const waitForScannerCycle = (selector, label, timeoutMs = ROUTING_TIMEOUT) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
   let sawBusy = false;
@@ -216,14 +225,12 @@ const SessionImportRoutingPortal = () => {
           await waitForScannerCycle(COVERAGE_INPUT, 'Coverage Data');
         }
 
-        if (groups.game.length) {
-          window.__dhqSessionRouterBypass = true;
-          try {
-            dispatchFiles(input, groups.game);
-          } finally {
-            window.setTimeout(() => { window.__dhqSessionRouterBypass = false; }, 0);
-          }
-        } else {
+        // A normal postgame session should contain Game Data. If it does not,
+        // still send the original batch through the proven scanner so the
+        // Session Import workflow can reach its verification desk instead of hanging.
+        dispatchGameFiles(input, groups.game.length ? groups.game : files);
+
+        if (!groups.game.length) {
           window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-no-game', {
             detail: window.__dhqSessionRouteSummary,
           }));
@@ -237,6 +244,9 @@ const SessionImportRoutingPortal = () => {
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-error', {
           detail: { message: error?.message || 'Session Import routing failed.' },
         }));
+        // Never strand the user's batch. If the routing bridge itself fails,
+        // fall back to the exact Game Data behavior Session Import used before.
+        dispatchGameFiles(input, files);
       } finally {
         routing = false;
       }

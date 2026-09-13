@@ -12,7 +12,6 @@ const ROUTE_SCHEMA = {
   properties: {
     lanes: {
       type: 'array',
-      uniqueItems: true,
       items: { type: 'string', enum: ['game', 'rtg', 'coverage'] },
     },
     screenType: {

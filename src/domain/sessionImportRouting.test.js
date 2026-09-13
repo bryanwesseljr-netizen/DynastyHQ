@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const routingPortalUrl = new URL('../components/SessionImportRoutingPortal.jsx', import.meta.url);
 const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
-const routeApiUrl = new URL('../../api/route-session-screenshot.js', import.meta.url);
+const routingClientUrl = new URL('../services/sessionScreenshotRouterClient.js', import.meta.url);
 
 test('Session Import routing bridge is mounted beside the existing import workspace', async () => {
   const [portalSource, ownerSource] = await Promise.all([
@@ -19,7 +19,7 @@ test('Session Import routing bridge is mounted beside the existing import worksp
   assert.match(portalSource, /data-coverage-intake-scanner/);
 });
 
-test('Session Import routes RTG, coverage and game screenshots without silently dropping unknown screens', async () => {
+test('Session Import routes RTG, coverage and game screenshots without silently dropping uncertain screens', async () => {
   const portalSource = await readFile(routingPortalUrl, 'utf8');
 
   assert.match(portalSource, /lanes\.has\('game'\)/);
@@ -32,18 +32,17 @@ test('Session Import routes RTG, coverage and game screenshots without silently 
   assert.match(portalSource, /dispatchGameFiles\(input, groups\.game\.length \? groups\.game : files\)/);
 });
 
-test('session screenshot router recognizes game, RTG and editorial coverage screen families', async () => {
-  const source = await readFile(routeApiUrl, 'utf8');
+test('session screenshot router reuses the existing free-first endpoint and recognizes all three lanes', async () => {
+  const source = await readFile(routingClientUrl, 'utf8');
 
-  assert.match(source, /enum: \['game', 'rtg', 'coverage'\]/);
-  assert.match(source, /'player_stats'/);
-  assert.match(source, /'scoring_summary'/);
-  assert.match(source, /'rtg_overview'/);
-  assert.match(source, /'rtg_academics'/);
-  assert.match(source, /'rtg_leadership'/);
-  assert.match(source, /'rtg_health'/);
-  assert.match(source, /'rtg_fitness'/);
-  assert.match(source, /'rtg_brand'/);
-  assert.match(source, /BOTH game and coverage/);
+  assert.match(source, /fetch\('\/api\/analyze-coverage-reference'/);
+  assert.match(source, /scanKind: 'coverage'/);
+  assert.match(source, /scanKind: 'rtg'/);
+  assert.match(source, /coverageType === 'scoring_summary'/);
+  assert.match(source, /coverageType === 'team_stats'/);
+  assert.match(source, /coverageType === 'player_stats'/);
+  assert.match(source, /containsTrackedPlayer \? \['game', 'coverage'\] : \['coverage'\]/);
+  assert.match(source, /lanes: \['rtg'\]/);
+  assert.match(source, /lanes: \['game'\]/);
   assert.match(source, /allowPaidFallback: false/);
 });

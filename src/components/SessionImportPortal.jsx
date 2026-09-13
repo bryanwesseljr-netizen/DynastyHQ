@@ -34,7 +34,7 @@ const findScannerInput = () => {
   return label?.querySelector('input[type="file"]') || null;
 };
 
-const waitForScannerInput = (timeoutMs = 8000) => new Promise((resolve, reject) => {
+const waitForScannerInput = (timeoutMs = 12000) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
   const check = () => {
     const input = findScannerInput();
@@ -51,11 +51,43 @@ const waitForScannerInput = (timeoutMs = 8000) => new Promise((resolve, reject) 
   check();
 });
 
-const handoffFiles = async (files) => {
-  const gameHubButton = findButton(/^game hub$/i);
-  if (!gameHubButton) throw new Error('Game Hub is not available from this screen.');
+const findReactOwnedGameHubButton = () => {
+  const buttons = [...document.querySelectorAll('.dhq-primary-nav button')];
+  return buttons.find((button) => /^game hub$/i.test(clean(button.textContent)))
+    || buttons.find((button) => /weekly agenda|game hub/i.test(clean(button.getAttribute('title'))))
+    || null;
+};
+
+const invokeReactOnClick = (button) => {
+  if (!button) return false;
+  const propsKey = Object.getOwnPropertyNames(button)
+    .find((key) => key.startsWith('__reactProps$'));
+  const onClick = propsKey ? button[propsKey]?.onClick : null;
+  if (typeof onClick !== 'function') return false;
+  onClick();
+  return true;
+};
+
+const openVerifiedScannerDirectly = () => {
+  if (findScannerInput()) return true;
+  const button = findReactOwnedGameHubButton();
+  if (!button) return false;
+
+  // Calling React's own handler skips the document/root capture listeners used by
+  // the modern Game Hub portal. Those listeners are correct for normal user nav,
+  // but a synthetic .click() from Session Import can be swallowed before App's
+  // dataEntry handler runs. Fall back to the legacy click only on React versions
+  // where the DOM node does not expose its current props object.
+  if (invokeReactOnClick(button)) return true;
+
   window.__dhqAllowLegacyGameHubOnce = true;
-  gameHubButton.click();
+  button.click();
+  return true;
+};
+
+const handoffFiles = async (files) => {
+  const opened = openVerifiedScannerDirectly();
+  if (!opened) throw new Error('Game Hub is not available from this screen.');
   const input = await waitForScannerInput();
   if (typeof DataTransfer === 'undefined') {
     throw new Error('This browser cannot hand the screenshots to the verified scanner automatically.');

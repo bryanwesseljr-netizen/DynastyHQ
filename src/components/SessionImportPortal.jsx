@@ -30,21 +30,9 @@ const findButton = (matcher, root = document) => {
 
 const findDataEntryWorkspace = () => (
   document.querySelector('main.dhq-page-main[data-active-tab="dataEntry"] .dhq-weekly-agenda-workspace')
-  || document.querySelector('.dhq-weekly-agenda-workspace')
+  || [...document.querySelectorAll('.dhq-weekly-agenda-workspace')].find(visible)
+  || null
 );
-
-const findScannerInput = () => {
-  const workspace = findDataEntryWorkspace();
-  if (!workspace) return null;
-  const inputs = [...workspace.querySelectorAll('input[type="file"][accept*="image"]')];
-  return inputs.find((input) => (
-    input.multiple
-    && /choose weekly screenshots/i.test(input.closest('label')?.textContent || '')
-  )) || inputs.find((input) => (
-    input.multiple
-    && !input.closest('[data-rtg-intake-scanner], [data-coverage-intake-scanner]')
-  )) || null;
-};
 
 const findDataEntryButton = () => {
   const buttons = [...document.querySelectorAll('.dhq-primary-nav button')];
@@ -62,28 +50,26 @@ const requestDataEntryWorkspace = () => {
   return true;
 };
 
-const waitForScannerInput = (timeoutMs = 12000) => new Promise((resolve, reject) => {
+const waitForDataEntryWorkspace = (timeoutMs = 12000) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
   let lastNavigationAttempt = 0;
 
   const check = () => {
-    const input = findScannerInput();
-    if (input) {
-      resolve(input);
+    const workspace = findDataEntryWorkspace();
+    if (workspace) {
+      resolve(workspace);
       return;
     }
 
     const now = Date.now();
-    if (!findDataEntryWorkspace() && now - lastNavigationAttempt >= 300) {
+    if (now - lastNavigationAttempt >= 300) {
       lastNavigationAttempt = now;
       requestDataEntryWorkspace();
     }
 
     if (now - startedAt >= timeoutMs) {
       const activeTab = document.querySelector('main.dhq-page-main')?.dataset?.activeTab || 'unknown';
-      const workspace = findDataEntryWorkspace();
-      const fileInputs = workspace?.querySelectorAll('input[type="file"]').length || 0;
-      reject(new Error(`DynastyHQ could not mount the verified scanner (active tab: ${activeTab}; workspace: ${workspace ? 'mounted' : 'missing'}; file inputs: ${fileInputs}).`));
+      reject(new Error(`DynastyHQ could not mount Weekly Agenda for Session Import (active tab: ${activeTab}).`));
       return;
     }
     window.setTimeout(check, 90);
@@ -91,17 +77,34 @@ const waitForScannerInput = (timeoutMs = 12000) => new Promise((resolve, reject)
   check();
 });
 
+const waitForSessionRouter = (timeoutMs = 5000) => new Promise((resolve, reject) => {
+  const startedAt = Date.now();
+  const check = () => {
+    if (window.__dhqSessionRouterReady) {
+      resolve(true);
+      return;
+    }
+    if (Date.now() - startedAt >= timeoutMs) {
+      reject(new Error('DynastyHQ could not start the Session Import classifier. Reload the preview and try again.'));
+      return;
+    }
+    window.setTimeout(check, 60);
+  };
+  check();
+});
+
 const handoffFiles = async (files) => {
   const opened = requestDataEntryWorkspace();
   if (!opened) throw new Error('DynastyHQ could not find the internal Weekly Agenda route.');
-  const input = await waitForScannerInput();
-  if (typeof DataTransfer === 'undefined') {
-    throw new Error('This browser cannot hand the screenshots to the verified scanner automatically.');
-  }
-  const transfer = new DataTransfer();
-  files.forEach((file) => transfer.items.add(file));
-  input.files = transfer.files;
-  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await waitForDataEntryWorkspace();
+  await waitForSessionRouter();
+
+  // Session Import owns the mixed batch. Do not use an existing Weekly Agenda file
+  // input as transport: in high-school mode that input can be the Postgame Tape Score
+  // uploader, which incorrectly stamps every screenshot with that routing context.
+  window.dispatchEvent(new CustomEvent('dynastyhq:session-import-files', {
+    detail: { files: [...files] },
+  }));
 };
 
 const formatBytes = (bytes = 0) => {
@@ -181,6 +184,16 @@ const SessionImportPortal = () => {
   }, []);
 
   useEffect(() => {
+    const onRoutingError = (event) => {
+      if (!open) return;
+      setError(event?.detail?.message || 'DynastyHQ could not route this screenshot batch safely. Nothing was applied.');
+      setPhase('upload');
+    };
+    window.addEventListener('dynastyhq:session-routing-error', onRoutingError);
+    return () => window.removeEventListener('dynastyhq:session-routing-error', onRoutingError);
+  }, [open]);
+
+  useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
     const refresh = () => {
       const review = document.querySelector('.dhq-postgame-review');
@@ -228,7 +241,7 @@ const SessionImportPortal = () => {
       await handoffFiles(files);
     } catch (handoffError) {
       setPhase('upload');
-      setError(handoffError?.message || 'The session could not be handed to the verified scanner.');
+      setError(handoffError?.message || 'The session could not be handed to the Session Import classifier.');
     }
   };
 
@@ -267,7 +280,7 @@ const SessionImportPortal = () => {
             <div className="dhq-session-import__headline">
               <span><CloudUpload size={17} /> CURRENT SESSION</span>
               <h1 id="dhq-session-import-title">Drop the screenshots. DynastyHQ handles the week.</h1>
-              <p>Upload the useful CFB 27 screens from this game or week together. The verified scanner will identify the facts, flag uncertain reads, and give you one confirmation step before anything is applied.</p>
+              <p>Upload the useful CFB 27 screens from this game or week together. DynastyHQ classifies each screen first, routes it to the correct scanner, flags uncertain reads, and gives you a confirmation step before anything is applied.</p>
             </div>
 
             <div className="dhq-session-import__meta-row">
@@ -312,7 +325,7 @@ const SessionImportPortal = () => {
               <button type="button" className="is-secondary" onClick={() => closeWorkspace()}><ArrowLeft size={15} /> Back</button>
               <button type="button" className="is-primary" disabled={!files.length} onClick={processSession}>PROCESS SESSION <ChevronRight size={16} /></button>
             </div>
-            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Nothing is published automatically.</strong> Extracted facts still pass through DynastyHQ’s verification desk before they can update the week.</span></div>
+            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Nothing is published automatically.</strong> Screens are classified before lane analysis, and extracted facts still pass through DynastyHQ’s verification desk before they can update the week.</span></div>
           </section>
         ) : null}
 
@@ -320,10 +333,10 @@ const SessionImportPortal = () => {
           <section className="dhq-session-import__card dhq-session-import__processing-card">
             <div className="dhq-session-import__processing-icon"><Loader2 size={34} /></div>
             <span>PROCESS WEEK</span>
-            <h1 id="dhq-session-import-title">Reading {files.length} screenshot{files.length === 1 ? '' : 's'}…</h1>
-            <p>The scanner is identifying scores, player stats, game context, and other supported facts. It will surface anything uncertain instead of guessing.</p>
+            <h1 id="dhq-session-import-title">Sorting and reading {files.length} screenshot{files.length === 1 ? '' : 's'}…</h1>
+            <p>DynastyHQ first identifies the screen type, then sends it only to the scanner responsible for that data. Unknown screens are never sprayed across every lane.</p>
             <div className="dhq-session-import__scanline"><i /></div>
-            <div className="dhq-session-import__processing-stats"><div><strong>{files.length}</strong><span>SCREENS</span></div><div><Sparkles size={18} /><span>AI ANALYSIS</span></div><div><ShieldCheck size={18} /><span>VERIFY NEXT</span></div></div>
+            <div className="dhq-session-import__processing-stats"><div><strong>{files.length}</strong><span>SCREENS</span></div><div><Sparkles size={18} /><span>CLASSIFY + ANALYZE</span></div><div><ShieldCheck size={18} /><span>VERIFY NEXT</span></div></div>
           </section>
         ) : null}
 

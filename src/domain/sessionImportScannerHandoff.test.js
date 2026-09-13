@@ -19,6 +19,15 @@ test('Session Import bypasses capture listeners by invoking the React-owned Game
   assert.doesNotMatch(owner, /VerifiedScannerHandoffPortal/);
 });
 
+test('Session Import discovers the current verified scanner without the retired agenda wrapper', async () => {
+  const sessionImport = await readFile(sessionImportUrl, 'utf8');
+
+  assert.match(sessionImport, /root\.querySelectorAll\('label'\)/);
+  assert.match(sessionImport, /choose weekly screenshots/i);
+  assert.match(sessionImport, /entry\.querySelector\('input\[type="file"\]'\)/);
+  assert.doesNotMatch(sessionImport, /\.dhq-weekly-agenda-workspace label/);
+});
+
 test('Session Import waits for the real verified scanner before dispatching files', async () => {
   const sessionImport = await readFile(sessionImportUrl, 'utf8');
 

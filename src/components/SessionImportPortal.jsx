@@ -28,9 +28,11 @@ const findButton = (matcher, root = document) => {
     || null;
 };
 
-const findScannerInput = () => {
-  const labels = [...document.querySelectorAll('.dhq-weekly-agenda-workspace label')];
-  const label = labels.find((entry) => /choose weekly screenshots/i.test(entry.textContent || ''));
+const findScannerInput = (root = document) => {
+  const labels = [...root.querySelectorAll('label')];
+  const matches = labels.filter((entry) => /choose weekly screenshots/i.test(entry.textContent || ''));
+  const visibleMatch = matches.find((entry) => visible(entry) && entry.querySelector('input[type="file"]'));
+  const label = visibleMatch || matches.find((entry) => entry.querySelector('input[type="file"]'));
   return label?.querySelector('input[type="file"]') || null;
 };
 
@@ -43,7 +45,7 @@ const waitForScannerInput = (timeoutMs = 12000) => new Promise((resolve, reject)
       return;
     }
     if (Date.now() - startedAt >= timeoutMs) {
-      reject(new Error('DynastyHQ could not open the verified scanner. Return to Game Hub and try again.'));
+      reject(new Error('DynastyHQ could not locate the verified scanner after opening the data-entry workspace.'));
       return;
     }
     window.setTimeout(check, 90);

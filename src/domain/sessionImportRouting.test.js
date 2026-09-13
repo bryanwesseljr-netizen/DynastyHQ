@@ -14,9 +14,19 @@ test('Session Import routing bridge is mounted beside the existing import worksp
 
   assert.match(ownerSource, /import SessionImportRoutingPortal from '\.\/SessionImportRoutingPortal\.jsx';/);
   assert.match(ownerSource, /<SessionImportPortal \/>[\s\S]*<SessionImportRoutingPortal \/>/);
-  assert.match(portalSource, /choose weekly screenshots/i);
+  assert.match(portalSource, /\.dhq-weekly-agenda-workspace/);
+  assert.match(portalSource, /input\.multiple/);
+  assert.match(portalSource, /accept\.includes\('image'\)/);
   assert.match(portalSource, /data-rtg-intake-scanner/);
   assert.match(portalSource, /data-coverage-intake-scanner/);
+});
+
+test('Session Import captures either Weekly Agenda image input but excludes specialized lane inputs', async () => {
+  const portalSource = await readFile(routingPortalUrl, 'utf8');
+
+  assert.match(portalSource, /input\.closest\('\[data-rtg-intake-scanner\], \[data-coverage-intake-scanner\]'\)/);
+  assert.match(portalSource, /return Boolean\(input\.closest\('\.dhq-weekly-agenda-workspace'\)\)/);
+  assert.match(portalSource, /__dhqSessionRoutingInterceptedAt/);
 });
 
 test('Session Import routes RTG, coverage and game screenshots without silently dropping uncertain screens', async () => {

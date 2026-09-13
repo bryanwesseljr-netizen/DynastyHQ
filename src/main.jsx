@@ -48,12 +48,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : (
       <>
         <AuthAwareApp />
-        {viewContext.isPublicShare ? <PublicShareGuard /> : (
-          <>
-            <OwnerEnhancements />
-            <OwnerCareerProvider><PreviewReseedMount /></OwnerCareerProvider>
-          </>
-        )}
+        {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
+        {!viewContext.isPublicShare ? (
+          <OwnerCareerProvider><PreviewReseedMount /></OwnerCareerProvider>
+        ) : null}
         <DuplicateGuardPortal />
       </>
     )}

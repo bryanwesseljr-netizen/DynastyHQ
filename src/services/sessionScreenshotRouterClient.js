@@ -52,6 +52,15 @@ export const routeSessionScreenshot = async ({ idToken, imageDataUrl, fileName, 
   const coverageType = coverage.screenType || 'unknown';
   const coverageFacts = coverage.facts || [];
 
+  if (coverageType === 'ea_network_article') {
+    return {
+      lanes: ['coverage'],
+      screenType: 'ea_network_article',
+      confidence: maxConfidence(coverageFacts),
+      reason: 'EA SPORTS Network article is official in-game media context for Newsroom and Podcast.',
+    };
+  }
+
   if (coverageType === 'scoring_summary') {
     return {
       lanes: ['coverage'],

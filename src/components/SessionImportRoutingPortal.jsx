@@ -17,19 +17,30 @@ const findButton = (matcher) => {
     || null;
 };
 
-const isSessionGameInput = (input) => {
-  if (!(input instanceof HTMLInputElement) || input.type !== 'file' || !input.multiple) return false;
-  const accept = String(input.accept || '').toLowerCase();
-  if (accept && !accept.includes('image')) return false;
-  if (input.closest('[data-rtg-intake-scanner], [data-coverage-intake-scanner]')) return false;
+const findWeeklyWorkspace = () => (
+  document.querySelector('main.dhq-page-main[data-active-tab="dataEntry"] .dhq-weekly-agenda-workspace')
+  || [...document.querySelectorAll('.dhq-weekly-agenda-workspace')].find(visible)
+  || null
+);
 
-  // Weekly Agenda now has both the original verified scanner input and a V3
-  // façade input that forwards into it. Session Import may encounter either one
-  // depending on mobile timing. Treat any multi-image file input owned by the
-  // active Weekly Agenda as the game-lane entry point so routing cannot be
-  // silently bypassed by a presentation-layer input.
-  return Boolean(input.closest('.dhq-weekly-agenda-workspace'));
+const findCollegeGameInput = () => {
+  const workspace = findWeeklyWorkspace();
+  if (!workspace) return null;
+  const labels = [...workspace.querySelectorAll('label')];
+  const label = labels.find((entry) => /choose weekly screenshots/i.test(clean(entry.textContent)));
+  const input = label?.querySelector('input[type="file"][accept*="image"]') || null;
+  return input?.multiple ? input : null;
 };
+
+const findHighSchoolPostgameInput = () => (
+  findWeeklyWorkspace()?.querySelector('input[type="file"][aria-label^="Upload Postgame Tape Score / Recruiting Summary"]')
+  || null
+);
+
+const findHighSchoolMomentInput = (momentNumber) => (
+  findWeeklyWorkspace()?.querySelector(`input[type="file"][aria-label^="Upload Moment ${momentNumber} screenshot"]`)
+  || null
+);
 
 const waitFor = (getter, message, timeoutMs = 10000) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
@@ -62,20 +73,11 @@ const dispatchFiles = (input, files) => {
   input.dispatchEvent(new Event('change', { bubbles: true }));
 };
 
-const dispatchGameFiles = (input, files) => {
-  window.__dhqSessionRouterBypass = true;
-  try {
-    dispatchFiles(input, files);
-  } finally {
-    window.setTimeout(() => { window.__dhqSessionRouterBypass = false; }, 0);
-  }
-};
-
-const waitForScannerCycle = (selector, label, timeoutMs = ROUTING_TIMEOUT) => new Promise((resolve, reject) => {
+const waitForScannerCycle = (getter, label, timeoutMs = ROUTING_TIMEOUT) => new Promise((resolve, reject) => {
   const startedAt = Date.now();
   let sawBusy = false;
   const check = () => {
-    const input = document.querySelector(selector);
+    const input = getter();
     if (input?.disabled) sawBusy = true;
     if (sawBusy && input && !input.disabled) {
       resolve();
@@ -128,12 +130,13 @@ const routeBatch = async ({ files, user, career }) => {
         imageDataUrl,
         fileName: file.name,
         player: career?.player || {},
+        careerPhase: career?.careerPhase || '',
       });
       routed.push({ file, route });
     } catch (error) {
       routed.push({
         file,
-        route: { lanes: [], screenType: 'unknown', confidence: 0, reason: error?.message || 'Routing failed.' },
+        route: { lanes: [], screenType: 'unknown', momentNumber: 0, confidence: 0, reason: error?.message || 'Routing failed.' },
       });
     }
     window.dispatchEvent(new CustomEvent('dynastyhq:session-route-progress', {
@@ -147,34 +150,37 @@ const groupsFromRoutes = (routed) => {
   const game = [];
   const rtg = [];
   const coverage = [];
+  const highSchoolPostgame = [];
+  const highSchoolMoments = [];
   const unknown = [];
 
   routed.forEach(({ file, route }) => {
     const lanes = new Set(route?.lanes || []);
-    if (!lanes.size) {
+    if (!lanes.size || route?.screenType === 'unknown') {
       unknown.push(file);
       return;
     }
     if (lanes.has('game')) game.push(file);
     if (lanes.has('rtg')) rtg.push(file);
     if (lanes.has('coverage')) coverage.push(file);
-  });
-
-  // Safety fallback: an uncertain screen is allowed through each specialized scanner
-  // rather than being silently ignored. Each scanner still rejects unsupported facts.
-  unknown.forEach((file) => {
-    game.push(file);
-    rtg.push(file);
-    coverage.push(file);
+    if (lanes.has('high_school')) {
+      if (route?.screenType === 'high_school_postgame') highSchoolPostgame.push(file);
+      else if (route?.screenType === 'high_school_moment') highSchoolMoments.push({ file, momentNumber: Number(route?.momentNumber) || 0 });
+      else unknown.push(file);
+    }
   });
 
   return {
     game: uniqueFiles(game),
     rtg: uniqueFiles(rtg),
     coverage: uniqueFiles(coverage),
+    highSchoolPostgame: uniqueFiles(highSchoolPostgame),
+    highSchoolMoments,
     unknown: uniqueFiles(unknown),
   };
 };
+
+const fileNamesPreview = (files) => files.slice(0, 3).map((file) => file.name).join(', ');
 
 const SessionImportRoutingPortal = () => {
   const { user, career } = useOwnerCareer();
@@ -183,22 +189,13 @@ const SessionImportRoutingPortal = () => {
     if (!user || !career) return undefined;
 
     let routing = false;
+    window.__dhqSessionRouterReady = true;
 
-    const intercept = async (event) => {
-      const input = event.target;
-      if (
-        routing
-        || window.__dhqSessionRouterBypass
-        || !document.body.classList.contains('dhq-session-import-mode')
-        || !isSessionGameInput(input)
-      ) return;
-
-      const files = [...(input.files || [])];
+    const processBatch = async (event) => {
+      if (routing) return;
+      const files = uniqueFiles([...(event?.detail?.files || [])].filter((file) => file instanceof File));
       if (!files.length) return;
 
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
       routing = true;
       window.__dhqSessionRoutingInterceptedAt = Date.now();
 
@@ -206,63 +203,98 @@ const SessionImportRoutingPortal = () => {
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-start', { detail: { total: files.length } }));
         const routed = await routeBatch({ files, user, career });
         const groups = groupsFromRoutes(routed);
-        window.__dhqSessionRouteSummary = {
+        const unresolvedMomentFiles = groups.highSchoolMoments
+          .filter((entry) => entry.momentNumber < 1 || entry.momentNumber > 4)
+          .map((entry) => entry.file);
+        const unresolved = uniqueFiles([...groups.unknown, ...unresolvedMomentFiles]);
+
+        const summary = {
           total: files.length,
           game: groups.game.length,
           rtg: groups.rtg.length,
           coverage: groups.coverage.length,
-          unknown: groups.unknown.length,
+          highSchool: groups.highSchoolPostgame.length + groups.highSchoolMoments.length,
+          unknown: unresolved.length,
           routes: routed.map(({ file, route }) => ({
             fileName: file.name,
             lanes: route?.lanes || [],
             screenType: route?.screenType || 'unknown',
+            momentNumber: Number(route?.momentNumber) || 0,
             confidence: Number(route?.confidence) || 0,
           })),
         };
+        window.__dhqSessionRouteSummary = summary;
 
-        // Process the auxiliary lanes first so Session Import does not enter the
-        // Game Data verification desk until RTG and Coverage are already preloaded.
+        const gameInput = findCollegeGameInput();
+        if (groups.game.length && !gameInput) {
+          throw new Error(`DynastyHQ recognized ${groups.game.length} college Game Data screenshot${groups.game.length === 1 ? '' : 's'}, but the current Weekly Agenda does not expose the college Game Data scanner. Nothing was sent to the high-school Postgame Tape Score lane. Make sure this preview is on the matching college career/week, then process the same batch again.`);
+        }
+
+        if (unresolvedMomentFiles.length) {
+          throw new Error(`DynastyHQ recognized ${unresolvedMomentFiles.length} high-school Moment screenshot${unresolvedMomentFiles.length === 1 ? '' : 's'}, but the exact Moment 1–4 number is not visible. Nothing was guessed. Use the guided Moment slots for ${fileNamesPreview(unresolvedMomentFiles)}.`);
+        }
+
+        if (unresolved.length && !gameInput && !groups.highSchoolPostgame.length && !groups.highSchoolMoments.length) {
+          throw new Error(`DynastyHQ could not safely classify ${unresolved.length} screenshot${unresolved.length === 1 ? '' : 's'} (${fileNamesPreview(unresolved)}). Nothing was routed into the wrong lane. Try those screenshots separately or use the guided scanner.`);
+        }
+
+        // Auxiliary college lanes are processed before the main Game Data review.
         if (groups.rtg.length) {
           const rtgInput = await ensureRtgInput();
           dispatchFiles(rtgInput, groups.rtg);
-          await waitForScannerCycle(RTG_INPUT, 'RTG Status');
+          await waitForScannerCycle(() => document.querySelector(RTG_INPUT), 'RTG Status');
         }
 
         if (groups.coverage.length) {
           const coverageInput = await ensureCoverageInput();
           dispatchFiles(coverageInput, groups.coverage);
-          await waitForScannerCycle(COVERAGE_INPUT, 'Coverage Data');
+          await waitForScannerCycle(() => document.querySelector(COVERAGE_INPUT), 'Coverage Data');
         }
 
-        // A normal postgame session should contain Game Data. If it does not,
-        // still send the original batch through the proven scanner so the
-        // Session Import workflow can reach its verification desk instead of hanging.
-        dispatchGameFiles(input, groups.game.length ? groups.game : files);
+        // High-school postgame material is sent only to the real postgame recruiting slot.
+        if (groups.highSchoolPostgame.length) {
+          const postgameInput = findHighSchoolPostgameInput();
+          if (!postgameInput) {
+            throw new Error('DynastyHQ recognized high-school Postgame / Recruiting screens, but the current Weekly Agenda is not in high-school evaluation mode. Nothing was applied.');
+          }
+          dispatchFiles(postgameInput, groups.highSchoolPostgame);
+          await waitForScannerCycle(findHighSchoolPostgameInput, 'High-school Postgame scanner');
+        }
+
+        // A Moment screen is never assigned to a numbered slot unless that number was visibly identified.
+        for (const entry of groups.highSchoolMoments) {
+          const momentInput = findHighSchoolMomentInput(entry.momentNumber);
+          if (!momentInput) {
+            throw new Error(`DynastyHQ could not mount the guided Moment ${entry.momentNumber} scanner.`);
+          }
+          dispatchFiles(momentInput, [entry.file]);
+          await waitForScannerCycle(() => findHighSchoolMomentInput(entry.momentNumber), `High-school Moment ${entry.momentNumber} scanner`);
+        }
+
+        // Unknown college screens get one final chance in the verified Game Data desk only when
+        // a real college Game Data scanner exists. They are never sprayed into RTG/Coverage/high-school lanes.
+        const collegeReviewFiles = gameInput ? uniqueFiles([...groups.game, ...groups.unknown]) : [];
+        if (collegeReviewFiles.length) dispatchFiles(gameInput, collegeReviewFiles);
 
         if (!groups.game.length) {
-          window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-no-game', {
-            detail: window.__dhqSessionRouteSummary,
-          }));
+          window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-no-game', { detail: summary }));
         }
-
-        window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-complete', {
-          detail: window.__dhqSessionRouteSummary,
-        }));
+        window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-complete', { detail: summary }));
       } catch (error) {
         console.error('Session Import routing failed', error);
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-error', {
-          detail: { message: error?.message || 'Session Import routing failed.' },
+          detail: { message: error?.message || 'Session Import routing failed. Nothing was applied.' },
         }));
-        // Never strand the user's batch. If the routing bridge itself fails,
-        // fall back to the exact Game Data behavior Session Import used before.
-        dispatchGameFiles(input, files);
       } finally {
         routing = false;
       }
     };
 
-    document.addEventListener('change', intercept, true);
-    return () => document.removeEventListener('change', intercept, true);
+    window.addEventListener('dynastyhq:session-import-files', processBatch);
+    return () => {
+      window.__dhqSessionRouterReady = false;
+      window.removeEventListener('dynastyhq:session-import-files', processBatch);
+    };
   }, [career, user]);
 
   return null;

@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import './services/podcastBinaryTransport.js'
 import AuthAwareApp from './components/AuthAwareApp.jsx'
 import OwnerEnhancements from './components/OwnerEnhancements.jsx'
+import PreviewReseedMount from './components/PreviewReseedMount.jsx'
+import { OwnerCareerProvider } from './components/OwnerCareerContext.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
 import PublicShareGuard from './components/PublicShareGuard.jsx'
 import PublicNewsroomArticlePage from './components/PublicNewsroomArticlePage.jsx'
@@ -46,7 +48,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : (
       <>
         <AuthAwareApp />
-        {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
+        {viewContext.isPublicShare ? <PublicShareGuard /> : (
+          <>
+            <OwnerEnhancements />
+            <OwnerCareerProvider><PreviewReseedMount /></OwnerCareerProvider>
+          </>
+        )}
         <DuplicateGuardPortal />
       </>
     )}

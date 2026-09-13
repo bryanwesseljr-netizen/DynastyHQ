@@ -18,9 +18,17 @@ const findButton = (matcher) => {
 };
 
 const isSessionGameInput = (input) => {
-  if (!(input instanceof HTMLInputElement) || input.type !== 'file') return false;
-  const label = input.closest('label');
-  return /choose weekly screenshots/i.test(label?.textContent || '');
+  if (!(input instanceof HTMLInputElement) || input.type !== 'file' || !input.multiple) return false;
+  const accept = String(input.accept || '').toLowerCase();
+  if (accept && !accept.includes('image')) return false;
+  if (input.closest('[data-rtg-intake-scanner], [data-coverage-intake-scanner]')) return false;
+
+  // Weekly Agenda now has both the original verified scanner input and a V3
+  // façade input that forwards into it. Session Import may encounter either one
+  // depending on mobile timing. Treat any multi-image file input owned by the
+  // active Weekly Agenda as the game-lane entry point so routing cannot be
+  // silently bypassed by a presentation-layer input.
+  return Boolean(input.closest('.dhq-weekly-agenda-workspace'));
 };
 
 const waitFor = (getter, message, timeoutMs = 10000) => new Promise((resolve, reject) => {
@@ -192,6 +200,7 @@ const SessionImportRoutingPortal = () => {
       event.stopPropagation();
       event.stopImmediatePropagation?.();
       routing = true;
+      window.__dhqSessionRoutingInterceptedAt = Date.now();
 
       try {
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-start', { detail: { total: files.length } }));

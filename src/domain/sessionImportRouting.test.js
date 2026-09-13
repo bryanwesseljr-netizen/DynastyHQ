@@ -44,10 +44,22 @@ test('Session Import routes game, RTG, coverage and high-school screens without 
   assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*coverage\.push/);
 });
 
-test('Session Import refuses to send college Game Data into the high-school Postgame Tape Score lane', async () => {
+test('Session Import repairs a stale legacy commitment flag only when the career-stage engine independently says College', async () => {
   const portalSource = await readFile(routingPortalUrl, 'utf8');
 
-  assert.match(portalSource, /current Weekly Agenda does not expose the college Game Data scanner/);
+  assert.match(portalSource, /deriveCareerStage\(career \|\| \{\}\)/);
+  assert.match(portalSource, /derivedStage === CAREER_STAGES\.COLLEGE/);
+  assert.match(portalSource, /career\?\.careerPhase === 'Player'/);
+  assert.match(portalSource, /career\?\.player\?\.isCommitted !== true/);
+  assert.match(portalSource, /updateDoc\(careerRef, \{ 'player\.isCommitted': true \}\)/);
+  assert.match(portalSource, /__dhqLegacyCollegeCommitmentRepairedAt/);
+  assert.match(portalSource, /repaired the stale college-career flag/);
+});
+
+test('Session Import still refuses to send college Game Data into the high-school Postgame Tape Score lane', async () => {
+  const portalSource = await readFile(routingPortalUrl, 'utf8');
+
+  assert.match(portalSource, /current Weekly Agenda still does not expose the college Game Data scanner/);
   assert.match(portalSource, /Nothing was sent to the high-school Postgame Tape Score lane/);
   assert.doesNotMatch(portalSource, /dispatchGameFiles\(input, groups\.game/);
 });

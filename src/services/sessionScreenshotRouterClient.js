@@ -1,16 +1,8 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
 
-const normalizeName = (value) => String(value || '')
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, ' ')
-  .trim();
+const ALLOWED_LANES = new Set(['game', 'rtg', 'coverage', 'high_school']);
 
-const maxConfidence = (facts = []) => facts.reduce(
-  (best, fact) => Math.max(best, Number(fact?.confidence) || 0),
-  0,
-);
-
-const analyze = async ({ idToken, imageDataUrl, fileName, player, scanKind }) => {
+const analyzeRoute = async ({ idToken, imageDataUrl, fileName, player, careerPhase }) => {
   const school = player?.college || player?.school || '';
   const response = await fetch('/api/analyze-coverage-reference', {
     method: 'POST',
@@ -23,9 +15,10 @@ const analyze = async ({ idToken, imageDataUrl, fileName, player, scanKind }) =>
       fileName,
       player,
       school,
-      scanKind,
-      // Routing should never spend paid fallback credits. The dedicated scanner
-      // still follows the user's normal fallback preference after routing.
+      careerPhase,
+      scanKind: 'route',
+      // Routing is classification only and should never spend paid fallback credits.
+      // Dedicated lane scanners still follow the user's normal preference afterward.
       allowPaidFallback: false,
     }),
   });
@@ -38,7 +31,7 @@ const analyze = async ({ idToken, imageDataUrl, fileName, player, scanKind }) =>
   }
 
   if (!response.ok) {
-    const error = new Error(body.error || `Session ${scanKind} classification failed.`);
+    const error = new Error(body.error || 'Session screenshot classification failed.');
     error.status = response.status;
     throw error;
   }
@@ -47,73 +40,18 @@ const analyze = async ({ idToken, imageDataUrl, fileName, player, scanKind }) =>
   return body.analysis || {};
 };
 
-export const routeSessionScreenshot = async ({ idToken, imageDataUrl, fileName, player }) => {
-  const coverage = await analyze({ idToken, imageDataUrl, fileName, player, scanKind: 'coverage' });
-  const coverageType = coverage.screenType || 'unknown';
-  const coverageFacts = coverage.facts || [];
+export const routeSessionScreenshot = async ({ idToken, imageDataUrl, fileName, player, careerPhase }) => {
+  const analysis = await analyzeRoute({ idToken, imageDataUrl, fileName, player, careerPhase });
+  const lanes = [...new Set((analysis.lanes || []).filter((lane) => ALLOWED_LANES.has(lane)))];
+  const screenType = String(analysis.screenType || 'unknown');
+  const momentNumber = Math.max(0, Math.min(4, Number(analysis.momentNumber) || 0));
+  const confidence = Math.max(0, Math.min(1, Number(analysis.confidence) || 0));
 
-  if (coverageType === 'ea_network_article') {
-    return {
-      lanes: ['coverage'],
-      screenType: 'ea_network_article',
-      confidence: maxConfidence(coverageFacts),
-      reason: 'EA SPORTS Network article is official in-game media context for Newsroom and Podcast.',
-    };
-  }
-
-  if (coverageType === 'scoring_summary') {
-    return {
-      lanes: ['coverage'],
-      screenType: 'scoring_summary',
-      confidence: maxConfidence(coverageFacts),
-      reason: 'Scoring Summary belongs to editorial coverage.',
-    };
-  }
-
-  if (coverageType === 'team_stats') {
-    return {
-      lanes: ['game'],
-      screenType: 'team_stats',
-      confidence: maxConfidence(coverageFacts),
-      reason: 'Team Stats belongs to verified Game Data.',
-    };
-  }
-
-  if (coverageType === 'player_stats') {
-    const trackedName = normalizeName(player?.name);
-    const containsTrackedPlayer = Boolean(trackedName) && coverageFacts.some((fact) => (
-      normalizeName(fact?.subject) === trackedName
-    ));
-    return {
-      lanes: containsTrackedPlayer ? ['game', 'coverage'] : ['coverage'],
-      screenType: 'player_stats',
-      confidence: maxConfidence(coverageFacts),
-      reason: containsTrackedPlayer
-        ? 'Player Stats contains the tracked player and additional coverage context.'
-        : 'Player Stats provides teammate or opponent coverage context.',
-    };
-  }
-
-  // Coverage intentionally returns unknown for RTG menu/status screens and many
-  // score-only game screens. A second free-first pass cleanly separates those.
-  const rtg = await analyze({ idToken, imageDataUrl, fileName, player, scanKind: 'rtg' });
-  const rtgType = rtg.screenType || 'unknown';
-  if (rtgType !== 'unknown') {
-    return {
-      lanes: ['rtg'],
-      screenType: rtgType,
-      confidence: maxConfidence(rtg.facts || []),
-      reason: 'Recognized Road to Glory current-state screen.',
-    };
-  }
-
-  // Final score/game-summary screens are outside the editorial and RTG schemas.
-  // The verified Game Data scanner is the safest final destination and will still
-  // reject unsupported or unreadable facts rather than inventing them.
   return {
-    lanes: ['game'],
-    screenType: 'final_score',
-    confidence: 0.6,
-    reason: 'Not RTG or editorial coverage; send to verified Game Data.',
+    lanes: screenType === 'unknown' ? [] : lanes,
+    screenType,
+    momentNumber,
+    confidence,
+    reason: String(analysis.reason || '').trim() || 'Session Import classification completed.',
   };
 };

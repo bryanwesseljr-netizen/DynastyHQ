@@ -3,7 +3,7 @@ import { compressImage } from '../services/imageCompression.js';
 import { routeSessionScreenshot } from '../services/sessionScreenshotRouterClient.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
-const RTG_INPUT = '[data-rtg-status-inline-panel] input[type="file"]';
+const RTG_INPUT = '[data-rtg-intake-scanner] input[type="file"]';
 const COVERAGE_INPUT = '[data-coverage-intake-scanner] input[type="file"]';
 const ROUTING_TIMEOUT = 180000;
 

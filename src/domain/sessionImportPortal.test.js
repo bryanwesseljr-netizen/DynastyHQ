@@ -21,7 +21,7 @@ test('homepage Session Import opens a dedicated companion workspace instead of t
   assert.match(portalSource, /dhq-session-import-mode/);
 });
 
-test('Session Import accepts up to 30 screenshots and the verified scanner processes the full handed-off batch', async () => {
+test('Session Import accepts up to 30 screenshots and the verified scanner can still process routed batches', async () => {
   const [portalSource, appSource] = await Promise.all([
     readFile(portalSourceUrl, 'utf8'),
     readFile(appSourceUrl, 'utf8'),
@@ -33,16 +33,25 @@ test('Session Import accepts up to 30 screenshots and the verified scanner proce
   assert.match(appSource, /for \(let index = 0; index < files\.length; index \+= 1\)/);
 });
 
-test('Session Import reuses the verified scanner and verification desk before anything is applied', async () => {
+test('Session Import owns the mixed batch before any specialized scanner receives files', async () => {
   const portalSource = await readFile(portalSourceUrl, 'utf8');
 
-  assert.match(portalSource, /choose weekly screenshots/i);
-  assert.match(portalSource, /new DataTransfer\(\)/);
-  assert.match(portalSource, /input\.dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/);
+  assert.match(portalSource, /waitForSessionRouter/);
+  assert.match(portalSource, /dynastyhq:session-import-files/);
+  assert.match(portalSource, /detail: \{ files: \[\.\.\.files\] \}/);
+  assert.doesNotMatch(portalSource, /input\.dispatchEvent\(new Event\('change'/);
   assert.match(portalSource, /\.dhq-postgame-review/);
   assert.match(portalSource, /\.dhq-agenda-v3-applied-ready/);
   assert.match(portalSource, /Nothing is published automatically/);
   assert.match(portalSource, /PROCESS SESSION/);
+});
+
+test('Session Import surfaces a routing failure instead of hanging on the analyzing screen', async () => {
+  const portalSource = await readFile(portalSourceUrl, 'utf8');
+
+  assert.match(portalSource, /dynastyhq:session-routing-error/);
+  assert.match(portalSource, /setPhase\('upload'\)/);
+  assert.match(portalSource, /Nothing was applied/);
 });
 
 test('Session Import keeps the old agenda hidden while the review panel is presented as the verification desk', async () => {

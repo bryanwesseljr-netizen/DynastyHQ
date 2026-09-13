@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
+import { appId, db } from '../firebase.js';
 import { compressImage } from '../services/imageCompression.js';
 import { routeSessionScreenshot } from '../services/sessionScreenshotRouterClient.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
@@ -118,6 +121,35 @@ const ensureCoverageInput = async () => {
   return input;
 };
 
+const ensureCollegeGameInput = async ({ user, career }) => {
+  let input = findCollegeGameInput();
+  if (input) return input;
+
+  const derivedStage = deriveCareerStage(career || {});
+  const hasStaleCommitmentFlag = (
+    derivedStage === CAREER_STAGES.COLLEGE
+    && career?.careerPhase === 'Player'
+    && career?.player?.isCommitted !== true
+  );
+
+  if (!hasStaleCommitmentFlag || !user?.uid || !db) return null;
+
+  // Older saves can already be an established college career while retaining a
+  // false legacy commitment flag. The old Weekly Agenda uses that flag alone to
+  // decide whether to mount the high-school or college scanner. Repair only when
+  // the newer career-stage engine independently proves this is a college career.
+  const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+  await updateDoc(careerRef, { 'player.isCommitted': true });
+  window.__dhqLegacyCollegeCommitmentRepairedAt = Date.now();
+
+  input = await waitFor(
+    findCollegeGameInput,
+    'DynastyHQ repaired the stale college-career flag, but Weekly Agenda did not mount the college Game Data scanner. Reload this preview once and retry the same batch.',
+    12000,
+  );
+  return input;
+};
+
 const routeBatch = async ({ files, user, career }) => {
   const idToken = await user.getIdToken();
   const routed = [];
@@ -225,9 +257,13 @@ const SessionImportRoutingPortal = () => {
         };
         window.__dhqSessionRouteSummary = summary;
 
-        const gameInput = findCollegeGameInput();
+        const gameInput = groups.game.length
+          ? await ensureCollegeGameInput({ user, career })
+          : findCollegeGameInput();
+
         if (groups.game.length && !gameInput) {
-          throw new Error(`DynastyHQ recognized ${groups.game.length} college Game Data screenshot${groups.game.length === 1 ? '' : 's'}, but the current Weekly Agenda does not expose the college Game Data scanner. Nothing was sent to the high-school Postgame Tape Score lane. Make sure this preview is on the matching college career/week, then process the same batch again.`);
+          const stage = deriveCareerStage(career || {});
+          throw new Error(`DynastyHQ recognized ${groups.game.length} college Game Data screenshot${groups.game.length === 1 ? '' : 's'}, but the current Weekly Agenda still does not expose the college Game Data scanner. Derived career stage: ${stage}. Nothing was sent to the high-school Postgame Tape Score lane.`);
         }
 
         if (unresolvedMomentFiles.length) {

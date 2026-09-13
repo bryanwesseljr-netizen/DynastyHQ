@@ -134,8 +134,9 @@ const GameHubPortal = () => {
           return;
         }
         event.preventDefault();
+        // Keep the legacy Game Hub route from receiving the click, but allow other
+        // capture listeners on this same root (notably Career) to close themselves.
         event.stopPropagation();
-        event.stopImmediatePropagation?.();
         setSelection('auto');
         setOpen(true);
         syncActive(true);

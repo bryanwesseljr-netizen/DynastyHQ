@@ -122,6 +122,8 @@ const SessionImportPortal = () => {
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState('');
+  const [routeSummary, setRouteSummary] = useState(null);
+  const [routeProgress, setRouteProgress] = useState({ completed: 0, total: 0 });
 
   const season = career?.currentSeason || 1;
   const week = career?.currentWeek ?? 1;
@@ -139,6 +141,8 @@ const SessionImportPortal = () => {
     setFiles([]);
     setDragging(false);
     setError('');
+    setRouteSummary(null);
+    setRouteProgress({ completed: 0, total: 0 });
     setPhase('upload');
   };
 
@@ -184,21 +188,53 @@ const SessionImportPortal = () => {
   }, []);
 
   useEffect(() => {
+    const onRoutingStart = (event) => {
+      if (!open) return;
+      setRouteSummary(null);
+      setRouteProgress({ completed: 0, total: Number(event?.detail?.total) || files.length });
+    };
+    const onRoutingProgress = (event) => {
+      if (!open) return;
+      setRouteProgress({
+        completed: Number(event?.detail?.completed) || 0,
+        total: Number(event?.detail?.total) || files.length,
+      });
+    };
+    const onRoutingClassified = (event) => {
+      if (!open) return;
+      setRouteSummary(event?.detail || null);
+    };
+    const onRoutingComplete = (event) => {
+      if (!open) return;
+      setRouteSummary(event?.detail || null);
+      const review = document.querySelector('.dhq-postgame-review');
+      if (review) setPhase('review');
+    };
     const onRoutingError = (event) => {
       if (!open) return;
       setError(event?.detail?.message || 'DynastyHQ could not route this screenshot batch safely. Nothing was applied.');
       setPhase('upload');
     };
+    window.addEventListener('dynastyhq:session-routing-start', onRoutingStart);
+    window.addEventListener('dynastyhq:session-route-progress', onRoutingProgress);
+    window.addEventListener('dynastyhq:session-routing-classified', onRoutingClassified);
+    window.addEventListener('dynastyhq:session-routing-complete', onRoutingComplete);
     window.addEventListener('dynastyhq:session-routing-error', onRoutingError);
-    return () => window.removeEventListener('dynastyhq:session-routing-error', onRoutingError);
-  }, [open]);
+    return () => {
+      window.removeEventListener('dynastyhq:session-routing-start', onRoutingStart);
+      window.removeEventListener('dynastyhq:session-route-progress', onRoutingProgress);
+      window.removeEventListener('dynastyhq:session-routing-classified', onRoutingClassified);
+      window.removeEventListener('dynastyhq:session-routing-complete', onRoutingComplete);
+      window.removeEventListener('dynastyhq:session-routing-error', onRoutingError);
+    };
+  }, [files.length, open]);
 
   useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
     const refresh = () => {
       const review = document.querySelector('.dhq-postgame-review');
       const applied = document.querySelector('.dhq-agenda-v3-applied-ready');
-      if (review && phaseRef.current !== 'review') {
+      if (review && !window.__dhqSessionRoutingBusy && phaseRef.current !== 'review') {
         setPhase('review');
         return;
       }
@@ -236,6 +272,8 @@ const SessionImportPortal = () => {
   const processSession = async () => {
     if (!files.length) return;
     setError('');
+    setRouteSummary(null);
+    setRouteProgress({ completed: 0, total: files.length });
     setPhase('analyzing');
     try {
       await handoffFiles(files);
@@ -248,6 +286,14 @@ const SessionImportPortal = () => {
   if (!open || typeof document === 'undefined') return null;
 
   const step = phase === 'upload' ? 1 : phase === 'analyzing' ? 2 : phase === 'review' ? 3 : 4;
+  const routeParts = routeSummary ? [
+    `${routeSummary.total || files.length} uploaded`,
+    routeSummary.game ? `${routeSummary.game} Game` : '',
+    routeSummary.rtg ? `${routeSummary.rtg} RTG` : '',
+    routeSummary.coverage ? `${routeSummary.coverage} Coverage` : '',
+    routeSummary.highSchool ? `${routeSummary.highSchool} High School` : '',
+    routeSummary.unknown ? `${routeSummary.unknown} Unclassified` : '',
+  ].filter(Boolean) : [];
 
   return createPortal(
     <div className={`dhq-session-import is-${phase}`} role="dialog" aria-modal="true" aria-labelledby="dhq-session-import-title">
@@ -334,16 +380,16 @@ const SessionImportPortal = () => {
             <div className="dhq-session-import__processing-icon"><Loader2 size={34} /></div>
             <span>PROCESS WEEK</span>
             <h1 id="dhq-session-import-title">Sorting and reading {files.length} screenshot{files.length === 1 ? '' : 's'}…</h1>
-            <p>DynastyHQ first identifies the screen type, then sends it only to the scanner responsible for that data. Unknown screens are never sprayed across every lane.</p>
+            <p>{routeSummary ? `Classification complete: ${routeParts.join(' · ')}. DynastyHQ is finishing each specialized scanner before opening Verify.` : 'DynastyHQ first identifies the screen type, then sends it only to the scanner responsible for that data. Unknown screens are never sprayed across every lane.'}</p>
             <div className="dhq-session-import__scanline"><i /></div>
-            <div className="dhq-session-import__processing-stats"><div><strong>{files.length}</strong><span>SCREENS</span></div><div><Sparkles size={18} /><span>CLASSIFY + ANALYZE</span></div><div><ShieldCheck size={18} /><span>VERIFY NEXT</span></div></div>
+            <div className="dhq-session-import__processing-stats"><div><strong>{routeProgress.completed || files.length}</strong><span>OF {routeProgress.total || files.length} CLASSIFIED</span></div><div><Sparkles size={18} /><span>ROUTE + ANALYZE</span></div><div><ShieldCheck size={18} /><span>VERIFY AFTER ALL LANES</span></div></div>
           </section>
         ) : null}
 
         {phase === 'review' ? (
           <section className="dhq-session-import__review-heading" aria-live="polite">
             <span><ShieldCheck size={14} /> VERIFICATION DESK</span>
-            <strong>Review only what DynastyHQ flags. High-confidence facts can stay untouched.</strong>
+            <strong>{routeParts.length ? routeParts.join(' · ') : 'Review only what DynastyHQ flags. High-confidence facts can stay untouched.'}</strong>
           </section>
         ) : null}
 

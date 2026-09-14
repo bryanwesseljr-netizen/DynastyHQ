@@ -39,7 +39,7 @@ test('Session Import routes game, RTG, coverage and high-school screens without 
   assert.match(portalSource, /lanes\.has\('high_school'\)/);
   assert.match(portalSource, /high_school_postgame/);
   assert.match(portalSource, /high_school_moment/);
-  assert.match(portalSource, /Unknown college screens get one final chance in the verified Game Data desk only/);
+  assert.match(portalSource, /const collegeReviewFiles = gameInput \? uniqueFiles\(\[\.\.\.groups\.game, \.\.\.groups\.unknown\]\) : \[\];/);
   assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*rtg\.push/);
   assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*coverage\.push/);
 });

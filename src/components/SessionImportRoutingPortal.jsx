@@ -1,7 +1,4 @@
 import { useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
-import { appId, db } from '../firebase.js';
 import { compressImage } from '../services/imageCompression.js';
 import { routeSessionScreenshot } from '../services/sessionScreenshotRouterClient.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
@@ -121,33 +118,14 @@ const ensureCoverageInput = async () => {
   return input;
 };
 
-const ensureCollegeGameInput = async ({ user, career }) => {
-  let input = findCollegeGameInput();
-  if (input) return input;
-
-  const derivedStage = deriveCareerStage(career || {});
-  const hasStaleCommitmentFlag = (
-    derivedStage === CAREER_STAGES.COLLEGE
-    && career?.careerPhase === 'Player'
-    && career?.player?.isCommitted !== true
-  );
-
-  if (!hasStaleCommitmentFlag || !user?.uid || !db) return null;
-
-  // Older saves can already be an established college career while retaining a
-  // false legacy commitment flag. The old Weekly Agenda uses that flag alone to
-  // decide whether to mount the high-school or college scanner. Repair only when
-  // the newer career-stage engine independently proves this is a college career.
-  const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-  await updateDoc(careerRef, { 'player.isCommitted': true });
-  window.__dhqLegacyCollegeCommitmentRepairedAt = Date.now();
-
-  input = await waitFor(
+const ensureCollegeGameInput = async () => {
+  const current = findCollegeGameInput();
+  if (current) return current;
+  return waitFor(
     findCollegeGameInput,
-    'DynastyHQ repaired the stale college-career flag, but Weekly Agenda did not mount the college Game Data scanner. Reload this preview once and retry the same batch.',
+    'DynastyHQ recognized college Game Data, but the current college Weekly Agenda did not mount its Game Data scanner.',
     12000,
   );
-  return input;
 };
 
 const routeBatch = async ({ files, user, career }) => {
@@ -229,6 +207,7 @@ const SessionImportRoutingPortal = () => {
       if (!files.length) return;
 
       routing = true;
+      window.__dhqSessionRoutingBusy = true;
       window.__dhqSessionRoutingInterceptedAt = Date.now();
 
       try {
@@ -253,18 +232,16 @@ const SessionImportRoutingPortal = () => {
             screenType: route?.screenType || 'unknown',
             momentNumber: Number(route?.momentNumber) || 0,
             confidence: Number(route?.confidence) || 0,
+            reason: route?.reason || '',
           })),
         };
         window.__dhqSessionRouteSummary = summary;
+        window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-classified', { detail: summary }));
 
-        const gameInput = groups.game.length
-          ? await ensureCollegeGameInput({ user, career })
+        const isCollegeBatch = groups.game.length || groups.rtg.length || groups.coverage.length || groups.unknown.length;
+        const gameInput = isCollegeBatch && (groups.game.length || groups.unknown.length)
+          ? await ensureCollegeGameInput()
           : findCollegeGameInput();
-
-        if (groups.game.length && !gameInput) {
-          const stage = deriveCareerStage(career || {});
-          throw new Error(`DynastyHQ recognized ${groups.game.length} college Game Data screenshot${groups.game.length === 1 ? '' : 's'}, but the current Weekly Agenda still does not expose the college Game Data scanner. Derived career stage: ${stage}. Nothing was sent to the high-school Postgame Tape Score lane.`);
-        }
 
         if (unresolvedMomentFiles.length) {
           throw new Error(`DynastyHQ recognized ${unresolvedMomentFiles.length} high-school Moment screenshot${unresolvedMomentFiles.length === 1 ? '' : 's'}, but the exact Moment 1–4 number is not visible. Nothing was guessed. Use the guided Moment slots for ${fileNamesPreview(unresolvedMomentFiles)}.`);
@@ -274,7 +251,20 @@ const SessionImportRoutingPortal = () => {
           throw new Error(`DynastyHQ could not safely classify ${unresolved.length} screenshot${unresolved.length === 1 ? '' : 's'} (${fileNamesPreview(unresolved)}). Nothing was routed into the wrong lane. Try those screenshots separately or use the guided scanner.`);
         }
 
-        // Auxiliary college lanes are processed before the main Game Data review.
+        // Process Game Data first. The old implementation processed RTG/Coverage first,
+        // then mounting the Game review could remount Weekly Agenda and erase those
+        // unsaved auxiliary review states. Game-first keeps the later RTG/Coverage
+        // review panels alive for the user to verify.
+        const collegeReviewFiles = gameInput ? uniqueFiles([...groups.game, ...groups.unknown]) : [];
+        if (collegeReviewFiles.length) {
+          dispatchFiles(gameInput, collegeReviewFiles);
+          await waitFor(
+            () => document.querySelector('.dhq-postgame-review'),
+            'Game Data analysis did not produce a verification draft.',
+            ROUTING_TIMEOUT,
+          );
+        }
+
         if (groups.rtg.length) {
           const rtgInput = await ensureRtgInput();
           dispatchFiles(rtgInput, groups.rtg);
@@ -287,7 +277,6 @@ const SessionImportRoutingPortal = () => {
           await waitForScannerCycle(() => document.querySelector(COVERAGE_INPUT), 'Coverage Data');
         }
 
-        // High-school postgame material is sent only to the real postgame recruiting slot.
         if (groups.highSchoolPostgame.length) {
           const postgameInput = findHighSchoolPostgameInput();
           if (!postgameInput) {
@@ -297,7 +286,6 @@ const SessionImportRoutingPortal = () => {
           await waitForScannerCycle(findHighSchoolPostgameInput, 'High-school Postgame scanner');
         }
 
-        // A Moment screen is never assigned to a numbered slot unless that number was visibly identified.
         for (const entry of groups.highSchoolMoments) {
           const momentInput = findHighSchoolMomentInput(entry.momentNumber);
           if (!momentInput) {
@@ -307,17 +295,15 @@ const SessionImportRoutingPortal = () => {
           await waitForScannerCycle(() => findHighSchoolMomentInput(entry.momentNumber), `High-school Moment ${entry.momentNumber} scanner`);
         }
 
-        // Unknown college screens get one final chance in the verified Game Data desk only when
-        // a real college Game Data scanner exists. They are never sprayed into RTG/Coverage/high-school lanes.
-        const collegeReviewFiles = gameInput ? uniqueFiles([...groups.game, ...groups.unknown]) : [];
-        if (collegeReviewFiles.length) dispatchFiles(gameInput, collegeReviewFiles);
-
-        if (!groups.game.length) {
+        if (!groups.game.length && !groups.unknown.length) {
           window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-no-game', { detail: summary }));
         }
+        window.__dhqSessionRoutingBusy = false;
+        window.__dhqSessionRoutingCompleteAt = Date.now();
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-complete', { detail: summary }));
       } catch (error) {
         console.error('Session Import routing failed', error);
+        window.__dhqSessionRoutingBusy = false;
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-error', {
           detail: { message: error?.message || 'Session Import routing failed. Nothing was applied.' },
         }));
@@ -329,6 +315,7 @@ const SessionImportRoutingPortal = () => {
     window.addEventListener('dynastyhq:session-import-files', processBatch);
     return () => {
       window.__dhqSessionRouterReady = false;
+      window.__dhqSessionRoutingBusy = false;
       window.removeEventListener('dynastyhq:session-import-files', processBatch);
     };
   }, [career, user]);

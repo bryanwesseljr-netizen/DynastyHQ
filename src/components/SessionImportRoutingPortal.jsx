@@ -10,6 +10,7 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 const RTG_INPUT = '[data-rtg-intake-scanner] input[type="file"]';
 const COVERAGE_INPUT = '[data-coverage-intake-scanner] input[type="file"]';
 const ROUTING_TIMEOUT = 180000;
+const GUIDED_LANES = new Set(['game', 'rtg', 'coverage']);
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 const visible = (element) => Boolean(element && element.offsetParent !== null);
@@ -134,10 +135,6 @@ const ensureCollegeGameInput = async ({ user, career }) => {
   );
 
   if (hasStaleCommitmentFlag && user?.uid && db) {
-    // Older saves can already be an established college career while retaining a
-    // false legacy commitment flag. The old Weekly Agenda uses that flag alone to
-    // choose its scanner. Repair only when the career-stage engine independently
-    // proves this is already a college career.
     const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     await updateDoc(careerRef, { 'player.isCommitted': true });
     window.__dhqLegacyCollegeCommitmentRepairedAt = Date.now();
@@ -162,9 +159,6 @@ const routeBatch = async ({ files, user, career }) => {
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     try {
-      // Classification needs enough resolution to read the small RTG section labels.
-      // The earlier 1400px/0.74 copy was too aggressive and produced avoidable
-      // unknowns even though the original screenshots were readable.
       const imageDataUrl = await compressImage(file, 1800, 0.84);
       const route = await routeSessionScreenshot({
         idToken,
@@ -184,6 +178,35 @@ const routeBatch = async ({ files, user, career }) => {
       detail: { completed: index + 1, total: files.length },
     }));
   }
+  return routed;
+};
+
+const guidedRouteBatch = ({ files, guidedAssignments = {} }) => {
+  const routed = files.map((file) => {
+    const lane = String(guidedAssignments[filesKey(file)] || '');
+    const validLane = GUIDED_LANES.has(lane) ? lane : '';
+    return {
+      file,
+      route: validLane
+        ? {
+          lanes: [validLane],
+          screenType: `guided_${validLane}`,
+          momentNumber: 0,
+          confidence: 1,
+          reason: 'Assigned by the user in Session Import before analysis.',
+        }
+        : {
+          lanes: [],
+          screenType: 'unknown',
+          momentNumber: 0,
+          confidence: 0,
+          reason: 'This screenshot was not assigned to a guided Session Import lane.',
+        },
+    };
+  });
+  window.dispatchEvent(new CustomEvent('dynastyhq:session-route-progress', {
+    detail: { completed: files.length, total: files.length },
+  }));
   return routed;
 };
 
@@ -237,6 +260,9 @@ const SessionImportRoutingPortal = () => {
       const files = uniqueFiles([...(event?.detail?.files || [])].filter((file) => file instanceof File));
       if (!files.length) return;
 
+      const guidedAssignments = event?.detail?.guidedAssignments || null;
+      const guidedMode = Boolean(guidedAssignments && typeof guidedAssignments === 'object');
+
       routing = true;
       window.__dhqSessionRoutingBusy = true;
       window.__dhqSessionRoutingInterceptedAt = Date.now();
@@ -244,7 +270,9 @@ const SessionImportRoutingPortal = () => {
 
       try {
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-start', { detail: { total: files.length } }));
-        const routed = await routeBatch({ files, user, career });
+        const routed = guidedMode
+          ? guidedRouteBatch({ files, guidedAssignments })
+          : await routeBatch({ files, user, career });
         const groups = groupsFromRoutes(routed);
         const unresolvedMomentFiles = groups.highSchoolMoments
           .filter((entry) => entry.momentNumber < 1 || entry.momentNumber > 4)
@@ -258,6 +286,7 @@ const SessionImportRoutingPortal = () => {
           coverage: groups.coverage.length,
           highSchool: groups.highSchoolPostgame.length + groups.highSchoolMoments.length,
           unknown: unresolved.length,
+          routingMode: guidedMode ? 'guided' : 'automatic',
           routes: routed.map(({ file, route }) => ({
             fileName: file.name,
             lanes: route?.lanes || [],
@@ -279,15 +308,17 @@ const SessionImportRoutingPortal = () => {
           throw new Error(`DynastyHQ recognized ${unresolvedMomentFiles.length} high-school Moment screenshot${unresolvedMomentFiles.length === 1 ? '' : 's'}, but the exact Moment 1–4 number is not visible. Nothing was guessed. Use the guided Moment slots for ${fileNamesPreview(unresolvedMomentFiles)}.`);
         }
 
+        if (unresolved.length && guidedMode) {
+          throw new Error(`${unresolved.length} screenshot${unresolved.length === 1 ? '' : 's'} reached Session Import without a lane assignment. Nothing was analyzed. Return to Upload and place every screenshot into Game Data, RTG Status, or Coverage Data.`);
+        }
+
         if (unresolved.length && !gameInput && !groups.highSchoolPostgame.length && !groups.highSchoolMoments.length) {
           throw new Error(`DynastyHQ could not safely classify ${unresolved.length} screenshot${unresolved.length === 1 ? '' : 's'} (${fileNamesPreview(unresolved)}). Nothing was routed into the wrong lane. Try those screenshots separately or use the guided scanner.`);
         }
 
-        // Process Game Data first. The old implementation processed RTG/Coverage first,
-        // then mounting the Game review could remount Weekly Agenda and erase those
-        // unsaved auxiliary review states. Game-first keeps the later RTG/Coverage
-        // review panels alive for the user to verify.
-        const collegeReviewFiles = gameInput ? uniqueFiles([...groups.game, ...groups.unknown]) : [];
+        const collegeReviewFiles = gameInput
+          ? uniqueFiles(guidedMode ? groups.game : [...groups.game, ...groups.unknown])
+          : [];
         if (collegeReviewFiles.length) {
           dispatchFiles(gameInput, collegeReviewFiles);
           await waitFor(

@@ -14,6 +14,7 @@ const confidenceStyle = (confidence) => {
 const isRecruitingOffer = (key) => /^recruiting\..+\.offer$/.test(key);
 const isRecruitingInterest = (key) => /^recruiting\..+\.interest$/.test(key);
 const isRecruitingStars = (key) => /^recruiting\..+\.stars$/.test(key);
+const isSignedYardageFact = (key) => ['game.passYds', 'game.rushYds'].includes(key);
 const isNumericFact = (key) => [
   'game.homeScore', 'game.awayScore', 'game.passYds', 'game.passTD', 'game.rushYds',
   'game.rushTD', 'game.int', 'rtg.gpa', 'rtg.energy', 'rtg.coachTrust',
@@ -87,7 +88,7 @@ const FactEditor = ({ entry, onChange }) => {
   return (
     <input
       type={isNumericFact(entry.key) ? 'number' : 'text'}
-      min={isNumericFact(entry.key) ? 0 : undefined}
+      min={isNumericFact(entry.key) && !isSignedYardageFact(entry.key) ? 0 : undefined}
       max={max}
       step={entry.key === 'rtg.gpa' ? 0.01 : (isNumericFact(entry.key) ? 1 : undefined)}
       value={entry.value}

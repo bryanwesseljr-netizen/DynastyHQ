@@ -1,29 +1,20 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
 import { readPaidVisionFallbackEnabled } from './visionFallbackPreference.js';
 import { reportSessionLaneResult } from './sessionImportTelemetry.js';
+import { postFreeVisionJson } from './freeVisionQuotaQueue.js';
 
 export const analyzeRtgStatusScreenshot = async ({ idToken, imageDataUrl, fileName, player }) => {
-  const response = await fetch('/api/analyze-coverage-reference', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
+  const { response, body } = await postFreeVisionJson({
+    url: '/api/analyze-coverage-reference',
+    idToken,
+    body: {
       imageDataUrl,
       fileName,
       player,
       scanKind: 'rtg',
       allowPaidFallback: readPaidVisionFallbackEnabled(),
-    }),
+    },
   });
-
-  let body = {};
-  try {
-    body = await response.json();
-  } catch {
-    // Preserve a useful user-facing error if an upstream proxy returns HTML.
-  }
 
   if (!response.ok) {
     const message = body.error || 'RTG screenshot analysis failed.';

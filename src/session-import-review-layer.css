@@ -1,46 +1,65 @@
 /*
  * Session Import verification layering
  *
- * Session Import is portaled to document.body while the live WeeklyReviewPanel
- * remains under #root. Some mobile browsers keep fixed descendants trapped in the
- * root stacking box, which leaves Verify blank even though the review exists.
- * During Verify, remove only that root layout box. The real React review remains
- * mounted and keeps all of its existing edit/verify/apply handlers.
+ * The live WeeklyReviewPanel belongs to App/Weekly Agenda, while Session Import is
+ * rendered in a body-level portal. During Verify, keep the app root attached to the
+ * viewport (so it cannot leave a giant document-flow spacer), hide the rest of the
+ * app, and expose only the real React review panel above the Session Import shell.
+ *
+ * Weekly Agenda carries animation/layout classes that can become the containing
+ * block for fixed descendants on Android Chrome. Removing only those two layout
+ * boxes lets the existing fixed .dhq-postgame-review use the visual viewport while
+ * preserving its original React handlers and state.
  */
 body.dhq-session-import-review #root {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10050 !important;
+  overflow: visible !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.dhq-session-import-review #root main.dhq-page-main[data-active-tab="dataEntry"],
+body.dhq-session-import-review #root .dhq-weekly-agenda-workspace {
   display: contents !important;
 }
 
-body.dhq-session-import-review .dhq-postgame-review,
-body.dhq-session-import-review .dhq-postgame-review * {
+body.dhq-session-import-review #root .dhq-postgame-review,
+body.dhq-session-import-review #root .dhq-postgame-review * {
   visibility: visible !important;
 }
 
-body.dhq-session-import-review .dhq-postgame-review {
+body.dhq-session-import-review #root .dhq-postgame-review {
   z-index: 10061 !important;
   pointer-events: auto !important;
 }
 
 /*
- * Android Chrome can still keep the React review in a lower stacking context even
- * after #root stops creating a layout box. In review mode the Session Import shell
- * therefore becomes a transparent, click-through frame. Its sticky chrome remains
- * usable, while the actual WeeklyReviewPanel underneath stays visible and owns all
- * verification interactions.
+ * Keep the Session Import chrome as the visible backdrop. The old transparent
+ * click-through treatment exposed hidden Game Hub/Weekly Agenda layout beneath the
+ * review and made the verification screen look blank until the user scrolled a very
+ * long distance. The shell itself stays non-interactive except for its sticky chrome;
+ * the live review panel above it owns all verification interactions.
  */
 .dhq-session-import.is-review {
-  background: transparent !important;
-  backdrop-filter: none !important;
+  background: rgba(2, 8, 14, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
   pointer-events: none !important;
+  overflow: hidden !important;
 }
 
 .dhq-session-import.is-review .dhq-session-import__stadium {
-  display: none !important;
+  display: block !important;
 }
 
 .dhq-session-import.is-review .dhq-session-import__topbar,
 .dhq-session-import.is-review .dhq-session-import__stepbar {
   pointer-events: auto !important;
+}
+
+.dhq-session-import.is-review .dhq-session-import__main {
+  display: none !important;
 }
 
 .dhq-session-import.is-review .dhq-session-import__review-heading {

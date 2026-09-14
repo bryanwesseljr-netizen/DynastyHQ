@@ -64,13 +64,14 @@ test('Session Import still refuses to send college Game Data into the high-schoo
   assert.doesNotMatch(portalSource, /dispatchGameFiles\(input, groups\.game/);
 });
 
-test('session screenshot router performs one lightweight free-first classification pass per screenshot', async () => {
+test('session screenshot router performs one lightweight quota-aware free-first classification pass per screenshot', async () => {
   const [clientSource, apiSource] = await Promise.all([
     readFile(routingClientUrl, 'utf8'),
     readFile(coverageApiUrl, 'utf8'),
   ]);
 
-  assert.match(clientSource, /fetch\('\/api\/analyze-coverage-reference'/);
+  assert.match(clientSource, /postFreeVisionJson/);
+  assert.match(clientSource, /url: '\/api\/analyze-coverage-reference'/);
   assert.match(clientSource, /scanKind: 'route'/);
   assert.doesNotMatch(clientSource, /scanKind: 'coverage'/);
   assert.doesNotMatch(clientSource, /scanKind: 'rtg'/);

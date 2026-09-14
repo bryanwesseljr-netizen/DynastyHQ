@@ -162,7 +162,10 @@ const routeBatch = async ({ files, user, career }) => {
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     try {
-      const imageDataUrl = await compressImage(file, 1400, 0.74);
+      // Classification needs enough resolution to read the small RTG section labels.
+      // The earlier 1400px/0.74 copy was too aggressive and produced avoidable
+      // unknowns even though the original screenshots were readable.
+      const imageDataUrl = await compressImage(file, 1800, 0.84);
       const route = await routeSessionScreenshot({
         idToken,
         imageDataUrl,

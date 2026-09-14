@@ -4,6 +4,7 @@ import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { appId, db } from '../firebase.js';
 import { compressImage } from '../services/imageCompression.js';
 import { routeSessionScreenshot } from '../services/sessionScreenshotRouterClient.js';
+import { resetSessionImportTelemetry } from '../services/sessionImportTelemetry.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const RTG_INPUT = '[data-rtg-intake-scanner] input[type="file"]';
@@ -236,6 +237,7 @@ const SessionImportRoutingPortal = () => {
       routing = true;
       window.__dhqSessionRoutingBusy = true;
       window.__dhqSessionRoutingInterceptedAt = Date.now();
+      resetSessionImportTelemetry();
 
       try {
         window.dispatchEvent(new CustomEvent('dynastyhq:session-routing-start', { detail: { total: files.length } }));

@@ -6,7 +6,6 @@ import {
   ChevronRight,
   CloudUpload,
   FileImage,
-  Images,
   Loader2,
   ShieldCheck,
   Sparkles,
@@ -16,8 +15,14 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './session-import.css';
 
 const MAX_SCREENSHOTS = 30;
+const LANE_LABELS = {
+  game: 'Game Data',
+  rtg: 'RTG Status',
+  coverage: 'Coverage Data',
+};
 
 const clean = (value) => String(value || '').trim();
+const fileKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
 
 const visible = (element) => Boolean(element && element.offsetParent !== null);
 
@@ -85,7 +90,7 @@ const waitForSessionRouter = (timeoutMs = 5000) => new Promise((resolve, reject)
       return;
     }
     if (Date.now() - startedAt >= timeoutMs) {
-      reject(new Error('DynastyHQ could not start the Session Import classifier. Reload the preview and try again.'));
+      reject(new Error('DynastyHQ could not start the Session Import router. Reload the preview and try again.'));
       return;
     }
     window.setTimeout(check, 60);
@@ -93,17 +98,18 @@ const waitForSessionRouter = (timeoutMs = 5000) => new Promise((resolve, reject)
   check();
 });
 
-const handoffFiles = async (files) => {
+const handoffFiles = async (files, assignments) => {
   const opened = requestDataEntryWorkspace();
   if (!opened) throw new Error('DynastyHQ could not find the internal Weekly Agenda route.');
   await waitForDataEntryWorkspace();
   await waitForSessionRouter();
 
-  // Session Import owns the mixed batch. Do not use an existing Weekly Agenda file
-  // input as transport: in high-school mode that input can be the Postgame Tape Score
-  // uploader, which incorrectly stamps every screenshot with that routing context.
+  const guidedAssignments = Object.fromEntries(
+    files.map((file) => [fileKey(file), assignments[fileKey(file)] || '']),
+  );
+
   window.dispatchEvent(new CustomEvent('dynastyhq:session-import-files', {
-    detail: { files: [...files] },
+    detail: { files: [...files], guidedAssignments },
   }));
 };
 
@@ -114,13 +120,15 @@ const formatBytes = (bytes = 0) => {
 
 const SessionImportPortal = () => {
   const { career } = useOwnerCareer();
-  const fileInputRef = useRef(null);
+  const gameInputRef = useRef(null);
+  const rtgInputRef = useRef(null);
+  const coverageInputRef = useRef(null);
   const phaseRef = useRef('upload');
   const previousOverflowRef = useRef('');
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState('upload');
   const [files, setFiles] = useState([]);
-  const [dragging, setDragging] = useState(false);
+  const [assignments, setAssignments] = useState({});
   const [error, setError] = useState('');
   const [routeSummary, setRouteSummary] = useState(null);
   const [routeProgress, setRouteProgress] = useState({ completed: 0, total: 0 });
@@ -130,6 +138,11 @@ const SessionImportPortal = () => {
   const opponent = clean(career?.currentWeekSetup?.opponent) || 'Current week';
   const publicationId = `season-${Number(season) || 1}-week-${Number(week) || 1}`;
   const totalBytes = useMemo(() => files.reduce((total, file) => total + Number(file.size || 0), 0), [files]);
+  const laneCounts = useMemo(() => files.reduce((counts, file) => {
+    const lane = assignments[fileKey(file)];
+    if (lane && counts[lane] !== undefined) counts[lane] += 1;
+    return counts;
+  }, { game: 0, rtg: 0, coverage: 0 }), [assignments, files]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -139,7 +152,7 @@ const SessionImportPortal = () => {
 
   const reset = () => {
     setFiles([]);
-    setDragging(false);
+    setAssignments({});
     setError('');
     setRouteSummary(null);
     setRouteProgress({ completed: 0, total: 0 });
@@ -212,7 +225,7 @@ const SessionImportPortal = () => {
     };
     const onRoutingError = (event) => {
       if (!open) return;
-      setError(event?.detail?.message || 'DynastyHQ could not route this screenshot batch safely. Nothing was applied.');
+      setError(event?.detail?.message || 'DynastyHQ could not process this screenshot batch safely. Nothing was applied.');
       setPhase('upload');
     };
     window.addEventListener('dynastyhq:session-routing-start', onRoutingStart);
@@ -254,32 +267,60 @@ const SessionImportPortal = () => {
     document.body.style.overflow = previousOverflowRef.current;
   }, []);
 
-  const addFiles = (fileList) => {
+  const addFiles = (fileList, lane) => {
     const incoming = [...(fileList || [])].filter((file) => file.type?.startsWith('image/'));
     if (!incoming.length) return;
     setError('');
     setFiles((current) => {
-      const keyed = new Map(current.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file]));
-      incoming.forEach((file) => keyed.set(`${file.name}:${file.size}:${file.lastModified}`, file));
+      const keyed = new Map(current.map((file) => [fileKey(file), file]));
+      incoming.forEach((file) => keyed.set(fileKey(file), file));
       const next = [...keyed.values()];
       if (next.length > MAX_SCREENSHOTS) setError(`Session Import currently accepts up to ${MAX_SCREENSHOTS} screenshots at once.`);
       return next.slice(0, MAX_SCREENSHOTS);
     });
+    setAssignments((current) => {
+      const next = { ...current };
+      incoming.forEach((file) => { next[fileKey(file)] = lane; });
+      return next;
+    });
   };
 
-  const removeFile = (index) => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+  const removeFile = (index) => {
+    const file = files[index];
+    setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+    if (file) {
+      setAssignments((current) => {
+        const next = { ...current };
+        delete next[fileKey(file)];
+        return next;
+      });
+    }
+  };
+
+  const updateLane = (file, lane) => {
+    setAssignments((current) => ({ ...current, [fileKey(file)]: lane }));
+  };
 
   const processSession = async () => {
     if (!files.length) return;
+    const unassigned = files.filter((file) => !assignments[fileKey(file)]);
+    if (unassigned.length) {
+      setError(`Place all ${unassigned.length} remaining screenshot${unassigned.length === 1 ? '' : 's'} into Game Data, RTG Status, or Coverage Data before processing.`);
+      return;
+    }
+    if (!laneCounts.game) {
+      setError('Add at least one Game Data screenshot so DynastyHQ can build the Week verification draft.');
+      return;
+    }
     setError('');
     setRouteSummary(null);
     setRouteProgress({ completed: 0, total: files.length });
     setPhase('analyzing');
     try {
-      await handoffFiles(files);
+      await handoffFiles(files, assignments);
     } catch (handoffError) {
       setPhase('upload');
-      setError(handoffError?.message || 'The session could not be handed to the Session Import classifier.');
+      setError(handoffError?.message || 'The session could not be handed to the Session Import router.');
     }
   };
 
@@ -287,13 +328,26 @@ const SessionImportPortal = () => {
 
   const step = phase === 'upload' ? 1 : phase === 'analyzing' ? 2 : phase === 'review' ? 3 : 4;
   const routeParts = routeSummary ? [
-    `${routeSummary.total || files.length} uploaded`,
+    `${routeSummary.total || files.length} received`,
     routeSummary.game ? `${routeSummary.game} Game` : '',
     routeSummary.rtg ? `${routeSummary.rtg} RTG` : '',
     routeSummary.coverage ? `${routeSummary.coverage} Coverage` : '',
-    routeSummary.highSchool ? `${routeSummary.highSchool} High School` : '',
-    routeSummary.unknown ? `${routeSummary.unknown} Unclassified` : '',
+    routeSummary.unknown ? `${routeSummary.unknown} Unassigned` : '',
   ].filter(Boolean) : [];
+
+  const bucket = (lane, title, detail, inputRef) => (
+    <button
+      type="button"
+      className="dhq-session-import__dropzone"
+      style={{ minHeight: 112, padding: '16px 14px' }}
+      onClick={() => inputRef.current?.click()}
+    >
+      <span className="dhq-session-import__drop-icon"><CloudUpload size={22} /></span>
+      <strong>{title}</strong>
+      <small>{detail}</small>
+      <b style={{ marginTop: 6, color: '#facc15', fontSize: 11 }}>{laneCounts[lane]} selected</b>
+    </button>
+  );
 
   return createPortal(
     <div className={`dhq-session-import is-${phase}`} role="dialog" aria-modal="true" aria-labelledby="dhq-session-import-title">
@@ -325,42 +379,51 @@ const SessionImportPortal = () => {
           <section className="dhq-session-import__card dhq-session-import__upload-card">
             <div className="dhq-session-import__headline">
               <span><CloudUpload size={17} /> CURRENT SESSION</span>
-              <h1 id="dhq-session-import-title">Drop the screenshots. DynastyHQ handles the week.</h1>
-              <p>Upload the useful CFB 27 screens from this game or week together. DynastyHQ classifies each screen first, routes it to the correct scanner, flags uncertain reads, and gives you a confirmation step before anything is applied.</p>
+              <h1 id="dhq-session-import-title">One Session Import. Three trusted lanes.</h1>
+              <p>Add the screenshots to the same Game Data, RTG Status, and Coverage groups that already work in DynastyHQ. This removes the extra AI classification pass that was losing files and exhausting Gemini quota. You still review everything together before anything is applied.</p>
             </div>
 
             <div className="dhq-session-import__meta-row">
               <div><span>WEEK</span><strong>{week}</strong></div>
               <div><span>OPPONENT</span><strong>{opponent}</strong></div>
-              <div><span>SCREENSHOTS</span><strong>{files.length}/{MAX_SCREENSHOTS}</strong></div>
+              <div><span>TOTAL</span><strong>{files.length}/{MAX_SCREENSHOTS}</strong></div>
             </div>
 
-            <button
-              type="button"
-              className={`dhq-session-import__dropzone ${dragging ? 'is-dragging' : ''}`}
-              onClick={() => fileInputRef.current?.click()}
-              onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
-              onDragOver={(event) => event.preventDefault()}
-              onDragLeave={(event) => { event.preventDefault(); setDragging(false); }}
-              onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files); }}
-            >
-              <span className="dhq-session-import__drop-icon"><Images size={28} /></span>
-              <strong>{files.length ? 'Add more screenshots' : 'Choose screenshots'}</strong>
-              <small>Tap to browse or drag images here · up to {MAX_SCREENSHOTS} per session</small>
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+              {bucket('game', 'Add Game Data', 'Final score, Team Stats, your QB game stats', gameInputRef)}
+              {bucket('rtg', 'Add RTG Status', 'Overview, Academics, Leadership, Health, Fitness, Brand', rtgInputRef)}
+              {bucket('coverage', 'Add Coverage Data', 'Both teams’ Player Stats, Scoring Summary, EA SPORTS Network', coverageInputRef)}
+            </div>
+            <input ref={gameInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files, 'game'); event.target.value = ''; }} />
+            <input ref={rtgInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files, 'rtg'); event.target.value = ''; }} />
+            <input ref={coverageInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files, 'coverage'); event.target.value = ''; }} />
 
             {files.length ? (
               <div className="dhq-session-import__queue">
-                <div className="dhq-session-import__queue-head"><span><FileImage size={14} /> READY TO PROCESS</span><small>{files.length} file{files.length === 1 ? '' : 's'} · {formatBytes(totalBytes)}</small></div>
+                <div className="dhq-session-import__queue-head"><span><FileImage size={14} /> READY TO PROCESS</span><small>{files.length} files · {formatBytes(totalBytes)}</small></div>
                 <div className="dhq-session-import__file-grid">
-                  {files.map((file, index) => (
-                    <div key={`${file.name}:${file.size}:${file.lastModified}`}>
-                      <span>{String(index + 1).padStart(2, '0')}</span>
-                      <p><strong>{file.name}</strong><small>{formatBytes(file.size)}</small></p>
-                      <button type="button" onClick={(event) => { event.stopPropagation(); removeFile(index); }} aria-label={`Remove ${file.name}`}><X size={13} /></button>
-                    </div>
-                  ))}
+                  {files.map((file, index) => {
+                    const lane = assignments[fileKey(file)] || '';
+                    return (
+                      <div key={fileKey(file)}>
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        <p><strong>{file.name}</strong><small>{formatBytes(file.size)} · {LANE_LABELS[lane] || 'Choose lane'}</small></p>
+                        <select
+                          value={lane}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => updateLane(file, event.target.value)}
+                          aria-label={`Lane for ${file.name}`}
+                          style={{ maxWidth: 118, background: '#07111b', color: '#e2e8f0', border: '1px solid rgba(148,163,184,.25)', borderRadius: 6, padding: '5px 6px', fontSize: 9 }}
+                        >
+                          <option value="">Choose lane</option>
+                          <option value="game">Game Data</option>
+                          <option value="rtg">RTG Status</option>
+                          <option value="coverage">Coverage Data</option>
+                        </select>
+                        <button type="button" onClick={(event) => { event.stopPropagation(); removeFile(index); }} aria-label={`Remove ${file.name}`}><X size={13} /></button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : null}
@@ -371,7 +434,7 @@ const SessionImportPortal = () => {
               <button type="button" className="is-secondary" onClick={() => closeWorkspace()}><ArrowLeft size={15} /> Back</button>
               <button type="button" className="is-primary" disabled={!files.length} onClick={processSession}>PROCESS SESSION <ChevronRight size={16} /></button>
             </div>
-            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Nothing is published automatically.</strong> Screens are classified before lane analysis, and extracted facts still pass through DynastyHQ’s verification desk before they can update the week.</span></div>
+            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>No AI is spent guessing screenshot lanes.</strong> Every file keeps its assigned lane in the 23-file receipt, then the existing specialized scanners do the extraction and verification.</span></div>
           </section>
         ) : null}
 
@@ -379,10 +442,10 @@ const SessionImportPortal = () => {
           <section className="dhq-session-import__card dhq-session-import__processing-card">
             <div className="dhq-session-import__processing-icon"><Loader2 size={34} /></div>
             <span>PROCESS WEEK</span>
-            <h1 id="dhq-session-import-title">Sorting and reading {files.length} screenshot{files.length === 1 ? '' : 's'}…</h1>
-            <p>{routeSummary ? `Classification complete: ${routeParts.join(' · ')}. DynastyHQ is finishing each specialized scanner before opening Verify.` : 'DynastyHQ first identifies the screen type, then sends it only to the scanner responsible for that data. Unknown screens are never sprayed across every lane.'}</p>
+            <h1 id="dhq-session-import-title">Reading {files.length} guided screenshot{files.length === 1 ? '' : 's'}…</h1>
+            <p>{routeSummary ? `Routing locked: ${routeParts.join(' · ')}. DynastyHQ is finishing Game Data, RTG Status, and Coverage Data before opening Verify.` : `No classifier pass is running. DynastyHQ is sending ${laneCounts.game} Game, ${laneCounts.rtg} RTG, and ${laneCounts.coverage} Coverage screenshot${files.length === 1 ? '' : 's'} directly to their existing scanners.`}</p>
             <div className="dhq-session-import__scanline"><i /></div>
-            <div className="dhq-session-import__processing-stats"><div><strong>{routeProgress.completed || files.length}</strong><span>OF {routeProgress.total || files.length} CLASSIFIED</span></div><div><Sparkles size={18} /><span>ROUTE + ANALYZE</span></div><div><ShieldCheck size={18} /><span>VERIFY AFTER ALL LANES</span></div></div>
+            <div className="dhq-session-import__processing-stats"><div><strong>{routeProgress.completed || files.length}</strong><span>OF {routeProgress.total || files.length} ACCOUNTED FOR</span></div><div><Sparkles size={18} /><span>GUIDED LANES</span></div><div><ShieldCheck size={18} /><span>VERIFY AFTER ALL LANES</span></div></div>
           </section>
         ) : null}
 

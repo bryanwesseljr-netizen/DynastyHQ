@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
   createEmptyScanDraft,
@@ -7,6 +8,8 @@ import {
   updateScanDraftFact,
   validateScanFact,
 } from './weeklyEngine.js';
+
+const weeklyReviewPanelUrl = new URL('../components/WeeklyReviewPanel.jsx', import.meta.url);
 
 const scanFact = (key, value) => ({
   id: `test:${key}`,
@@ -66,4 +69,10 @@ test('legacy OCR fallback preserves an explicit negative rushing-yard number', (
   });
   assert.equal(parsed.gamePatch.rushYds, -6);
   assert.equal(parsed.facts.find((entry) => entry.key === 'game.rushYds')?.value, -6);
+});
+
+test('verification editor does not impose a zero minimum on signed yardage fields', async () => {
+  const reviewSource = await readFile(weeklyReviewPanelUrl, 'utf8');
+  assert.match(reviewSource, /const isSignedYardageFact = \(key\) => \['game\.passYds', 'game\.rushYds'\]\.includes\(key\);/);
+  assert.match(reviewSource, /min=\{isNumericFact\(entry\.key\) && !isSignedYardageFact\(entry\.key\) \? 0 : undefined\}/);
 });

@@ -39,7 +39,7 @@ test('Session Import routes game, RTG, coverage and high-school screens without 
   assert.match(portalSource, /lanes\.has\('high_school'\)/);
   assert.match(portalSource, /high_school_postgame/);
   assert.match(portalSource, /high_school_moment/);
-  assert.match(portalSource, /const collegeReviewFiles = gameInput \? uniqueFiles\(\[\.\.\.groups\.game, \.\.\.groups\.unknown\]\) : \[\];/);
+  assert.match(portalSource, /guidedMode \? groups\.game : \[\.\.\.groups\.game, \.\.\.groups\.unknown\]/);
   assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*rtg\.push/);
   assert.doesNotMatch(portalSource, /unknown\.forEach[\s\S]*coverage\.push/);
 });
@@ -64,19 +64,20 @@ test('Session Import still refuses to send college Game Data into the high-schoo
   assert.doesNotMatch(portalSource, /dispatchGameFiles\(input, groups\.game/);
 });
 
-test('session screenshot router performs one lightweight quota-aware free-first classification pass per screenshot', async () => {
-  const [clientSource, apiSource] = await Promise.all([
+test('guided Session Import bypasses AI classification while keeping automatic routing as a quota-aware fallback', async () => {
+  const [portalSource, clientSource, apiSource] = await Promise.all([
+    readFile(routingPortalUrl, 'utf8'),
     readFile(routingClientUrl, 'utf8'),
     readFile(coverageApiUrl, 'utf8'),
   ]);
 
+  assert.match(portalSource, /const guidedAssignments = event\?\.detail\?\.guidedAssignments \|\| null/);
+  assert.match(portalSource, /guidedMode[\s\S]*guidedRouteBatch\(\{ files, guidedAssignments \}\)[\s\S]*await routeBatch/);
+  assert.match(portalSource, /routingMode: guidedMode \? 'guided' : 'automatic'/);
   assert.match(clientSource, /postFreeVisionJson/);
-  assert.match(clientSource, /url: '\/api\/analyze-coverage-reference'/);
-  assert.match(clientSource, /scanKind: 'route'/);
-  assert.doesNotMatch(clientSource, /scanKind: 'coverage'/);
-  assert.doesNotMatch(clientSource, /scanKind: 'rtg'/);
+  assert.match(clientSource, /scanKind: 'route_batch'/);
   assert.match(clientSource, /allowPaidFallback: false/);
-  assert.match(apiSource, /cfb27_session_import_route/);
+  assert.match(apiSource, /cfb27_session_import_route_batch/);
   assert.match(apiSource, /ea_network_article/);
   assert.match(apiSource, /high_school_moment/);
   assert.match(apiSource, /Never send an unknown screen to every lane/);

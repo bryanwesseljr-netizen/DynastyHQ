@@ -79,6 +79,25 @@ const RTG_SCHEMA = {
   },
 };
 
+const COVERAGE_FACTS = {
+  type: 'array',
+  maxItems: 40,
+  items: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['category', 'subject', 'team', 'label', 'value', 'confidence', 'evidence'],
+    properties: {
+      category: { type: 'string', enum: ['passing', 'rushing', 'receiving', 'defense', 'kicking', 'punting', 'scoring', 'team_note', 'official_media', 'other'] },
+      subject: { type: 'string' },
+      team: { type: 'string' },
+      label: { type: 'string' },
+      value: { type: 'string' },
+      confidence: { type: 'number', minimum: 0, maximum: 1 },
+      evidence: { type: 'string' },
+    },
+  },
+};
+
 const COVERAGE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -87,26 +106,29 @@ const COVERAGE_SCHEMA = {
     screenType: { type: 'string', enum: ['player_stats', 'scoring_summary', 'team_stats', 'ea_network_article', 'unknown'] },
     screenTitle: { type: 'string' },
     summary: { type: 'string' },
-    facts: {
+    facts: COVERAGE_FACTS,
+  },
+};
+
+const pairedSchema = (schema) => ({
+  type: 'object',
+  additionalProperties: false,
+  required: ['screens'],
+  properties: {
+    screens: {
       type: 'array',
-      maxItems: 40,
+      maxItems: 2,
       items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['category', 'subject', 'team', 'label', 'value', 'confidence', 'evidence'],
-        properties: {
-          category: { type: 'string', enum: ['passing', 'rushing', 'receiving', 'defense', 'kicking', 'punting', 'scoring', 'team_note', 'official_media', 'other'] },
-          subject: { type: 'string' },
-          team: { type: 'string' },
-          label: { type: 'string' },
-          value: { type: 'string' },
-          confidence: { type: 'number', minimum: 0, maximum: 1 },
-          evidence: { type: 'string' },
-        },
+        ...schema,
+        required: ['slot', ...schema.required],
+        properties: { slot: { type: 'integer', minimum: 1, maximum: 2 }, ...schema.properties },
       },
     },
   },
-};
+});
+
+const RTG_BATCH_SCHEMA = pairedSchema(RTG_SCHEMA);
+const COVERAGE_BATCH_SCHEMA = pairedSchema(COVERAGE_SCHEMA);
 
 const ROUTE_SCREEN_TYPES = [
   'final_score', 'box_score', 'team_stats', 'player_stats', 'scoring_summary', 'ea_network_article',
@@ -115,11 +137,7 @@ const ROUTE_SCREEN_TYPES = [
 ];
 
 const ROUTE_PROPERTIES = {
-  lanes: {
-    type: 'array',
-    maxItems: 2,
-    items: { type: 'string', enum: ['game', 'rtg', 'coverage', 'high_school'] },
-  },
+  lanes: { type: 'array', maxItems: 2, items: { type: 'string', enum: ['game', 'rtg', 'coverage', 'high_school'] } },
   screenType: { type: 'string', enum: ROUTE_SCREEN_TYPES },
   momentNumber: { type: 'number', minimum: 0, maximum: 4 },
   confidence: { type: 'number', minimum: 0, maximum: 1 },
@@ -145,10 +163,7 @@ const ROUTE_BATCH_SCHEMA = {
         type: 'object',
         additionalProperties: false,
         required: ['slot', 'lanes', 'screenType', 'momentNumber', 'confidence', 'reason'],
-        properties: {
-          slot: { type: 'integer', minimum: 1, maximum: 4 },
-          ...ROUTE_PROPERTIES,
-        },
+        properties: { slot: { type: 'integer', minimum: 1, maximum: 4 }, ...ROUTE_PROPERTIES },
       },
     },
   },
@@ -162,10 +177,10 @@ const GAME_INSTRUCTIONS = `You extract verified college-game facts from EA SPORT
 - game.homeScore means the tracked TEAM score and game.awayScore means the OPPONENT score regardless of venue.
 - game.result is W or L only when the final score and tracked team are clear.
 - game.passYds, passTD, rushYds, rushTD and int are the TRACKED PLAYER'S own totals only. Zero and negative yardage are valid visible values.
-- PASSING TABLE RULE: game.passYds comes ONLY from the tracked player's YDS/YARDS column. Never map CMP, ATT, completion percentage, TD, INT, LONG, or rating into game.passYds.
+- game.passYds comes ONLY from the tracked player's YDS/YARDS column. Never map CMP, ATT, completion percentage, TD, INT, LONG, or rating into game.passYds.
 - game.teamPassYds and game.opponentPassYds come ONLY from a plainly labeled team-level Passing Yards/YDS value.
 - team* facts refer to the tracked team and opponent* facts to the opponent regardless of venue.
-- TOTALS RULE: College Football 27 shows separate rows named "Total Offense" and "Total Yards". DynastyHQ's total-offense fields use ONLY the exact on-screen Total Offense value. Never substitute Total Yards.
+- College Football 27 shows separate rows named "Total Offense" and "Total Yards". DynastyHQ's total-offense fields use ONLY the exact on-screen Total Offense value. Never substitute Total Yards.
 - Never calculate team totals from individual rows. Extract First Downs, Turnovers, Rushing Yards and Passing Yards only when visibly labeled.
 - Rankings may be extracted only when the numeric rank is visibly attached to the correct team.
 - schoolName and subjectName are empty strings for game facts.
@@ -207,8 +222,8 @@ const ROUTE_RULES = `Rules:
 - confidence reflects classification confidence only. Keep reason to one short sentence.`;
 
 const ROUTE_INSTRUCTIONS = `You are the first-pass screenshot router for DynastyHQ Session Import. Classify one EA SPORTS College Football 27 screenshot. Do NOT extract statistics or prose; only decide which specialized scanner should receive it.\n\n${ROUTE_RULES}`;
-
-const ROUTE_BATCH_INSTRUCTIONS = `You are the first-pass screenshot router for DynastyHQ Session Import. The uploaded image is a contact sheet containing up to four numbered panels labeled SCREEN 1, SCREEN 2, SCREEN 3, SCREEN 4. Classify EACH numbered panel independently. Do NOT extract statistics or prose. Return exactly one routes row for each visible numbered panel, using the matching slot number. Never let one panel's content influence another panel's classification.\n\n${ROUTE_RULES}`;
+const ROUTE_BATCH_INSTRUCTIONS = `You are the first-pass screenshot router for DynastyHQ Session Import. The uploaded image is a contact sheet containing up to four numbered panels labeled SCREEN 1 through SCREEN 4. Classify EACH numbered panel independently. Do NOT extract statistics or prose. Return exactly one routes row for each visible numbered panel, using the matching slot number. Never let one panel's content influence another panel's classification.\n\n${ROUTE_RULES}`;
+const pairedInstructions = (base, kind) => `${base}\n\nPAIRED SESSION IMPORT MODE:\n- The uploaded image contains exactly two vertically stacked panels labeled SCREEN 1 and SCREEN 2.\n- Analyze each panel independently as its own ${kind} screenshot.\n- Return exactly one screens row for SCREEN 1 and one for SCREEN 2, using slot=1 and slot=2.\n- Never mix facts, names, values, evidence, or screen types between panels.`;
 
 const validImageDataUrl = (value) => (
   typeof value === 'string'
@@ -216,66 +231,39 @@ const validImageDataUrl = (value) => (
   && value.length <= MAX_DATA_URL_LENGTH
 );
 
+const mappingText = (fileNames = []) => fileNames.slice(0, 4)
+  .map((name, index) => `SCREEN ${index + 1}=${String(name).slice(0, 100)}`)
+  .join(' | ');
+
 const taskFor = (body = {}) => {
   const requestedKind = String(body.scanKind || 'coverage');
-  const kind = ['route', 'route_batch', 'game', 'rtg'].includes(requestedKind) ? requestedKind : 'coverage';
+  const supported = new Set(['route', 'route_batch', 'game', 'rtg', 'rtg_batch', 'coverage', 'coverage_batch']);
+  const kind = supported.has(requestedKind) ? requestedKind : 'coverage';
   const player = body.player || {};
-  const playerContext = JSON.stringify({
-    name: player.name || '',
-    school: player.college || player.school || '',
-    position: player.pos || '',
-    number: player.number || '',
-  });
+  const playerContext = JSON.stringify({ name: player.name || '', school: player.college || player.school || '', position: player.pos || '', number: player.number || '' });
 
   if (kind === 'route_batch') {
     const fileNames = Array.isArray(body.fileNames) ? body.fileNames.slice(0, 4) : [];
-    return {
-      kind,
-      schema: ROUTE_BATCH_SCHEMA,
-      schemaName: 'cfb27_session_import_route_batch',
-      instructions: ROUTE_BATCH_INSTRUCTIONS,
-      maxOutputTokens: 1600,
-      userText: `Classify every numbered panel in this Session Import contact sheet. Slot mapping: ${fileNames.map((name, index) => `SCREEN ${index + 1}=${String(name).slice(0, 100)}`).join(' | ')}. Tracked-player context for row identification only: ${playerContext}. Current career phase hint: ${String(body.careerPhase || '').slice(0, 40)}.`,
-    };
+    return { kind, schema: ROUTE_BATCH_SCHEMA, schemaName: 'cfb27_session_import_route_batch', instructions: ROUTE_BATCH_INSTRUCTIONS, maxOutputTokens: 1600, userText: `Classify every numbered panel in this Session Import contact sheet. Slot mapping: ${mappingText(fileNames)}. Tracked-player context for row identification only: ${playerContext}. Current career phase hint: ${String(body.careerPhase || '').slice(0, 40)}.` };
   }
   if (kind === 'route') {
-    return {
-      kind,
-      schema: ROUTE_SCHEMA,
-      schemaName: 'cfb27_session_import_route',
-      instructions: ROUTE_INSTRUCTIONS,
-      maxOutputTokens: 650,
-      userText: `Classify screenshot ${String(body.fileName || 'upload').slice(0, 160)} for Session Import. Tracked-player context for row identification only: ${playerContext}. Current career phase hint: ${String(body.careerPhase || '').slice(0, 40)}.`,
-    };
+    return { kind, schema: ROUTE_SCHEMA, schemaName: 'cfb27_session_import_route', instructions: ROUTE_INSTRUCTIONS, maxOutputTokens: 650, userText: `Classify screenshot ${String(body.fileName || 'upload').slice(0, 160)} for Session Import. Tracked-player context for row identification only: ${playerContext}. Current career phase hint: ${String(body.careerPhase || '').slice(0, 40)}.` };
   }
   if (kind === 'game') {
-    return {
-      kind,
-      schema: GAME_SCHEMA,
-      schemaName: 'cfb27_college_game_analysis',
-      instructions: GAME_INSTRUCTIONS,
-      maxOutputTokens: 3500,
-      userText: `Analyze college game screenshot ${String(body.fileName || 'upload').slice(0, 160)}. Tracked player context: ${playerContext}`,
-    };
+    return { kind, schema: GAME_SCHEMA, schemaName: 'cfb27_college_game_analysis', instructions: GAME_INSTRUCTIONS, maxOutputTokens: 3500, userText: `Analyze college game screenshot ${String(body.fileName || 'upload').slice(0, 160)}. Tracked player context: ${playerContext}` };
+  }
+  if (kind === 'rtg_batch') {
+    const fileNames = Array.isArray(body.fileNames) ? body.fileNames.slice(0, 2) : [];
+    return { kind, schema: RTG_BATCH_SCHEMA, schemaName: 'cfb27_rtg_status_batch_analysis', instructions: pairedInstructions(RTG_INSTRUCTIONS, 'RTG current-state'), maxOutputTokens: 4500, userText: `Analyze both RTG panels independently. Slot mapping: ${mappingText(fileNames)}. Tracked player context: ${playerContext}` };
   }
   if (kind === 'rtg') {
-    return {
-      kind,
-      schema: RTG_SCHEMA,
-      schemaName: 'cfb27_rtg_status_analysis',
-      instructions: RTG_INSTRUCTIONS,
-      maxOutputTokens: 2500,
-      userText: `Analyze this RTG Weekly Agenda screenshot (${String(body.fileName || 'upload').slice(0, 160)}). Tracked player context: ${playerContext}`,
-    };
+    return { kind, schema: RTG_SCHEMA, schemaName: 'cfb27_rtg_status_analysis', instructions: RTG_INSTRUCTIONS, maxOutputTokens: 2500, userText: `Analyze this RTG Weekly Agenda screenshot (${String(body.fileName || 'upload').slice(0, 160)}). Tracked player context: ${playerContext}` };
   }
-  return {
-    kind,
-    schema: COVERAGE_SCHEMA,
-    schemaName: 'cfb_coverage_reference_analysis',
-    instructions: COVERAGE_INSTRUCTIONS,
-    maxOutputTokens: 5000,
-    userText: `Analyze ${String(body.fileName || 'coverage screenshot').slice(0, 160)} as editorial-only postgame reference material. This may be Player Stats, Scoring Summary, Team Stats, or an EA SPORTS Network in-game article. Tracked program context: ${String(body.school || '').slice(0, 120)}. Program context helps identify sides but is not screenshot evidence.`,
-  };
+  if (kind === 'coverage_batch') {
+    const fileNames = Array.isArray(body.fileNames) ? body.fileNames.slice(0, 2) : [];
+    return { kind, schema: COVERAGE_BATCH_SCHEMA, schemaName: 'cfb_coverage_reference_batch_analysis', instructions: pairedInstructions(COVERAGE_INSTRUCTIONS, 'Coverage Data'), maxOutputTokens: 7500, userText: `Analyze both Coverage panels independently. Slot mapping: ${mappingText(fileNames)}. Tracked program context: ${String(body.school || '').slice(0, 120)}.` };
+  }
+  return { kind: 'coverage', schema: COVERAGE_SCHEMA, schemaName: 'cfb_coverage_reference_analysis', instructions: COVERAGE_INSTRUCTIONS, maxOutputTokens: 5000, userText: `Analyze ${String(body.fileName || 'coverage screenshot').slice(0, 160)} as editorial-only postgame reference material. This may be Player Stats, Scoring Summary, Team Stats, or an EA SPORTS Network in-game article. Tracked program context: ${String(body.school || '').slice(0, 120)}. Program context helps identify sides but is not screenshot evidence.` };
 };
 
 export default async function handler(req, res) {
@@ -283,9 +271,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method not allowed.' });
   }
-  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-    return json(res, 503, { error: 'AI screenshot analysis is not configured yet.' });
-  }
+  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) return json(res, 503, { error: 'AI screenshot analysis is not configured yet.' });
 
   let user;
   try {
@@ -297,46 +283,24 @@ export default async function handler(req, res) {
   if (!user) return json(res, 401, { error: 'Sign in before analyzing screenshots.' });
 
   const body = req.body || {};
-  if (!validImageDataUrl(body.imageDataUrl)) {
-    return json(res, 400, { error: 'Upload a PNG, JPEG, or WebP screenshot under the size limit.' });
-  }
+  if (!validImageDataUrl(body.imageDataUrl)) return json(res, 400, { error: 'Upload a PNG, JPEG, or WebP screenshot under the size limit.' });
 
   const task = taskFor(body);
   try {
-    const result = await analyzeVisionFreeFirst({
-      schema: task.schema,
-      schemaName: task.schemaName,
-      instructions: task.instructions,
-      userText: task.userText,
-      imageDataUrl: body.imageDataUrl,
-      maxOutputTokens: task.maxOutputTokens,
-      allowPaidFallback: body.allowPaidFallback === true,
-    });
-    return json(res, 200, {
-      analysis: result.analysis,
-      scanKind: task.kind,
-      provider: result.usage.provider,
-      model: result.usage.model,
-      usage: result.usage,
-    });
+    const result = await analyzeVisionFreeFirst({ schema: task.schema, schemaName: task.schemaName, instructions: task.instructions, userText: task.userText, imageDataUrl: body.imageDataUrl, maxOutputTokens: task.maxOutputTokens, allowPaidFallback: body.allowPaidFallback === true });
+    return json(res, 200, { analysis: result.analysis, scanKind: task.kind, provider: result.usage.provider, model: result.usage.model, usage: result.usage });
   } catch (error) {
     console.error(`Free-first ${task.kind} screenshot analysis failed`, error);
     const upstreamStatus = Number(error?.status);
     const status = [429, 502, 503, 504].includes(upstreamStatus) ? upstreamStatus : 502;
     const label = task.kind === 'route' || task.kind === 'route_batch'
       ? 'Session screenshot router'
-      : task.kind === 'rtg'
+      : task.kind === 'rtg' || task.kind === 'rtg_batch'
         ? 'RTG screenshot'
         : task.kind === 'game'
           ? 'Game screenshot'
           : 'Coverage';
-    const noPaidFallbackMessage = error?.paidFallbackBlocked
-      ? `${label} could not produce a safe automatic Gemini result and No Paid Fallback is on. Try another screenshot or review manually.`
-      : '';
-    return json(res, status, {
-      error: noPaidFallbackMessage || (status === 429
-        ? `${label} analysis is out of available AI quota right now. Try again later.`
-        : `${label} analysis failed. No saved career data was changed.`),
-    });
+    const noPaidFallbackMessage = error?.paidFallbackBlocked ? `${label} could not produce a safe automatic Gemini result and No Paid Fallback is on. Try another screenshot or review manually.` : '';
+    return json(res, status, { error: noPaidFallbackMessage || (status === 429 ? `${label} analysis is out of available AI quota right now. Try again later.` : `${label} analysis failed. No saved career data was changed.`) });
   }
 }

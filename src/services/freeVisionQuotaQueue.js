@@ -1,6 +1,9 @@
 const REQUEST_SPACING_MS = 4300;
 const DEFAULT_QUOTA_COOLDOWN_MS = 65000;
+const TRANSIENT_COOLDOWN_MS = 9000;
 const MAX_QUOTA_RETRIES = 2;
+const MAX_TRANSIENT_RETRIES = 1;
+const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
 let queueTail = Promise.resolve();
 let nextRequestAt = 0;
@@ -28,8 +31,10 @@ const waitForSlot = async () => {
 };
 
 const runPost = async ({ url, idToken, body }) => {
-  let last = null;
-  for (let attempt = 0; attempt <= MAX_QUOTA_RETRIES; attempt += 1) {
+  let quotaRetries = 0;
+  let transientRetries = 0;
+
+  while (true) {
     await waitForSlot();
     const response = await fetch(url, {
       method: 'POST',
@@ -47,16 +52,32 @@ const runPost = async ({ url, idToken, body }) => {
       // Preserve the HTTP status when an upstream proxy returns non-JSON.
     }
 
-    last = { response, body: payload };
-    if (response.status !== 429 || attempt >= MAX_QUOTA_RETRIES) return last;
+    if (response.status === 429 && quotaRetries < MAX_QUOTA_RETRIES) {
+      quotaRetries += 1;
+      const cooldownMs = retryAfterMs(response, payload);
+      nextRequestAt = Math.max(nextRequestAt, Date.now() + cooldownMs);
+      window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
+        detail: { waitMs: cooldownMs, reason: 'quota', attempt: quotaRetries },
+      }));
+      continue;
+    }
 
-    const cooldownMs = retryAfterMs(response, payload);
-    nextRequestAt = Math.max(nextRequestAt, Date.now() + cooldownMs);
-    window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
-      detail: { waitMs: cooldownMs, reason: 'quota', attempt: attempt + 1 },
-    }));
+    if (TRANSIENT_STATUSES.has(response.status) && transientRetries < MAX_TRANSIENT_RETRIES) {
+      transientRetries += 1;
+      nextRequestAt = Math.max(nextRequestAt, Date.now() + TRANSIENT_COOLDOWN_MS);
+      window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
+        detail: {
+          waitMs: TRANSIENT_COOLDOWN_MS,
+          reason: 'temporary-provider-failure',
+          attempt: transientRetries,
+          status: response.status,
+        },
+      }));
+      continue;
+    }
+
+    return { response, body: payload };
   }
-  return last;
 };
 
 export const postFreeVisionJson = (args) => {
@@ -69,5 +90,7 @@ export const postFreeVisionJson = (args) => {
 export const freeVisionQueueConfig = Object.freeze({
   requestSpacingMs: REQUEST_SPACING_MS,
   defaultQuotaCooldownMs: DEFAULT_QUOTA_COOLDOWN_MS,
+  transientCooldownMs: TRANSIENT_COOLDOWN_MS,
   maxQuotaRetries: MAX_QUOTA_RETRIES,
+  maxTransientRetries: MAX_TRANSIENT_RETRIES,
 });

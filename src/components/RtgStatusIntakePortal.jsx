@@ -274,7 +274,8 @@ const RtgStatusIntakePortal = () => {
     const appRoot = document.getElementById('root');
     if (!appRoot) return undefined;
     const ensure = () => {
-      const next = appRoot.querySelector('#dhq-weekly-rtg-data-host');
+      const next = appRoot.querySelector('[data-session-import-rtg-review-host]')
+        || appRoot.querySelector('#dhq-weekly-rtg-data-host');
       setHost((current) => current === next ? current : next);
     };
     ensure();

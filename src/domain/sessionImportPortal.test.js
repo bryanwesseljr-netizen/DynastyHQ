@@ -33,16 +33,19 @@ test('Session Import accepts up to 30 screenshots and the verified scanner can s
   assert.match(appSource, /for \(let index = 0; index < files\.length; index \+= 1\)/);
 });
 
-test('Session Import owns the mixed batch before any specialized scanner receives files', async () => {
+test('Session Import uses guided Game, RTG and Coverage buckets before any specialized scanner receives files', async () => {
   const portalSource = await readFile(portalSourceUrl, 'utf8');
 
   assert.match(portalSource, /waitForSessionRouter/);
   assert.match(portalSource, /dynastyhq:session-import-files/);
-  assert.match(portalSource, /detail: \{ files: \[\.\.\.files\] \}/);
+  assert.match(portalSource, /guidedAssignments/);
+  assert.match(portalSource, /Add Game Data/);
+  assert.match(portalSource, /Add RTG Status/);
+  assert.match(portalSource, /Add Coverage Data/);
+  assert.match(portalSource, /No AI is spent guessing screenshot lanes/);
   assert.doesNotMatch(portalSource, /input\.dispatchEvent\(new Event\('change'/);
   assert.match(portalSource, /\.dhq-postgame-review/);
   assert.match(portalSource, /\.dhq-agenda-v3-applied-ready/);
-  assert.match(portalSource, /Nothing is published automatically/);
   assert.match(portalSource, /PROCESS SESSION/);
 });
 

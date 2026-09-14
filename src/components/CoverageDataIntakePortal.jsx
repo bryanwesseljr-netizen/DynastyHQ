@@ -36,27 +36,41 @@ const CoverageDataScanner = ({ user, career }) => {
     setSourceCount(files.length);
     setMessage('Analyzing editorial-only player, scoring, and official in-game media context…');
     setMessageType('success');
+
+    const extracted = [];
+    let failedCount = 0;
     try {
       const idToken = await user.getIdToken();
       const school = career?.player?.college || career?.player?.school || '';
-      const extracted = [];
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
-        const imageDataUrl = await compressImage(file, 2000, 0.88);
-        const result = await analyzeCoverageReference({ idToken, imageDataUrl, fileName: file.name, school });
-        const sourceId = `coverage-${Date.now()}-${index + 1}`;
-        (result?.analysis?.facts || []).forEach((fact, factIndex) => extracted.push({
-          ...fact,
-          id: `${sourceId}-${factIndex + 1}`,
-          sourceId,
-          sourceName: file.name,
-          selected: Number(fact.confidence) >= 0.65,
-        }));
+        try {
+          const imageDataUrl = await compressImage(file, 2000, 0.88);
+          const result = await analyzeCoverageReference({ idToken, imageDataUrl, fileName: file.name, school });
+          const sourceId = `coverage-${Date.now()}-${index + 1}`;
+          (result?.analysis?.facts || []).forEach((fact, factIndex) => extracted.push({
+            ...fact,
+            id: `${sourceId}-${factIndex + 1}`,
+            sourceId,
+            sourceName: file.name,
+            selected: Number(fact.confidence) >= 0.65,
+          }));
+        } catch (error) {
+          failedCount += 1;
+          console.warn(`Coverage Data could not analyze ${file.name}`, error);
+        }
       }
+
       setFacts(extracted);
-      setMessage(extracted.length
-        ? `${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found. Review before saving.`
-        : 'No reliable coverage facts were found. Nothing was saved.');
+      if (extracted.length) {
+        setMessageType(failedCount ? 'error' : 'success');
+        setMessage(`${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found. Review before saving.${failedCount ? ` ${failedCount} screenshot${failedCount === 1 ? '' : 's'} failed analysis; the successful screenshots were kept.` : ''}`);
+      } else if (failedCount) {
+        setMessageType('error');
+        setMessage(`${failedCount} coverage screenshot${failedCount === 1 ? '' : 's'} could not be analyzed. Nothing was saved.`);
+      } else {
+        setMessage('No reliable coverage facts were found. Nothing was saved.');
+      }
     } catch (error) {
       setMessageType('error');
       setMessage(error?.message || 'Coverage Data could not be analyzed. Nothing was saved.');

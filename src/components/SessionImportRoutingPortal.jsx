@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
+import { appId, db } from '../firebase.js';
 import { compressImage } from '../services/imageCompression.js';
 import { routeSessionScreenshot } from '../services/sessionScreenshotRouterClient.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
@@ -118,12 +121,36 @@ const ensureCoverageInput = async () => {
   return input;
 };
 
-const ensureCollegeGameInput = async () => {
-  const current = findCollegeGameInput();
-  if (current) return current;
+const ensureCollegeGameInput = async ({ user, career }) => {
+  let input = findCollegeGameInput();
+  if (input) return input;
+
+  const derivedStage = deriveCareerStage(career || {});
+  const hasStaleCommitmentFlag = (
+    derivedStage === CAREER_STAGES.COLLEGE
+    && career?.careerPhase === 'Player'
+    && career?.player?.isCommitted !== true
+  );
+
+  if (hasStaleCommitmentFlag && user?.uid && db) {
+    // Older saves can already be an established college career while retaining a
+    // false legacy commitment flag. The old Weekly Agenda uses that flag alone to
+    // choose its scanner. Repair only when the career-stage engine independently
+    // proves this is already a college career.
+    const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
+    await updateDoc(careerRef, { 'player.isCommitted': true });
+    window.__dhqLegacyCollegeCommitmentRepairedAt = Date.now();
+
+    return waitFor(
+      findCollegeGameInput,
+      'DynastyHQ repaired the stale college-career flag, but the current Weekly Agenda still does not expose the college Game Data scanner. Nothing was sent to the high-school Postgame Tape Score lane. Reload this preview once and retry the same batch.',
+      12000,
+    );
+  }
+
   return waitFor(
     findCollegeGameInput,
-    'DynastyHQ recognized college Game Data, but the current college Weekly Agenda did not mount its Game Data scanner.',
+    `DynastyHQ recognized college Game Data, but the current Weekly Agenda still does not expose the college Game Data scanner. Derived career stage: ${derivedStage}. Nothing was sent to the high-school Postgame Tape Score lane.`,
     12000,
   );
 };
@@ -240,7 +267,7 @@ const SessionImportRoutingPortal = () => {
 
         const isCollegeBatch = groups.game.length || groups.rtg.length || groups.coverage.length || groups.unknown.length;
         const gameInput = isCollegeBatch && (groups.game.length || groups.unknown.length)
-          ? await ensureCollegeGameInput()
+          ? await ensureCollegeGameInput({ user, career })
           : findCollegeGameInput();
 
         if (unresolvedMomentFiles.length) {

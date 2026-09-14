@@ -89,53 +89,68 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
     setMessage(null);
     const factMap = new Map();
     const nextScreens = [];
+    let failedCount = 0;
+
     try {
       const idToken = await user.getIdToken();
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
         setProgress(`Analyzing ${index + 1} of ${files.length}: ${file.name}`);
-        const imageDataUrl = await compressImage(file, 2400, 0.9);
-        const result = await analyzeRtgStatusScreenshot({
-          idToken,
-          imageDataUrl,
-          fileName: file.name,
-          player: career.player,
-        });
-        const analysis = result.analysis || {};
-        nextScreens.push({ fileName: file.name, screenType: analysis.screenType || 'unknown' });
-        (analysis.facts || []).forEach((fact) => {
-          const key = String(fact.key || '');
-          if (!key) return;
-          const value = normalizeFactValue(key, fact.value);
-          if (!valuePresent(value)) return;
-          const next = {
-            key,
-            label: fact.label || key,
-            value,
-            confidence: Number(fact.confidence) || 0,
-            evidence: fact.evidence || '',
-            selected: true,
-            conflict: false,
-          };
-          const existing = factMap.get(key);
-          if (!existing) {
-            factMap.set(key, next);
-            return;
-          }
-          if (String(existing.value) === String(next.value)) {
-            if (next.confidence > existing.confidence) factMap.set(key, next);
-            return;
-          }
-          const preferred = next.confidence > existing.confidence ? next : existing;
-          factMap.set(key, { ...preferred, conflict: true });
-        });
+        try {
+          const imageDataUrl = await compressImage(file, 2400, 0.9);
+          const result = await analyzeRtgStatusScreenshot({
+            idToken,
+            imageDataUrl,
+            fileName: file.name,
+            player: career.player,
+          });
+          const analysis = result.analysis || {};
+          nextScreens.push({ fileName: file.name, screenType: analysis.screenType || 'unknown' });
+          (analysis.facts || []).forEach((fact) => {
+            const key = String(fact.key || '');
+            if (!key) return;
+            const value = normalizeFactValue(key, fact.value);
+            if (!valuePresent(value)) return;
+            const next = {
+              key,
+              label: fact.label || key,
+              value,
+              confidence: Number(fact.confidence) || 0,
+              evidence: fact.evidence || '',
+              selected: true,
+              conflict: false,
+            };
+            const existing = factMap.get(key);
+            if (!existing) {
+              factMap.set(key, next);
+              return;
+            }
+            if (String(existing.value) === String(next.value)) {
+              if (next.confidence > existing.confidence) factMap.set(key, next);
+              return;
+            }
+            const preferred = next.confidence > existing.confidence ? next : existing;
+            factMap.set(key, { ...preferred, conflict: true });
+          });
+        } catch (error) {
+          failedCount += 1;
+          nextScreens.push({ fileName: file.name, screenType: 'failed' });
+          console.warn(`RTG Status could not analyze ${file.name}`, error);
+        }
       }
+
       setScreens(nextScreens);
       setRows([...factMap.values()].sort((a, b) => a.key.localeCompare(b.key)));
-      setMessage({
-        type: 'success',
-        text: factMap.size ? `${factMap.size} RTG facts extracted. Review before applying.` : 'No reliable RTG facts were found. Nothing was saved.',
-      });
+      if (factMap.size) {
+        setMessage({
+          type: failedCount ? 'error' : 'success',
+          text: `${factMap.size} RTG facts extracted. Review before applying.${failedCount ? ` ${failedCount} screenshot${failedCount === 1 ? '' : 's'} failed analysis; successful RTG reads were kept.` : ''}`,
+        });
+      } else if (failedCount) {
+        setMessage({ type: 'error', text: `${failedCount} RTG screenshot${failedCount === 1 ? '' : 's'} could not be analyzed. Your career data was not changed.` });
+      } else {
+        setMessage({ type: 'success', text: 'No reliable RTG facts were found. Nothing was saved.' });
+      }
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'RTG scan failed. Your career data was not changed.' });
     } finally {

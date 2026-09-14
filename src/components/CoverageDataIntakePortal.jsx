@@ -5,8 +5,9 @@ import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
 import { coverageReferenceFor, replaceCoverageReferences } from '../domain/coverageReferences.js';
 import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
-import { analyzeCoverageReference } from '../services/coverageReferenceClient.js';
+import { analyzeCoverageReference, analyzeCoverageReferencePair } from '../services/coverageReferenceClient.js';
 import { compressImage } from '../services/imageCompression.js';
+import { buildSessionAnalysisContactSheet, SESSION_ANALYSIS_BATCH_SIZE } from '../services/sessionAnalysisContactSheet.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const MAX_REFERENCE_SCREENSHOTS = 12;
@@ -39,25 +40,42 @@ const CoverageDataScanner = ({ user, career }) => {
 
     const extracted = [];
     let failedCount = 0;
+    const consumeAnalysis = (fileName, analysis, sourceIndex) => {
+      const sourceId = `coverage-${Date.now()}-${sourceIndex + 1}`;
+      (analysis?.facts || []).forEach((fact, factIndex) => extracted.push({
+        ...fact,
+        id: `${sourceId}-${factIndex + 1}`,
+        sourceId,
+        sourceName: fileName,
+        selected: Number(fact.confidence) >= 0.65,
+      }));
+    };
+
     try {
       const idToken = await user.getIdToken();
       const school = career?.player?.college || career?.player?.school || '';
-      for (let index = 0; index < files.length; index += 1) {
-        const file = files[index];
+      for (let start = 0; start < files.length; start += SESSION_ANALYSIS_BATCH_SIZE) {
+        const batch = files.slice(start, start + SESSION_ANALYSIS_BATCH_SIZE);
+        setMessage(`Analyzing Coverage screenshots ${start + 1}–${Math.min(start + batch.length, files.length)} of ${files.length}…`);
         try {
-          const imageDataUrl = await compressImage(file, 2000, 0.88);
-          const result = await analyzeCoverageReference({ idToken, imageDataUrl, fileName: file.name, school });
-          const sourceId = `coverage-${Date.now()}-${index + 1}`;
-          (result?.analysis?.facts || []).forEach((fact, factIndex) => extracted.push({
-            ...fact,
-            id: `${sourceId}-${factIndex + 1}`,
-            sourceId,
-            sourceName: file.name,
-            selected: Number(fact.confidence) >= 0.65,
-          }));
+          if (batch.length === 2) {
+            const sheet = await buildSessionAnalysisContactSheet(batch);
+            const results = await analyzeCoverageReferencePair({
+              idToken,
+              imageDataUrl: sheet.imageDataUrl,
+              fileNames: batch.map((file) => file.name),
+              school,
+            });
+            results.forEach(({ fileName, analysis }, index) => consumeAnalysis(fileName, analysis, start + index));
+          } else {
+            const file = batch[0];
+            const imageDataUrl = await compressImage(file, 2000, 0.88);
+            const result = await analyzeCoverageReference({ idToken, imageDataUrl, fileName: file.name, school });
+            consumeAnalysis(file.name, result?.analysis || {}, start);
+          }
         } catch (error) {
-          failedCount += 1;
-          console.warn(`Coverage Data could not analyze ${file.name}`, error);
+          failedCount += batch.length;
+          console.warn(`Coverage Data could not analyze ${batch.map((file) => file.name).join(', ')}`, error);
         }
       }
 
@@ -107,11 +125,7 @@ const CoverageDataScanner = ({ user, career }) => {
         });
         transaction.set(ref, {
           ...next,
-          _sync: {
-            revision: (Number(remote?._sync?.revision) || 0) + 1,
-            deviceId: DEVICE_ID,
-            updatedAt: new Date().toISOString(),
-          },
+          _sync: { revision: (Number(remote?._sync?.revision) || 0) + 1, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
         });
       });
       setFacts([]);
@@ -132,15 +146,10 @@ const CoverageDataScanner = ({ user, career }) => {
         <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className="dhq-coverage-intake-upload">
           {busy ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />} {busy ? 'Working…' : saved ? 'Replace Coverage' : 'Upload Coverage'}
         </button>
-        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" disabled={busy} onChange={(event) => {
-          scanFiles(event.target.files);
-          event.target.value = '';
-        }} />
+        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" disabled={busy} onChange={(event) => { scanFiles(event.target.files); event.target.value = ''; }} />
       </div>
-
       {saved && !facts.length ? <p className="dhq-intake-message"><CheckCircle2 size={12} className="mr-1 inline" /> {saved.factCount} coverage fact{saved.factCount === 1 ? '' : 's'} currently saved from {saved.sourceCount} screenshot{saved.sourceCount === 1 ? '' : 's'}.</p> : null}
       {message ? <p className={`dhq-intake-message ${messageType === 'error' ? 'is-error' : ''}`}>{message}</p> : null}
-
       {facts.length ? (
         <div className="dhq-intake-review">
           <div className="dhq-intake-review__header">Review editorial-only Coverage Data</div>
@@ -167,13 +176,11 @@ const CoverageDataScanner = ({ user, career }) => {
 const CoverageDataIntakePortal = () => {
   const { user, career } = useOwnerCareer();
   const [host, setHost] = useState(null);
-
   useEffect(() => {
     const appRoot = document.getElementById('root');
     if (!appRoot) return undefined;
     const ensure = () => {
-      const next = appRoot.querySelector('[data-session-import-coverage-review-host]')
-        || appRoot.querySelector('#dhq-weekly-coverage-data-host');
+      const next = appRoot.querySelector('[data-session-import-coverage-review-host]') || appRoot.querySelector('#dhq-weekly-coverage-data-host');
       setHost((current) => current === next ? current : next);
     };
     ensure();
@@ -181,7 +188,6 @@ const CoverageDataIntakePortal = () => {
     observer.observe(appRoot, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
-
   if (!host || !user || !career) return null;
   return createPortal(<CoverageDataScanner user={user} career={career} />, host);
 };

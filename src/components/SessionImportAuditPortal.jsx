@@ -198,7 +198,7 @@ const SessionImportAuditPortal = () => {
 
       <details open style={{ marginTop: 10 }}>
         <summary style={{ cursor: 'pointer', color: '#93c5fd', fontSize: 9, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase' }}>
-          23-file processing ledger · show/hide screenshot details
+          {receipt.total}-file processing ledger · show/hide screenshot details
         </summary>
         <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
           {receipt.rows.map(({ route, results, status }) => {

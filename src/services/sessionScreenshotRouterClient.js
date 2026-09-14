@@ -1,4 +1,5 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
+import { postFreeVisionJson } from './freeVisionQuotaQueue.js';
 
 const ALLOWED_LANES = new Set(['game', 'rtg', 'coverage', 'high_school']);
 const RTG_SCREEN_TYPES = new Set([
@@ -15,13 +16,10 @@ const HIGH_SCHOOL_SCREEN_TYPES = new Set(['high_school_moment', 'high_school_pos
 
 const analyzeRoute = async ({ idToken, imageDataUrl, fileName, player, careerPhase }) => {
   const school = player?.college || player?.school || '';
-  const response = await fetch('/api/analyze-coverage-reference', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
+  const { response, body } = await postFreeVisionJson({
+    url: '/api/analyze-coverage-reference',
+    idToken,
+    body: {
       imageDataUrl,
       fileName,
       player,
@@ -31,15 +29,8 @@ const analyzeRoute = async ({ idToken, imageDataUrl, fileName, player, careerPha
       // Routing is classification only and should never spend paid fallback credits.
       // Dedicated lane scanners still follow the user's normal preference afterward.
       allowPaidFallback: false,
-    }),
+    },
   });
-
-  let body = {};
-  try {
-    body = await response.json();
-  } catch {
-    // Preserve a useful error if an upstream proxy returns HTML.
-  }
 
   if (!response.ok) {
     const error = new Error(body.error || 'Session screenshot classification failed.');

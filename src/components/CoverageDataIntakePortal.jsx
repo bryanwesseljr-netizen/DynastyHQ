@@ -172,7 +172,8 @@ const CoverageDataIntakePortal = () => {
     const appRoot = document.getElementById('root');
     if (!appRoot) return undefined;
     const ensure = () => {
-      const next = appRoot.querySelector('#dhq-weekly-coverage-data-host');
+      const next = appRoot.querySelector('[data-session-import-coverage-review-host]')
+        || appRoot.querySelector('#dhq-weekly-coverage-data-host');
       setHost((current) => current === next ? current : next);
     };
     ensure();

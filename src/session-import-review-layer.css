@@ -20,3 +20,29 @@ body.dhq-session-import-review .dhq-postgame-review {
   z-index: 10061 !important;
   pointer-events: auto !important;
 }
+
+/*
+ * Android Chrome can still keep the React review in a lower stacking context even
+ * after #root stops creating a layout box. In review mode the Session Import shell
+ * therefore becomes a transparent, click-through frame. Its sticky chrome remains
+ * usable, while the actual WeeklyReviewPanel underneath stays visible and owns all
+ * verification interactions.
+ */
+.dhq-session-import.is-review {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+.dhq-session-import.is-review .dhq-session-import__stadium {
+  display: none !important;
+}
+
+.dhq-session-import.is-review .dhq-session-import__topbar,
+.dhq-session-import.is-review .dhq-session-import__stepbar {
+  pointer-events: auto !important;
+}
+
+.dhq-session-import.is-review .dhq-session-import__review-heading {
+  display: none !important;
+}

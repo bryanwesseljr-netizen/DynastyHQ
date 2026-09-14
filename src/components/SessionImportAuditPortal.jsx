@@ -102,12 +102,31 @@ const SessionImportAuditPortal = () => {
         setHost(null);
         return;
       }
+
       let nextHost = review.querySelector('[data-session-import-audit-host]');
       if (!nextHost) {
         nextHost = document.createElement('div');
         nextHost.dataset.sessionImportAuditHost = 'true';
         review.insertBefore(nextHost, review.firstChild);
       }
+
+      // The RTG and Coverage scanners retain their own React state. Give those live
+      // scanner components dedicated hosts inside the visible Session Import review
+      // instead of leaving their verification panels hidden elsewhere in Weekly Agenda.
+      let rtgHost = review.querySelector('[data-session-import-rtg-review-host]');
+      if (!rtgHost) {
+        rtgHost = document.createElement('div');
+        rtgHost.dataset.sessionImportRtgReviewHost = 'true';
+        review.insertBefore(rtgHost, nextHost.nextSibling);
+      }
+
+      let coverageHost = review.querySelector('[data-session-import-coverage-review-host]');
+      if (!coverageHost) {
+        coverageHost = document.createElement('div');
+        coverageHost.dataset.sessionImportCoverageReviewHost = 'true';
+        review.insertBefore(coverageHost, rtgHost.nextSibling);
+      }
+
       setHost((current) => current === nextHost ? current : nextHost);
     };
     ensureHost();

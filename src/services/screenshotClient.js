@@ -1,5 +1,6 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
 import { readPaidVisionFallbackEnabled } from './visionFallbackPreference.js';
+import { reportSessionLaneResult } from './sessionImportTelemetry.js';
 
 const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
   'game.teamTotalYards',
@@ -128,11 +129,29 @@ export const analyzeScreenshot = async ({
   }
 
   if (!response.ok) {
-    const error = new Error(body.error || 'Screenshot analysis failed.');
+    const message = body.error || 'Screenshot analysis failed.';
+    reportSessionLaneResult({
+      fileName,
+      lane: 'game',
+      status: 'failed',
+      message,
+    });
+    const error = new Error(message);
     error.status = response.status;
     throw error;
   }
 
   recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
-  return normalizeScreenshotAnalysis(body);
+  const normalized = normalizeScreenshotAnalysis(body);
+  const analysis = normalized?.analysis || normalized || {};
+  reportSessionLaneResult({
+    fileName,
+    lane: 'game',
+    status: 'analyzed',
+    factCount: (analysis.facts || []).length,
+    screenType: Array.isArray(analysis.screenTypes)
+      ? analysis.screenTypes.filter((type) => type !== 'unknown').join(', ')
+      : (analysis.screenType || ''),
+  });
+  return normalized;
 };

@@ -33,14 +33,15 @@ test('Session Import requires the actual data-entry workspace but not a legacy s
   assert.doesNotMatch(sessionImport, /choose weekly screenshots/i);
 });
 
-test('Session Import retries data-entry navigation until the workspace mounts, then hands the untouched batch to the router', async () => {
+test('Session Import retries data-entry navigation until the workspace mounts, then hands the untouched batch and guided lanes to the router', async () => {
   const sessionImport = await readFile(sessionImportUrl, 'utf8');
 
   assert.match(sessionImport, /waitForDataEntryWorkspace = \(timeoutMs = 12000\)/);
   assert.match(sessionImport, /requestDataEntryWorkspace\(\)/);
   assert.match(sessionImport, /now - lastNavigationAttempt >= 300/);
   assert.match(sessionImport, /await waitForDataEntryWorkspace\(\)/);
-  assert.match(sessionImport, /detail: \{ files: \[\.\.\.files\] \}/);
+  assert.match(sessionImport, /files: \[\.\.\.files\]/);
+  assert.match(sessionImport, /guidedAssignments/);
   assert.doesNotMatch(sessionImport, /new DataTransfer\(\)/);
 });
 

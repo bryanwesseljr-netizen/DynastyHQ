@@ -181,7 +181,8 @@ test('free-first scanner wiring preserves specialized boundaries and exact Total
   assert.match(coverageClient, /scanKind:\s*'coverage'/);
 
   assert.match(sharedApi, /Total Offense/);
-  assert.match(sharedApi, /They are NOT synonyms/);
-  assert.match(sharedApi, /NEVER map the separate "Total Yards" row/);
+  assert.match(sharedApi, /Total Yards/);
+  assert.match(sharedApi, /use ONLY the exact on-screen Total Offense value/);
+  assert.match(sharedApi, /Never substitute Total Yards/);
   assert.match(sharedApi, /analyzeVisionFreeFirst/);
 });

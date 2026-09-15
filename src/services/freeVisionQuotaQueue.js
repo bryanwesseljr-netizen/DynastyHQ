@@ -1,8 +1,10 @@
 const REQUEST_SPACING_MS = 4300;
 const DEFAULT_QUOTA_COOLDOWN_MS = 65000;
-const TRANSIENT_COOLDOWN_MS = 9000;
-const MAX_QUOTA_RETRIES = 2;
-const MAX_TRANSIENT_RETRIES = 1;
+const TRANSIENT_BASE_COOLDOWN_MS = 12000;
+const PROVIDER_BUSY_COOLDOWN_MS = 30000;
+const MAX_QUOTA_RETRIES = 3;
+const MAX_TRANSIENT_RETRIES = 3;
+const MAX_PROVIDER_BUSY_RETRIES = 5;
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
 let queueTail = Promise.resolve();
@@ -19,6 +21,26 @@ const retryAfterMs = (response, body = {}) => {
   return seconds > 0 ? Math.ceil(seconds * 1000) + 1500 : DEFAULT_QUOTA_COOLDOWN_MS;
 };
 
+const providerMessage = (body = {}) => [body?.error, body?.message, body?.geminiError, body?.details]
+  .filter(Boolean)
+  .join(' ')
+  .toLowerCase();
+
+const isProviderBusy = (response, body = {}) => (
+  response?.status === 503
+  && /(high demand|temporar(?:ily|y)|unavailable|overload|busy|capacity)/i.test(providerMessage(body))
+);
+
+const transientCooldownMs = (attempt) => Math.min(
+  45000,
+  TRANSIENT_BASE_COOLDOWN_MS * Math.max(1, Number(attempt) || 1),
+);
+
+const providerBusyCooldownMs = (attempt) => Math.min(
+  90000,
+  Math.round(PROVIDER_BUSY_COOLDOWN_MS * (1.5 ** Math.max(0, (Number(attempt) || 1) - 1))),
+);
+
 const waitForSlot = async () => {
   const delay = Math.max(0, nextRequestAt - Date.now());
   if (delay) {
@@ -33,6 +55,7 @@ const waitForSlot = async () => {
 const runPost = async ({ url, idToken, body }) => {
   let quotaRetries = 0;
   let transientRetries = 0;
+  let providerBusyRetries = 0;
 
   while (true) {
     await waitForSlot();
@@ -62,12 +85,28 @@ const runPost = async ({ url, idToken, body }) => {
       continue;
     }
 
-    if (TRANSIENT_STATUSES.has(response.status) && transientRetries < MAX_TRANSIENT_RETRIES) {
-      transientRetries += 1;
-      nextRequestAt = Math.max(nextRequestAt, Date.now() + TRANSIENT_COOLDOWN_MS);
+    if (isProviderBusy(response, payload) && providerBusyRetries < MAX_PROVIDER_BUSY_RETRIES) {
+      providerBusyRetries += 1;
+      const cooldownMs = providerBusyCooldownMs(providerBusyRetries);
+      nextRequestAt = Math.max(nextRequestAt, Date.now() + cooldownMs);
       window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
         detail: {
-          waitMs: TRANSIENT_COOLDOWN_MS,
+          waitMs: cooldownMs,
+          reason: 'provider-busy',
+          attempt: providerBusyRetries,
+          status: response.status,
+        },
+      }));
+      continue;
+    }
+
+    if (TRANSIENT_STATUSES.has(response.status) && transientRetries < MAX_TRANSIENT_RETRIES) {
+      transientRetries += 1;
+      const cooldownMs = transientCooldownMs(transientRetries);
+      nextRequestAt = Math.max(nextRequestAt, Date.now() + cooldownMs);
+      window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
+        detail: {
+          waitMs: cooldownMs,
           reason: 'temporary-provider-failure',
           attempt: transientRetries,
           status: response.status,
@@ -90,7 +129,9 @@ export const postFreeVisionJson = (args) => {
 export const freeVisionQueueConfig = Object.freeze({
   requestSpacingMs: REQUEST_SPACING_MS,
   defaultQuotaCooldownMs: DEFAULT_QUOTA_COOLDOWN_MS,
-  transientCooldownMs: TRANSIENT_COOLDOWN_MS,
+  transientBaseCooldownMs: TRANSIENT_BASE_COOLDOWN_MS,
+  providerBusyCooldownMs: PROVIDER_BUSY_COOLDOWN_MS,
   maxQuotaRetries: MAX_QUOTA_RETRIES,
   maxTransientRetries: MAX_TRANSIENT_RETRIES,
+  maxProviderBusyRetries: MAX_PROVIDER_BUSY_RETRIES,
 });

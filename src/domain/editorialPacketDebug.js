@@ -1,0 +1,1 @@
+export const EDITORIAL_PACKET_VERSION = 1;

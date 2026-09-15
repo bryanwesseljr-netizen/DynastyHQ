@@ -10,6 +10,7 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 const RTG_INPUT = '[data-rtg-intake-scanner] input[type="file"]';
 const COVERAGE_INPUT = '[data-coverage-intake-scanner] input[type="file"]';
 const ROUTING_TIMEOUT = 180000;
+const GAME_SCANNER_MOUNT_TIMEOUT = 20000;
 const GUIDED_LANES = new Set(['game', 'rtg', 'coverage']);
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
@@ -22,6 +23,11 @@ const findButton = (matcher) => {
     || null;
 };
 
+const findPrimaryNavButton = (matcher) => {
+  const buttons = [...document.querySelectorAll('.dhq-primary-nav button')];
+  return buttons.find((button) => matcher.test(clean(button.textContent))) || null;
+};
+
 const findWeeklyWorkspace = () => (
   document.querySelector('main.dhq-page-main[data-active-tab="dataEntry"] .dhq-weekly-agenda-workspace')
   || [...document.querySelectorAll('.dhq-weekly-agenda-workspace')].find(visible)
@@ -30,8 +36,9 @@ const findWeeklyWorkspace = () => (
 
 const findCollegeGameInput = () => {
   const workspace = findWeeklyWorkspace();
-  if (!workspace) return null;
-  const labels = [...workspace.querySelectorAll('label')];
+  const labels = workspace
+    ? [...workspace.querySelectorAll('label')]
+    : [...document.querySelectorAll('label')];
   const label = labels.find((entry) => /choose weekly screenshots/i.test(clean(entry.textContent)));
   const input = label?.querySelector('input[type="file"][accept*="image"]') || null;
   return input?.multiple ? input : null;
@@ -63,6 +70,30 @@ const waitFor = (getter, message, timeoutMs = 10000) => new Promise((resolve, re
   };
   check();
 });
+
+const waitForActiveTab = (tab, timeoutMs = 5000) => waitFor(
+  () => document.querySelector(`main.dhq-page-main[data-active-tab="${tab}"]`) || null,
+  `DynastyHQ could not open the ${tab === 'dataEntry' ? 'Weekly Agenda' : tab} route.`,
+  timeoutMs,
+);
+
+const openLegacyWeeklyAgenda = async ({ remount = false } = {}) => {
+  if (remount) {
+    const homeButton = findPrimaryNavButton(/^home$/i);
+    if (homeButton) {
+      homeButton.click();
+      try { await waitForActiveTab('dashboard', 4000); } catch { /* continue with the direct legacy route */ }
+    }
+  }
+
+  if (document.querySelector('main.dhq-page-main[data-active-tab="dataEntry"]') && !remount) return;
+
+  const gameHubButton = findPrimaryNavButton(/^game hub$/i);
+  if (!gameHubButton) throw new Error('DynastyHQ could not find the internal Weekly Agenda route.');
+  window.__dhqAllowLegacyGameHubOnce = true;
+  gameHubButton.click();
+  await waitForActiveTab('dataEntry', 6000);
+};
 
 const filesKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
 const uniqueFiles = (files) => [...new Map(files.map((file) => [filesKey(file), file])).values()];
@@ -128,9 +159,12 @@ const ensureCollegeGameInput = async ({ user, career }) => {
   if (input) return input;
 
   const derivedStage = deriveCareerStage(career || {});
+  if (derivedStage !== CAREER_STAGES.COLLEGE) {
+    throw new Error(`DynastyHQ received college Game Data while the career-stage engine reports ${derivedStage}. Nothing was routed into the wrong scanner.`);
+  }
+
   const hasStaleCommitmentFlag = (
-    derivedStage === CAREER_STAGES.COLLEGE
-    && career?.careerPhase === 'Player'
+    career?.careerPhase === 'Player'
     && career?.player?.isCommitted !== true
   );
 
@@ -138,19 +172,39 @@ const ensureCollegeGameInput = async ({ user, career }) => {
     const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     await updateDoc(careerRef, { 'player.isCommitted': true });
     window.__dhqLegacyCollegeCommitmentRepairedAt = Date.now();
-
-    return waitFor(
-      findCollegeGameInput,
-      'DynastyHQ repaired the stale college-career flag, but the current Weekly Agenda still does not expose the college Game Data scanner. Nothing was sent to the high-school Postgame Tape Score lane. Reload this preview once and retry the same batch.',
-      12000,
-    );
   }
 
-  return waitFor(
-    findCollegeGameInput,
-    `DynastyHQ recognized college Game Data, but the current Weekly Agenda still does not expose the college Game Data scanner. Derived career stage: ${derivedStage}. Nothing was sent to the high-school Postgame Tape Score lane.`,
-    12000,
-  );
+  try {
+    await openLegacyWeeklyAgenda();
+    input = await waitFor(
+      findCollegeGameInput,
+      'College Game Data scanner is still preparing.',
+      GAME_SCANNER_MOUNT_TIMEOUT,
+    );
+    if (input) return input;
+  } catch (firstError) {
+    console.warn('Session Import could not mount the college Game Data scanner on the first route attempt', firstError);
+  }
+
+  // The redesigned Game Hub is a portal layered over the legacy Weekly Agenda route.
+  // A failed/aborted scan can leave that underlying route mounted in a transient state
+  // where the legacy file chooser is not present. Force a clean route remount before
+  // giving up so the user does not need to reload or re-select a 20+ screenshot batch.
+  await openLegacyWeeklyAgenda({ remount: true });
+
+  try {
+    return await waitFor(
+      findCollegeGameInput,
+      'College Game Data scanner did not return after a clean Weekly Agenda remount.',
+      GAME_SCANNER_MOUNT_TIMEOUT,
+    );
+  } catch (secondError) {
+    const highSchoolScannerVisible = Boolean(findHighSchoolPostgameInput());
+    const stateHint = highSchoolScannerVisible
+      ? ' The underlying Weekly Agenda is still rendering the high-school scanner even though the career-stage engine reports College.'
+      : '';
+    throw new Error(`DynastyHQ recognized college Game Data, but the current Weekly Agenda could not remount the college Game Data scanner.${stateHint} Nothing was sent to the high-school Postgame Tape Score lane. Reload this preview once; your selected screenshots have not changed any career data.`);
+  }
 };
 
 const routeBatch = async ({ files, user, career }) => {

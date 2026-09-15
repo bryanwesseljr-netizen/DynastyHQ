@@ -12,6 +12,7 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const MAX_REFERENCE_SCREENSHOTS = 30;
 const DEVICE_ID = 'coverage-data-intake';
+const TRANSIENT_PROVIDER_STATUSES = new Set([429, 502, 503, 504]);
 
 const usefulCoverageAnalysis = (analysis) => (
   analysis
@@ -88,6 +89,19 @@ const CoverageDataScanner = ({ user, career }) => {
           firstError = error;
         }
 
+        if (!analysis && TRANSIENT_PROVIDER_STATUSES.has(Number(firstError?.status))) {
+          const failureMessage = firstError?.message || 'Coverage analysis could not reach the vision provider after automatic retries.';
+          failures.push({ fileName: file.name, message: failureMessage });
+          reportSessionLaneResult({
+            fileName: file.name,
+            lane: 'coverage',
+            status: 'failed',
+            message: failureMessage,
+          });
+          console.warn(`Coverage Data provider remained unavailable for ${file.name} after automatic queue retries`, firstError);
+          continue;
+        }
+
         if (!analysis) {
           setMessage(`Retrying Coverage screenshot ${index + 1} of ${files.length} at higher text quality: ${file.name}…`);
           try {
@@ -119,10 +133,10 @@ const CoverageDataScanner = ({ user, career }) => {
         setMessage(`All ${files.length} Coverage screenshots analyzed successfully. ${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found. Review before saving.`);
       } else if (extracted.length) {
         setMessageType('error');
-        setMessage(`${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found, but ${failures.length} screenshot${failures.length === 1 ? '' : 's'} still failed after automatic high-quality retry. Coverage cannot be saved until every screenshot passes.`);
+        setMessage(`${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found, but ${failures.length} screenshot${failures.length === 1 ? '' : 's'} still failed after automatic retries. Coverage cannot be saved until every screenshot passes.`);
       } else if (failures.length) {
         setMessageType('error');
-        setMessage(`${failures.length} Coverage screenshot${failures.length === 1 ? '' : 's'} could not be analyzed even after automatic high-quality retry. Nothing was saved.`);
+        setMessage(`${failures.length} Coverage screenshot${failures.length === 1 ? '' : 's'} could not be analyzed after automatic retries. Nothing was saved.`);
       } else {
         setMessage('No reliable coverage facts were found. Nothing was saved.');
       }

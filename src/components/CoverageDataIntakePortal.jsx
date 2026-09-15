@@ -5,13 +5,20 @@ import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
 import { coverageReferenceFor, replaceCoverageReferences } from '../domain/coverageReferences.js';
 import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
-import { analyzeCoverageReference, analyzeCoverageReferencePair } from '../services/coverageReferenceClient.js';
+import { analyzeCoverageReference } from '../services/coverageReferenceClient.js';
 import { compressImage } from '../services/imageCompression.js';
-import { buildSessionAnalysisContactSheet, SESSION_ANALYSIS_BATCH_SIZE } from '../services/sessionAnalysisContactSheet.js';
+import { reportSessionLaneResult } from '../services/sessionImportTelemetry.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
-const MAX_REFERENCE_SCREENSHOTS = 12;
+const MAX_REFERENCE_SCREENSHOTS = 30;
 const DEVICE_ID = 'coverage-data-intake';
+
+const usefulCoverageAnalysis = (analysis) => (
+  analysis
+  && analysis.screenType !== 'unknown'
+  && Array.isArray(analysis.facts)
+  && analysis.facts.length > 0
+);
 
 const CoverageDataScanner = ({ user, career }) => {
   const inputRef = useRef(null);
@@ -20,26 +27,30 @@ const CoverageDataScanner = ({ user, career }) => {
   const [busy, setBusy] = useState(false);
   const [facts, setFacts] = useState([]);
   const [sourceCount, setSourceCount] = useState(0);
+  const [failedFiles, setFailedFiles] = useState([]);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
   useEffect(() => {
     setFacts([]);
     setSourceCount(0);
+    setFailedFiles([]);
     setMessage('');
   }, [context.publicationId]);
 
   const scanFiles = async (fileList) => {
-    const files = [...(fileList || [])].slice(0, MAX_REFERENCE_SCREENSHOTS);
+    const incoming = [...(fileList || [])];
+    const files = incoming.slice(0, MAX_REFERENCE_SCREENSHOTS);
     if (!files.length || !user) return;
     setBusy(true);
     setFacts([]);
     setSourceCount(files.length);
+    setFailedFiles([]);
     setMessage('Analyzing editorial-only player, scoring, and official in-game media context…');
     setMessageType('success');
 
     const extracted = [];
-    let failedCount = 0;
+    const failures = [];
     const consumeAnalysis = (fileName, analysis, sourceIndex) => {
       const sourceId = `coverage-${Date.now()}-${sourceIndex + 1}`;
       (analysis?.facts || []).forEach((fact, factIndex) => extracted.push({
@@ -54,38 +65,64 @@ const CoverageDataScanner = ({ user, career }) => {
     try {
       const idToken = await user.getIdToken();
       const school = career?.player?.college || career?.player?.school || '';
-      for (let start = 0; start < files.length; start += SESSION_ANALYSIS_BATCH_SIZE) {
-        const batch = files.slice(start, start + SESSION_ANALYSIS_BATCH_SIZE);
-        setMessage(`Analyzing Coverage screenshots ${start + 1}–${Math.min(start + batch.length, files.length)} of ${files.length}…`);
-        try {
-          if (batch.length === 2) {
-            const sheet = await buildSessionAnalysisContactSheet(batch);
-            const results = await analyzeCoverageReferencePair({
-              idToken,
-              imageDataUrl: sheet.imageDataUrl,
-              fileNames: batch.map((file) => file.name),
-              school,
-            });
-            results.forEach(({ fileName, analysis }, index) => consumeAnalysis(fileName, analysis, start + index));
-          } else {
-            const file = batch[0];
-            const imageDataUrl = await compressImage(file, 2000, 0.88);
-            const result = await analyzeCoverageReference({ idToken, imageDataUrl, fileName: file.name, school });
-            consumeAnalysis(file.name, result?.analysis || {}, start);
+
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const analyzeFile = async ({ rescue = false } = {}) => {
+          const imageDataUrl = await compressImage(file, rescue ? 2600 : 2200, rescue ? 0.94 : 0.9);
+          const result = await analyzeCoverageReference({ idToken, imageDataUrl, fileName: file.name, school });
+          const analysis = result?.analysis || {};
+          if (!usefulCoverageAnalysis(analysis)) {
+            throw new Error('Coverage scanner returned no usable facts for this screenshot.');
           }
+          return analysis;
+        };
+
+        setMessage(`Analyzing Coverage screenshot ${index + 1} of ${files.length}: ${file.name}…`);
+        let analysis = null;
+        let firstError = null;
+
+        try {
+          analysis = await analyzeFile();
         } catch (error) {
-          failedCount += batch.length;
-          console.warn(`Coverage Data could not analyze ${batch.map((file) => file.name).join(', ')}`, error);
+          firstError = error;
         }
+
+        if (!analysis) {
+          setMessage(`Retrying Coverage screenshot ${index + 1} of ${files.length} at higher text quality: ${file.name}…`);
+          try {
+            analysis = await analyzeFile({ rescue: true });
+          } catch (error) {
+            failures.push({ fileName: file.name, message: error?.message || firstError?.message || 'Coverage analysis failed.' });
+            reportSessionLaneResult({
+              fileName: file.name,
+              lane: 'coverage',
+              status: 'failed',
+              message: error?.message || firstError?.message || 'Coverage analysis failed after automatic retry.',
+            });
+            console.warn(`Coverage Data could not analyze ${file.name} after automatic retry`, error || firstError);
+            continue;
+          }
+        }
+
+        consumeAnalysis(file.name, analysis, index);
       }
 
       setFacts(extracted);
-      if (extracted.length) {
-        setMessageType(failedCount ? 'error' : 'success');
-        setMessage(`${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found. Review before saving.${failedCount ? ` ${failedCount} screenshot${failedCount === 1 ? '' : 's'} failed analysis; the successful screenshots were kept.` : ''}`);
-      } else if (failedCount) {
+      setFailedFiles(failures);
+
+      if (incoming.length > MAX_REFERENCE_SCREENSHOTS) {
         setMessageType('error');
-        setMessage(`${failedCount} coverage screenshot${failedCount === 1 ? '' : 's'} could not be analyzed. Nothing was saved.`);
+        setMessage(`DynastyHQ received ${incoming.length} Coverage screenshots, but this scanner currently supports ${MAX_REFERENCE_SCREENSHOTS} in one pass. Split the Coverage set before saving so no screenshot is silently omitted.`);
+      } else if (extracted.length && !failures.length) {
+        setMessageType('success');
+        setMessage(`All ${files.length} Coverage screenshots analyzed successfully. ${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found. Review before saving.`);
+      } else if (extracted.length) {
+        setMessageType('error');
+        setMessage(`${extracted.length} coverage fact${extracted.length === 1 ? '' : 's'} found, but ${failures.length} screenshot${failures.length === 1 ? '' : 's'} still failed after automatic high-quality retry. Coverage cannot be saved until every screenshot passes.`);
+      } else if (failures.length) {
+        setMessageType('error');
+        setMessage(`${failures.length} Coverage screenshot${failures.length === 1 ? '' : 's'} could not be analyzed even after automatic high-quality retry. Nothing was saved.`);
       } else {
         setMessage('No reliable coverage facts were found. Nothing was saved.');
       }
@@ -101,6 +138,11 @@ const CoverageDataScanner = ({ user, career }) => {
 
   const saveFacts = async () => {
     if (!user || !db || busy) return;
+    if (failedFiles.length) {
+      setMessageType('error');
+      setMessage(`Coverage is incomplete. ${failedFiles.length} screenshot${failedFiles.length === 1 ? '' : 's'} still failed analysis, so DynastyHQ will not save a partial Coverage set.`);
+      return;
+    }
     const selectedFacts = facts.filter((fact) => fact.selected && String(fact.value || '').trim());
     if (!selectedFacts.length) {
       setMessageType('error');
@@ -130,6 +172,7 @@ const CoverageDataScanner = ({ user, career }) => {
       });
       setFacts([]);
       setSourceCount(0);
+      setFailedFiles([]);
       setMessage(`Saved ${selectedFacts.length} Coverage Data fact${selectedFacts.length === 1 ? '' : 's'} for Season ${context.season} · Week ${context.week}. Newsroom and Podcast can use them; your RTG stats and career totals cannot.`);
     } catch (error) {
       setMessageType('error');
@@ -150,6 +193,9 @@ const CoverageDataScanner = ({ user, career }) => {
       </div>
       {saved && !facts.length ? <p className="dhq-intake-message"><CheckCircle2 size={12} className="mr-1 inline" /> {saved.factCount} coverage fact{saved.factCount === 1 ? '' : 's'} currently saved from {saved.sourceCount} screenshot{saved.sourceCount === 1 ? '' : 's'}.</p> : null}
       {message ? <p className={`dhq-intake-message ${messageType === 'error' ? 'is-error' : ''}`}>{message}</p> : null}
+      {failedFiles.length ? (
+        <p className="dhq-intake-message is-error">Still unresolved: {failedFiles.map((entry) => entry.fileName).join(', ')}</p>
+      ) : null}
       {facts.length ? (
         <div className="dhq-intake-review">
           <div className="dhq-intake-review__header">Review editorial-only Coverage Data</div>
@@ -166,7 +212,7 @@ const CoverageDataScanner = ({ user, career }) => {
               </div>
             ))}
           </div>
-          <div className="dhq-intake-review__footer"><button type="button" disabled={busy} onClick={saveFacts}><CheckCircle2 size={13} className="mr-1 inline" /> Save Verified Coverage Data</button></div>
+          <div className="dhq-intake-review__footer"><button type="button" disabled={busy || failedFiles.length > 0} onClick={saveFacts}><CheckCircle2 size={13} className="mr-1 inline" /> Save Verified Coverage Data</button></div>
         </div>
       ) : null}
     </div>

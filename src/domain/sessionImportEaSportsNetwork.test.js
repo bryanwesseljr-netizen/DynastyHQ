@@ -12,7 +12,9 @@ test('Session Import routes EA SPORTS Network articles to editorial coverage in 
   ]);
 
   assert.match(routerSource, /scanKind: 'route'/);
-  assert.match(apiSource, /EA SPORTS Network article screenshots MUST use screenType=ea_network_article and lane coverage/);
+  assert.match(apiSource, /scoring_summary and ea_network_article -> coverage/);
+  assert.match(apiSource, /EA SPORTS Network article: classify as ea_network_article/);
+  assert.match(apiSource, /use category=official_media/);
   assert.match(apiSource, /'ea_network_article'/);
   assert.match(apiSource, /items: \{ type: 'string', enum: \['game', 'rtg', 'coverage', 'high_school'\] \}/);
 });

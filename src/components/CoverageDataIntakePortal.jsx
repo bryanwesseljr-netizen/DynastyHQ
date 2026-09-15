@@ -91,7 +91,7 @@ const CoverageDataScanner = ({ user, career }) => {
 
         if (!analysis && TRANSIENT_PROVIDER_STATUSES.has(Number(firstError?.status))) {
           const failureMessage = firstError?.message || 'Coverage analysis could not reach the vision provider after automatic retries.';
-          failures.push({ fileName: file.name, message: failureMessage });
+          failures.push({ fileName: file.name, message: failureMessage, sourceNumber: index + 1, total: files.length });
           reportSessionLaneResult({
             fileName: file.name,
             lane: 'coverage',
@@ -107,7 +107,7 @@ const CoverageDataScanner = ({ user, career }) => {
           try {
             analysis = await analyzeFile({ rescue: true });
           } catch (error) {
-            failures.push({ fileName: file.name, message: error?.message || firstError?.message || 'Coverage analysis failed.' });
+            failures.push({ fileName: file.name, message: error?.message || firstError?.message || 'Coverage analysis failed.', sourceNumber: index + 1, total: files.length });
             reportSessionLaneResult({
               fileName: file.name,
               lane: 'coverage',
@@ -208,7 +208,7 @@ const CoverageDataScanner = ({ user, career }) => {
       {saved && !facts.length ? <p className="dhq-intake-message"><CheckCircle2 size={12} className="mr-1 inline" /> {saved.factCount} coverage fact{saved.factCount === 1 ? '' : 's'} currently saved from {saved.sourceCount} screenshot{saved.sourceCount === 1 ? '' : 's'}.</p> : null}
       {message ? <p className={`dhq-intake-message ${messageType === 'error' ? 'is-error' : ''}`}>{message}</p> : null}
       {failedFiles.length ? (
-        <p className="dhq-intake-message is-error">Still unresolved: {failedFiles.map((entry) => entry.fileName).join(', ')}</p>
+        <p className="dhq-intake-message is-error">Still unresolved: {failedFiles.map((entry) => `Coverage screenshot ${entry.sourceNumber} of ${entry.total} (${entry.fileName})`).join(', ')}</p>
       ) : null}
       {facts.length ? (
         <div className="dhq-intake-review">

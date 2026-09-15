@@ -23,26 +23,56 @@ const usefulCoverageAnalysis = (analysis) => (
 
 const CoverageDataScanner = ({ user, career }) => {
   const inputRef = useRef(null);
+  const previewUrlsRef = useRef(new Set());
   const context = useMemo(() => resolveWeeklyWorkContext(career), [career]);
   const saved = coverageReferenceFor(career, context.publicationId);
   const [busy, setBusy] = useState(false);
   const [facts, setFacts] = useState([]);
   const [sourceCount, setSourceCount] = useState(0);
   const [failedFiles, setFailedFiles] = useState([]);
+  const [expandedFailure, setExpandedFailure] = useState(null);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
+  const releaseFailurePreviews = () => {
+    previewUrlsRef.current.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch { /* browser cleanup only */ }
+    });
+    previewUrlsRef.current.clear();
+  };
+
+  const failureFor = (file, message, sourceIndex, total) => {
+    let previewUrl = '';
+    if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+      previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.add(previewUrl);
+    }
+    return {
+      fileName: file.name,
+      message,
+      sourceNumber: sourceIndex + 1,
+      total,
+      previewUrl,
+    };
+  };
+
   useEffect(() => {
+    releaseFailurePreviews();
     setFacts([]);
     setSourceCount(0);
     setFailedFiles([]);
+    setExpandedFailure(null);
     setMessage('');
   }, [context.publicationId]);
+
+  useEffect(() => () => releaseFailurePreviews(), []);
 
   const scanFiles = async (fileList) => {
     const incoming = [...(fileList || [])];
     const files = incoming.slice(0, MAX_REFERENCE_SCREENSHOTS);
     if (!files.length || !user) return;
+    releaseFailurePreviews();
+    setExpandedFailure(null);
     setBusy(true);
     setFacts([]);
     setSourceCount(files.length);
@@ -91,7 +121,7 @@ const CoverageDataScanner = ({ user, career }) => {
 
         if (!analysis && TRANSIENT_PROVIDER_STATUSES.has(Number(firstError?.status))) {
           const failureMessage = firstError?.message || 'Coverage analysis could not reach the vision provider after automatic retries.';
-          failures.push({ fileName: file.name, message: failureMessage, sourceNumber: index + 1, total: files.length });
+          failures.push(failureFor(file, failureMessage, index, files.length));
           reportSessionLaneResult({
             fileName: file.name,
             lane: 'coverage',
@@ -107,7 +137,8 @@ const CoverageDataScanner = ({ user, career }) => {
           try {
             analysis = await analyzeFile({ rescue: true });
           } catch (error) {
-            failures.push({ fileName: file.name, message: error?.message || firstError?.message || 'Coverage analysis failed.', sourceNumber: index + 1, total: files.length });
+            const failureMessage = error?.message || firstError?.message || 'Coverage analysis failed.';
+            failures.push(failureFor(file, failureMessage, index, files.length));
             reportSessionLaneResult({
               fileName: file.name,
               lane: 'coverage',
@@ -184,9 +215,11 @@ const CoverageDataScanner = ({ user, career }) => {
           _sync: { revision: (Number(remote?._sync?.revision) || 0) + 1, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
         });
       });
+      releaseFailurePreviews();
       setFacts([]);
       setSourceCount(0);
       setFailedFiles([]);
+      setExpandedFailure(null);
       setMessage(`Saved ${selectedFacts.length} Coverage Data fact${selectedFacts.length === 1 ? '' : 's'} for Season ${context.season} · Week ${context.week}. Newsroom and Podcast can use them; your RTG stats and career totals cannot.`);
     } catch (error) {
       setMessageType('error');
@@ -208,7 +241,24 @@ const CoverageDataScanner = ({ user, career }) => {
       {saved && !facts.length ? <p className="dhq-intake-message"><CheckCircle2 size={12} className="mr-1 inline" /> {saved.factCount} coverage fact{saved.factCount === 1 ? '' : 's'} currently saved from {saved.sourceCount} screenshot{saved.sourceCount === 1 ? '' : 's'}.</p> : null}
       {message ? <p className={`dhq-intake-message ${messageType === 'error' ? 'is-error' : ''}`}>{message}</p> : null}
       {failedFiles.length ? (
-        <p className="dhq-intake-message is-error">Still unresolved: {failedFiles.map((entry) => `Coverage screenshot ${entry.sourceNumber} of ${entry.total} (${entry.fileName})`).join(', ')}</p>
+        <div className="dhq-intake-message is-error" style={{ padding: 10 }}>
+          <strong style={{ display: 'block', marginBottom: 8 }}>Still unresolved</strong>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {failedFiles.map((entry) => (
+              <div key={`${entry.fileName}-${entry.sourceNumber}`} style={{ display: 'grid', gridTemplateColumns: '92px minmax(0,1fr)', gap: 10, alignItems: 'center', border: '1px solid rgba(248,113,113,.2)', borderRadius: 10, background: 'rgba(69,10,10,.14)', padding: 8 }}>
+                <button type="button" onClick={() => setExpandedFailure(entry)} disabled={!entry.previewUrl} aria-label={`Open Coverage screenshot ${entry.sourceNumber} preview`} style={{ display: 'grid', placeItems: 'center', width: 92, height: 112, overflow: 'hidden', borderRadius: 8, border: '1px solid rgba(248,113,113,.28)', background: '#020617', padding: 0, cursor: entry.previewUrl ? 'zoom-in' : 'default' }}>
+                  {entry.previewUrl ? <img src={entry.previewUrl} alt={`Coverage screenshot ${entry.sourceNumber} of ${entry.total}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <FileText size={24} />}
+                </button>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: '#fecaca', fontSize: 10, fontWeight: 900 }}>Coverage screenshot {entry.sourceNumber} of {entry.total}</div>
+                  <div style={{ marginTop: 2, color: '#f8fafc', fontSize: 9, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.fileName}</div>
+                  <div style={{ marginTop: 5, color: '#fca5a5', fontSize: 8, lineHeight: 1.4 }}>{entry.message || 'Coverage analysis failed.'}</div>
+                  {entry.previewUrl ? <button type="button" onClick={() => setExpandedFailure(entry)} style={{ marginTop: 7, minHeight: 28, borderRadius: 6, border: '1px solid rgba(248,113,113,.3)', background: 'rgba(127,29,29,.18)', padding: '0 9px', color: '#fecaca', fontSize: 8, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>View screenshot</button> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
       {facts.length ? (
         <div className="dhq-intake-review">
@@ -227,6 +277,20 @@ const CoverageDataScanner = ({ user, career }) => {
             ))}
           </div>
           <div className="dhq-intake-review__footer"><button type="button" disabled={busy || failedFiles.length > 0} onClick={saveFacts}><CheckCircle2 size={13} className="mr-1 inline" /> Save Verified Coverage Data</button></div>
+        </div>
+      ) : null}
+      {expandedFailure?.previewUrl ? (
+        <div role="dialog" aria-modal="true" aria-label={`Coverage screenshot ${expandedFailure.sourceNumber} preview`} onClick={() => setExpandedFailure(null)} style={{ position: 'fixed', inset: 0, zIndex: 12050, display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.88)', padding: 16 }}>
+          <div onClick={(event) => event.stopPropagation()} style={{ width: 'min(94vw, 760px)', maxHeight: '92vh', overflow: 'auto', borderRadius: 12, border: '1px solid rgba(248,113,113,.32)', background: '#020617', padding: 10, boxShadow: '0 24px 80px rgba(0,0,0,.55)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: 'block', color: '#fff', fontSize: 11 }}>Coverage screenshot {expandedFailure.sourceNumber} of {expandedFailure.total}</strong>
+                <span style={{ display: 'block', marginTop: 2, color: '#94a3b8', fontSize: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{expandedFailure.fileName}</span>
+              </div>
+              <button type="button" onClick={() => setExpandedFailure(null)} style={{ flex: '0 0 auto', minHeight: 32, borderRadius: 7, border: '1px solid rgba(148,163,184,.28)', background: 'rgba(15,23,42,.9)', padding: '0 10px', color: '#f8fafc', fontSize: 9, fontWeight: 900 }}>CLOSE</button>
+            </div>
+            <img src={expandedFailure.previewUrl} alt={`Full preview of Coverage screenshot ${expandedFailure.sourceNumber} of ${expandedFailure.total}`} style={{ display: 'block', width: '100%', maxHeight: '78vh', objectFit: 'contain', borderRadius: 8, background: '#000' }} />
+          </div>
         </div>
       ) : null}
     </div>

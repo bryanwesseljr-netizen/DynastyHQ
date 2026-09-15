@@ -1,8 +1,18 @@
 import { resolveTeamMediaProfile } from './teamMediaProfile.js';
 
 const ESPN_TEAMS_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=500';
+const ESPN_LOGO_BASE = 'https://a.espncdn.com/i/teamlogos/ncaa/500';
 const CACHE_KEY = 'dynastyhq-college-team-brands-v1';
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+// Deterministic logo fallbacks for the published-week regression programs. The
+// live ESPN directory remains the broad resolver for the rest of FBS, but these
+// IDs prevent a network/CORS hiccup from degrading a known historical matchup
+// to letter-only ORE/BAY helmets.
+export const STATIC_ESPN_TEAM_IDS = Object.freeze({
+  Oregon: '2483',
+  Baylor: '239',
+});
 
 let brandIndexPromise = null;
 
@@ -43,7 +53,7 @@ const fallbackPalette = (name) => {
 export const fallbackTeamBrand = (name, options = {}) => {
   const palette = fallbackPalette(name);
   return {
-    id: null,
+    id: options.id || null,
     displayName: clean(name) || 'Team',
     abbreviation: initialsFor(name),
     primaryColor: options.primaryColor || palette.primaryColor,
@@ -53,13 +63,22 @@ export const fallbackTeamBrand = (name, options = {}) => {
   };
 };
 
+const staticLogoFor = (school) => {
+  const id = STATIC_ESPN_TEAM_IDS[school];
+  return id ? { id, logo: `${ESPN_LOGO_BASE}/${id}.png` } : null;
+};
+
 export const catalogTeamBrand = (name) => {
   const profile = resolveTeamMediaProfile({ school: name });
   if (profile?.profileSource !== 'fbs-2026') return fallbackTeamBrand(name);
-  return fallbackTeamBrand(profile.school || name, {
+  const school = profile.school || name;
+  const staticBrand = staticLogoFor(school);
+  return fallbackTeamBrand(school, {
+    id: staticBrand?.id || null,
     primaryColor: profile.primary,
     secondaryColor: profile.secondary,
-    source: 'fbs-2026',
+    logo: staticBrand?.logo || '',
+    source: staticBrand ? 'fbs-2026-static-logo' : 'fbs-2026',
   });
 };
 
@@ -83,13 +102,14 @@ const teamAliases = (team = {}) => {
 
 const toBrand = (team = {}) => {
   const catalog = catalogTeamBrand(team.location || team.shortDisplayName || team.displayName);
+  const catalogIsFbs = catalog.source.startsWith('fbs-2026');
   return {
-    id: clean(team.id) || null,
+    id: clean(team.id) || catalog.id || null,
     displayName: clean(team.displayName || team.shortDisplayName || team.location || team.name) || 'Team',
     abbreviation: clean(team.abbreviation) || initialsFor(team.displayName || team.location || team.name),
-    primaryColor: catalog.source === 'fbs-2026' ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
-    secondaryColor: catalog.source === 'fbs-2026' ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
-    logo: team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href || team.logos?.[0]?.href || '',
+    primaryColor: catalogIsFbs ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
+    secondaryColor: catalogIsFbs ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
+    logo: team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href || team.logos?.[0]?.href || catalog.logo || '',
     aliases: teamAliases(team),
     source: 'espn+fbs-2026',
   };
@@ -165,6 +185,10 @@ export const resolveCollegeTeamBrand = async (name) => {
   const query = normalizeTeamName(name);
   const catalog = catalogTeamBrand(name);
   if (!query) return catalog;
+
+  // A deterministic FBS logo is already stronger than a generic fallback. Use it
+  // immediately; the live directory is still used for programs without a pinned ID.
+  if (catalog.logo) return catalog;
 
   try {
     const index = await getIndex();

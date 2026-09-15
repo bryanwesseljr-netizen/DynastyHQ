@@ -19,11 +19,11 @@ test('Session Import shares one paced free-vision queue with quota, provider-sat
 
   assert.match(queue, /const REQUEST_SPACING_MS = 4300/);
   assert.match(queue, /const DEFAULT_QUOTA_COOLDOWN_MS = 65000/);
-  assert.match(queue, /const TRANSIENT_BASE_COOLDOWN_MS = 12000/);
-  assert.match(queue, /const PROVIDER_BUSY_COOLDOWN_MS = 30000/);
+  assert.match(queue, /const TRANSIENT_BASE_COOLDOWN_MS = 10000/);
+  assert.match(queue, /const PROVIDER_BUSY_COOLDOWN_MS = 20000/);
   assert.match(queue, /MAX_QUOTA_RETRIES = 3/);
-  assert.match(queue, /MAX_TRANSIENT_RETRIES = 3/);
-  assert.match(queue, /MAX_PROVIDER_BUSY_RETRIES = 5/);
+  assert.match(queue, /MAX_TRANSIENT_RETRIES = 2/);
+  assert.match(queue, /MAX_PROVIDER_BUSY_RETRIES = 3/);
   assert.match(queue, /TRANSIENT_STATUSES = new Set\(\[502, 503, 504\]\)/);
   assert.match(queue, /response\.status === 429/);
   assert.match(queue, /provider-busy/);

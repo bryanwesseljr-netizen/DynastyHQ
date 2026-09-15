@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildPublishedWeekEditorialPacket, editorialPacketFactRows, packetSupportsNarrativeClaim } from './publishedWeekEditorialPacket.js';
 
-test('published week editorial packet consolidates verified game, coverage, RTG, and official-media facts', () => {
+test('published week editorial packet consolidates the coverage-reference keys DynastyHQ actually saves', () => {
   const publicationId = 'season-2-week-2';
   const state = {
     player: { name: 'Bryan Wessel', college: 'Oregon' },
@@ -21,11 +21,11 @@ test('published week editorial packet consolidates verified game, coverage, RTG,
       },
     }],
     factLedger: [
-      { publicationId, verified: true, key: 'coverage.player.baylor.rusher', label: 'Baylor leading rusher', value: 'Player X — 122 yards, 2 TD', category: 'player_stats' },
-      { publicationId, verified: true, key: 'coverage.scoring.1', label: 'Scoring summary', value: 'Baylor TD, 7-0', category: 'scoring_summary' },
-      { publicationId, verified: true, key: 'rtg.coachTrust', label: 'Coach Trust', value: 1148, category: 'rtg' },
-      { publicationId, verified: true, key: 'coverage.officialMedia.headline', label: 'EA SPORTS Network headline', value: 'Baylor controls Oregon in Eugene', category: 'official_media' },
-      { publicationId, verified: true, key: 'coverage.officialMedia.framing.1', label: 'EA SPORTS Network framing', value: 'Baylor controlled the ground game', category: 'official_media' },
+      { publicationId, verified: true, key: 'program.coverage.player_stats.baylor-leading-rusher.abc', label: 'Player Stats: Baylor leading rusher', value: 'Player X — 122 yards, 2 TD', source: 'screenshot-reference', referenceOnly: true },
+      { publicationId, verified: true, key: 'program.coverage.other.scoring-summary.def', label: 'Other: Scoring Summary', value: 'Baylor touchdown drive made it 7-0', source: 'screenshot-reference', referenceOnly: true },
+      { publicationId, verified: true, key: 'rtg.coachTrust', label: 'Coach Trust', value: 1148 },
+      { publicationId, verified: true, key: 'program.coverage.official_media.ea-network-headline.ghi', label: 'Official Media: EA SPORTS Network headline', value: 'Baylor controls Oregon in Eugene', source: 'screenshot-reference', referenceOnly: true },
+      { publicationId, verified: true, key: 'program.coverage.official_media.ea-network-framing.jkl', label: 'Official Media: EA SPORTS Network framing', value: 'Baylor controlled the ground game', source: 'screenshot-reference', referenceOnly: true },
     ],
   };
 
@@ -36,6 +36,7 @@ test('published week editorial packet consolidates verified game, coverage, RTG,
   assert.equal(packet.trackedPlayer.passYds, 184);
   assert.equal(packet.game.comparison.rushingYards.team, 49);
   assert.equal(packet.game.comparison.rushingYards.opponent, 194);
+  assert.equal(packet.coverageFacts.length, 4);
   assert.equal(packet.playerStats.length, 1);
   assert.equal(packet.scoringSummary.length, 1);
   assert.equal(packet.rtgFacts.length, 1);
@@ -46,6 +47,7 @@ test('published week editorial packet consolidates verified game, coverage, RTG,
   const rows = editorialPacketFactRows(packet);
   assert.ok(rows.some((row) => row.key === 'packet.game.score' && row.value === '21-45'));
   assert.ok(rows.some((row) => row.key.startsWith('packet.playerStats.')));
+  assert.ok(rows.some((row) => row.key.startsWith('packet.scoring.')));
   assert.ok(rows.some((row) => row.key === 'packet.officialMedia.headline'));
 });
 

@@ -1,10 +1,10 @@
 const REQUEST_SPACING_MS = 4300;
 const DEFAULT_QUOTA_COOLDOWN_MS = 65000;
-const TRANSIENT_BASE_COOLDOWN_MS = 12000;
-const PROVIDER_BUSY_COOLDOWN_MS = 30000;
+const TRANSIENT_BASE_COOLDOWN_MS = 10000;
+const PROVIDER_BUSY_COOLDOWN_MS = 20000;
 const MAX_QUOTA_RETRIES = 3;
-const MAX_TRANSIENT_RETRIES = 3;
-const MAX_PROVIDER_BUSY_RETRIES = 5;
+const MAX_TRANSIENT_RETRIES = 2;
+const MAX_PROVIDER_BUSY_RETRIES = 3;
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
 let queueTail = Promise.resolve();
@@ -32,12 +32,12 @@ const isProviderBusy = (response, body = {}) => (
 );
 
 const transientCooldownMs = (attempt) => Math.min(
-  45000,
+  30000,
   TRANSIENT_BASE_COOLDOWN_MS * Math.max(1, Number(attempt) || 1),
 );
 
 const providerBusyCooldownMs = (attempt) => Math.min(
-  90000,
+  60000,
   Math.round(PROVIDER_BUSY_COOLDOWN_MS * (1.5 ** Math.max(0, (Number(attempt) || 1) - 1))),
 );
 
@@ -85,19 +85,23 @@ const runPost = async ({ url, idToken, body }) => {
       continue;
     }
 
-    if (isProviderBusy(response, payload) && providerBusyRetries < MAX_PROVIDER_BUSY_RETRIES) {
-      providerBusyRetries += 1;
-      const cooldownMs = providerBusyCooldownMs(providerBusyRetries);
-      nextRequestAt = Math.max(nextRequestAt, Date.now() + cooldownMs);
-      window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
-        detail: {
-          waitMs: cooldownMs,
-          reason: 'provider-busy',
-          attempt: providerBusyRetries,
-          status: response.status,
-        },
-      }));
-      continue;
+    const providerBusy = isProviderBusy(response, payload);
+    if (providerBusy) {
+      if (providerBusyRetries < MAX_PROVIDER_BUSY_RETRIES) {
+        providerBusyRetries += 1;
+        const cooldownMs = providerBusyCooldownMs(providerBusyRetries);
+        nextRequestAt = Math.max(nextRequestAt, Date.now() + cooldownMs);
+        window.dispatchEvent(new CustomEvent('dynastyhq:free-vision-wait', {
+          detail: {
+            waitMs: cooldownMs,
+            reason: 'provider-busy',
+            attempt: providerBusyRetries,
+            status: response.status,
+          },
+        }));
+        continue;
+      }
+      return { response, body: payload };
     }
 
     if (TRANSIENT_STATUSES.has(response.status) && transientRetries < MAX_TRANSIENT_RETRIES) {

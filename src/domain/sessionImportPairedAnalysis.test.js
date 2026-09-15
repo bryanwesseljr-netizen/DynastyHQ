@@ -34,8 +34,9 @@ test('Session Import pairs RTG screenshots but analyzes Coverage screenshots ind
   assert.match(coveragePortal, /compressImage\(file, rescue \? 2600 : 2200, rescue \? 0\.94 : 0\.9\)/);
   assert.match(coveragePortal, /Coverage cannot be saved until every screenshot passes/);
 
-  // Keep the paired client/API capability available for future experimentation, but the
-  // active Coverage intake path intentionally does not use it after reliability testing.
+  // Reliability rule: RTG may stay paired after passing the real-session test, while
+  // Coverage deliberately keeps one screenshot per analysis and retains paired support only
+  // as an inactive capability for future experiments.
   assert.match(coverageClient, /scanKind: 'coverage_batch'/);
   assert.match(api, /cfb27_rtg_status_batch_analysis/);
   assert.match(api, /cfb_coverage_reference_batch_analysis/);

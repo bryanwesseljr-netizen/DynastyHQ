@@ -69,7 +69,12 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const editorialPacket = buildPublishedWeekEditorialPacket(state, publicationId);
   const packetFacts = editorialPacketFactRows(editorialPacket);
   const factsById = new Map();
-  [...base.facts, ...packetFacts].forEach((fact) => factsById.set(fact.id, fact));
+  // The API keeps at most 120 facts. Put the canonical published-week packet first
+  // so rich game/player/scoring/official-media evidence can never be truncated by
+  // older contextual facts.
+  [...packetFacts, ...base.facts].forEach((fact) => {
+    if (!factsById.has(fact.id)) factsById.set(fact.id, fact);
+  });
   const facts = [...factsById.values()];
   const packetInstruction = packetInstructionFor(editorialPacket);
 
@@ -78,8 +83,8 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     purpose: `${clean(brief.purpose, 1800)} ${packetInstruction}`.trim(),
     angle: `${clean(brief.angle, 1800)} ${packetInstruction}`.trim(),
     focusFactIds: unique([
-      ...(brief.focusFactIds || []),
       ...packetIdsForBrief(packetFacts, brief),
+      ...(brief.focusFactIds || []),
     ]),
   }));
 

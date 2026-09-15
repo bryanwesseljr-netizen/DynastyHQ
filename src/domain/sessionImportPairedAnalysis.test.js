@@ -33,6 +33,8 @@ test('Session Import pairs RTG screenshots but analyzes Coverage screenshots ind
   assert.match(coveragePortal, /Retrying Coverage screenshot/);
   assert.match(coveragePortal, /compressImage\(file, rescue \? 2600 : 2200, rescue \? 0\.94 : 0\.9\)/);
   assert.match(coveragePortal, /Coverage cannot be saved until every screenshot passes/);
+  assert.match(coveragePortal, /sourceNumber: index \+ 1, total: files\.length/);
+  assert.match(coveragePortal, /Coverage screenshot \$\{entry\.sourceNumber\} of \$\{entry\.total\}/);
 
   // Reliability rule: RTG may stay paired after passing the real-session test, while
   // Coverage deliberately keeps one screenshot per analysis and retains paired support only

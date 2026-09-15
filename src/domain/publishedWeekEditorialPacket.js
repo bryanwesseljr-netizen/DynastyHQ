@@ -10,10 +10,20 @@ const publicationMatches = (entry, publicationId) => (
 );
 
 const normalizeLabel = (value) => clean(value, 220).replace(/\s+/g, ' ');
+const normalizeCategory = (value) => clean(value, 80).toLowerCase().replace(/[\s-]+/g, '_');
+
+const coverageCategoryFrom = (fact = {}) => {
+  const key = clean(fact.key, 180).toLowerCase();
+  const keyMatch = key.match(/^program\.coverage\.([^.]+)\./);
+  if (keyMatch?.[1]) return normalizeCategory(keyMatch[1]);
+  if (fact.category) return normalizeCategory(fact.category);
+  const labelMatch = normalizeLabel(fact.label).match(/^([^:]+):/);
+  return normalizeCategory(labelMatch?.[1]);
+};
 
 const factValue = (fact) => {
   if (typeof fact?.value === 'number' || typeof fact?.value === 'boolean') return fact.value;
-  return clean(fact?.value, 1200);
+  return clean(fact?.value, 1800);
 };
 
 const currentFactsFor = (state, publicationId) => (state.factLedger || [])
@@ -24,8 +34,9 @@ const currentFactsFor = (state, publicationId) => (state.factLedger || [])
     label: normalizeLabel(fact.label || fact.key),
     value: factValue(fact),
     sourceType: clean(fact.sourceType || fact.source || fact.origin, 80),
-    category: clean(fact.category, 80),
+    category: coverageCategoryFrom(fact),
     verified: true,
+    referenceOnly: fact.referenceOnly === true,
   }));
 
 const firstFact = (facts, keys = []) => {
@@ -54,25 +65,30 @@ const scoreFor = (game = {}, side) => {
   return finite(game.awayScore);
 };
 
+const coverageFactsFor = (facts) => matchingFacts(facts, (fact) => fact.key.startsWith('program.coverage.'));
+
 const playerStatFacts = (facts) => matchingFacts(facts, (fact) => (
-  fact.key.startsWith('coverage.player.')
+  fact.category === 'player_stats'
+  || fact.key.startsWith('coverage.player.')
   || fact.key.startsWith('players.')
   || fact.key.startsWith('playerStats.')
-  || /player stat|passing|rushing|receiving|tackle|sack|interception/i.test(`${fact.category} ${fact.label}`)
+  || /player stats?|passing leader|rushing leader|receiving leader|tackles?|sacks?|interceptions?/i.test(`${fact.label} ${fact.value}`)
 ));
 
-const scoringFacts = (facts) => matchingFacts(facts, (fact) => (
-  fact.key.startsWith('coverage.scoring')
-  || fact.key.startsWith('scoring.')
-  || fact.category === 'scoring_summary'
-  || /scoring (summary|drive|play)|touchdown drive|field goal drive/i.test(fact.label)
-));
+const scoringFacts = (facts) => matchingFacts(facts, (fact) => {
+  const haystack = `${fact.key} ${fact.category} ${fact.label} ${fact.value}`;
+  return fact.key.startsWith('coverage.scoring')
+    || fact.key.startsWith('scoring.')
+    || fact.category === 'scoring_summary'
+    || /scoring (summary|drive|play)|scoring sequence|touchdown drive|field goal drive|quarter scoring|scoring recap/i.test(haystack);
+});
 
 const officialMediaFacts = (facts) => matchingFacts(facts, (fact) => (
-  fact.key.startsWith('coverage.officialMedia')
+  fact.category === 'official_media'
+  || fact.key.startsWith('program.coverage.official_media.')
+  || fact.key.startsWith('coverage.officialMedia')
   || fact.key.startsWith('official_media.')
-  || fact.category === 'official_media'
-  || /EA SPORTS Network/i.test(`${fact.label} ${fact.sourceType}`)
+  || /Official Media:|EA SPORTS Network/i.test(`${fact.label} ${fact.sourceType} ${fact.value}`)
 ));
 
 const rtgFacts = (facts) => matchingFacts(facts, (fact) => (
@@ -80,22 +96,23 @@ const rtgFacts = (facts) => matchingFacts(facts, (fact) => (
 ));
 
 const milestoneFacts = (facts) => matchingFacts(facts, (fact) => (
-  fact.key.startsWith('milestone.') || fact.key.startsWith('award.')
+  fact.key.startsWith('milestone.') || fact.key.startsWith('award.') || ['milestone', 'awards'].includes(fact.category)
 ));
 
 const meaningfulScoringSequence = (facts = []) => facts
-  .map((fact) => ({ label: fact.label, value: fact.value, key: fact.key }))
-  .filter((entry) => clean(entry.value, 1200) || clean(entry.label, 220));
+  .map((fact) => ({ label: fact.label, value: fact.value, key: fact.key, category: fact.category }))
+  .filter((entry) => clean(entry.value, 1800) || clean(entry.label, 220));
 
 const mediaHeadline = (facts) => (
   firstFact(facts, ['coverage.officialMedia.headline', 'official_media.headline'])
-  || facts.find((fact) => /headline/i.test(fact.label))
+  || facts.find((fact) => /headline|title|lede/i.test(`${fact.key} ${fact.label}`))
+  || facts[0]
 )?.value || '';
 
 const mediaFraming = (facts) => facts
-  .filter((fact) => /framing|angle|point|summary|lede|takeaway/i.test(`${fact.key} ${fact.label}`))
-  .slice(0, 6)
-  .map((fact) => ({ label: fact.label, value: fact.value }));
+  .filter((fact) => !/headline|title/i.test(`${fact.key} ${fact.label}`))
+  .slice(0, 8)
+  .map((fact) => ({ label: fact.label, value: fact.value, key: fact.key }));
 
 const teamComparison = (game = {}) => ({
   totalYards: { team: finite(game.teamTotalYards), opponent: finite(game.opponentTotalYards) },
@@ -121,6 +138,7 @@ export const buildPublishedWeekEditorialPacket = (state = {}, publicationId = ''
   if (!publicationId) throw new Error('A publication id is required to build the editorial packet.');
   const game = canonicalGame(state, publicationId) || {};
   const facts = currentFactsFor(state, publicationId);
+  const coverageFacts = coverageFactsFor(facts);
   const playerFacts = playerStatFacts(facts);
   const scoreFacts = scoringFacts(facts);
   const mediaFacts = officialMediaFacts(facts);
@@ -132,6 +150,7 @@ export const buildPublishedWeekEditorialPacket = (state = {}, publicationId = ''
   const teamScore = scoreFor(game, 'team');
   const opponentScore = scoreFor(game, 'opponent');
   const score = teamScore !== null && opponentScore !== null ? `${teamScore}-${opponentScore}` : '';
+  const comparison = teamComparison(game);
 
   return {
     version: 1,
@@ -150,22 +169,24 @@ export const buildPublishedWeekEditorialPacket = (state = {}, publicationId = ''
       opponent,
       result,
       score,
-      comparison: teamComparison(game),
+      comparison,
     },
     trackedPlayer: trackedPlayerLine(state, game),
+    coverageFacts,
     playerStats: playerFacts,
     scoringSummary: meaningfulScoringSequence(scoreFacts),
     rtgFacts: rtg,
     milestones,
     officialMedia: {
       captured: mediaFacts.length > 0,
-      headline: clean(mediaHeadline(mediaFacts), 280),
+      headline: clean(mediaHeadline(mediaFacts), 500),
       framing: mediaFraming(mediaFacts),
       facts: mediaFacts,
     },
     verifiedFacts: facts,
     evidence: {
-      hasTeamComparison: Object.values(teamComparison(game)).some((pair) => pair.team !== null && pair.opponent !== null && pair.team !== '' && pair.opponent !== ''),
+      hasTeamComparison: Object.values(comparison).some((pair) => pair.team !== null && pair.opponent !== null && pair.team !== '' && pair.opponent !== ''),
+      hasCoverage: coverageFacts.length > 0,
       hasPlayerStats: playerFacts.length > 0,
       hasScoringSummary: scoreFacts.length > 0,
       hasRtg: rtg.length > 0,
@@ -228,11 +249,12 @@ export const editorialPacketFactRows = (packet = {}) => {
     push(`packet.teamComparison.${key}`, `${key} team vs opponent`, `${pair.team}-${pair.opponent}`, 'primary');
   });
 
-  packet.playerStats?.slice(0, 24).forEach((fact, index) => push(`packet.playerStats.${index}`, fact.label || `Player stat ${index + 1}`, fact.value, 'primary'));
-  packet.scoringSummary?.slice(0, 16).forEach((fact, index) => push(`packet.scoring.${index}`, fact.label || `Scoring event ${index + 1}`, fact.value, 'primary'));
+  packet.playerStats?.slice(0, 30).forEach((fact, index) => push(`packet.playerStats.${index}`, fact.label || `Player stat ${index + 1}`, fact.value, 'primary'));
+  packet.scoringSummary?.slice(0, 20).forEach((fact, index) => push(`packet.scoring.${index}`, fact.label || `Scoring event ${index + 1}`, fact.value, 'primary'));
+  packet.coverageFacts?.filter((fact) => !packet.playerStats?.some((playerFact) => playerFact.id === fact.id) && !packet.officialMedia?.facts?.some((mediaFact) => mediaFact.id === fact.id)).slice(0, 24).forEach((fact, index) => push(`packet.coverage.${index}`, fact.label || `Coverage fact ${index + 1}`, fact.value, 'context'));
   packet.rtgFacts?.slice(0, 16).forEach((fact, index) => push(`packet.rtg.${index}`, fact.label || `RTG fact ${index + 1}`, fact.value, 'context'));
   packet.milestones?.slice(0, 12).forEach((fact, index) => push(`packet.milestone.${index}`, fact.label || `Milestone ${index + 1}`, fact.value, 'primary'));
   push('packet.officialMedia.headline', 'EA SPORTS Network headline', packet.officialMedia?.headline, 'context');
-  packet.officialMedia?.framing?.slice(0, 6).forEach((fact, index) => push(`packet.officialMedia.framing.${index}`, fact.label || `Official media framing ${index + 1}`, fact.value, 'context'));
+  packet.officialMedia?.framing?.slice(0, 8).forEach((fact, index) => push(`packet.officialMedia.framing.${index}`, fact.label || `Official media framing ${index + 1}`, fact.value, 'context'));
   return rows;
 };

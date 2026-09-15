@@ -8,6 +8,7 @@ import {
   editorialPacketFactRows,
 } from './publishedWeekEditorialPacket.js';
 import { assertSupportedNarrativeClaims } from './editorialPacketStoryPolicy.js';
+import { resolveIssueTeamMediaProfile } from './teamMediaProfile.js';
 
 export { applyGeneratedNewsroomEdition };
 
@@ -62,6 +63,20 @@ const packetInstructionFor = (packet = {}) => {
   ].filter(Boolean).join(' ');
 };
 
+const issueFor = (state, publicationId) => (state.newsroomIssues || []).find((issue) => (
+  issue?.publicationId === publicationId || issue?.id === publicationId || issue?.weekKey === publicationId
+));
+
+const truthfulOutletName = (brief, mediaProfile = {}) => {
+  const outletId = clean(brief.outletId, 80).toLowerCase();
+  const audience = clean(brief.audience, 40).toLowerCase();
+  if (outletId === 'college-local' || audience === 'local') return clean(mediaProfile.localOutletName, 120) || brief.outletName;
+  if (outletId === 'college-regional' || audience === 'regional') return clean(mediaProfile.regionalOutletName, 120) || brief.outletName;
+  if (outletId === 'national' || audience === 'national' || audience === 'national-lead') return 'ESPN';
+  if (outletId === 'filmroom' || audience === 'analysis') return 'DynastyHQ Film Room';
+  return brief.outletName;
+};
+
 export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const base = buildBaseNewsroomGenerationPayload(state, publicationId);
   if (base.coverageStage !== 'college-player') return base;
@@ -77,9 +92,12 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   });
   const facts = [...factsById.values()];
   const packetInstruction = packetInstructionFor(editorialPacket);
+  const issue = issueFor(state, publicationId) || {};
+  const mediaProfile = resolveIssueTeamMediaProfile(issue, state);
 
   const articleBriefs = base.articleBriefs.map((brief) => ({
     ...brief,
+    outletName: truthfulOutletName(brief, mediaProfile),
     purpose: `${clean(brief.purpose, 1800)} ${packetInstruction}`.trim(),
     angle: `${clean(brief.angle, 1800)} ${packetInstruction}`.trim(),
     focusFactIds: unique([
@@ -100,6 +118,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       'Do not imply game flow that the scoring-summary evidence cannot support.',
       'Treat EA SPORTS Network as official in-game media framing, not as statistical authority.',
       'Different outlets must have genuinely different audience, angle, and purpose rather than rewriting the same five facts.',
+      'A regional assignment must render as a regional outlet; never dress a regional story as ESPN unless the national-attention gate actually cleared.',
     ],
   };
 };

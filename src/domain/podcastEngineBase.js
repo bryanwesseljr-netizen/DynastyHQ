@@ -1,0 +1,371 @@
+import {
+  PODCAST_HOSTS,
+  PODCAST_PUBLIC_HOSTS,
+  PODCAST_PUBLIC_HOSTS_BY_ID,
+} from './podcastShow.js';
+import { buildProgramCoverageContext } from './programCoverage.js';
+import { resolveCurrentProgramSchool, resolveIssueTeamMediaProfile } from './teamMediaProfile.js';
+
+const WORDS_PER_MINUTE = 145;
+const MIN_SCRIPT_WORDS = 400;
+const MAX_SCRIPT_WORDS = 950;
+
+const text = (value, max = 5000) => String(value || '').trim().slice(0, max);
+const wordCount = (value) => text(value).split(/\s+/).filter(Boolean).length;
+
+const coverageStageFor = (state = {}, issue = {}) => {
+  const phase = text(issue.careerPhase || state.careerPhase, 40);
+  if (['OC', 'HC'].includes(phase)) return 'coach';
+  if (['high-school-evaluation', 'recruiting'].includes(text(issue.editionType, 80))) return 'high-school';
+  if (state.player?.isCommitted || state.player?.college) return 'college-player';
+  return 'high-school';
+};
+
+const isHighSchoolLegacyFact = (key) => (
+  key.startsWith('highSchool.')
+  || key.startsWith('recruiting.profile.')
+  || key === 'profile.player.stars'
+  || key === 'profile.player.nationalQbRank'
+);
+
+const isMechanicalRtgFact = (key) => new Set([
+  'profile.player.overall',
+  'rtg.coachTrust', 'rtg.trustToNext', 'rtg.skillPoints', 'rtg.weeklyPoints', 'rtg.energy',
+  'rtg.gpa', 'rtg.examWeeks', 'rtg.academicsStanding', 'rtg.academicsAbility',
+  'rtg.academicsCoachHappinessBonus', 'rtg.leadershipLevel', 'rtg.leadershipAbility',
+  'rtg.leadershipCoachHappinessBonus', 'rtg.leadershipTeamXpMultiplier', 'rtg.leadershipComposureBonus',
+  'rtg.healthLevel', 'rtg.injuryRisk', 'rtg.healthWearImpact', 'rtg.fitnessLevel',
+  'rtg.fitnessCoachHappinessBonus', 'rtg.fitnessTeamXpMultiplier', 'rtg.fitnessComposureBonus',
+  'rtg.fitnessWeightBonus', 'rtg.fitnessWearImpact', 'rtg.followers', 'rtg.brandTier',
+  'rtg.nextFanMilestone', 'rtg.brandEngagement', 'rtg.dealTier', 'rtg.brandAbility',
+  'rtg.nilWeeklyCost', 'rtg.openNilSlots', 'rtg.valuation', 'rtg.sponsorships',
+  'rtg.coachHappiness', 'rtg.draftProjection',
+]).has(key) || key.startsWith('rtg.wear.');
+
+const podcastUseFor = (fact, coverageStage) => {
+  const key = text(fact?.key, 180);
+  if (!key) return 'exclude';
+  if (coverageStage === 'college-player' && isHighSchoolLegacyFact(key)) return 'exclude';
+  if (coverageStage === 'college-player' && key.startsWith('recruiting.')) return 'exclude';
+  if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'exclude';
+  if (coverageStage === 'coach' && (key.startsWith('rtg.') || key.startsWith('highSchool.') || key.startsWith('recruiting.profile.'))) return 'exclude';
+  if (key === 'player.coverageRelevance' || key === 'program.coverageTier') return 'background-only';
+  if (key.startsWith('program.') || key.startsWith('player.')) return fact.editorialUse || 'context';
+  if (key.startsWith('game.')) return 'primary';
+  if (key.startsWith('milestone.') || key.startsWith('award.') || key.startsWith('transfer.') || key.startsWith('portal.')) return 'primary';
+  if (key === 'weekly.note' && text(fact.value, 800)) return 'primary';
+  if (key === 'rtg.rank') return 'primary';
+  if (isMechanicalRtgFact(key)) return coverageStage === 'high-school' ? 'context' : 'exclude';
+  if (key.startsWith('highSchool.')) return coverageStage === 'high-school' ? 'primary' : 'exclude';
+  if (key.startsWith('recruiting.')) return coverageStage === 'high-school' ? 'primary' : 'context';
+  if (key.startsWith('coach.')) {
+    return ['coach.portalDepartures', 'coach.openScholarships', 'coach.classCommits', 'coach.portalAdditions'].includes(key)
+      ? 'primary'
+      : 'context';
+  }
+  if (key.startsWith('roster.')) return 'context';
+  if (key.startsWith('profile.player.')) return 'context';
+  if (key.startsWith('weekly.')) return 'context';
+  return 'context';
+};
+
+const factsForIssue = (state, issue, coverageStage, coverageContext = null) => {
+  const publicationId = issue.publicationId || issue.id;
+  const factsByKey = new Map();
+  const omitPlayer = coverageStage === 'college-player' && coverageContext?.coverageDecision?.playerMentionPolicy === 'omit';
+  const accept = (fact) => {
+    const key = text(fact?.key, 180);
+    if (omitPlayer && (key === 'rtg.rank' || key.startsWith('player.') || key.startsWith('profile.player.') || key.startsWith('rtg.'))) return false;
+    return true;
+  };
+
+  (state.factLedger || []).forEach((fact) => {
+    if (!fact?.verified || fact.publicationId !== publicationId || !accept(fact)) return;
+    const editorialUse = podcastUseFor(fact, coverageStage);
+    if (editorialUse === 'exclude') return;
+    factsByKey.set(fact.key, {
+      key: fact.key,
+      label: text(fact.label, 160),
+      value: fact.value,
+      editorialUse,
+    });
+  });
+  if (coverageStage === 'college-player') {
+    (coverageContext?.facts || []).forEach((fact) => {
+      if (!accept(fact)) return;
+      const editorialUse = podcastUseFor(fact, coverageStage);
+      if (editorialUse === 'exclude') return;
+      factsByKey.set(fact.key, {
+        key: fact.key,
+        label: text(fact.label, 160),
+        value: fact.value,
+        editorialUse,
+      });
+    });
+  }
+  return [...factsByKey.values()];
+};
+
+const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) => {
+  const playerName = text(state.player?.name, 120) || 'the quarterback';
+  // A saved issue is authoritative for historical episodes. Otherwise use the
+  // same current-program resolver that drives Newsroom, Podcast branding and accents.
+  const school = text(
+    issue?.outletProfile?.school
+      || resolveCurrentProgramSchool(state)
+      || state.player?.college
+      || state.player?.school,
+    160,
+  ) || 'the program';
+  const label = text(issue.label || issue.weekLabel, 160) || `Week ${Number(issue.week ?? 1)}`;
+  const weekType = text(issue.weekType, 60).toLowerCase();
+  const relevance = coverageContext?.relevance;
+  const decision = coverageContext?.coverageDecision;
+  const program = coverageContext?.program;
+
+  if (coverageStage === 'college-player' && (weekType.includes('bye') || !program?.currentGame)) {
+    const activeThreads = (decision?.storylineThreads || [])
+      .filter((thread) => thread.editorialUse !== 'background-only')
+      .map((thread) => thread.label)
+      .join(', ');
+    return {
+      title: `${school} ${label}: program update`,
+      summary: activeThreads
+        ? `Build the show around the real football development this week: ${activeThreads}. Keep the conversation program-first unless a player event explicitly earned attention.`
+        : `Use only the meaningful ${school} football development that made this week eligible for coverage. Do not turn the bye or unchanged player status into the subject.`,
+    };
+  }
+
+  if (coverageStage === 'college-player') {
+    const relevanceInstruction = relevance?.level === 'primary'
+      ? `${playerName} can be central because his verified role and game involvement make him part of the football story.`
+      : relevance?.level === 'high'
+        ? `${playerName} can receive a meaningful secondary segment, but the game and program remain the frame.`
+        : relevance?.level === 'developing'
+          ? `${playerName} can appear only for the specific role or opportunity event that changed this week.`
+          : 'Do not mention the tracked player this week; cover the game and program instead.';
+    return {
+      title: `${school} Week ${Number(issue.week ?? 0)}: the game and what it means`,
+      summary: `Discuss the actual ${school} game first: result, opponent, score, meaningful supplied team/player statistics, the football consequence of the result, and what changed. Use record or streak only when it adds context. ${relevanceInstruction}`,
+    };
+  }
+
+  if (coverageStage === 'coach') {
+    return {
+      title: text(issue.podcastBrief?.title, 240) || `${school} ${label}: program outlook`,
+      summary: 'Discuss the real coaching and program story: result, team performance, roster decisions, recruiting wins/losses, portal movement, depth concerns, postseason stakes, and career pressure supported by the packet. Keep management counters and game currencies out of the conversation.',
+    };
+  }
+
+  return {
+    title: text(issue.podcastBrief?.title, 240),
+    summary: text(issue.podcastBrief?.summary, 1200),
+  };
+};
+
+export { PODCAST_HOSTS };
+
+export const findPodcastIssue = (state, publicationId) => (
+  (state.newsroomIssues || []).find((issue) => issue.publicationId === publicationId || issue.id === publicationId) || null
+);
+
+export const findPodcastEpisode = (state, publicationId) => (
+  (state.podcastEpisodes || []).find((episode) => episode.publicationId === publicationId) || null
+);
+
+const currentGameForIssue = (state = {}, issue = {}) => {
+  const publicationId = issue?.publicationId || issue?.id || '';
+  const weekly = (state.weeklyUpdates || []).find((entry) => (
+    entry?.publicationId === publicationId
+    || entry?.id === publicationId
+    || entry?.weekKey === publicationId
+  ));
+  if (weekly?.game) return weekly.game;
+  if (issue?.game) return issue.game;
+  return (state.gameLogs || []).find((entry) => (
+    Number(entry?.season || 1) === Number(issue?.season || 1)
+    && Number(entry?.week ?? 0) === Number(issue?.week ?? 0)
+  )) || null;
+};
+
+export const buildPodcastGenerationPayload = (state, publicationId) => {
+  const issue = findPodcastIssue(state, publicationId);
+  if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
+  const coverageStage = coverageStageFor(state, issue);
+  const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
+  if (coverageStage === 'college-player' && !coverageContext?.coverageDecision?.podcastEligible) {
+    const error = new Error('No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.');
+    error.code = 'NO_NEWSWORTHY_PODCAST';
+    throw error;
+  }
+  const facts = factsForIssue(state, issue, coverageStage, coverageContext);
+  const usableFacts = facts.filter((fact) => fact.editorialUse !== 'background-only');
+  if (!usableFacts.length) throw new Error('The selected issue has no football facts available for a podcast.');
+  const brief = editorialBriefFor(state, issue, coverageStage, coverageContext);
+  const mediaProfile = resolveIssueTeamMediaProfile(issue, state);
+  const currentGame = coverageContext?.program?.currentGame || currentGameForIssue(state, issue);
+  const weekType = text(issue.weekType, 60).toLowerCase();
+  const opponent = text(
+    currentGame?.opponent
+      || issue?.opponent
+      || issue?.weeklySummary?.opponent
+      || issue?.summary?.opponent
+      || issue?.podcastBrief?.opponent,
+    160,
+  );
+
+  return {
+    publicationId: issue.publicationId || issue.id,
+    season: Number(issue.season) || 1,
+    week: Math.max(0, Number(issue.week) || 0),
+    label: text(issue.label || issue.weekLabel, 160),
+    weekType,
+    weekPhase: text(issue.weekPhase, 80).toLowerCase(),
+    careerPhase: text(issue.careerPhase, 40),
+    coverageStage,
+    coverageDecision: coverageContext?.coverageDecision || null,
+    storylineThreads: coverageContext?.storylineThreads || [],
+    coveragePlan: coverageContext ? {
+      program: {
+        ...coverageContext.program,
+        record: coverageContext.program.recordEstablished ? coverageContext.program.record : '',
+      },
+      playerRelevance: coverageContext.relevance,
+      playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
+      editorialPrinciple: 'The team/game is the default subject. Use the shared coverage tier and active storyline threads. Do not repeat an established storyline unless something changed.',
+    } : null,
+    show: {
+      name: mediaProfile.podcastName,
+      subtitle: mediaProfile.podcastSubtitle,
+      school: mediaProfile.school,
+      nickname: mediaProfile.nickname,
+      city: mediaProfile.city,
+    },
+    episodeContext: {
+      school: mediaProfile.school,
+      nickname: mediaProfile.nickname,
+      opponent,
+      result: text(currentGame?.result, 20),
+      didPlay: weekType.includes('bye') ? false : currentGame?.didPlay !== false,
+    },
+    brief,
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
+    facts,
+  };
+};
+
+const normalizeCitations = (keys, allowedKeys) => (
+  [...new Set(Array.isArray(keys) ? keys : [])]
+    .filter((key) => allowedKeys.has(key))
+);
+
+const normalizeDelivery = (value) => {
+  const normalized = text(value, 40).toLowerCase();
+  return ['neutral', 'curious', 'reflective', 'skeptical', 'emphatic', 'amused', 'quick-agreement', 'analytical'].includes(normalized)
+    ? normalized
+    : 'neutral';
+};
+
+const isShowBookend = (segment = {}) => /^show-(?:open|close)-/i.test(text(segment.id, 100));
+
+export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) => {
+  const allowedKeys = new Set(payload.facts.map((fact) => fact.key));
+  const hostIds = new Set(PODCAST_HOSTS.map((host) => host.id));
+  const chapters = (generated?.chapters || []).slice(0, 8).map((chapter, index) => ({
+    id: text(chapter.id, 80) || `chapter-${index + 1}`,
+    title: text(chapter.title, 120) || `Chapter ${index + 1}`,
+    summary: text(chapter.summary, 400),
+    segmentStart: Math.max(0, Number(chapter.segmentStart) || 0),
+  }));
+  const chapterIds = new Set(chapters.map((chapter) => chapter.id));
+  const segments = (generated?.segments || []).slice(0, 20).map((segment, index) => ({
+    id: text(segment.id, 80) || `segment-${index + 1}`,
+    hostId: hostIds.has(segment.hostId) ? segment.hostId : PODCAST_HOSTS[index % PODCAST_HOSTS.length].id,
+    chapterId: chapterIds.has(segment.chapterId) ? segment.chapterId : (chapters[0]?.id || ''),
+    text: text(segment.text, 1800),
+    deliveryStyle: normalizeDelivery(segment.deliveryStyle),
+    citedFactKeys: normalizeCitations(segment.citedFactKeys, allowedKeys),
+  })).filter((segment) => segment.text);
+  const coreSegments = segments.filter((segment) => !isShowBookend(segment));
+
+  if (coreSegments.length < 10) throw new Error('The podcast script was incomplete. Please try generating it again.');
+  if (new Set(coreSegments.map((segment) => segment.hostId)).size < 2) {
+    throw new Error('The podcast script did not include both hosts. Please try generating it again.');
+  }
+  const coreWordCount = coreSegments.reduce((total, segment) => total + wordCount(segment.text), 0);
+  if (coreWordCount < MIN_SCRIPT_WORDS || coreWordCount > MAX_SCRIPT_WORDS) {
+    throw new Error('The generated episode fell outside the supported script range. Please try again.');
+  }
+
+  const citedFactKeys = [...new Set(coreSegments.flatMap((segment) => segment.citedFactKeys))];
+  if (!citedFactKeys.length) throw new Error('The generated episode did not cite its verified source facts.');
+  const transcriptWordCount = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
+
+  return {
+    id: `podcast-${payload.publicationId}`,
+    publicationId: payload.publicationId,
+    season: payload.season,
+    week: payload.week,
+    careerPhase: payload.careerPhase,
+    coverageStage: payload.coverageStage,
+    coverageDecision: payload.coverageDecision || null,
+    storylineKeys: payload.coverageDecision?.storylineKeys || [],
+    storylineThreads: payload.storylineThreads || [],
+    showName: text(generated?.showName || payload?.show?.name, 160),
+    showSchool: text(generated?.showSchool || payload?.show?.school, 160),
+    showNickname: text(generated?.showNickname || payload?.show?.nickname, 120),
+    opponent: text(generated?.opponent || payload?.episodeContext?.opponent, 160),
+    title: text(generated.title, 240) || payload.brief.title,
+    summary: text(generated.summary, 700) || payload.brief.summary,
+    generatedAt: new Date().toISOString(),
+    status: 'scripted',
+    audioStatus: 'not-generated',
+    scriptModel: text(model, 80),
+    audioModel: '',
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
+    chapters,
+    segments,
+    citedFactKeys,
+    transcriptWordCount,
+    estimatedMinutes: Math.max(1, Math.round((transcriptWordCount / WORDS_PER_MINUTE) * 10) / 10),
+  };
+};
+
+export const upsertPodcastEpisode = (state, episode) => {
+  const episodes = state.podcastEpisodes || [];
+  const existingIndex = episodes.findIndex((entry) => entry.publicationId === episode.publicationId);
+  if (existingIndex === -1) return { ...state, podcastEpisodes: [...episodes, episode] };
+  return {
+    ...state,
+    podcastEpisodes: episodes.map((entry, index) => index === existingIndex ? { ...entry, ...episode, hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })) } : entry),
+  };
+};
+
+export const markPodcastAudioReady = (state, publicationId, { model = '', segmentCount = 0 } = {}) => {
+  const episode = findPodcastEpisode(state, publicationId);
+  if (!episode) return state;
+  return upsertPodcastEpisode(state, {
+    ...episode,
+    hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
+    status: 'published',
+    audioStatus: 'ready',
+    audioModel: text(model, 80),
+    audioSegmentCount: Number(segmentCount) || episode.segments.length,
+    audioGeneratedAt: new Date().toISOString(),
+  });
+};
+
+export const podcastTranscriptText = (episode) => {
+  const lines = [
+    episode?.showName || 'The Gridiron Grind',
+    episode?.title || 'Episode',
+    `Season ${episode?.season || 1}, Week ${episode?.week ?? 0}`,
+    'Hosted by Mark Thompson and Sarah Chen',
+    'AI-generated voices',
+    '',
+  ];
+  (episode?.segments || []).forEach((segment) => {
+    lines.push(`${PODCAST_PUBLIC_HOSTS_BY_ID.get(segment.hostId)?.name || 'Host'}: ${segment.text}`, '');
+  });
+  return lines.join('\n').trim();
+};

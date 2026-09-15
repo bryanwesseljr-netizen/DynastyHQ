@@ -3,7 +3,20 @@ import { createPortal } from 'react-dom';
 import { RefreshCw, ShieldCheck } from 'lucide-react';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { appId, db, isPreviewDeployment } from '../firebase.js';
+import { clearWeeklyDraftRecord } from '../services/weeklyDraftStorage.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
+
+const PREVIEW_SESSION_KEYS = [
+  'dhq-session-applied-week',
+  'dhq-session-import-state',
+];
+
+const clearPreviewBrowserState = (userId) => {
+  clearWeeklyDraftRecord(userId);
+  PREVIEW_SESSION_KEYS.forEach((key) => {
+    try { window.sessionStorage?.removeItem(key); } catch { /* browser storage is best-effort */ }
+  });
+};
 
 const PreviewReseedControl = () => {
   const { user } = useOwnerCareer();
@@ -16,6 +29,7 @@ const PreviewReseedControl = () => {
     setBusy(true);
     setError('');
     try {
+      clearPreviewBrowserState(user.uid);
       await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main'));
       window.setTimeout(() => window.location.reload(), 800);
     } catch (nextError) {

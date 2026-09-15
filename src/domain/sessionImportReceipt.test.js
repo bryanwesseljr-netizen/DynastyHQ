@@ -35,11 +35,20 @@ test('Coverage and RTG scanners continue the batch when one screenshot fails', a
     readFile(rtgPortalUrl, 'utf8'),
   ]);
 
+  // Coverage intentionally analyzes one screenshot at a time. A failed image is
+  // recorded, reported to Session Import, and skipped so the remaining images
+  // continue through the loop. Saving stays blocked until failures are resolved.
   assert.match(coveragePortal, /for \(let index = 0; index < files\.length; index \+= 1\)/);
-  assert.match(coveragePortal, /failedCount \+= 1/);
-  assert.match(coveragePortal, /successful screenshots were kept/);
-  assert.match(rtgPortal, /for \(let index = 0; index < files\.length; index \+= 1\)/);
-  assert.match(rtgPortal, /failedCount \+= 1/);
+  assert.match(coveragePortal, /failures\.push\(/);
+  assert.match(coveragePortal, /status: 'failed'/);
+  assert.match(coveragePortal, /continue;/);
+  assert.match(coveragePortal, /Coverage cannot be saved until every screenshot passes/);
+
+  // RTG intentionally works in two-image batches. A failed pair increments the
+  // failed count for that pair and the outer batch loop proceeds to later files.
+  assert.match(rtgPortal, /for \(let start = 0; start < files\.length; start \+= SESSION_ANALYSIS_BATCH_SIZE\)/);
+  assert.match(rtgPortal, /failedCount \+= batch\.length/);
+  assert.match(rtgPortal, /batch\.forEach\(\(file\) => nextScreens\.push/);
   assert.match(rtgPortal, /successful RTG reads were kept/);
 });
 

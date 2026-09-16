@@ -54,11 +54,22 @@ test('dynamic helmet portal replaces Home and Game Hub static art only for verif
   assert.match(portal, /currentWeekSetup/);
   assert.match(portal, /publicationIdFor\(game\.season, game\.week\) === selectedValue/);
   assert.match(portal, /catalogTeamBrand\(name\)\.source === 'fbs-2026'/);
-  assert.match(portal, /dynamic: !highSchool && isFbsTeam\(school\) && isFbsTeam\(opponent\)/);
+  assert.match(portal, /dynamic: !highSchool && isFbsTeam\(matchup\.school\) && isFbsTeam\(opponent\)/);
   assert.match(portal, /classList\.toggle\('dhq-dynamic-helmet-source-hidden', homeModel\.dynamic\)/);
   assert.match(portal, /classList\.toggle\('dhq-dynamic-helmet-source-hidden', gameHubModel\.dynamic\)/);
   assert.match(styles, /\.dhq-dynamic-helmet-source-hidden/);
   assert.match(styles, /\.dhq-gh-matchup-helmets/);
+});
+
+test('published college matchup becomes the helmet fallback after the active week clears', async () => {
+  const portal = await readFile(portalUrl, 'utf8');
+
+  assert.match(portal, /const latestPublishedCollegeGameFor/);
+  assert.match(portal, /game\.stage !== 'high-school'/);
+  assert.match(portal, /!game\.evaluation/);
+  assert.match(portal, /const latestGame = latestPublishedCollegeGameFor\(state\)/);
+  assert.match(portal, /source: 'latest-published-game'/);
+  assert.match(portal, /const matchup = currentMatchupFor\(state\)/);
 });
 
 test('high-school and unresolved matchups preserve the original polished helmet art', async () => {

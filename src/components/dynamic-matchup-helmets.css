@@ -11,57 +11,99 @@
 
 .dhq-generic-matchup-helmets {
   overflow: visible;
+  isolation: isolate;
 }
 
 .dhq-generic-matchup-helmets__base {
+  position: relative;
+  z-index: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 13px 10px rgba(0, 0, 0, .42));
+  filter: grayscale(1) contrast(1.06) brightness(1.08) drop-shadow(0 13px 10px rgba(0, 0, 0, .42));
   user-select: none;
+}
+
+.dhq-generic-matchup-helmets__tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: none;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--dhq-team-primary) 78%, white 22%) 0%,
+    var(--dhq-team-primary) 48%,
+    color-mix(in srgb, var(--dhq-team-primary) 76%, black 24%) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  mix-blend-mode: color;
+  opacity: .98;
+}
+
+@supports ((-webkit-mask-image: linear-gradient(#000, #000)) or (mask-image: linear-gradient(#000, #000))) {
+  .dhq-generic-matchup-helmets__tint {
+    display: block;
+  }
+}
+
+.dhq-generic-matchup-helmets__tint--left {
+  clip-path: inset(0 50% 0 0);
+}
+
+.dhq-generic-matchup-helmets__tint--right {
+  clip-path: inset(0 0 0 50%);
 }
 
 .dhq-generic-helmet-decal {
   position: absolute;
-  top: 34%;
-  z-index: 2;
+  top: 42%;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 15%;
-  height: 31%;
+  width: 13.5%;
+  height: 27%;
   transform: translate(-50%, -50%);
 }
 
 .dhq-generic-helmet-decal--left {
-  left: 31.6%;
+  left: 20.5%;
 }
 
 .dhq-generic-helmet-decal--right {
-  left: 68.4%;
+  left: 79.5%;
 }
 
 .dhq-generic-helmet-decal img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 88%;
+  height: 88%;
   object-fit: contain;
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .28));
+  object-position: 50% 50%;
+  filter:
+    drop-shadow(0 0 1px var(--dhq-team-secondary))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, .52));
   user-select: none;
 }
 
 .dhq-generic-helmet-decal span {
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
+  width: 88%;
+  height: 88%;
   border-radius: 50%;
   background: color-mix(in srgb, var(--dhq-team-primary) 76%, rgba(4, 12, 18, .8) 24%);
   color: var(--dhq-team-secondary);
   font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
   font-size: clamp(14px, 2vw, 24px);
   letter-spacing: .03em;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dhq-team-secondary) 64%, transparent);
 }
 
 .dhq-broadcast-helmets.dhq-dynamic-matchup-helmets {
@@ -81,17 +123,17 @@
 
 @media (max-width: 767px) {
   .dhq-generic-helmet-decal {
-    top: 35%;
-    width: 14.5%;
-    height: 29%;
+    top: 42.5%;
+    width: 13%;
+    height: 26%;
   }
 
   .dhq-generic-helmet-decal--left {
-    left: 31.7%;
+    left: 20.5%;
   }
 
   .dhq-generic-helmet-decal--right {
-    left: 68.3%;
+    left: 79.5%;
   }
 
   .dhq-gh-matchup-helmets {

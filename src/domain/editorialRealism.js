@@ -138,7 +138,7 @@ export const humanizePlayerReferences = (value = '', career = {}, sharedState = 
   return output;
 };
 
-const INTERNAL_SENTENCE_RE = /(?:\bcoach trust\b|\bskill points?\b|\bweekly points?\b|\benergy\b|\bgpa\b|\bfollowers?\b|\bnil valuation\b|\bbrand footprint\b|\bprogression record\b|\brtg snapshot\b|\bscreenshot\b|\bupload(?:ed)?\b|\bmissing field\b|\bfields on file\b|\bwill not invent\b|\bwill not manufacture\b|\bseparately verified\b|\bunsupported\b)/i;
+const INTERNAL_SENTENCE_RE = /(?:\bcoach trust\b|\bskill points?\b|\bweekly points?\b|\benergy (?:is|at|sits|reading|meter)\b|\b\d+\s+energy\b|\bgpa\b|\bfollowers?\b|\bnil valuation\b|\bbrand footprint\b|\bprogression record\b|\brtg snapshot\b|\bscreenshot\b|\bupload(?:ed)?\b|\bmissing field\b|\bfields on file\b|\bwill not invent\b|\bwill not manufacture\b|\bseparately verified\b|\bunsupported (?:claim|detail|field|data)\b)/i;
 
 const replaceInternalPhrases = (value = '') => String(value || '')
   .replace(/\bFact Ledger\b/gi, 'weekly report')

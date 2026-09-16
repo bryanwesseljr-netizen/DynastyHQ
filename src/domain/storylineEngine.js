@@ -1,3 +1,5 @@
+import { teamRecordThroughWeek } from './seasonSchedule.js';
+
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const numberOf = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -163,19 +165,6 @@ const roleArcFor = (state, context, updates) => {
   };
 };
 
-const recordFor = (games = []) => {
-  const decided = games.filter((game) => ['W', 'L'].includes(clean(game.result, 10).toUpperCase()));
-  const wins = decided.filter((game) => clean(game.result, 10).toUpperCase() === 'W').length;
-  const losses = decided.filter((game) => clean(game.result, 10).toUpperCase() === 'L').length;
-  const lastResult = clean(decided.at(-1)?.result, 10).toUpperCase();
-  let streakCount = 0;
-  for (let index = decided.length - 1; index >= 0; index -= 1) {
-    if (clean(decided[index]?.result, 10).toUpperCase() !== lastResult) break;
-    streakCount += 1;
-  }
-  return { wins, losses, games: decided.length, lastResult, streakCount };
-};
-
 const addThreadFactory = ({ recentKeys, season, week }) => {
   const threads = [];
   const add = (thread) => {
@@ -267,7 +256,7 @@ const roleThreads = ({ add, roleArc, latestGame, context }) => {
   }
 };
 
-const teamThreads = ({ add, games, latestGame, context, record }) => {
+const teamThreads = ({ add, latestGame, context, record }) => {
   if (!latestGame) return;
   const latestResult = clean(latestGame.result, 10).toUpperCase();
   const score = scoreFor(latestGame);
@@ -313,7 +302,7 @@ const teamThreads = ({ add, games, latestGame, context, record }) => {
       changedThisWeek: true,
       editorialUse: record.streakCount >= 3 ? 'primary' : 'context',
       priority: record.streakCount >= 3 ? 8 : 6,
-      evidence: ['Saved game results'],
+      evidence: ['Saved team results'],
     });
   }
 
@@ -328,7 +317,7 @@ const teamThreads = ({ add, games, latestGame, context, record }) => {
       changedThisWeek: false,
       editorialUse: 'background-only',
       priority: 2,
-      evidence: ['Saved game results'],
+      evidence: [record.source === 'schedule' ? 'Imported team schedule' : 'Saved team results'],
     });
   }
 };
@@ -487,12 +476,12 @@ export const buildStorylineEngine = (state = {}, options = {}) => {
   const latestGame = games.at(-1) || null;
   const school = clean(state.player?.college || state.player?.school, 160) || 'YOUR PROGRAM';
   const roleArc = roleArcFor(state, context, updates);
-  const record = recordFor(seasonGames);
+  const record = teamRecordThroughWeek(state, context.season, context.week);
   const recentKeys = recentCoverageKeys(state, context.season, context.week, context.publicationId);
   const { threads, add } = addThreadFactory({ recentKeys, season: context.season, week: context.week });
 
   roleThreads({ add, roleArc, latestGame, context });
-  teamThreads({ add, games: seasonGames, latestGame, context, record });
+  teamThreads({ add, latestGame, context, record });
   performanceThreads({ add, games: seasonGames, latestGame });
   opponentThreads({ add, state, context, allGames });
   milestoneThreads({ add, state, context });

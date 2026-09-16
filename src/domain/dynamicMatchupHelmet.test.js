@@ -16,7 +16,7 @@ const stylesUrl = new URL('../components/dynamic-matchup-helmets.css', import.me
 const resolverUrl = new URL('./teamBrandResolver.js', import.meta.url);
 const rtgApiUrl = new URL('../../api/analyze-rtg-status.js', import.meta.url);
 
-test('dynamic helmet resolver reuses the 2026 FBS identity catalog immediately', () => {
+test('dynamic matchup resolver reuses the 2026 FBS identity catalog immediately', () => {
   const michigan = catalogTeamBrand('Michigan');
   const ohioState = catalogTeamBrand('Ohio State');
 
@@ -35,7 +35,7 @@ test('college brand hydration uses a same-origin cached directory backed by ESPN
   assert.equal(normalizeTeamName('The Ohio State University'), 'ohio state');
 });
 
-test('helmet decals use existing same-origin RTG function instead of extra serverless endpoints', async () => {
+test('team logos use existing same-origin RTG function instead of extra serverless endpoints', async () => {
   const [resolver, rtgApi] = await Promise.all([
     readFile(resolverUrl, 'utf8'),
     readFile(rtgApiUrl, 'utf8'),
@@ -48,36 +48,37 @@ test('helmet decals use existing same-origin RTG function instead of extra serve
   assert.match(rtgApi, /a\.espncdn\.com\/i\/teamlogos\/ncaa\/500/);
 });
 
-test('matchup presentation uses polished generic helmet artwork with team-tinted shells and dynamic logos', async () => {
+test('matchup presentation uses large team logos instead of helmet artwork', async () => {
   const [component, styles] = await Promise.all([
     readFile(componentUrl, 'utf8'),
     readFile(stylesUrl, 'utf8'),
   ]);
 
-  assert.match(component, /import genericMatchupHelmets from '\.\.\/assets\/matchup-helmets\.webp';/);
-  assert.match(component, /className="dhq-generic-matchup-helmets__base"/);
-  assert.match(component, /<TeamTint brand=\{home\} side="left" \/>/);
-  assert.match(component, /<TeamTint brand=\{away\} side="right" \/>/);
-  assert.match(component, /WebkitMaskImage: `url\(\$\{genericMatchupHelmets\}\)`/);
+  assert.doesNotMatch(component, /matchup-helmets\.webp/);
+  assert.doesNotMatch(component, /TeamTint/);
+  assert.doesNotMatch(component, /generic-matchup-helmets__base/);
+  assert.match(component, /<TeamLogo brand=\{home\} teamName=\{homeTeam\} side="left" \/>/);
+  assert.match(component, /<TeamLogo brand=\{away\} teamName=\{awayTeam\} side="right" \/>/);
   assert.match(component, /<img src=\{brand\.logo\}/);
-  assert.match(styles, /filter: grayscale\(1\) contrast\(1\.06\) brightness\(1\.08\)/);
-  assert.match(styles, /mix-blend-mode: color/);
-  assert.match(styles, /\.dhq-generic-matchup-helmets__tint--left[\s\S]*clip-path: inset\(0 50% 0 0\)/);
-  assert.match(styles, /\.dhq-generic-matchup-helmets__tint--right[\s\S]*clip-path: inset\(0 0 0 50%\)/);
+  assert.match(component, /aria-label=\{`\$\{homeTeam \|\| 'Home team'\} versus \$\{awayTeam \|\| 'Away team'\} logos`\}/);
+  assert.match(styles, /\.dhq-team-logo-matchup/);
+  assert.match(styles, /\.dhq-matchup-team-logo--left \{[\s\S]*left: 22\.5%/);
+  assert.match(styles, /\.dhq-matchup-team-logo--right \{[\s\S]*left: 77\.5%/);
+  assert.match(styles, /\.dhq-matchup-team-logo img[\s\S]*object-fit: contain/);
+  assert.match(styles, /drop-shadow\(0 0 2px var\(--dhq-team-secondary\)\)/);
 });
 
-test('helmet decals sit in the mirrored upper-rear shell zones from visual QA', async () => {
+test('logo matchup stays balanced and fills the former helmet footprint on mobile', async () => {
   const styles = await readFile(stylesUrl, 'utf8');
 
-  assert.match(styles, /\.dhq-generic-helmet-decal[\s\S]*top: 25\.5%/);
-  assert.match(styles, /\.dhq-generic-helmet-decal[\s\S]*width: 9%/);
-  assert.match(styles, /\.dhq-generic-helmet-decal--left \{[\s\S]*left: 14%/);
-  assert.match(styles, /\.dhq-generic-helmet-decal--right \{[\s\S]*left: 86%/);
-  assert.match(styles, /object-position: 50% 50%/);
-  assert.match(styles, /drop-shadow\(0 0 1px var\(--dhq-team-secondary\)\)/);
+  assert.match(styles, /\.dhq-matchup-team-logo \{[\s\S]*top: 49%/);
+  assert.match(styles, /\.dhq-matchup-team-logo \{[\s\S]*width: 29%/);
+  assert.match(styles, /\.dhq-matchup-team-logo \{[\s\S]*height: 82%/);
+  assert.match(styles, /@media \(max-width: 767px\)[\s\S]*width: 28%/);
+  assert.match(styles, /background: radial-gradient/);
 });
 
-test('dynamic helmet portal replaces Home and Game Hub static art only for verified FBS matchups', async () => {
+test('dynamic matchup portal replaces Home and Game Hub static art only for verified FBS matchups', async () => {
   const [portal, owner, styles] = await Promise.all([
     readFile(portalUrl, 'utf8'),
     readFile(ownerUrl, 'utf8'),
@@ -97,7 +98,7 @@ test('dynamic helmet portal replaces Home and Game Hub static art only for verif
   assert.match(styles, /\.dhq-gh-matchup-helmets/);
 });
 
-test('published college matchup becomes the helmet fallback after the active week clears', async () => {
+test('published college matchup becomes the dynamic art fallback after the active week clears', async () => {
   const portal = await readFile(portalUrl, 'utf8');
 
   assert.match(portal, /const latestPublishedCollegeGameFor/);
@@ -108,7 +109,7 @@ test('published college matchup becomes the helmet fallback after the active wee
   assert.match(portal, /const matchup = currentMatchupFor\(state\)/);
 });
 
-test('high-school and unresolved matchups preserve the original polished helmet art', async () => {
+test('high-school and unresolved matchups preserve the original polished static art', async () => {
   const portal = await readFile(portalUrl, 'utf8');
 
   assert.match(portal, /stage === CAREER_STAGES\.HIGH_SCHOOL/);

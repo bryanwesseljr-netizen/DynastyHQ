@@ -35,6 +35,7 @@ import EditorialLanguageRealismPortal from './EditorialLanguageRealismPortal.jsx
 import NewsroomGameLocationPortal from './NewsroomGameLocationPortal.jsx';
 import NewsroomUniformContextPortal from './NewsroomUniformContextPortal.jsx';
 import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
+import NewsroomArticleRewritePortal from './NewsroomArticleRewritePortal.jsx';
 import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
 import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
 import NewsroomExactStoryRoutingPortal from './NewsroomExactStoryRoutingPortal.jsx';
@@ -85,6 +86,7 @@ const OwnerEnhancements = () => (
     <NewsroomLibraryScrollGuardPortal />
     <NewsroomTeamHubPortal />
     <NewsroomArticleExperiencePortal />
+    <NewsroomArticleRewritePortal />
     <NewsroomArticleToolsPortal />
     <NewsroomArticleSharePortal />
     <PodcastArtworkHydrationPortal />

@@ -48,19 +48,19 @@ test('helmet decals use existing same-origin RTG function instead of extra serve
   assert.match(rtgApi, /a\.espncdn\.com\/i\/teamlogos\/ncaa\/500/);
 });
 
-test('matchup helmet component renders dimensional side-profile shells with unmirrored logo decals', async () => {
-  const component = await readFile(componentUrl, 'utf8');
+test('matchup presentation uses the polished generic helmet artwork with dynamic team logos', async () => {
+  const [component, styles] = await Promise.all([
+    readFile(componentUrl, 'utf8'),
+    readFile(stylesUrl, 'utf8'),
+  ]);
 
-  assert.match(component, /fill=\{brand\.primaryColor\}/);
-  assert.match(component, /stroke=\{brand\.secondaryColor\}/);
-  assert.match(component, /href=\{brand\.logo\}/);
-  assert.match(component, /decalX = side === 'right' \? 132 : 92/);
-  assert.match(component, /circle cx="177" cy="105" r="15"/);
-  assert.match(component, /M53 54C84 26 128 17 172 21C199 23 221 31 239 45/);
-  assert.match(component, /M228 119C249 119 267 122 283 129/);
-  assert.match(component, /helmet-shell-glow/);
-  assert.match(component, /helmet-lower-shade/);
-  assert.match(component, /<g transform=\{mirror\}>[\s\S]*<\/g>[\s\S]*\{brand\.logo \?/);
+  assert.match(component, /import genericMatchupHelmets from '\.\.\/assets\/matchup-helmets\.webp';/);
+  assert.match(component, /className="dhq-generic-matchup-helmets__base"/);
+  assert.match(component, /src=\{genericMatchupHelmets\}/);
+  assert.match(component, /className=\{`dhq-generic-helmet-decal dhq-generic-helmet-decal--\$\{side\}`\}/);
+  assert.match(component, /<img src=\{brand\.logo\}/);
+  assert.match(styles, /\.dhq-generic-helmet-decal--left/);
+  assert.match(styles, /\.dhq-generic-helmet-decal--right/);
 });
 
 test('dynamic helmet portal replaces Home and Game Hub static art only for verified FBS matchups', async () => {

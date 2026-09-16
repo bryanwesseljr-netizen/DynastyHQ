@@ -1,0 +1,167 @@
+.dhq-score-ticker[data-dhq-season-wire="true"] {
+  position: relative;
+  min-height: 38px;
+  overflow: hidden;
+}
+
+.dhq-score-ticker[data-dhq-season-wire="true"] > :not(.dhq-season-wire-host) {
+  display: none !important;
+}
+
+.dhq-season-wire-host,
+.dhq-season-wire {
+  width: 100%;
+  min-width: 0;
+}
+
+.dhq-season-wire {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 38px;
+  border-top: 1px solid color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 16%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--dhq-team-primary, #226b4b) 48%, #24313a);
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 26%, #02090f),
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 9%, #02090f));
+  color: var(--dhq-team-text, #f8fbff);
+}
+
+.dhq-season-wire__bug {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  min-width: 126px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 15px;
+  border-right: 1px solid color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 35%, transparent);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--dhq-team-primary, #226b4b) 80%, #03090d),
+    color-mix(in srgb, var(--dhq-team-primary, #226b4b) 58%, #06111a));
+  color: var(--dhq-team-on-primary, #fff);
+  box-shadow: 8px 0 20px rgba(0,0,0,.2);
+}
+
+.dhq-season-wire__bug i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: var(--dhq-team-highlight-readable, #f5df45);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dhq-team-highlight-readable, #f5df45) 16%, transparent),
+    0 0 10px color-mix(in srgb, var(--dhq-team-highlight-readable, #f5df45) 60%, transparent);
+  animation: dhq-season-wire-pulse 1.8s ease-in-out infinite;
+}
+
+.dhq-season-wire__bug strong {
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .13em;
+}
+
+.dhq-season-wire__viewport {
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0, #000 2.5%, #000 97.5%, transparent 100%);
+}
+
+.dhq-season-wire__track {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
+  animation: dhq-season-wire-scroll 42s linear infinite;
+}
+
+.dhq-season-wire__viewport:hover .dhq-season-wire__track,
+.dhq-season-wire__viewport:focus-within .dhq-season-wire__track {
+  animation-play-state: paused;
+}
+
+.dhq-season-wire__item {
+  position: relative;
+  display: inline-flex;
+  min-height: 37px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-right: 1px solid rgba(162, 178, 191, .13);
+  background: transparent;
+  padding: 0 22px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dhq-season-wire__item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: transparent;
+}
+
+.dhq-season-wire__item:hover,
+.dhq-season-wire__item:focus-visible {
+  background: color-mix(in srgb, var(--dhq-team-primary, #226b4b) 25%, rgba(255,255,255,.025));
+  outline: none;
+}
+
+.dhq-season-wire__item:hover::after,
+.dhq-season-wire__item:focus-visible::after {
+  background: var(--dhq-team-highlight-readable, #f5df45);
+}
+
+.dhq-season-wire__item span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: var(--dhq-team-highlight-readable, #f5df45);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .1em;
+}
+
+.dhq-season-wire__item strong {
+  max-width: 430px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #eef4f8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .025em;
+  text-overflow: ellipsis;
+}
+
+@keyframes dhq-season-wire-scroll {
+  from { transform: translate3d(0,0,0); }
+  to { transform: translate3d(-50%,0,0); }
+}
+
+@keyframes dhq-season-wire-pulse {
+  0%, 100% { opacity: .55; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@media (max-width: 720px) {
+  .dhq-season-wire { min-height: 34px; grid-template-columns: auto minmax(0, 1fr); }
+  .dhq-season-wire__bug { min-width: 92px; padding: 0 9px; }
+  .dhq-season-wire__bug strong { font-size: 7px; letter-spacing: .1em; }
+  .dhq-season-wire__item { min-height: 33px; gap: 7px; padding: 0 15px; }
+  .dhq-season-wire__item span { font-size: 7px; }
+  .dhq-season-wire__item strong { max-width: 280px; font-size: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dhq-season-wire__track { animation: none; }
+  .dhq-season-wire__viewport { overflow-x: auto; mask-image: none; }
+  .dhq-season-wire__bug i { animation: none; }
+}

@@ -66,12 +66,13 @@ test('matchup presentation uses polished generic helmet artwork with team-tinted
   assert.match(styles, /\.dhq-generic-matchup-helmets__tint--right[\s\S]*clip-path: inset\(0 0 0 50%\)/);
 });
 
-test('helmet decals use mirrored shell-center zones instead of crowding the facemasks', async () => {
+test('helmet decals sit in mirrored rear-shell zones away from the facemask hardware', async () => {
   const styles = await readFile(stylesUrl, 'utf8');
 
-  assert.match(styles, /\.dhq-generic-helmet-decal[\s\S]*top: 42%/);
-  assert.match(styles, /\.dhq-generic-helmet-decal--left \{[\s\S]*left: 20\.5%/);
-  assert.match(styles, /\.dhq-generic-helmet-decal--right \{[\s\S]*left: 79\.5%/);
+  assert.match(styles, /\.dhq-generic-helmet-decal[\s\S]*top: 38\.5%/);
+  assert.match(styles, /\.dhq-generic-helmet-decal[\s\S]*width: 11\.75%/);
+  assert.match(styles, /\.dhq-generic-helmet-decal--left \{[\s\S]*left: 15\.25%/);
+  assert.match(styles, /\.dhq-generic-helmet-decal--right \{[\s\S]*left: 84\.75%/);
   assert.match(styles, /object-position: 50% 50%/);
   assert.match(styles, /drop-shadow\(0 0 1px var\(--dhq-team-secondary\)\)/);
 });

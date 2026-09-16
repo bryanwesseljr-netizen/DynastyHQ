@@ -4,6 +4,7 @@ import {
   PODCAST_PUBLIC_HOSTS_BY_ID,
 } from './podcastShow.js';
 import { buildProgramCoverageContext } from './programCoverage.js';
+import { buildStorylineEngine } from './storylineEngine.js';
 import { resolveCurrentProgramSchool, resolveIssueTeamMediaProfile } from './teamMediaProfile.js';
 
 const WORDS_PER_MINUTE = 145;
@@ -188,6 +189,17 @@ const currentGameForIssue = (state = {}, issue = {}) => {
   )) || null;
 };
 
+const mergeStorylineThreads = (coverageThreads = [], continuityThreads = []) => {
+  const byKey = new Map();
+  continuityThreads.forEach((thread) => {
+    if (thread?.key) byKey.set(thread.key, thread);
+  });
+  coverageThreads.forEach((thread) => {
+    if (thread?.key) byKey.set(thread.key, thread);
+  });
+  return [...byKey.values()].slice(0, 12);
+};
+
 export const buildPodcastGenerationPayload = (state, publicationId) => {
   const issue = findPodcastIssue(state, publicationId);
   if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
@@ -213,6 +225,24 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
       || issue?.podcastBrief?.opponent,
     160,
   );
+  const continuity = coverageStage === 'college-player' ? buildStorylineEngine(state, {
+    season: Number(issue.season) || 1,
+    week: Math.max(0, Number(issue.week) || 0),
+    publicationId: issue.publicationId || issue.id,
+    opponent,
+    phase: currentGame ? 'postgame' : 'current',
+  }) : null;
+  const storylineThreads = mergeStorylineThreads(
+    coverageContext?.storylineThreads || [],
+    continuity?.editorialThreads || [],
+  );
+  const coverageDecision = coverageContext?.coverageDecision ? {
+    ...coverageContext.coverageDecision,
+    storylineKeys: [...new Set([
+      ...(coverageContext.coverageDecision.storylineKeys || []),
+      ...(continuity?.storylineKeys || []),
+    ])].slice(0, 16),
+  } : null;
 
   return {
     publicationId: issue.publicationId || issue.id,
@@ -223,8 +253,8 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     weekPhase: text(issue.weekPhase, 80).toLowerCase(),
     careerPhase: text(issue.careerPhase, 40),
     coverageStage,
-    coverageDecision: coverageContext?.coverageDecision || null,
-    storylineThreads: coverageContext?.storylineThreads || [],
+    coverageDecision,
+    storylineThreads,
     coveragePlan: coverageContext ? {
       program: {
         ...coverageContext.program,

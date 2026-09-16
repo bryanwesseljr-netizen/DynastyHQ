@@ -46,6 +46,7 @@ export const DEFAULT_CAREER_STATE = {
   currentWeek: 1,
   playoffPicture: '',
   gameLogs: [],
+  seasonSchedules: [],
   recruiting: [],
   playerRecruiting: DEFAULT_PLAYER_RECRUITING,
   careerTransitions: DEFAULT_CAREER_TRANSITIONS,

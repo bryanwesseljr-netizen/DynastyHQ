@@ -14,6 +14,7 @@ const baseState = {
   rtg: {},
   recruiting: [],
   gameLogs: [],
+  seasonSchedules: [],
   weeklyUpdates: [],
   playerRecruiting: { highSchool: {} },
   careerChronicle: [],
@@ -49,6 +50,26 @@ test('college player homepage hides coach-only management cards', () => {
   assert.ok(model.moduleIds.includes('current-week'));
   assert.equal(model.moduleIds.includes('recruiting-snapshot'), false);
   assert.equal(model.moduleIds.includes('trophy-case'), false);
+});
+
+test('college homepage record uses the imported team schedule instead of player appearances', () => {
+  const model = buildDashboardV2({
+    ...baseState,
+    currentWeek: 3,
+    player: { ...baseState.player, school: 'Baylor', college: 'Baylor', isCommitted: true },
+    gameLogs: [{ season: 1, week: 2, opponent: 'Oregon', result: 'L', homeScore: 21, awayScore: 45, didPlay: true }],
+    seasonSchedules: [{
+      season: 1,
+      school: 'Baylor',
+      entries: [
+        { week: 1, opponent: 'Week 1 Opponent', result: 'W', teamScore: 31, opponentScore: 17, status: 'completed' },
+        { week: 2, opponent: 'Oregon', result: 'L', teamScore: 21, opponentScore: 45, status: 'completed' },
+      ],
+    }],
+  });
+  assert.equal(model.stage, CAREER_STAGES.COLLEGE);
+  assert.equal(model.record, '1-1');
+  assert.equal(model.seasonRecord.source, 'schedule');
 });
 
 test('coach career stages switch the homepage to program management information', () => {

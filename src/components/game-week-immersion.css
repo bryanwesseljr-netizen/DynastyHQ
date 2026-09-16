@@ -1,0 +1,268 @@
+.dhq-broadcast-hero[data-week-state="pregame"] {
+  border-color: rgba(255, 214, 72, 0.34);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), 0 0 42px rgba(255, 207, 70, 0.055), inset 0 1px rgba(255,255,255,0.025);
+}
+
+.dhq-broadcast-hero[data-week-state="postgame"] {
+  background:
+    linear-gradient(90deg, rgba(2, 13, 23, 0.985), rgba(7, 17, 27, 0.88) 47%, rgba(31, 6, 13, 0.9)),
+    radial-gradient(circle at 50% 57%, rgba(84, 55, 62, 0.34), transparent 55%);
+}
+
+.dhq-broadcast-hero[data-week-state="between"] {
+  background:
+    linear-gradient(90deg, rgba(2, 13, 23, 0.99), rgba(5, 20, 31, 0.88) 47%, rgba(10, 17, 25, 0.94)),
+    radial-gradient(circle at 50% 57%, rgba(31, 72, 94, 0.32), transparent 55%);
+}
+
+.dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-hero__kicker,
+.dhq-broadcast-hero[data-week-state="between"] .dhq-broadcast-hero__kicker {
+  color: #f4c95d;
+}
+
+.dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-versus b,
+.dhq-broadcast-hero[data-week-state="between"] .dhq-broadcast-versus b {
+  font-size: 2.08rem;
+  letter-spacing: 0.09em;
+}
+
+.dhq-gameweek-immersion {
+  display: grid;
+  grid-template-columns: 1.22fr 1fr 0.9fr;
+  gap: 11px;
+  width: min(1180px, 100%);
+  margin: 0 auto 11px;
+}
+
+.dhq-immersion-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 174px;
+  padding: 15px 17px 42px;
+  overflow: hidden;
+  border: 1px solid rgba(149, 165, 179, 0.43);
+  border-radius: 8px;
+  background:
+    linear-gradient(150deg, rgba(5, 19, 31, 0.955), rgba(2, 10, 17, 0.955)),
+    radial-gradient(circle at 18% 0%, rgba(70, 113, 145, 0.11), transparent 46%);
+  box-shadow: 0 11px 28px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255,255,255,0.02);
+  backdrop-filter: blur(5px) saturate(112%);
+}
+
+.dhq-immersion-panel::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  content: "";
+  background: linear-gradient(#f2cf67, rgba(242, 207, 103, 0.04));
+  opacity: 0.82;
+}
+
+.dhq-gameweek-immersion[data-week-state="postgame"] .dhq-immersion-panel::before {
+  background: linear-gradient(#ee1637, rgba(238, 22, 55, 0.04));
+}
+
+.dhq-gameweek-immersion[data-week-state="between"] .dhq-immersion-panel::before {
+  background: linear-gradient(#5ba4cc, rgba(91, 164, 204, 0.04));
+}
+
+.dhq-immersion-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: #8d969f;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+.dhq-immersion-panel h2 {
+  margin: 0;
+  color: #f4f5f6;
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.dhq-immersion-previous h2 {
+  color: #f1d47b;
+}
+
+.dhq-immersion-previous p,
+.dhq-immersion-scout p {
+  margin: 12px 0 0;
+  color: #a9b0b7;
+  font-size: 0.69rem;
+  line-height: 1.52;
+}
+
+.dhq-immersion-panel > button {
+  position: absolute;
+  right: 17px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9ea7af;
+  font-size: 0.53rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+}
+
+.dhq-immersion-panel > button:hover {
+  color: #fff;
+}
+
+.dhq-immersion-key-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.dhq-immersion-key-list > div {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.dhq-immersion-key-list > div > b {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border: 1px solid rgba(242, 207, 103, 0.5);
+  border-radius: 50%;
+  color: #f1d47b;
+  font-size: 0.62rem;
+}
+
+.dhq-gameweek-immersion[data-week-state="postgame"] .dhq-immersion-key-list > div > b {
+  border-color: rgba(238, 22, 55, 0.48);
+  color: #ff6c82;
+}
+
+.dhq-gameweek-immersion[data-week-state="between"] .dhq-immersion-key-list > div > b {
+  border-color: rgba(91, 164, 204, 0.5);
+  color: #79bde2;
+}
+
+.dhq-immersion-key-list span,
+.dhq-immersion-key-list strong,
+.dhq-immersion-key-list small {
+  display: block;
+}
+
+.dhq-immersion-key-list strong {
+  color: #eef0f2;
+  font-size: 0.62rem;
+  line-height: 1.15;
+}
+
+.dhq-immersion-key-list small {
+  margin-top: 2px;
+  color: #8e979f;
+  font-size: 0.55rem;
+  line-height: 1.3;
+}
+
+.dhq-immersion-scout-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.dhq-immersion-scout-facts > div {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(149, 165, 179, 0.25);
+  border-radius: 5px;
+  background: rgba(8, 22, 34, 0.66);
+}
+
+.dhq-immersion-scout-facts span,
+.dhq-immersion-scout-facts strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dhq-immersion-scout-facts span {
+  color: #78838d;
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.dhq-immersion-scout-facts strong {
+  margin-top: 2px;
+  color: #f0f2f3;
+  font-size: 0.7rem;
+}
+
+.dhq-immersion-scout-facts .dhq-immersion-scout-empty {
+  grid-column: 1 / -1;
+  color: #7f8992;
+  font-size: 0.59rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .dhq-gameweek-immersion {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dhq-immersion-previous {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .dhq-gameweek-immersion {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 9px;
+  }
+
+  .dhq-immersion-previous {
+    grid-column: auto;
+  }
+
+  .dhq-immersion-panel {
+    min-height: 0;
+    padding: 13px 14px 38px;
+    border-radius: 7px;
+  }
+
+  .dhq-immersion-panel h2 {
+    font-size: 0.76rem;
+  }
+
+  .dhq-immersion-previous p,
+  .dhq-immersion-scout p {
+    margin-top: 9px;
+    font-size: 0.64rem;
+  }
+
+  .dhq-immersion-key-list {
+    gap: 8px;
+  }
+
+  .dhq-immersion-key-list small {
+    font-size: 0.53rem;
+  }
+
+  .dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-versus b,
+  .dhq-broadcast-hero[data-week-state="between"] .dhq-broadcast-versus b {
+    font-size: 1.56rem;
+  }
+}

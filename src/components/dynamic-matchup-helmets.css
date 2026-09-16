@@ -9,105 +9,76 @@
   pointer-events: none;
 }
 
-.dhq-generic-matchup-helmets {
+.dhq-team-logo-matchup {
+  width: 100%;
+  height: 100%;
   overflow: visible;
   isolation: isolate;
 }
 
-.dhq-generic-matchup-helmets__base {
-  position: relative;
-  z-index: 0;
+.dhq-matchup-team-logo {
+  position: absolute;
+  top: 49%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 29%;
+  height: 82%;
+  transform: translate(-50%, -50%);
+}
+
+.dhq-matchup-team-logo::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--dhq-team-secondary) 26%, transparent) 0%,
+    color-mix(in srgb, var(--dhq-team-primary) 18%, transparent) 42%,
+    transparent 72%
+  );
+  filter: blur(8px);
+  opacity: .8;
+}
+
+.dhq-matchup-team-logo--left {
+  left: 22.5%;
+}
+
+.dhq-matchup-team-logo--right {
+  left: 77.5%;
+}
+
+.dhq-matchup-team-logo img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: grayscale(1) contrast(1.06) brightness(1.08) drop-shadow(0 13px 10px rgba(0, 0, 0, .42));
-  user-select: none;
-}
-
-.dhq-generic-matchup-helmets__tint {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: none;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--dhq-team-primary) 78%, white 22%) 0%,
-    var(--dhq-team-primary) 48%,
-    color-mix(in srgb, var(--dhq-team-primary) 76%, black 24%) 100%
-  );
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  mix-blend-mode: color;
-  opacity: .98;
-}
-
-@supports ((-webkit-mask-image: linear-gradient(#000, #000)) or (mask-image: linear-gradient(#000, #000))) {
-  .dhq-generic-matchup-helmets__tint {
-    display: block;
-  }
-}
-
-.dhq-generic-matchup-helmets__tint--left {
-  clip-path: inset(0 50% 0 0);
-}
-
-.dhq-generic-matchup-helmets__tint--right {
-  clip-path: inset(0 0 0 50%);
-}
-
-/*
- * Decals sit in the smooth upper-rear shell zones shown in the visual QA reference.
- * The x positions are exact mirrors around 50% so the matchup remains balanced.
- */
-.dhq-generic-helmet-decal {
-  position: absolute;
-  top: 25.5%;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 9%;
-  height: 20%;
-  transform: translate(-50%, -50%);
-}
-
-.dhq-generic-helmet-decal--left {
-  left: 14%;
-}
-
-.dhq-generic-helmet-decal--right {
-  left: 86%;
-}
-
-.dhq-generic-helmet-decal img {
-  display: block;
-  width: 90%;
-  height: 90%;
-  object-fit: contain;
   object-position: 50% 50%;
   filter:
-    drop-shadow(0 0 1px var(--dhq-team-secondary))
-    drop-shadow(0 1px 2px rgba(0, 0, 0, .52));
+    drop-shadow(0 0 2px var(--dhq-team-secondary))
+    drop-shadow(0 8px 10px rgba(0, 0, 0, .5));
   user-select: none;
 }
 
-.dhq-generic-helmet-decal span {
+.dhq-matchup-team-logo span {
   display: grid;
   place-items: center;
-  width: 90%;
-  height: 90%;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--dhq-team-primary) 76%, rgba(4, 12, 18, .8) 24%);
+  width: 72%;
+  aspect-ratio: 1;
+  border: 2px solid var(--dhq-team-secondary);
+  border-radius: 24%;
+  background: color-mix(in srgb, var(--dhq-team-primary) 86%, rgba(4, 12, 18, .88) 14%);
   color: var(--dhq-team-secondary);
   font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
-  font-size: clamp(14px, 2vw, 24px);
-  letter-spacing: .03em;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dhq-team-secondary) 64%, transparent);
+  font-size: clamp(26px, 5vw, 58px);
+  letter-spacing: .02em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .42);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--dhq-team-secondary) 48%, transparent),
+    0 10px 22px rgba(0, 0, 0, .34);
 }
 
 .dhq-broadcast-helmets.dhq-dynamic-matchup-helmets {
@@ -126,18 +97,24 @@
 }
 
 @media (max-width: 767px) {
-  .dhq-generic-helmet-decal {
-    top: 25.5%;
-    width: 9%;
-    height: 20%;
+  .dhq-matchup-team-logo {
+    top: 49%;
+    width: 28%;
+    height: 80%;
   }
 
-  .dhq-generic-helmet-decal--left {
-    left: 14%;
+  .dhq-matchup-team-logo--left {
+    left: 22.5%;
   }
 
-  .dhq-generic-helmet-decal--right {
-    left: 86%;
+  .dhq-matchup-team-logo--right {
+    left: 77.5%;
+  }
+
+  .dhq-matchup-team-logo::before {
+    inset: -10%;
+    filter: blur(7px);
+    opacity: .74;
   }
 
   .dhq-gh-matchup-helmets {
@@ -149,6 +126,11 @@
 }
 
 @media (max-width: 390px) {
+  .dhq-matchup-team-logo {
+    width: 27%;
+    height: 78%;
+  }
+
   .dhq-gh-matchup-helmets {
     width: 300px !important;
   }

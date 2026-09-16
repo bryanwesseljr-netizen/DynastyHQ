@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  EDITORIAL_LANGUAGE_VERSION,
   GAME_LOCATION_CONTEXTS,
   UNIFORM_CONTEXTS,
   collapseInitialSurname,
@@ -9,6 +10,8 @@ import {
   humanizePlayerReferences,
   isAllZeroPlayerFactLine,
   normalizeNewsroomIssueLanguage,
+  normalizePodcastEpisodeLanguage,
+  sanitizeEditorialSystemLanguage,
   uniformContextAdjustment,
   uniformContextIsHardMismatch,
 } from './editorialRealism.js';
@@ -49,8 +52,33 @@ test('newsroom normalization applies the naming style across article prose', () 
   };
   const normalized = normalizeNewsroomIssueLanguage(issue, career);
   const serialized = JSON.stringify(normalized);
+  assert.equal(normalized.editorialLanguageVersion, EDITORIAL_LANGUAGE_VERSION);
   assert.doesNotMatch(serialized, /S\. Jones/);
   assert.match(serialized, /the backup quarterback/);
+});
+
+test('fallback editorial cleanup hides system documentation language from readers', () => {
+  const cleaned = sanitizeEditorialSystemLanguage(
+    'The published ledger contains verified data points for Week 2. No postgame quote was separately verified. Coach Trust is 500.',
+  );
+  assert.doesNotMatch(cleaned, /published ledger|verified data points|separately verified|coach trust/i);
+  assert.match(cleaned, /season totals|confirmed developments/i);
+});
+
+test('fallback editorial cleanup preserves normal football uses of energy', () => {
+  const cleaned = sanitizeEditorialSystemLanguage('Oregon played with more energy after halftime and controlled the fourth quarter.');
+  assert.equal(cleaned, 'Oregon played with more energy after halftime and controlled the fourth quarter.');
+});
+
+test('podcast normalization stamps the current editorial language version', () => {
+  const episode = normalizePodcastEpisodeLanguage({
+    title: 'Week 2 Review',
+    summary: 'A football conversation.',
+    chapters: [],
+    segments: [{ id: '1', text: 'The published ledger says Oregon won.' }],
+  }, career);
+  assert.equal(episode.editorialLanguageVersion, EDITORIAL_LANGUAGE_VERSION);
+  assert.doesNotMatch(episode.segments[0].text, /published ledger/i);
 });
 
 test('all five verified zero player stats are recognized as a DNP signal', () => {

@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
+import { generateTextFreeFirst } from '../src/server/textRouter.js';
 
-const MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
+const OPENAI_MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
 const text = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
@@ -307,12 +307,19 @@ CITATIONS:
 
 Return exactly one article for every article brief and use every requested outletId exactly once.`;
 
+const completeEdition = (edition, payload) => {
+  const articles = Array.isArray(edition?.articles) ? edition.articles : [];
+  if (articles.length !== payload.articleBriefs.length) return false;
+  const expected = new Set(payload.articleBriefs.map((brief) => brief.outletId));
+  const returned = articles.map((article) => text(article?.outletId, 80));
+  return returned.length === new Set(returned).size && returned.every((outletId) => expected.has(outletId));
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method not allowed.' });
   }
-  if (!process.env.OPENAI_API_KEY) return json(res, 503, { error: 'Newsroom writing is not configured yet.' });
 
   let user;
   try {
@@ -332,7 +339,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const assignmentSummary = payload.articleBriefs
       .map((brief) => `${brief.outletName}: ${brief.audience || 'general'} ${brief.storyType || 'story'}, ${brief.targetWordRange.min}-${brief.targetWordRange.max} words, player policy ${brief.playerMentionPolicy || 'relevance-based'}`)
       .join('; ');
@@ -341,32 +347,33 @@ export default async function handler(req, res) {
       : 'none';
     const reach = payload.coverageDecision?.audienceReach || {};
     const reachSummary = `${reach.level || 'local'}; national eligible=${Boolean(reach.nationalEligible)}${reach.nationalReasons?.length ? `; national reasons=${reach.nationalReasons.join(', ')}` : ''}`;
+    const input = `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`;
 
-    const response = await client.responses.create({
-      model: MODEL,
-      store: false,
-      safety_identifier: user.localId,
-      reasoning: { effort: 'low' },
-      max_output_tokens: 10000,
+    const generated = await generateTextFreeFirst({
       instructions: INSTRUCTIONS,
-      input: [{
-        role: 'user',
-        content: [{
-          type: 'input_text',
-          text: `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`,
-        }],
-      }],
-      text: { format: { type: 'json_schema', name: 'dynastyhq_newsroom_edition', strict: true, schema: schemaFor(payload) } },
+      input,
+      schema: schemaFor(payload),
+      schemaName: 'dynastyhq_newsroom_edition',
+      maxOutputTokens: 10000,
+      temperature: 0.35,
+      safetyIdentifier: user.localId,
+      openAiModel: OPENAI_MODEL,
     });
-    if (!response.output_text) return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
-    return json(res, 200, { edition: JSON.parse(response.output_text), model: MODEL });
+
+    if (!completeEdition(generated.data, payload)) {
+      return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
+    }
+
+    return json(res, 200, {
+      edition: generated.data,
+      model: generated.model,
+      provider: generated.provider,
+    });
   } catch (error) {
-    console.error('OpenAI newsroom generation failed', error);
-    const status = error?.status === 429 ? 429 : 502;
-    return json(res, status, {
-      error: status === 429
-        ? 'The newsroom desk is busy. Try writing the edition again shortly.'
-        : 'The newsroom edition could not be completed. Your existing articles were preserved.',
+    console.error('Newsroom generation failed', error);
+    return json(res, 502, {
+      error: 'The newsroom edition could not be completed. Your existing articles were preserved.',
+      code: error?.code || 'NEWSROOM_GENERATION_FAILED',
     });
   }
 }

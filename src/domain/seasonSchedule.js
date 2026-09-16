@@ -5,6 +5,11 @@ const numberOrNull = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 const arrayOf = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
+const weekNumber = (value, fallback) => {
+  if (value === '' || value === null || value === undefined) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.trunc(parsed) : fallback;
+};
 
 const resultForScores = (teamScore, opponentScore) => {
   if (teamScore === null || opponentScore === null || teamScore === opponentScore) return '';
@@ -12,10 +17,10 @@ const resultForScores = (teamScore, opponentScore) => {
 };
 
 export const normalizeScheduleEntry = (entry = {}, index = 0) => {
-  const week = Math.max(0, Number(entry.week) || index + 1);
+  const week = weekNumber(entry.week, index + 1);
   const opponent = clean(entry.opponent || entry.team || entry.opponentName, 160);
   const statusText = clean(entry.status, 40).toLowerCase();
-  const isBye = Boolean(entry.isBye) || statusText === 'bye' || /^bye$/i.test(opponent);
+  const isBye = Boolean(entry.isBye) || statusText === 'bye' || /^bye(?:\s+week)?$/i.test(opponent);
   const teamScore = numberOrNull(entry.teamScore ?? entry.homeScore);
   const opponentScore = numberOrNull(entry.opponentScore ?? entry.awayScore);
   const explicitResult = clean(entry.result, 10).toUpperCase();
@@ -48,7 +53,6 @@ export const normalizeSeasonSchedule = (schedule = {}, fallbackSeason = 1) => {
   const byWeek = new Map();
   arrayOf(schedule.entries).forEach((entry, index) => {
     const normalized = normalizeScheduleEntry(entry, index);
-    if (!normalized.week) return;
     const previous = byWeek.get(normalized.week) || {};
     byWeek.set(normalized.week, { ...previous, ...normalized });
   });
@@ -78,9 +82,13 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
       ...prior,
       ...entry,
       opponent: entry.opponent || prior.opponent || '',
+      homeAway: entry.homeAway !== 'unknown' ? entry.homeAway : (prior.homeAway || 'unknown'),
       result: entry.result || prior.result || '',
       teamScore: entry.teamScore ?? prior.teamScore ?? null,
       opponentScore: entry.opponentScore ?? prior.opponentScore ?? null,
+      date: entry.date || prior.date || '',
+      conference: entry.conference || prior.conference || '',
+      label: entry.label || prior.label || '',
       completed: entry.completed || prior.completed || false,
       status: entry.isBye ? 'bye' : (entry.completed || prior.completed) ? 'completed' : 'upcoming',
     });
@@ -156,18 +164,38 @@ export const nextScheduledGame = (state = {}, season = state.currentSeason || 1)
 };
 
 export const scheduleWeekSetup = (state = {}) => {
-  const next = nextScheduledGame(state);
-  if (!next) return null;
+  const schedule = seasonScheduleFor(state);
+  if (!schedule?.entries?.length) return null;
+  const synced = syncScheduleWithCareer(state, schedule);
+  const currentWeek = Math.max(0, Number(state.currentWeek) || 0);
+  const currentRow = synced.entries.find((entry) => entry.week === currentWeek && (!entry.completed || entry.isBye));
+  const row = currentRow || synced.entries.find((entry) => !entry.completed && entry.week >= currentWeek) || null;
+  if (!row) return null;
+  if (row.isBye) {
+    return {
+      week: row.week,
+      type: 'bye',
+      phase: 'regular-season',
+      label: row.label || `Week ${row.week} Bye`,
+      customLabel: '',
+      opponent: '',
+      opponentRecord: '',
+      kickoff: '',
+      venue: '',
+      note: '',
+      source: 'season-schedule',
+    };
+  }
   return {
-    week: next.week,
+    week: row.week,
     type: 'game',
     phase: 'regular-season',
-    label: next.label || `Week ${next.week}`,
+    label: row.label || `Week ${row.week}`,
     customLabel: '',
-    opponent: next.opponent,
+    opponent: row.opponent,
     opponentRecord: '',
-    kickoff: next.date || '',
-    venue: next.homeAway === 'home' ? 'Home' : next.homeAway === 'away' ? 'Away' : next.homeAway === 'neutral' ? 'Neutral site' : '',
+    kickoff: row.date || '',
+    venue: row.homeAway === 'home' ? 'Home' : row.homeAway === 'away' ? 'Away' : row.homeAway === 'neutral' ? 'Neutral site' : '',
     note: '',
     source: 'season-schedule',
   };
@@ -177,8 +205,14 @@ export const scheduleWindowForHome = (state = {}, count = 5) => {
   const schedule = seasonScheduleFor(state);
   if (!schedule?.entries?.length) return [];
   const synced = syncScheduleWithCareer(state, schedule);
+  const currentWeek = Math.max(0, Number(state.currentWeek) || 0);
+  const currentIndex = synced.entries.findIndex((entry) => entry.week === currentWeek);
   const next = nextScheduledGame(state);
-  const anchorIndex = next ? Math.max(0, synced.entries.findIndex((entry) => entry.week === next.week)) : Math.max(0, synced.entries.length - count);
+  const anchorIndex = currentIndex >= 0
+    ? currentIndex
+    : next
+      ? Math.max(0, synced.entries.findIndex((entry) => entry.week === next.week))
+      : Math.max(0, synced.entries.length - count);
   const start = Math.max(0, anchorIndex - 2);
   return synced.entries.slice(start, start + count);
 };

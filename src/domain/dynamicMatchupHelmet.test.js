@@ -44,7 +44,7 @@ test('helmet decals use existing same-origin RTG function instead of extra serve
   assert.match(resolver, /\/api\/analyze-rtg-status\?resource=team-logo&id=/);
   assert.match(rtgApi, /resource === 'team-directory'/);
   assert.match(rtgApi, /resource === 'team-logo'/);
-  assert.match(rtgApi, /site\.api\.espn\.com/);
+  assert.match(rtgApi, /site\.web\.api\.espn\.com/);
   assert.match(rtgApi, /a\.espncdn\.com\/i\/teamlogos\/ncaa\/500/);
 });
 

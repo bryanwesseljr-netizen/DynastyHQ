@@ -1,5 +1,7 @@
 const clean = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
 
+export const EDITORIAL_LANGUAGE_VERSION = 2;
+
 export const GAME_LOCATION_CONTEXTS = Object.freeze({
   UNKNOWN: 'unknown',
   HOME: 'home',
@@ -136,23 +138,74 @@ export const humanizePlayerReferences = (value = '', career = {}, sharedState = 
   return output;
 };
 
-const normalizeTextArray = (values, career, state) => (values || []).map((value) => humanizePlayerReferences(value, career, state));
+const INTERNAL_SENTENCE_RE = /(?:\bcoach trust\b|\bskill points?\b|\bweekly points?\b|\benergy\b|\bgpa\b|\bfollowers?\b|\bnil valuation\b|\bbrand footprint\b|\bprogression record\b|\brtg snapshot\b|\bscreenshot\b|\bupload(?:ed)?\b|\bmissing field\b|\bfields on file\b|\bwill not invent\b|\bwill not manufacture\b|\bseparately verified\b|\bunsupported\b)/i;
+
+const replaceInternalPhrases = (value = '') => String(value || '')
+  .replace(/\bFact Ledger\b/gi, 'weekly report')
+  .replace(/\bpublished ledger\b/gi, 'season totals')
+  .replace(/\bverified ledger\b/gi, 'season record')
+  .replace(/\bverified data point(s?)\b/gi, 'confirmed development$1')
+  .replace(/\bdata point(s?)\b/gi, 'development$1')
+  .replace(/\bpermanent career artifact\b/gi, 'lasting career milestone')
+  .replace(/\bpermanent (?:career )?archive\b/gi, 'career history')
+  .replace(/\bpermanent Chronicle\b/gi, 'career history')
+  .replace(/\bcareer archive\b/gi, 'career history')
+  .replace(/\bthe archive\b/gi, 'the career history')
+  .replace(/\bverified snapshot\b/gi, 'current picture')
+  .replace(/\bgame-supplied snapshot\b/gi, 'current picture')
+  .replace(/\bgame-supplied\b/gi, 'current')
+  .replace(/\bdirectly uploaded career evidence\b/gi, 'the latest football results')
+  .replace(/\bpublished record\b/gi, 'season record')
+  .replace(/\bverified record\b/gi, 'record')
+  .replace(/\bverified final\b/gi, 'final')
+  .replace(/\bverified result\b/gi, 'result')
+  .replace(/\bverified performance\b/gi, 'performance')
+  .replace(/\bverified season evidence\b/gi, 'season evidence')
+  .replace(/\bverified game line\b/gi, 'game line')
+  .replace(/\bverified Week\b/gi, 'Week')
+  .replace(/\bverified scholarship offer list\b/gi, 'scholarship offer list')
+  .replace(/\bverified offer list\b/gi, 'offer list')
+  .replace(/\bsaved line\b/gi, 'stat line')
+  .replace(/\bsaved personal preference order\b/gi, 'personal preference order')
+  .replace(/\bpublished facts\b/gi, 'available information')
+  .replace(/\bweekly data point\b/gi, 'weekly development')
+  .replace(/\bpermanent season-and-career\b/gi, 'season-and-career')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
+export const sanitizeEditorialSystemLanguage = (value = '') => {
+  const replaced = replaceInternalPhrases(value);
+  if (!replaced) return '';
+  const sentences = replaced.split(/(?<=[.!?])\s+/).map((sentence) => sentence.trim()).filter(Boolean);
+  const readerFacing = sentences.filter((sentence) => !INTERNAL_SENTENCE_RE.test(sentence));
+  if (readerFacing.length) return readerFacing.join(' ');
+  return 'The next meaningful football development will determine where the story goes from here.';
+};
+
+const normalizeEditorialText = (value, career, state) => sanitizeEditorialSystemLanguage(
+  humanizePlayerReferences(value, career, state),
+);
+
+const normalizeTextArray = (values, career, state) => (values || [])
+  .map((value) => normalizeEditorialText(value, career, state))
+  .filter(Boolean);
 
 export const normalizeNewsroomIssueLanguage = (issue = {}, career = {}) => ({
   ...issue,
+  editorialLanguageVersion: EDITORIAL_LANGUAGE_VERSION,
   articles: (issue.articles || []).map((article) => {
     const state = createEditorialNameState(career);
     return {
       ...article,
-      kicker: humanizePlayerReferences(article.kicker, career, state),
-      headline: humanizePlayerReferences(article.headline, career, state),
-      dek: humanizePlayerReferences(article.dek, career, state),
+      kicker: normalizeEditorialText(article.kicker, career, state),
+      headline: normalizeEditorialText(article.headline, career, state),
+      dek: normalizeEditorialText(article.dek, career, state),
       paragraphs: normalizeTextArray(article.paragraphs, career, state),
       sectionHeadings: normalizeTextArray(article.sectionHeadings, career, state),
-      pullQuote: humanizePlayerReferences(article.pullQuote, career, state),
+      pullQuote: normalizeEditorialText(article.pullQuote, career, state),
       sidebars: (article.sidebars || []).map((sidebar) => ({
         ...sidebar,
-        title: humanizePlayerReferences(sidebar?.title, career, state),
+        title: normalizeEditorialText(sidebar?.title, career, state),
         items: normalizeTextArray(sidebar?.items, career, state),
       })),
     };
@@ -163,16 +216,17 @@ export const normalizePodcastEpisodeLanguage = (episode = {}, career = {}) => {
   const state = createEditorialNameState(career);
   return {
     ...episode,
-    title: humanizePlayerReferences(episode.title, career, state),
-    summary: humanizePlayerReferences(episode.summary, career, state),
+    editorialLanguageVersion: EDITORIAL_LANGUAGE_VERSION,
+    title: normalizeEditorialText(episode.title, career, state),
+    summary: normalizeEditorialText(episode.summary, career, state),
     chapters: (episode.chapters || []).map((chapter) => ({
       ...chapter,
-      title: humanizePlayerReferences(chapter?.title, career, state),
-      summary: humanizePlayerReferences(chapter?.summary, career, state),
+      title: normalizeEditorialText(chapter?.title, career, state),
+      summary: normalizeEditorialText(chapter?.summary, career, state),
     })),
     segments: (episode.segments || []).map((segment) => ({
       ...segment,
-      text: humanizePlayerReferences(segment?.text, career, state),
+      text: normalizeEditorialText(segment?.text, career, state),
     })),
   };
 };

@@ -21,13 +21,16 @@ const parseHubContext = () => {
   return { season: Number(match[1]), week: Number(match[2]) };
 };
 
+const newsroomSelect = () => document.querySelector('[aria-label="Choose weekly newsroom edition"]');
+
 const parseNewsroomContext = (career = {}) => {
-  const select = document.querySelector('.dhq-grounded-newsroom [aria-label="Choose weekly newsroom edition"]');
-  const selectedId = clean(select?.value);
+  const selectedId = clean(newsroomSelect()?.value);
   const issue = (career.newsroomIssues || []).find((entry) => entry?.id === selectedId || entry?.publicationId === selectedId);
   if (!issue) return null;
   return { season: Number(issue.season || career.currentSeason || 1), week: Number(issue.week || 0) };
 };
+
+const newsroomRoot = () => newsroomSelect()?.closest('.relative.z-10') || null;
 
 const ensureMount = (anchor, position, selector, dataKey) => {
   if (!anchor) return null;
@@ -118,7 +121,7 @@ const MediaNetworkLayerPortal = () => {
   const hubModel = useMemo(() => career && hubContext ? buildMediaNetworkLayer(career, hubContext) : null, [career, hubContext]);
   const newsroomModel = useMemo(() => career && newsroomContext ? buildMediaNetworkLayer(career, newsroomContext) : null, [career, newsroomContext]);
 
-  const openNewsroom = () => visibleNavButton('Newsroom')?.click();
+  const openNewsroom = () => (visibleNavButton('The Newsroom') || visibleNavButton('Newsroom'))?.click();
   const openPodcast = () => visibleNavButton('Podcast')?.click();
 
   useEffect(() => {
@@ -150,8 +153,8 @@ const MediaNetworkLayerPortal = () => {
         cleanup(hubNode); hubNode = null; setHubMount(null); setHubContext(null);
       }
 
-      const newsroomRoot = document.querySelector('.dhq-grounded-newsroom');
-      const newsroomAnchor = newsroomRoot?.firstElementChild;
+      const root = newsroomRoot();
+      const newsroomAnchor = root?.firstElementChild;
       const nextNewsroom = parseNewsroomContext(career);
       if (newsroomAnchor && nextNewsroom) {
         newsroomNode = newsroomNode?.isConnected ? newsroomNode : ensureMount(newsroomAnchor, 'afterend', '[data-media-network-newsroom="true"]', 'mediaNetworkNewsroom');

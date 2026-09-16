@@ -48,7 +48,7 @@ test('helmet decals use existing same-origin RTG function instead of extra serve
   assert.match(rtgApi, /a\.espncdn\.com\/i\/teamlogos\/ncaa\/500/);
 });
 
-test('matchup presentation uses the polished generic helmet artwork with dynamic team logos', async () => {
+test('matchup presentation uses polished generic helmet artwork with team-tinted shells and dynamic logos', async () => {
   const [component, styles] = await Promise.all([
     readFile(componentUrl, 'utf8'),
     readFile(stylesUrl, 'utf8'),
@@ -56,11 +56,24 @@ test('matchup presentation uses the polished generic helmet artwork with dynamic
 
   assert.match(component, /import genericMatchupHelmets from '\.\.\/assets\/matchup-helmets\.webp';/);
   assert.match(component, /className="dhq-generic-matchup-helmets__base"/);
-  assert.match(component, /src=\{genericMatchupHelmets\}/);
-  assert.match(component, /className=\{`dhq-generic-helmet-decal dhq-generic-helmet-decal--\$\{side\}`\}/);
+  assert.match(component, /<TeamTint brand=\{home\} side="left" \/>/);
+  assert.match(component, /<TeamTint brand=\{away\} side="right" \/>/);
+  assert.match(component, /WebkitMaskImage: `url\(\$\{genericMatchupHelmets\}\)`/);
   assert.match(component, /<img src=\{brand\.logo\}/);
-  assert.match(styles, /\.dhq-generic-helmet-decal--left/);
-  assert.match(styles, /\.dhq-generic-helmet-decal--right/);
+  assert.match(styles, /filter: grayscale\(1\) contrast\(1\.06\) brightness\(1\.08\)/);
+  assert.match(styles, /mix-blend-mode: color/);
+  assert.match(styles, /\.dhq-generic-matchup-helmets__tint--left[\s\S]*clip-path: inset\(0 50% 0 0\)/);
+  assert.match(styles, /\.dhq-generic-matchup-helmets__tint--right[\s\S]*clip-path: inset\(0 0 0 50%\)/);
+});
+
+test('helmet decals use mirrored shell-center zones instead of crowding the facemasks', async () => {
+  const styles = await readFile(stylesUrl, 'utf8');
+
+  assert.match(styles, /\.dhq-generic-helmet-decal[\s\S]*top: 42%/);
+  assert.match(styles, /\.dhq-generic-helmet-decal--left \{[\s\S]*left: 20\.5%/);
+  assert.match(styles, /\.dhq-generic-helmet-decal--right \{[\s\S]*left: 79\.5%/);
+  assert.match(styles, /object-position: 50% 50%/);
+  assert.match(styles, /drop-shadow\(0 0 1px var\(--dhq-team-secondary\)\)/);
 });
 
 test('dynamic helmet portal replaces Home and Game Hub static art only for verified FBS matchups', async () => {

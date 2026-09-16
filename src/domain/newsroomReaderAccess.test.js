@@ -7,6 +7,7 @@ const rewriteUrl = new URL('../components/NewsroomArticleRewritePortal.jsx', imp
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const dashboardUrl = new URL('../components/BroadcastDashboard.jsx', import.meta.url);
 const immersionUrl = new URL('./gameWeekImmersion.js', import.meta.url);
+const readerStylesUrl = new URL('../newsroom-reader-shell-v2.css', import.meta.url);
 
 test('opening a Newsroom article resets both nested and window scroll positions', async () => {
   const source = await readFile(experienceUrl, 'utf8');
@@ -30,6 +31,17 @@ test('article reader exposes a direct Rewrite edition control that reuses the na
   assert.match(rewrite, /Rewrite edition/);
   assert.match(rewrite, /nativeButton\.click\(\)/);
   assert.match(rewrite, /Regenerate every article in this weekly edition/);
+});
+
+test('article reader shows complete photos and gives publication tabs their own responsive row', async () => {
+  const styles = await readFile(readerStylesUrl, 'utf8');
+
+  assert.match(styles, /object-fit: contain !important/);
+  assert.match(styles, /\.dhq-enquirer-hero img/);
+  assert.match(styles, /\.dhq-espn-hero img/);
+  assert.match(styles, /@media \(max-width: 1180px\)/);
+  assert.match(styles, /\.dhq-newsroom-reader-mode > \.dhq-newsroom-reader-tabs \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?grid-row: 2;/);
+  assert.match(styles, /flex-wrap: wrap !important/);
 });
 
 test('homepage matchup immersion falls back to the latest published college opponent', async () => {

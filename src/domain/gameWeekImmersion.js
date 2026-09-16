@@ -158,8 +158,10 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
         center: 'VS',
         centerLine: clean(state.currentWeekSetup?.kickoff) || 'SATURDAY, 7:30 PM',
         centerDetail: clean(state.currentWeekSetup?.venue) || 'STADIUM DETAILS PENDING',
-        primaryLabel: 'IMPORT SESSION',
-        primaryTarget: 'importSession',
+        primaryLabel: 'OPEN GAME DAY',
+        primaryTarget: 'gameHub',
+        secondaryLabel: 'IMPORT AFTER GAME',
+        secondaryTarget: 'importSession',
       }
     : mode === 'postgame'
       ? {
@@ -170,6 +172,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
           centerDetail: result ? `${result} · WEEK ${latestGame?.week ?? week}` : `WEEK ${latestGame?.week ?? week}`,
           primaryLabel: 'CONTINUE WRAP-UP',
           primaryTarget: nextTarget(flow),
+          secondaryLabel: 'VIEW WEEK HUB',
+          secondaryTarget: 'gameHub',
         }
       : mode === 'between'
         ? {
@@ -180,6 +184,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
             centerDetail: `SET UP WEEK ${week} TO CONTINUE`,
             primaryLabel: `SET UP WEEK ${week}`,
             primaryTarget: 'agenda',
+            secondaryLabel: 'VIEW LAST GAME',
+            secondaryTarget: 'gameHub',
           }
         : mode === 'bye'
           ? {
@@ -190,6 +196,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
               centerDetail: 'DEVELOPMENT WEEK',
               primaryLabel: 'OPEN WEEK HUB',
               primaryTarget: 'gameHub',
+              secondaryLabel: 'VIEW CAREER',
+              secondaryTarget: 'career',
             }
           : {
               kicker: 'DYNASTYHQ',
@@ -199,6 +207,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
               centerDetail: 'SET UP THE WEEK TO BEGIN',
               primaryLabel: `SET UP WEEK ${week}`,
               primaryTarget: 'agenda',
+              secondaryLabel: 'VIEW CAREER',
+              secondaryTarget: 'career',
             };
 
   const keys = mode === 'pregame'

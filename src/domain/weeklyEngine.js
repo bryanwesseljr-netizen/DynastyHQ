@@ -5,6 +5,15 @@ export * from './weeklyEngineBase.js';
 export const SIGNED_YARDAGE_KEYS = new Set(['game.passYds', 'game.rushYds']);
 export const isSignedYardageKey = (key) => SIGNED_YARDAGE_KEYS.has(String(key || ''));
 
+export const MANUAL_QB_STAT_LABELS = Object.freeze({
+  'game.passYds': 'Passing yards',
+  'game.passTD': 'Passing TDs',
+  'game.rushYds': 'Rushing yards',
+  'game.rushTD': 'Rushing TDs',
+  'game.int': 'Interceptions',
+});
+export const isManualQbStatKey = (key) => Object.hasOwn(MANUAL_QB_STAT_LABELS, String(key || ''));
+
 const valueMissing = (value) => value === '' || value === null || value === undefined;
 
 // Football yardage can legitimately finish below zero (for example a QB can
@@ -28,12 +37,39 @@ const repairSignedGamePatch = (draft) => {
   return { ...draft, gamePatch };
 };
 
-// The legacy patch rebuilder rejects every negative numeric value. Repair only
-// the two signed yardage fields after edits/removals so a reviewed -6 survives
-// all the way into the verified game patch.
-export const updateScanDraftFact = (draft, factKey, value) => repairSignedGamePatch(
-  legacy.updateScanDraftFact(draft, factKey, value),
-);
+const seedMissingManualQbFact = (draft, factKey) => {
+  if (!draft || !isManualQbStatKey(factKey)) return draft;
+  if ((draft.facts || []).some((entry) => entry.key === factKey)) return draft;
+  const sourceId = 'manual-verification';
+  return {
+    ...draft,
+    facts: [
+      ...(draft.facts || []),
+      {
+        id: `${draft.weekKey || draft.id || 'weekly'}:${factKey}:manual`,
+        key: factKey,
+        label: MANUAL_QB_STAT_LABELS[factKey],
+        value: '',
+        confidence: 1,
+        sourceId,
+        verified: true,
+        userVerified: true,
+        corrected: true,
+        manual: true,
+        evidence: 'Entered manually during verification because the scanner did not return this required stat.',
+      },
+    ],
+  };
+};
+
+// The legacy editor only changes facts that already exist. The verification desk
+// can now supply a missing required QB stat (especially a visible zero) without
+// inventing it: the user explicitly enters the value, we seed a manual fact, and
+// then the established patch builder handles it normally.
+export const updateScanDraftFact = (draft, factKey, value) => {
+  const seeded = !valueMissing(value) ? seedMissingManualQbFact(draft, factKey) : draft;
+  return repairSignedGamePatch(legacy.updateScanDraftFact(seeded, factKey, value));
+};
 
 export const removeScanDraftFact = (draft, factKey) => repairSignedGamePatch(
   legacy.removeScanDraftFact(draft, factKey),

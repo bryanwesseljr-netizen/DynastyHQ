@@ -30,6 +30,39 @@ test('immersion engine derives stakes, memory, records and podcast plan without 
   assert.equal(model.atmosphere, 'pregame');
 });
 
+test('season pulse uses the schedule-backed team record while keeping player production personal', () => {
+  const state = {
+    careerPhase: 'Player',
+    currentSeason: 2,
+    currentWeek: 4,
+    player: { name: 'Bryan Wessel', college: 'Oregon', pos: 'QB' },
+    rtg: { rank: 'QB1', coachTrust: 1148 },
+    currentWeekSetup: { opponent: 'Michigan State' },
+    seasonSchedules: [{
+      season: 2,
+      school: 'Oregon',
+      entries: [
+        { week: 0, opponent: 'BYE', isBye: true, status: 'bye' },
+        { week: 1, opponent: 'North Dakota State', result: 'W', teamScore: 42, opponentScore: 24, status: 'completed' },
+        { week: 2, opponent: 'Baylor', result: 'L', teamScore: 21, opponentScore: 45, status: 'completed' },
+        { week: 3, opponent: 'Oregon State', result: 'W', teamScore: 33, opponentScore: 15, status: 'completed' },
+        { week: 4, opponent: 'Michigan State', status: 'upcoming' },
+      ],
+    }],
+    gameLogs: [
+      { season: 2, week: 2, stage: 'college', opponent: 'Baylor', result: 'L', homeScore: 21, awayScore: 45, passYds: 203, passTD: 1, rushYds: -6, rushTD: 0, int: 1, didPlay: true },
+    ],
+  };
+
+  const model = buildImmersionModel(state);
+  assert.equal(model.seasonPulse.record, '2-1');
+  assert.deepEqual(model.seasonPulse.results, ['W', 'L', 'W']);
+  assert.equal(model.seasonPulse.passingYards, 203);
+  assert.equal(model.seasonPulse.totalTouchdowns, 1);
+  assert.match(model.todayBrief[0], /2-1/);
+  assert.ok(model.stakes.some((entry) => /3-1/.test(entry.detail)));
+});
+
 test('immersion engine treats a fresh uncommitted career as high school', () => {
   const model = buildImmersionModel({
     careerPhase: 'Player',

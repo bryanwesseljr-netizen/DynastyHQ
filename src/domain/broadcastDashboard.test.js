@@ -22,12 +22,13 @@ test('broadcast dashboard uses the approved reference proportions and real workf
   assert.match(source, /buildGameweekFlow\(state\)/);
   assert.match(source, /buildGameWeekImmersion\(state, model, flow\)/);
   assert.match(source, /open\(immersion\.primaryTarget\)/);
-  assert.match(source, /open\('gameHub'\)/);
+  assert.match(source, /open\(immersion\.secondaryTarget \|\| 'gameHub'\)/);
   assert.match(source, /dhq-gameweek-immersion/);
   assert.match(source, /import '\.\/broadcast-reference\.css';/);
   assert.match(source, /import '\.\/game-week-immersion\.css';/);
   assert.match(immersion, /THE STORY CONTINUES SATURDAY/);
-  assert.match(immersion, /IMPORT SESSION/);
+  assert.match(immersion, /OPEN GAME DAY/);
+  assert.match(immersion, /IMPORT AFTER GAME/);
   assert.match(immersion, /CONTINUE WRAP-UP/);
   assert.match(immersion, /THE NEXT CHAPTER AWAITS/);
   assert.match(app, /tab === 'importSession' \|\| tab === 'gameHub'/);
@@ -39,7 +40,8 @@ test('broadcast dashboard uses the approved reference proportions and real workf
   assert.match(styles, /\.dhq-broadcast-cards \{[\s\S]*?grid-template-columns: 1\.03fr 0\.92fr 0\.92fr 1\.16fr/);
   assert.match(referenceStyles, /\.dhq-broadcast-header \{[\s\S]*?height: 108px !important/);
   assert.match(referenceStyles, /\.dhq-page-main\[data-active-tab="dashboard"\] \{[\s\S]*?padding-top: 108px !important/);
-  assert.match(immersionStyles, /\.dhq-gameweek-immersion \{[\s\S]*?grid-template-columns: 1\.22fr 1fr 0\.9fr/);
+  assert.match(immersionStyles, /\.dhq-gameweek-immersion \{[\s\S]*?grid-template-columns: 1\.15fr 0\.95fr 0\.95fr/);
+  assert.match(immersionStyles, /\.dhq-immersion-panel \{[\s\S]*?min-height: 154px/);
 });
 
 test('mobile dashboard preserves the compact information grid and stacks immersion panels', async () => {

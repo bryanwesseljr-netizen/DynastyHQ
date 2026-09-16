@@ -153,9 +153,12 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
             <div className="dhq-broadcast-hero__buttons">
               <button type="button" className="dhq-broadcast-primary" onClick={() => open(immersion.primaryTarget)}>
                 {immersion.primaryLabel}
-                {immersion.mode === 'pregame' ? <CloudUpload size={16} /> : <ChevronRight size={17} />}
+                {immersion.primaryTarget === 'importSession' ? <CloudUpload size={16} /> : immersion.mode === 'pregame' ? <Play size={15} /> : <ChevronRight size={17} />}
               </button>
-              <button type="button" className="dhq-broadcast-secondary" onClick={() => open('gameHub')}>VIEW WEEK HUB <ChevronRight size={17} /></button>
+              <button type="button" className="dhq-broadcast-secondary" onClick={() => open(immersion.secondaryTarget || 'gameHub')}>
+                {immersion.secondaryLabel || 'VIEW WEEK HUB'}
+                {immersion.secondaryTarget === 'importSession' ? <CloudUpload size={16} /> : <ChevronRight size={17} />}
+              </button>
             </div>
           ) : null}
         </section>

@@ -29,49 +29,26 @@ const seasonWeekFromPublication = (publicationId = '') => {
     : { season: 1, week: 1 };
 };
 
-const issueForPublication = (career = {}, publicationId = '') => {
-  const { season, week } = seasonWeekFromPublication(publicationId);
-  return asArray(career.newsroomIssues).find((issue) => (
-    issue?.publicationId === publicationId
-    || issue?.id === publicationId
-    || (Number(issue?.season || 1) === season && Number(issue?.week) === week)
-  )) || null;
-};
-
 const findNewsroomNav = () => [...document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button')]
   .find((button) => /^(?:the\s+)?newsroom$/i.test(clean(button.textContent)) && button.offsetParent !== null)
   || [...document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button')]
     .find((button) => /^(?:the\s+)?newsroom$/i.test(clean(button.textContent)))
   || null;
 
-const setNativeSelectValue = (select, value) => {
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set;
-  if (setter) setter.call(select, value);
-  else select.value = value;
-  select.dispatchEvent(new Event('change', { bubbles: true }));
-};
+const routeToNewsroomHome = () => {
+  const nav = findNewsroomNav();
+  if (!nav) return;
 
-const exactStoryCard = (outletId, headline) => [...document.querySelectorAll('.dhq-newsroom-story-card')]
-  .find((card) => (
-    (!outletId || clean(card.dataset.newsroomOutletId) === outletId)
-    && (!headline || clean(card.getAttribute('aria-label')).includes(headline))
-  )) || null;
+  window.__dhqNewsroomHomePending = true;
+  nav.click();
 
-const routeToExactNewsroomStory = ({ issue, story }) => {
-  if (!issue || !story) return;
-  const issueId = issue.id || issue.publicationId;
-  const outletId = clean(story.outletId);
-  const headline = clean(story.headline || story.title);
-  if (!issueId || !headline) return;
-
-  window.__dhqNewsroomExactStoryPending = true;
-  findNewsroomNav()?.click();
   let finished = false;
-  let resetCancelled = false;
+  let deskSelected = false;
 
   const finish = () => {
+    if (finished) return;
     finished = true;
-    delete window.__dhqNewsroomExactStoryPending;
+    delete window.__dhqNewsroomHomePending;
     window.requestAnimationFrame(() => {
       const main = document.querySelector('main[data-active-tab="newsroom"]');
       if (main?.scrollTo) main.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -81,39 +58,39 @@ const routeToExactNewsroomStory = ({ issue, story }) => {
 
   const attempt = () => {
     if (finished) return;
+    const main = document.querySelector('main[data-active-tab="newsroom"]');
+    if (!main) return;
 
-    // Newsroom normally resets to its landing page when the top navigation is used.
-    // A Team News click is the existing signal that cancels that delayed reset.
-    if (!resetCancelled) {
+    // If the user last left Newsroom with a story open, explicitly return to the
+    // newsroom landing page instead of restoring that reader state.
+    const backToArticles = [...main.querySelectorAll('button')]
+      .find((button) => /^back\s+to\s+all\s+articles$/i.test(clean(button.textContent)));
+    if (backToArticles) {
+      backToArticles.click();
+      return;
+    }
+
+    // The Team News desk is the main DynastyHQ newsroom landing experience.
+    // Selecting it also cancels any stale delayed desk reset without opening a story.
+    if (!deskSelected) {
       const teamNews = [...document.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
         .find((button) => /team\s+news/i.test(clean(button.textContent)));
       if (teamNews) {
-        resetCancelled = true;
+        deskSelected = true;
         teamNews.click();
       }
     }
 
-    const hubStory = [...document.querySelectorAll('[data-team-newsroom-hub="true"] button')]
-      .find((button) => clean(button.textContent).includes(headline));
-    if (hubStory) {
-      hubStory.click();
-      finish();
-      return;
-    }
-
-    const select = document.querySelector('select[aria-label="Choose weekly newsroom edition"]');
-    if (!select) return;
-    if (select.value !== issueId) setNativeSelectValue(select, issueId);
-
-    const card = exactStoryCard(outletId, headline);
-    if (!card) return;
-    card.click();
-    finish();
+    const newsroomHome = document.querySelector('[data-team-newsroom-hub="true"]');
+    if (newsroomHome || document.querySelector('#weekly-coverage-title')) finish();
   };
 
-  [50, 110, 190, 300, 480, 720, 1050, 1450, 2000, 2800, 3600].forEach((delay) => {
+  [30, 70, 130, 220, 360, 560, 820, 1150, 1550, 2100, 2800, 3600].forEach((delay) => {
     window.setTimeout(attempt, delay);
   });
+  window.setTimeout(() => {
+    delete window.__dhqNewsroomHomePending;
+  }, 4500);
 };
 
 const updateOfficialCard = (career = {}) => {
@@ -212,20 +189,10 @@ const GameHubIntegrationPortal = () => {
       const button = target?.closest('.dhq-game-hub button');
       if (!button || !/^open\s+newsroom\b/i.test(clean(button.textContent))) return;
 
-      const currentCareer = careerRef.current || {};
-      const publicationId = publicationFromHub(currentCareer);
-      const issue = issueForPublication(currentCareer, publicationId);
-      const card = button.closest('.dhq-gh-wide-card');
-      const visibleHeadline = clean(card?.querySelector('h2')?.textContent);
-      const story = asArray(issue?.articles).find((article) => clean(article?.headline || article?.title) === visibleHeadline)
-        || asArray(issue?.articles)[0]
-        || null;
-      if (!issue || !story) return;
-
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      routeToExactNewsroomStory({ issue, story });
+      routeToNewsroomHome();
     };
 
     document.addEventListener('click', handleClick, true);

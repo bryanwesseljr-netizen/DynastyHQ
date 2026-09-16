@@ -1,0 +1,105 @@
+.dhq-finished-podcast-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dhq-finished-podcast-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  border: 1px solid rgba(52, 211, 153, .34);
+  border-radius: 999px;
+  background: rgba(16, 185, 129, .10);
+  padding: 5px 8px;
+  color: #a7f3d0;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .13em;
+  line-height: 1;
+}
+
+.dhq-broadcast-podcast-card.dhq-podcast-finished-ready .dhq-broadcast-podcast-copy > button {
+  display: none !important;
+}
+
+.dhq-finished-podcast-action--home {
+  margin-top: 7px;
+}
+
+.dhq-finished-podcast-action--home button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  padding: 7px 11px;
+  color: #071018;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.dhq-broadcast-podcast-card.dhq-podcast-finished-ready .dhq-broadcast-waveform i {
+  animation: dhq-finished-wave 1.55s ease-in-out infinite alternate;
+}
+
+.dhq-broadcast-podcast-card.dhq-podcast-finished-ready .dhq-broadcast-waveform i:nth-child(3n) { animation-delay: .18s; }
+.dhq-broadcast-podcast-card.dhq-podcast-finished-ready .dhq-broadcast-waveform i:nth-child(4n) { animation-delay: .34s; }
+
+@keyframes dhq-finished-wave {
+  from { opacity: .45; transform: scaleY(.82); }
+  to { opacity: 1; transform: scaleY(1.12); }
+}
+
+.dhq-gh-podcast-panel.dhq-podcast-finished-ready {
+  border-color: rgba(52, 211, 153, .28);
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, .04), 0 18px 45px rgba(0, 0, 0, .18);
+}
+
+.dhq-gh-podcast-panel.dhq-podcast-finished-ready > button {
+  display: none !important;
+}
+
+.dhq-finished-podcast-action--gamehub {
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, .13);
+}
+
+.dhq-finished-podcast-action--gamehub button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid rgba(52, 211, 153, .34);
+  border-radius: 9px;
+  background: rgba(16, 185, 129, .12);
+  padding: 8px 12px;
+  color: #d1fae5;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+
+.dhq-finished-podcast-action button:hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 767px) {
+  .dhq-finished-podcast-action--home,
+  .dhq-finished-podcast-action--gamehub {
+    width: 100%;
+  }
+
+  .dhq-finished-podcast-action--gamehub button {
+    flex: 1;
+  }
+}

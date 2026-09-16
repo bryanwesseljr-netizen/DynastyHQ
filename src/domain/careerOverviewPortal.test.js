@@ -33,6 +33,18 @@ test('Career overview derives history defensively and never assumes every log ha
   assert.match(portalSource, /const chronicle = arrayOf\(state\.careerChronicle\)/);
 });
 
+test('Career sidebar follows the canonical career stage instead of always showing recruiting tape', async () => {
+  const portalSource = await readFile(portalSourceUrl, 'utf8');
+
+  assert.match(portalSource, /import \{ CAREER_STAGES, deriveCareerStage \} from '\.\.\/domain\/commandCenter\.js';/);
+  assert.match(portalSource, /const careerStage = deriveCareerStage\(state\)/);
+  assert.match(portalSource, /view\.careerStage === CAREER_STAGES\.HIGH_SCHOOL/);
+  assert.match(portalSource, /view\.careerStage === CAREER_STAGES\.COLLEGE/);
+  assert.match(portalSource, /<h2>Recruiting Tape<\/h2>/);
+  assert.match(portalSource, /<h2>Road to Glory<\/h2>/);
+  assert.match(portalSource, /Coach Trust/);
+});
+
 test('Career overview matches the homepage broadcast framing and remains mobile responsive', async () => {
   const styles = await readFile(stylesUrl, 'utf8');
 

@@ -19,7 +19,53 @@ const extractGeminiText = (body = {}) => (body?.candidates || [])
   .join('')
   .trim();
 
-const parseJson = (value, provider) => {
+export const extractFirstJsonValue = (value) => {
+  const text = cleanJsonText(value);
+  const objectStart = text.indexOf('{');
+  const arrayStart = text.indexOf('[');
+  const starts = [objectStart, arrayStart].filter((index) => index >= 0);
+  if (!starts.length) return '';
+
+  const start = Math.min(...starts);
+  const stack = [];
+  let inString = false;
+  let escaping = false;
+
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === '\\') {
+        escaping = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{' || char === '[') {
+      stack.push(char);
+      continue;
+    }
+
+    if (char !== '}' && char !== ']') continue;
+    const expected = char === '}' ? '{' : '[';
+    if (stack[stack.length - 1] !== expected) return '';
+    stack.pop();
+    if (!stack.length) return text.slice(start, index + 1);
+  }
+
+  return '';
+};
+
+export const parseJson = (value, provider) => {
   const text = cleanJsonText(value);
   if (!text) {
     const error = new Error(`${provider} returned no text.`);
@@ -31,6 +77,15 @@ const parseJson = (value, provider) => {
   try {
     return JSON.parse(text);
   } catch (cause) {
+    const recovered = extractFirstJsonValue(text);
+    if (recovered && recovered !== text) {
+      try {
+        return JSON.parse(recovered);
+      } catch {
+        // Fall through to the original provider error below.
+      }
+    }
+
     const error = new Error(`${provider} returned invalid JSON.`);
     error.provider = provider;
     error.status = 502;

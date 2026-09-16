@@ -1,26 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
+import genericMatchupHelmets from '../assets/matchup-helmets.webp';
 import { catalogTeamBrand, fallbackTeamBrand, resolveTeamBrand } from '../domain/teamBrandResolver.js';
 
-const TeamMark = ({ brand, teamName, side }) => (
+const TeamDecal = ({ brand, teamName, side }) => (
   <div
-    className={`dhq-matchup-team-mark dhq-matchup-team-mark--${side}`}
+    className={`dhq-generic-helmet-decal dhq-generic-helmet-decal--${side}`}
     style={{
       '--dhq-team-primary': brand.primaryColor,
       '--dhq-team-secondary': brand.secondaryColor,
     }}
     role="img"
-    aria-label={`${teamName || brand.displayName} logo`}
+    aria-label={`${teamName || brand.displayName} helmet logo`}
   >
-    <span className="dhq-matchup-team-mark__glow" aria-hidden="true" />
     {brand.logo ? (
-      <img
-        className="dhq-matchup-team-mark__logo"
-        src={brand.logo}
-        alt=""
-        draggable="false"
-      />
+      <img src={brand.logo} alt="" draggable="false" />
     ) : (
-      <span className="dhq-matchup-team-mark__fallback">{brand.abbreviation}</span>
+      <span>{brand.abbreviation}</span>
     )}
   </div>
 );
@@ -63,15 +58,21 @@ const DynamicMatchupHelmets = ({
 
   return (
     <div
-      className={`dhq-dynamic-matchup-helmets dhq-dynamic-matchup-logos ${className}`.trim()}
+      className={`dhq-dynamic-matchup-helmets dhq-generic-matchup-helmets ${className}`.trim()}
       data-home-team={homeTeam || ''}
       data-away-team={awayTeam || ''}
       data-home-brand-source={home.source}
       data-away-brand-source={away.source}
-      aria-label={`${homeTeam || 'Home team'} versus ${awayTeam || 'Away team'} logos`}
+      aria-label={`${homeTeam || 'Home team'} versus ${awayTeam || 'Away team'} helmets`}
     >
-      <TeamMark brand={home} side="left" teamName={homeTeam} />
-      <TeamMark brand={away} side="right" teamName={awayTeam} />
+      <img
+        className="dhq-generic-matchup-helmets__base"
+        src={genericMatchupHelmets}
+        alt=""
+        draggable="false"
+      />
+      <TeamDecal brand={home} teamName={homeTeam} side="left" />
+      <TeamDecal brand={away} teamName={awayTeam} side="right" />
     </div>
   );
 };

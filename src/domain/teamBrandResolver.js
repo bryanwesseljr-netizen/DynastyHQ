@@ -1,7 +1,8 @@
 import { resolveTeamMediaProfile } from './teamMediaProfile.js';
 
 const ESPN_TEAMS_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=500';
-const CACHE_KEY = 'dynastyhq-college-team-brands-v1';
+const TEAM_DIRECTORY_URL = '/api/college-team-brands';
+const CACHE_KEY = 'dynastyhq-college-team-brands-v2';
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 let brandIndexPromise = null;
@@ -89,7 +90,10 @@ const toBrand = (team = {}) => {
     abbreviation: clean(team.abbreviation) || initialsFor(team.displayName || team.location || team.name),
     primaryColor: catalog.source === 'fbs-2026' ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
     secondaryColor: catalog.source === 'fbs-2026' ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
-    logo: team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href || team.logos?.[0]?.href || '',
+    logo: clean(team.logo)
+      || team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href
+      || team.logos?.[0]?.href
+      || '',
     aliases: teamAliases(team),
     source: 'espn+fbs-2026',
   };
@@ -120,12 +124,11 @@ const fetchTeams = async () => {
   const cached = readCache();
   if (cached) return cached;
 
-  const response = await fetch(ESPN_TEAMS_URL, { headers: { Accept: 'application/json' } });
-  if (!response.ok) throw new Error(`College team directory returned ${response.status}`);
+  const response = await fetch(TEAM_DIRECTORY_URL, { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error(`DynastyHQ team directory returned ${response.status}`);
   const payload = await response.json();
-  const entries = payload?.sports?.[0]?.leagues?.[0]?.teams || [];
-  const teams = entries.map((entry) => entry?.team).filter(Boolean).map(toBrand);
-  if (!teams.length) throw new Error('College team directory returned no teams');
+  const teams = (payload?.teams || []).map(toBrand).filter(Boolean);
+  if (!teams.length) throw new Error('DynastyHQ team directory returned no teams');
   writeCache(teams);
   return teams;
 };
@@ -189,3 +192,4 @@ export const resolveTeamBrand = async (name, options = {}) => {
 
 export const TEAM_BRAND_CACHE_KEY = CACHE_KEY;
 export const TEAM_BRAND_SOURCE_URL = ESPN_TEAMS_URL;
+export const TEAM_BRAND_DIRECTORY_URL = TEAM_DIRECTORY_URL;

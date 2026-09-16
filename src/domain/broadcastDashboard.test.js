@@ -26,7 +26,8 @@ test('broadcast dashboard uses the approved reference proportions and real workf
   assert.match(source, /dhq-gameweek-immersion/);
   assert.match(source, /import '\.\/broadcast-reference\.css';/);
   assert.match(source, /import '\.\/game-week-immersion\.css';/);
-  assert.match(immersion, /THE STORY CONTINUES SATURDAY/);
+  assert.match(immersion, /SATURDAY STARTS HERE/);
+  assert.match(immersion, /buildGameDayBrief\(state\)/);
   assert.match(immersion, /OPEN GAME DAY/);
   assert.match(immersion, /IMPORT AFTER GAME/);
   assert.match(immersion, /CONTINUE WRAP-UP/);

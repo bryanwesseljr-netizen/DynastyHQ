@@ -22,6 +22,7 @@ import {
 import { buildStorylineEngine } from '../domain/storylineEngine.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './immersive-experience-v3.css';
+import './immersive-experience-v3-polish.css';
 
 const clean = (value) => String(value ?? '').trim();
 const numberOf = (value, fallback = 0) => {
@@ -217,7 +218,16 @@ const GAME_TABS = [
   ['media', 'MEDIA', Headphones],
   ['stats', 'STATS', Trophy],
   ['photos', 'PHOTOS', Camera],
+  ['season', 'SEASON', CalendarDays],
 ];
+
+const SECTION_COPY = {
+  story: ['WHY THIS GAME MATTERS', 'Career meaning, developing storylines, milestones, and season context.'],
+  media: ['AROUND THE GAME', 'Official in-game coverage, DynastyHQ journalism, and the finished podcast in one place.'],
+  stats: ['THE NUMBERS', 'Player production and the verified game summary without the surrounding noise.'],
+  photos: ['GAME GALLERY', 'The visual record of this week — photos and keepsakes only.'],
+  season: ['SEASON AT A GLANCE', 'The complete saved team schedule and results, kept separate from your personal appearance history.'],
+};
 
 const GameHubExperience = ({ career, context }) => {
   const [section, setSection] = useState('overview');
@@ -235,6 +245,8 @@ const GameHubExperience = ({ career, context }) => {
     };
   }, [section]);
 
+  const copy = SECTION_COPY[section];
+
   return (
     <div className="dhq-v3-game-nav-shell">
       <nav className="dhq-v3-game-tabs" aria-label="Game Hub sections">
@@ -245,16 +257,10 @@ const GameHubExperience = ({ career, context }) => {
         ))}
       </nav>
       {section === 'overview' ? <GameHubOverview career={career} context={context} onSection={setSection} /> : null}
-      {section !== 'overview' ? (
+      {copy ? (
         <div className="dhq-v3-section-intro">
-          <span>{section === 'story' ? 'WHY THIS GAME MATTERS' : section === 'media' ? 'AROUND THE GAME' : section === 'stats' ? 'THE NUMBERS' : 'GAME GALLERY'}</span>
-          <p>{section === 'story'
-            ? 'Career meaning, developing storylines, milestones, and season context.'
-            : section === 'media'
-              ? 'Official in-game coverage, DynastyHQ journalism, and the finished podcast in one place.'
-              : section === 'stats'
-                ? 'Player production and the verified game summary without the surrounding noise.'
-                : 'The visual record of this week — photos and keepsakes only.'}</p>
+          <span>{copy[0]}</span>
+          <p>{copy[1]}</p>
         </div>
       ) : null}
     </div>
@@ -274,11 +280,6 @@ const ImmersiveExperienceV3Portal = () => {
     let scheduled = false;
 
     const remove = (node) => node?.isConnected && node.remove();
-    const syncLabels = () => {
-      document.querySelectorAll('.dhq-gh-story-director .dhq-gh-card__heading span').forEach((label) => {
-        label.dataset.dhqFriendlyLabel = 'true';
-      });
-    };
 
     const sync = () => {
       scheduled = false;
@@ -313,7 +314,6 @@ const ImmersiveExperienceV3Portal = () => {
         setHubMount(null);
         setHubContext(null);
       }
-      syncLabels();
     };
 
     const schedule = () => {

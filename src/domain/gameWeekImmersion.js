@@ -1,3 +1,5 @@
+import { buildGameDayBrief } from './gameDayBrief.js';
+
 const clean = (value) => String(value ?? '').trim();
 const finite = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -62,26 +64,6 @@ const previousCopyFor = ({ mode, school, opponent, latestGame, week }) => {
   return `Week ${latestGame.week ?? '—'} is in the archive: ${school} finished with a ${resultText}. Set up Week ${week} to reveal the next chapter.`;
 };
 
-const pregameKeys = ({ latestGame, opponent }) => {
-  const lastResult = clean(latestGame?.result).toUpperCase();
-  return [
-    {
-      title: lastResult === 'L' ? 'RESET THE SCRIPT' : lastResult === 'W' ? 'CARRY THE MOMENTUM' : 'START FAST',
-      detail: lastResult === 'L'
-        ? 'Make the next game its own story instead of chasing the previous result.'
-        : 'Establish the tone early and keep the offense on schedule.',
-    },
-    {
-      title: 'VALUE POSSESSIONS',
-      detail: 'Avoid giving away short fields and force the opponent to earn every drive.',
-    },
-    {
-      title: `MAKE ${clean(opponent).toUpperCase() || 'THE MATCHUP'} ADJUST`,
-      detail: 'Lean into what is working and let the verified game data tell the postgame story.',
-    },
-  ];
-};
-
 const postgameKeys = (flow = {}) => {
   const pending = (flow.steps || []).filter((step) => ['pending', 'ready'].includes(step.state));
   const labels = pending.map((step) => step.label).filter(Boolean);
@@ -140,6 +122,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const week = finite(flow.activeWeek?.week ?? state.currentWeek ?? dashboard.week, 1);
   const isBye = flow.activeWeek?.type === 'bye' || state.currentWeekSetup?.type === 'bye';
   const configured = Boolean(flow.activeWeek?.configured);
+  const gameDay = buildGameDayBrief(state);
 
   let mode = 'idle';
   if (flow.mode === 'wrap-up' && latestGame) mode = 'postgame';
@@ -153,10 +136,10 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
 
   const presentation = mode === 'pregame'
     ? {
-        kicker: 'GAME WEEK',
-        headline: 'THE STORY CONTINUES SATURDAY',
+        kicker: 'GAME DAY',
+        headline: 'SATURDAY STARTS HERE',
         center: 'VS',
-        centerLine: clean(state.currentWeekSetup?.kickoff) || 'SATURDAY, 7:30 PM',
+        centerLine: clean(state.currentWeekSetup?.kickoff) || 'KICKOFF TBD',
         centerDetail: clean(state.currentWeekSetup?.venue) || 'STADIUM DETAILS PENDING',
         primaryLabel: 'OPEN GAME DAY',
         primaryTarget: 'gameHub',
@@ -212,10 +195,18 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
             };
 
   const keys = mode === 'pregame'
-    ? pregameKeys({ latestGame, opponent })
+    ? gameDay.keys
     : mode === 'postgame'
       ? postgameKeys(flow)
       : betweenKeys({ week });
+
+  const previous = mode === 'pregame'
+    ? { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: gameDay.previous.copy }
+    : { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: previousCopyFor({ mode, school, opponent, latestGame, week }) };
+
+  const scout = mode === 'pregame'
+    ? { eyebrow: 'OPPONENT SCOUT', team: gameDay.scout.team, facts: gameDay.scout.facts, note: gameDay.scout.note }
+    : scoutFor({ mode, state, opponent, latestGame });
 
   return {
     mode,
@@ -227,12 +218,10 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     score,
     result,
     ...presentation,
-    previous: {
-      title: 'PREVIOUSLY ON DYNASTYHQ…',
-      copy: previousCopyFor({ mode, school, opponent, latestGame, week }),
-    },
+    previous,
     keys,
     keysTitle: mode === 'pregame' ? '3 KEYS TO THE GAME' : mode === 'postgame' ? 'WEEK WRAP-UP' : 'NEXT CHAPTER',
-    scout: scoutFor({ mode, state, opponent, latestGame }),
+    scout,
+    gameDay,
   };
 };

@@ -31,7 +31,7 @@ test('completed Game Hub is split into purposeful interactive sections', async (
     assert.ok(portal.includes(`'${label}'`), `missing Game Hub ${label} destination`);
   }
   assert.ok(portal.includes('WHAT HAPPENED'));
-  assert.ok(portal.includes("data-dhq-section"));
+  assert.ok(portal.includes('hub.dataset.dhqSection = section'));
   assert.ok(styles.includes('[data-dhq-section="media"]'));
   assert.ok(styles.includes('[data-dhq-section="stats"]'));
   assert.ok(styles.includes('[data-dhq-section="photos"]'));

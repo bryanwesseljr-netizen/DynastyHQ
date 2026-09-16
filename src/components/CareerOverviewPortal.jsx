@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Trophy,
 } from 'lucide-react';
+import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './career-overview.css';
 
@@ -26,11 +27,11 @@ const textOf = (value, fallback = '—') => {
 const formatNumber = (value) => numberOf(value).toLocaleString();
 
 const stageLabel = (career) => {
-  const phase = String(career?.careerPhase || 'Player');
-  if (phase === 'Retired') return 'Career Complete';
-  if (phase === 'HC') return 'Head Coach';
-  if (phase === 'OC') return 'Offensive Coordinator';
-  if (career?.player?.isCommitted) return 'Road to Glory Player';
+  const stage = deriveCareerStage(career || {});
+  if (stage === CAREER_STAGES.RETIRED) return 'Career Complete';
+  if (stage === CAREER_STAGES.HC) return 'Head Coach';
+  if (stage === CAREER_STAGES.OC) return 'Offensive Coordinator';
+  if (stage === CAREER_STAGES.COLLEGE) return 'Road to Glory Player';
   return 'High School Recruit';
 };
 
@@ -101,6 +102,7 @@ const CareerOverviewPortal = () => {
     const state = career || {};
     const player = state.player || {};
     const rtg = state.rtg || {};
+    const careerStage = deriveCareerStage(state);
     const allGames = arrayOf(state.gameLogs);
     const collegeGames = allGames.filter((game) => (
       game
@@ -152,6 +154,7 @@ const CareerOverviewPortal = () => {
       rtg,
       school,
       stage: stageLabel(state),
+      careerStage,
       stars,
       wins,
       losses,
@@ -282,17 +285,43 @@ const CareerOverviewPortal = () => {
                     </dl>
                   </article>
 
-                  <article className="dhq-career-panel">
-                    <div className="dhq-career-panel__heading">
-                      <div><span>Early Journey</span><h2>Recruiting Tape</h2></div>
-                      <GraduationCap size={22} />
-                    </div>
-                    <div className="dhq-career-recruiting-snapshot">
-                      <strong>{view.highSchoolEvaluations.length}</strong>
-                      <span>verified high-school evaluation{view.highSchoolEvaluations.length === 1 ? '' : 's'}</span>
-                      <p>Tape Score {formatNumber(view.state.playerRecruiting?.highSchool?.tapeScore)} · {numberOf(view.state.playerRecruiting?.highSchool?.recruitStars || view.player.stars) || '—'}-star</p>
-                    </div>
-                  </article>
+                  {view.careerStage === CAREER_STAGES.HIGH_SCHOOL ? (
+                    <article className="dhq-career-panel">
+                      <div className="dhq-career-panel__heading">
+                        <div><span>Early Journey</span><h2>Recruiting Tape</h2></div>
+                        <GraduationCap size={22} />
+                      </div>
+                      <div className="dhq-career-recruiting-snapshot">
+                        <strong>{view.highSchoolEvaluations.length}</strong>
+                        <span>verified high-school evaluation{view.highSchoolEvaluations.length === 1 ? '' : 's'}</span>
+                        <p>Tape Score {formatNumber(view.state.playerRecruiting?.highSchool?.tapeScore)} · {numberOf(view.state.playerRecruiting?.highSchool?.recruitStars || view.player.stars) || '—'}-star</p>
+                      </div>
+                    </article>
+                  ) : view.careerStage === CAREER_STAGES.COLLEGE ? (
+                    <article className="dhq-career-panel">
+                      <div className="dhq-career-panel__heading">
+                        <div><span>Current Chapter</span><h2>Road to Glory</h2></div>
+                        <TrendingUp size={22} />
+                      </div>
+                      <div className="dhq-career-recruiting-snapshot">
+                        <strong>{view.collegeGames.length}</strong>
+                        <span>college appearance{view.collegeGames.length === 1 ? '' : 's'}</span>
+                        <p>{textOf(view.rtg.rank, 'Depth chart pending')} · {formatNumber(view.rtg.coachTrust)} Coach Trust</p>
+                      </div>
+                    </article>
+                  ) : (
+                    <article className="dhq-career-panel">
+                      <div className="dhq-career-panel__heading">
+                        <div><span>Current Chapter</span><h2>{view.stage}</h2></div>
+                        <Trophy size={22} />
+                      </div>
+                      <div className="dhq-career-recruiting-snapshot">
+                        <strong>{view.collegeGames.length}</strong>
+                        <span>college game{view.collegeGames.length === 1 ? '' : 's'} in the career history</span>
+                        <p>{view.wins}-{view.losses} college record · {view.honors.length} honor{view.honors.length === 1 ? '' : 's'}</p>
+                      </div>
+                    </article>
+                  )}
                 </aside>
               </div>
 

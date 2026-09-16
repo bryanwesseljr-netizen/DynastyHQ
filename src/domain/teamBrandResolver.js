@@ -84,16 +84,19 @@ const teamAliases = (team = {}) => {
 
 const toBrand = (team = {}) => {
   const catalog = catalogTeamBrand(team.location || team.shortDisplayName || team.displayName);
+  const teamId = clean(team.id);
   return {
-    id: clean(team.id) || null,
+    id: teamId || null,
     displayName: clean(team.displayName || team.shortDisplayName || team.location || team.name) || 'Team',
     abbreviation: clean(team.abbreviation) || initialsFor(team.displayName || team.location || team.name),
     primaryColor: catalog.source === 'fbs-2026' ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
     secondaryColor: catalog.source === 'fbs-2026' ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
-    logo: clean(team.logo)
-      || team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href
-      || team.logos?.[0]?.href
-      || '',
+    logo: teamId
+      ? `/api/college-team-logo?id=${encodeURIComponent(teamId)}`
+      : clean(team.logo)
+        || team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href
+        || team.logos?.[0]?.href
+        || '',
     aliases: teamAliases(team),
     source: 'espn+fbs-2026',
   };

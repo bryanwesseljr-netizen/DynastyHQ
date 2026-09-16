@@ -1,3 +1,5 @@
+import { seasonScheduleFor, syncScheduleWithCareer, teamRecordForSeason } from './seasonSchedule.js';
+
 const clean = (value) => String(value ?? '').trim();
 const numberOf = (value) => Number(value) || 0;
 const arrayOf = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
@@ -76,11 +78,19 @@ export const buildImmersionModel = (state = {}, options = {}) => {
   const stage = stageFor(state);
   const school = clean(player.college || player.school) || (stage === 'high_school' ? 'High School' : 'Your Program');
   const seasonGames = games.filter((game) => numberOf(game.season || 1) === currentSeason);
-  const seasonWins = seasonGames.filter((game) => clean(game.result).toUpperCase() === 'W').length;
-  const seasonLosses = seasonGames.filter((game) => clean(game.result).toUpperCase() === 'L').length;
+  const savedSchedule = seasonScheduleFor(state, currentSeason);
+  const scheduleResults = savedSchedule
+    ? syncScheduleWithCareer(state, savedSchedule).entries
+      .filter((entry) => ['W', 'L'].includes(clean(entry.result).toUpperCase()))
+      .sort((left, right) => numberOf(left.week) - numberOf(right.week))
+    : [];
+  const teamResults = scheduleResults.length ? scheduleResults : seasonGames;
+  const teamRecord = teamRecordForSeason(state, currentSeason);
+  const seasonWins = teamRecord.wins;
+  const seasonLosses = teamRecord.losses;
   const totals = cumulativeTotals(games);
   const seasonTotals = cumulativeTotals(seasonGames);
-  const streak = resultStreak(seasonGames);
+  const streak = resultStreak(teamResults);
   const currentOpponent = clean(setup.opponent);
   const selectedGame = selectGame(games, options.selectionKey);
   const focusGame = selectedGame || games.at(-1) || null;
@@ -188,7 +198,7 @@ export const buildImmersionModel = (state = {}, options = {}) => {
 
   const seasonPulse = {
     record: `${seasonWins}-${seasonLosses}`,
-    results: seasonGames.map((game) => clean(game.result).toUpperCase()).filter((result) => ['W', 'L'].includes(result)),
+    results: teamResults.map((game) => clean(game.result).toUpperCase()).filter((result) => ['W', 'L'].includes(result)),
     passingYards: seasonTotals.passYds,
     totalTouchdowns: seasonTotals.passTD + seasonTotals.rushTD,
     rank: clean(seasonGames.at(-1)?.teamRank || state.teamRank || ''),

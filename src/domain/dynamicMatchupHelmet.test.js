@@ -5,6 +5,7 @@ import {
   catalogTeamBrand,
   normalizeTeamName,
   TEAM_BRAND_CACHE_KEY,
+  TEAM_BRAND_DIRECTORY_URL,
   TEAM_BRAND_SOURCE_URL,
 } from './teamBrandResolver.js';
 
@@ -12,6 +13,9 @@ const componentUrl = new URL('../components/DynamicMatchupHelmets.jsx', import.m
 const portalUrl = new URL('../components/DynamicMatchupHelmetPortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../components/dynamic-matchup-helmets.css', import.meta.url);
+const resolverUrl = new URL('./teamBrandResolver.js', import.meta.url);
+const directoryApiUrl = new URL('../../api/college-team-brands.js', import.meta.url);
+const logoApiUrl = new URL('../../api/college-team-logo.js', import.meta.url);
 
 test('dynamic helmet resolver reuses the 2026 FBS identity catalog immediately', () => {
   const michigan = catalogTeamBrand('Michigan');
@@ -24,11 +28,25 @@ test('dynamic helmet resolver reuses the 2026 FBS identity catalog immediately',
   assert.equal(ohioState.secondaryColor, '#666666');
 });
 
-test('college brand hydration uses a free cached team directory rather than AI', () => {
+test('college brand hydration uses a same-origin cached directory backed by ESPN', () => {
   assert.match(TEAM_BRAND_SOURCE_URL, /site\.api\.espn\.com/);
   assert.match(TEAM_BRAND_SOURCE_URL, /college-football\/teams/);
-  assert.equal(TEAM_BRAND_CACHE_KEY, 'dynastyhq-college-team-brands-v1');
+  assert.equal(TEAM_BRAND_DIRECTORY_URL, '/api/college-team-brands');
+  assert.equal(TEAM_BRAND_CACHE_KEY, 'dynastyhq-college-team-brands-v2');
   assert.equal(normalizeTeamName('The Ohio State University'), 'ohio state');
+});
+
+test('helmet decals use same-origin image proxy instead of cross-origin SVG images', async () => {
+  const [resolver, directoryApi, logoApi] = await Promise.all([
+    readFile(resolverUrl, 'utf8'),
+    readFile(directoryApiUrl, 'utf8'),
+    readFile(logoApiUrl, 'utf8'),
+  ]);
+
+  assert.match(resolver, /\/api\/college-team-logo\?id=/);
+  assert.match(directoryApi, /site\.api\.espn\.com/);
+  assert.match(logoApi, /a\.espncdn\.com\/i\/teamlogos\/ncaa\/500/);
+  assert.match(logoApi, /Cache-Control/);
 });
 
 test('matchup helmet component applies team colors and an unmirrored logo decal', async () => {

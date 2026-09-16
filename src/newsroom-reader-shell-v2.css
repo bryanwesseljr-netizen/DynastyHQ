@@ -44,16 +44,25 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   grid-column: 2;
   grid-row: 1;
   align-self: stretch;
+  display: flex !important;
+  flex-wrap: wrap !important;
   min-width: 0;
   min-height: 46px;
   margin: 0 !important;
+  overflow-x: visible !important;
   border-radius: 12px !important;
   padding: 4px !important;
 }
 
 .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs button {
+  flex: 1 1 190px;
+  justify-content: center;
+  min-width: 0;
   min-height: 36px;
   padding: 7px 12px !important;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
 }
 
 .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {
@@ -83,6 +92,16 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   margin-top: 2px !important;
 }
 
+/* Career-library images should be seen in full. Publication layouts keep their
+   editorial photo frame, but the photo itself no longer zooms/crops to fill it. */
+.dhq-newsroom-reader-mode .dhq-news-article .dhq-news-hero img,
+.dhq-newsroom-reader-mode .dhq-news-article .dhq-enquirer-hero img,
+.dhq-newsroom-reader-mode .dhq-news-article .dhq-espn-hero img {
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: #080b0f;
+}
+
 .dhq-newsroom-reader-mode > .dhq-newsroom-media-tools,
 .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount],
 .dhq-newsroom-reader-mode > [data-editorial-photo-director] {
@@ -95,22 +114,36 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   margin-top: 10px !important;
 }
 
-@media (max-width: 900px) {
+/* Tablet, desktop-mode phone, and narrower laptop widths get a dedicated article
+   chooser row so publication names never get squeezed between Back and Share. */
+@media (max-width: 1180px) {
   main[data-active-tab="newsroom"].dhq-newsroom-article-main {
     padding-top: 70px !important;
   }
 
   .dhq-newsroom-reader-mode {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-back-button {
+    grid-column: 1 / 3;
+    grid-row: 1;
+    justify-self: start;
   }
 
   .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] > div {
     justify-content: flex-end !important;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
   }
 
   .dhq-newsroom-reader-mode > .dhq-news-article {
@@ -143,7 +176,13 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
 
   .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs {
     grid-row: 2;
-    overflow-x: auto;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    overflow-x: visible !important;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs button {
+    width: 100%;
   }
 
   .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {

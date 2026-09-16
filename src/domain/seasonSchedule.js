@@ -16,6 +16,26 @@ const resultForScores = (teamScore, opponentScore) => {
   return teamScore > opponentScore ? 'W' : 'L';
 };
 
+const recordDetails = (entries = []) => {
+  const decided = entries.filter((entry) => ['W', 'L'].includes(clean(entry?.result, 10).toUpperCase()));
+  const wins = decided.filter((entry) => clean(entry.result, 10).toUpperCase() === 'W').length;
+  const losses = decided.filter((entry) => clean(entry.result, 10).toUpperCase() === 'L').length;
+  const lastResult = clean(decided.at(-1)?.result, 10).toUpperCase();
+  let streakCount = 0;
+  for (let index = decided.length - 1; index >= 0; index -= 1) {
+    if (clean(decided[index]?.result, 10).toUpperCase() !== lastResult) break;
+    streakCount += 1;
+  }
+  return {
+    wins,
+    losses,
+    games: decided.length,
+    lastResult,
+    streakCount,
+    streak: streakCount >= 2 ? `${streakCount}-game ${lastResult === 'W' ? 'winning' : 'losing'} streak` : '',
+  };
+};
+
 export const normalizeScheduleEntry = (entry = {}, index = 0) => {
   const week = weekNumber(entry.week, index + 1);
   const opponent = clean(entry.opponent || entry.team || entry.opponentName, 160);
@@ -132,25 +152,24 @@ export const syncScheduleWithCareer = (state = {}, scheduleInput = null) => {
   };
 };
 
-export const teamRecordForSeason = (state = {}, season = state.currentSeason || 1) => {
-  const schedule = seasonScheduleFor(state, season);
+export const teamRecordThroughWeek = (state = {}, season = state.currentSeason || 1, week = Number.MAX_SAFE_INTEGER) => {
+  const targetSeason = Math.max(1, Number(season) || 1);
+  const throughWeek = Number.isFinite(Number(week)) ? Number(week) : Number.MAX_SAFE_INTEGER;
+  const schedule = seasonScheduleFor(state, targetSeason);
   if (schedule?.entries?.length) {
     const synced = syncScheduleWithCareer(state, schedule);
-    const decided = synced.entries.filter((entry) => ['W', 'L'].includes(entry.result));
-    return {
-      wins: decided.filter((entry) => entry.result === 'W').length,
-      losses: decided.filter((entry) => entry.result === 'L').length,
-      games: decided.length,
-      source: 'schedule',
-    };
+    return { ...recordDetails(synced.entries.filter((entry) => entry.week <= throughWeek)), source: 'schedule' };
   }
-  const games = arrayOf(state.gameLogs).filter((game) => Number(game?.season || 1) === Number(season) && game?.stage !== 'high-school' && !game?.evaluation);
-  return {
-    wins: games.filter((game) => clean(game.result, 10).toUpperCase() === 'W').length,
-    losses: games.filter((game) => clean(game.result, 10).toUpperCase() === 'L').length,
-    games: games.filter((game) => ['W', 'L'].includes(clean(game.result, 10).toUpperCase())).length,
-    source: 'game-log',
-  };
+  const games = arrayOf(state.gameLogs)
+    .filter((game) => Number(game?.season || 1) === targetSeason && Number(game?.week ?? 0) <= throughWeek)
+    .filter((game) => game?.stage !== 'high-school' && !game?.evaluation)
+    .sort((left, right) => Number(left.week ?? 0) - Number(right.week ?? 0));
+  return { ...recordDetails(games), source: 'game-log' };
+};
+
+export const teamRecordForSeason = (state = {}, season = state.currentSeason || 1) => {
+  const record = teamRecordThroughWeek(state, season);
+  return { wins: record.wins, losses: record.losses, games: record.games, source: record.source };
 };
 
 export const nextScheduledGame = (state = {}, season = state.currentSeason || 1) => {

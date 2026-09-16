@@ -143,6 +143,8 @@
 .dhq-schedule-modal__card {
   position: relative;
   width: min(680px, 100%);
+  max-height: 92vh;
+  overflow: auto;
   border: 1px solid rgba(56,189,248,.3);
   border-radius: 20px;
   background: linear-gradient(145deg, #07111d, #030912);
@@ -169,6 +171,14 @@
 .dhq-schedule-modal__actions .is-primary { border:1px solid rgba(56,189,248,.4); background:#0284c7; color:#fff; }
 .dhq-schedule-modal__actions button:disabled { opacity:.5; cursor:not-allowed; }
 
+.dhq-schedule-modal__review { margin-top: 18px; overflow: hidden; border: 1px solid rgba(56,189,248,.2); border-radius: 13px; background: rgba(2,8,16,.72); }
+.dhq-schedule-modal__review-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.07); }
+.dhq-schedule-modal__review-head span { color:#bae6fd; font-size:10px; font-weight:950; letter-spacing:.12em; }
+.dhq-schedule-modal__review-head button { border:0; background:transparent; color:#94a3b8; font-size:9px; font-weight:900; text-decoration:underline; text-underline-offset:3px; }
+.dhq-schedule-modal__review-list { max-height: 310px; overflow:auto; }
+.dhq-schedule-modal__review-list .dhq-schedule-row { border-bottom:1px solid rgba(255,255,255,.05); }
+.dhq-schedule-modal__review-list .dhq-schedule-row:last-child { border-bottom:0; }
+
 @media (max-width: 900px) {
   .dhq-season-strip__rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dhq-season-strip__rows .dhq-schedule-row:last-child { grid-column: 1 / -1; }
@@ -185,6 +195,7 @@
   .dhq-schedule-modal { align-items:end; padding:0; }
   .dhq-schedule-modal__card { width:100%; max-height:92vh; overflow:auto; border-radius:20px 20px 0 0; padding:20px 16px 18px; }
   .dhq-schedule-modal__card h2 { font-size:22px; }
+  .dhq-schedule-modal__review-head { align-items:flex-start; flex-direction:column; gap:6px; }
   .dhq-schedule-modal__actions { flex-direction:column-reverse; }
   .dhq-schedule-modal__actions button { width:100%; }
 }

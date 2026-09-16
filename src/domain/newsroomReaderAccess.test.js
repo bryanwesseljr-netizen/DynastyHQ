@@ -6,6 +6,7 @@ const experienceUrl = new URL('../components/NewsroomArticleExperiencePortal.jsx
 const rewriteUrl = new URL('../components/NewsroomArticleRewritePortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const dashboardUrl = new URL('../components/BroadcastDashboard.jsx', import.meta.url);
+const immersionUrl = new URL('./gameWeekImmersion.js', import.meta.url);
 
 test('opening a Newsroom article resets both nested and window scroll positions', async () => {
   const source = await readFile(experienceUrl, 'utf8');
@@ -31,11 +32,18 @@ test('article reader exposes a direct Rewrite edition control that reuses the na
   assert.match(rewrite, /Regenerate every article in this weekly edition/);
 });
 
-test('homepage matchup copy falls back to the latest published college opponent', async () => {
-  const source = await readFile(dashboardUrl, 'utf8');
+test('homepage matchup immersion falls back to the latest published college opponent', async () => {
+  const [dashboard, immersion] = await Promise.all([
+    readFile(dashboardUrl, 'utf8'),
+    readFile(immersionUrl, 'utf8'),
+  ]);
 
-  assert.match(source, /const latestPublishedOpponent/);
-  assert.match(source, /game\.stage !== 'high-school'/);
-  assert.match(source, /!game\.evaluation/);
-  assert.match(source, /setup\.opponent \|\| draftGame\.opponent \|\| latestPublishedOpponent\(state\)/);
+  assert.match(dashboard, /buildGameWeekImmersion\(state, model, flow\)/);
+  assert.match(immersion, /const latestGameFor/);
+  assert.match(immersion, /game\.stage !== 'high-school'/);
+  assert.match(immersion, /!game\.evaluation/);
+  assert.match(immersion, /const activeOpponentFor/);
+  assert.match(immersion, /state\.currentWeekSetup/);
+  assert.match(immersion, /state\.weeklyAgendaDraft\?\.newGame/);
+  assert.match(immersion, /const opponent = activeOpponent \|\| clean\(latestGame\?\.opponent\) \|\| 'NEXT OPPONENT'/);
 });

@@ -47,7 +47,9 @@ test('active program theme is the final style layer and covers the major app sur
 
   assert.ok(theme.includes('var(--dhq-program-primary)'));
   assert.ok(theme.includes('var(--dhq-program-highlight)'));
-  assert.ok(portal.includes("root.style.setProperty('--dhq-team-highlight'"));
+  assert.ok(portal.includes("'--dhq-team-highlight': highlight"));
+  assert.ok(portal.includes("'--dhq-team-on-primary': adaptive.onPrimary"));
+  assert.ok(portal.includes('buildAdaptiveTeamTheme({ primary, secondary, highlight })'));
   assert.ok(portal.includes('resolveProgramHighlight(primary, secondary)'));
 });
 

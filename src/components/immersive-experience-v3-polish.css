@@ -1,0 +1,93 @@
+/* Final UX polish for the hierarchy-first experience. */
+
+/* Use a contrast-safe version of the team accent for small text on dark cards. */
+.dhq-v3-focus__header > div > span,
+.dhq-v3-focus-card > span,
+.dhq-v3-story-feature__label,
+.dhq-v3-game-overview__intro > span,
+.dhq-v3-game-overview__beats article > span,
+.dhq-v3-section-intro > span,
+.dhq-v3-game-tabs button.is-active {
+  color: var(--dhq-team-readable-highlight, var(--dhq-team-highlight, #f5df45)) !important;
+}
+
+.dhq-v3-focus-card i,
+.dhq-v3-story-feature i {
+  color: var(--dhq-team-readable-highlight, #dce8ef) !important;
+}
+
+/* The V3 surface should read like a sports product, not an internal admin tool. */
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-storyline-board header > div > span {
+  font-size: 0 !important;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-storyline-board header > div > span::after {
+  content: 'THE STORY';
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-storyline-board header > div > strong {
+  font-size: 0 !important;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-storyline-board header > div > strong::after {
+  content: 'CAREER THREADS';
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .11em;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-media-network__header > div > span {
+  font-size: 0 !important;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-media-network__header > div > span::after {
+  content: 'COVERAGE';
+  color: var(--dhq-team-readable-highlight, #dce8ef);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .18em;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-story-director .dhq-gh-card__heading span {
+  font-size: 0 !important;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-story-director .dhq-gh-card__heading span::after {
+  content: 'THE STORY';
+  font-size: 9px;
+  font-weight: 950;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-podcast-panel .dhq-gh-card__heading span {
+  font-size: 0 !important;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-podcast-panel .dhq-gh-card__heading span::after {
+  content: 'THE HUDDLE PODCAST';
+  font-size: 9px;
+  font-weight: 950;
+}
+
+/* The tab strip has six purposeful destinations, including the full schedule. */
+.dhq-v3-game-tabs {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+
+/* Keep the selected destination visually dominant without sacrificing contrast. */
+.dhq-v3-game-tabs button.is-active {
+  border-color: color-mix(in srgb, var(--dhq-team-readable-highlight, #dce8ef) 45%, transparent);
+}
+
+body[data-dhq-team-accent="true"] .dhq-v3-focus,
+body[data-dhq-team-accent="true"] .dhq-v3-game-overview,
+body[data-dhq-team-accent="true"] .dhq-v3-section-intro {
+  color: var(--dhq-team-text, #f8fbff);
+}
+
+body[data-dhq-team-accent="true"] :is(.dhq-v3-focus, .dhq-v3-game-overview, .dhq-v3-section-intro) p,
+body[data-dhq-team-accent="true"] :is(.dhq-v3-focus, .dhq-v3-game-overview, .dhq-v3-section-intro) small {
+  color: var(--dhq-team-muted, #b8c4cd);
+}
+
+@media (max-width: 720px) {
+  .dhq-v3-game-tabs button {
+    min-width: 88px;
+  }
+}

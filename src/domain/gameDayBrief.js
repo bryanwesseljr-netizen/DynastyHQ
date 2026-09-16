@@ -1,3 +1,5 @@
+import { teamRecordForSeason } from './seasonSchedule.js';
+
 const clean = (value) => String(value ?? '').trim();
 const numberOf = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -102,55 +104,27 @@ const keysFor = ({ opponent, previousGame, role, setup }) => {
   const keys = [];
 
   if (last.interceptions > 0) {
-    keys.push({
-      title: 'PROTECT POSSESSIONS',
-      detail: `The last saved game included ${last.interceptions} interception${last.interceptions === 1 ? '' : 's'}. Make ${opponent} earn its opportunities.`,
-      evidence: 'Previous game',
-    });
+    keys.push({ title: 'PROTECT POSSESSIONS', detail: `The last saved game included ${last.interceptions} interception${last.interceptions === 1 ? '' : 's'}. Make ${opponent} earn its opportunities.`, evidence: 'Previous game' });
   } else if (result === 'L') {
-    keys.push({
-      title: 'ANSWER EARLY',
-      detail: 'The previous week ended in a loss. Establish a clean opening rhythm instead of chasing the last result.',
-      evidence: 'Previous result',
-    });
+    keys.push({ title: 'ANSWER EARLY', detail: 'The previous week ended in a loss. Establish a clean opening rhythm instead of chasing the last result.', evidence: 'Previous result' });
   } else if (result === 'W') {
-    keys.push({
-      title: 'CARRY THE MOMENTUM',
-      detail: 'The previous week ended in a win. Start on schedule and make the next game earn its own identity.',
-      evidence: 'Previous result',
-    });
+    keys.push({ title: 'CARRY THE MOMENTUM', detail: 'The previous week ended in a win. Start on schedule and make the next game earn its own identity.', evidence: 'Previous result' });
   } else {
     keys.push({ title: 'START ON SCHEDULE', detail: 'Open with clean decisions and avoid giving away short fields.', evidence: 'Game plan' });
   }
 
   if (role) {
-    keys.push({
-      title: `OWN THE ${role.toUpperCase()} ROLE`,
-      detail: `DynastyHQ currently has the depth-chart role saved as ${role}. Let the role shape the game instead of forcing the spotlight.`,
-      evidence: 'Current RTG status',
-    });
+    keys.push({ title: `OWN THE ${role.toUpperCase()} ROLE`, detail: `DynastyHQ currently has the depth-chart role saved as ${role}. Let the role shape the game instead of forcing the spotlight.`, evidence: 'Current RTG status' });
   } else if (rank) {
-    keys.push({
-      title: 'HANDLE THE STAGE',
-      detail: `${opponent} is saved as ${rank.startsWith('#') ? rank : `#${rank}`}. Treat the ranking as context, not a reason to abandon the plan.`,
-      evidence: 'Week setup',
-    });
+    keys.push({ title: 'HANDLE THE STAGE', detail: `${opponent} is saved as ${rank.startsWith('#') ? rank : `#${rank}`}. Treat the ranking as context, not a reason to abandon the plan.`, evidence: 'Week setup' });
   } else {
     keys.push({ title: 'VALUE EVERY DRIVE', detail: 'Stay patient, keep the offense on schedule, and avoid empty possessions.', evidence: 'Game plan' });
   }
 
   if (rank && role) {
-    keys.push({
-      title: 'HANDLE THE STAGE',
-      detail: `${opponent} is saved as ${rank.startsWith('#') ? rank : `#${rank}`}. Keep the moment from becoming bigger than the reads in front of you.`,
-      evidence: 'Week setup',
-    });
+    keys.push({ title: 'HANDLE THE STAGE', detail: `${opponent} is saved as ${rank.startsWith('#') ? rank : `#${rank}`}. Keep the moment from becoming bigger than the reads in front of you.`, evidence: 'Week setup' });
   } else {
-    keys.push({
-      title: `MAKE ${opponent.toUpperCase()} ADJUST`,
-      detail: 'Lean into what is actually working on the field and let the verified postgame data explain why.',
-      evidence: 'Game plan',
-    });
+    keys.push({ title: `MAKE ${opponent.toUpperCase()} ADJUST`, detail: 'Lean into what is actually working on the field and let the verified postgame data explain why.', evidence: 'Game plan' });
   }
 
   return keys.slice(0, 3);
@@ -164,43 +138,23 @@ const storylinesFor = ({ state, previousGame, opponent, role, record, setup }) =
   const progression = arrayOf(previousUpdate?.rtgChanges)[0];
 
   if (previousGame) {
-    stories.push({
-      label: result === 'L' ? 'RESPONSE GAME' : result === 'W' ? 'MOMENTUM TEST' : 'NEXT CHAPTER',
-      title: result === 'L' ? 'How does the offense answer the last result?' : result === 'W' ? 'Can the last result carry into another week?' : 'What changes from the previous game?',
-      detail: `${clean(previousGame.opponent)} is now history; ${opponent} is the next verified matchup.`,
-    });
+    stories.push({ label: result === 'L' ? 'RESPONSE GAME' : result === 'W' ? 'MOMENTUM TEST' : 'NEXT CHAPTER', title: result === 'L' ? 'How does the offense answer the last result?' : result === 'W' ? 'Can the last result carry into another week?' : 'What changes from the previous game?', detail: `${clean(previousGame.opponent)} is now history; ${opponent} is the next verified matchup.` });
   }
 
   if (role) {
-    stories.push({
-      label: 'ROLE WATCH',
-      title: `${role} remains the current saved depth-chart role`,
-      detail: hasValue(state.rtg?.coachTrust) ? `Coach Trust is currently ${numberOf(state.rtg.coachTrust).toLocaleString()}.` : 'DynastyHQ will track any verified role change after the game.',
-    });
+    stories.push({ label: 'ROLE WATCH', title: `${role} remains the current saved depth-chart role`, detail: hasValue(state.rtg?.coachTrust) ? `Coach Trust is currently ${numberOf(state.rtg.coachTrust).toLocaleString()}.` : 'DynastyHQ will track any verified role change after the game.' });
   }
 
   if (rank) {
-    stories.push({
-      label: 'MATCHUP PROFILE',
-      title: `${opponent} enters the week at ${rank.startsWith('#') ? rank : `#${rank}`}`,
-      detail: clean(setup.opponentRecord) ? `The saved opponent record is ${clean(setup.opponentRecord)}.` : 'No opponent record has been captured yet.',
-    });
+    stories.push({ label: 'MATCHUP PROFILE', title: `${opponent} enters the week at ${rank.startsWith('#') ? rank : `#${rank}`}`, detail: clean(setup.opponentRecord) ? `The saved opponent record is ${clean(setup.opponentRecord)}.` : 'No opponent record has been captured yet.' });
   }
 
   if (progression?.label || progression?.key) {
-    stories.push({
-      label: 'PROGRESSION WATCH',
-      title: clean(progression.label || progression.key),
-      detail: 'This was the latest saved RTG change and remains part of the week-to-week career context.',
-    });
+    stories.push({ label: 'PROGRESSION WATCH', title: clean(progression.label || progression.key), detail: 'This was the latest saved RTG change and remains part of the week-to-week career context.' });
   }
 
   if (!stories.length) {
-    stories.push({
-      label: 'SEASON ARC',
-      title: `${record} is the current saved season record`,
-      detail: `Week setup against ${opponent} gives DynastyHQ the next checkpoint to follow.`,
-    });
+    stories.push({ label: 'SEASON ARC', title: `${record} is the current saved season record`, detail: `Week setup against ${opponent} gives DynastyHQ the next checkpoint to follow.` });
   }
 
   return stories.slice(0, 4);
@@ -220,10 +174,9 @@ export const buildGameDayBrief = (state = {}) => {
     numberOf(game.season, 1) < season
     || (numberOf(game.season, 1) === season && numberOf(game.week, 0) < week)
   )) || null;
-  const wins = seasonGames.filter((game) => clean(game.result).toUpperCase() === 'W').length;
-  const losses = seasonGames.filter((game) => clean(game.result).toUpperCase() === 'L').length;
+  const teamRecord = teamRecordForSeason(state, season);
   const role = roleFor(state);
-  const record = `${wins}-${losses}`;
+  const record = `${teamRecord.wins}-${teamRecord.losses}`;
   const seasonTotals = seasonTotalsFor(seasonGames);
   const previousStats = previousGame ? statLineFor(previousGame) : null;
   const opponentFacts = opponentFactsFor(setup);

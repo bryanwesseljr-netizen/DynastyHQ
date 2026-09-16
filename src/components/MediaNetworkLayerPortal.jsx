@@ -84,6 +84,36 @@ const DynastyLane = ({ model, compact = false, onNewsroom, onPodcast }) => {
   );
 };
 
+const NetworkWire = ({ items = [], variant = 'hub', onNewsroom }) => {
+  const visibleItems = items.slice(0, variant === 'home' || variant === 'newsroom' ? 3 : 4);
+  if (!visibleItems.length) return null;
+  const loopItems = [...visibleItems, ...visibleItems];
+  const ariaText = visibleItems.map((item) => `${item.source}: ${item.text}`).join('. ');
+
+  return (
+    <div className="dhq-network-wire" aria-label={`Live Network Wire. ${ariaText}`}>
+      <div className="dhq-network-wire__bug" aria-hidden="true">
+        <span className="dhq-network-wire__live-dot" />
+        <div><b>LIVE</b><strong>NETWORK WIRE</strong></div>
+      </div>
+      <div className="dhq-network-wire__viewport">
+        <div className="dhq-network-wire__track" aria-hidden="true">
+          {loopItems.map((item, index) => (
+            <span className="dhq-network-wire__item" key={`${item.source}-${index}-${item.text}`}>
+              <em>{item.source}</em>
+              <strong>{item.text}</strong>
+              <i>◆</i>
+            </span>
+          ))}
+        </div>
+      </div>
+      {variant !== 'newsroom' ? (
+        <button type="button" className="dhq-network-wire__desk" onClick={onNewsroom}>OPEN MEDIA DESK <ChevronRight size={12} /></button>
+      ) : null}
+    </div>
+  );
+};
+
 const NetworkBoard = ({ model, variant = 'hub', onNewsroom, onPodcast }) => {
   if (!model) return null;
   const compact = variant === 'home' || variant === 'newsroom';
@@ -97,13 +127,7 @@ const NetworkBoard = ({ model, variant = 'hub', onNewsroom, onPodcast }) => {
         <OfficialLane model={model} compact={compact} />
         <DynastyLane model={model} compact={compact} onNewsroom={onNewsroom} onPodcast={onPodcast} />
       </div>
-      {model.ticker.length ? (
-        <div className="dhq-media-network__ticker" aria-label="Media network headlines">
-          <span className="dhq-media-network__ticker-label">NETWORK WIRE</span>
-          <div>{model.ticker.slice(0, compact ? 3 : 4).map((item, index) => <span key={`${item.source}-${index}`}><b>{item.source}</b> {item.text} {index < Math.min(model.ticker.length, compact ? 3 : 4) - 1 ? <i>◆</i> : null}</span>)}</div>
-          {variant === 'home' ? <button type="button" onClick={onNewsroom}>MEDIA DESK <ChevronRight size={12} /></button> : null}
-        </div>
-      ) : null}
+      <NetworkWire items={model.ticker} variant={variant} onNewsroom={onNewsroom} />
     </section>
   );
 };

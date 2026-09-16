@@ -1,9 +1,9 @@
-import OpenAI from 'openai';
 import { json, verifyFirebaseUser } from './_auth.js';
 import { PODCAST_HOSTS, PODCAST_PUBLIC_HOSTS } from '../src/domain/podcastShow.js';
 import { applyPodcastShowBookends } from '../src/domain/podcastShowBookends.js';
+import { generateTextFreeFirst } from '../src/server/textRouter.js';
 
-const MODEL = process.env.OPENAI_PODCAST_MODEL || 'gpt-5.6-terra';
+const OPENAI_MODEL = process.env.OPENAI_PODCAST_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
 
 const CHAPTER_TITLES = [
@@ -339,34 +339,23 @@ GROUNDING:
 - segmentStart is the zero-based index of the first turn in the chapter.
 - End the generated body with a short unresolved football theme to watch, never an invented matchup or event and never a formal show sign-off.`;
 
-const requestEpisode = async ({ client, user, payload, repairNote = '' }) => {
+const requestEpisode = async ({ user, payload, repairNote = '' }) => {
   const note = repairNote ? `\n\nREVISION NOTE:\n${repairNote}` : '';
   const range = payload.coverageDecision?.podcastWordRange || { min: DEFAULT_TARGET_MIN_WORDS, max: DEFAULT_TARGET_MAX_WORDS };
   const storylineNote = payload.storylineThreads?.length
     ? ` Active storyline memory: ${payload.storylineThreads.map((thread) => `${thread.label}=${thread.status}${thread.changedThisWeek ? ' (changed this week)' : ''}${thread.recentlyCovered ? ' (recently covered)' : ''}`).join('; ')}.`
     : '';
-  return client.responses.create({
-    model: MODEL,
-    store: false,
-    safety_identifier: user.localId,
-    reasoning: { effort: 'low' },
-    max_output_tokens: 7000,
+  const input = `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Statistics are evidence for football conclusions, not lines that need to be read aloud. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`;
+
+  return generateTextFreeFirst({
     instructions: INSTRUCTIONS,
-    input: [{
-      role: 'user',
-      content: [{
-        type: 'input_text',
-        text: `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Statistics are evidence for football conclusions, not lines that need to be read aloud. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`,
-      }],
-    }],
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'gridiron_grind_episode',
-        strict: true,
-        schema: schemaFor(payload),
-      },
-    },
+    input,
+    schema: schemaFor(payload),
+    schemaName: 'gridiron_grind_episode',
+    maxOutputTokens: 7000,
+    temperature: 0.45,
+    safetyIdentifier: user.localId,
+    openAiModel: OPENAI_MODEL,
   });
 };
 
@@ -375,7 +364,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method not allowed.' });
   }
-  if (!process.env.OPENAI_API_KEY) return json(res, 503, { error: 'Podcast generation is not configured yet.' });
 
   let user;
   try {
@@ -395,11 +383,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    let response = await requestEpisode({ client, user, payload });
-    if (!response.output_text) return json(res, 422, { error: 'The podcast script could not be generated safely.' });
+    let generation = await requestEpisode({ user, payload });
+    let episode = generation.data;
+    if (!episode) return json(res, 422, { error: 'The podcast script could not be generated safely.' });
 
-    let episode = JSON.parse(response.output_text);
     let inspection = inspectEpisode(episode);
     let violation = listenerFacingViolation(episode, payload);
 
@@ -412,15 +399,14 @@ export default async function handler(req, res) {
       ].filter(Boolean).join('; ');
       const range = payload.coverageDecision?.podcastWordRange || { min: DEFAULT_TARGET_MIN_WORDS, max: DEFAULT_TARGET_MAX_WORDS };
 
-      response = await requestEpisode({
-        client,
+      const repairedGeneration = await requestEpisode({
         user,
         payload,
         repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode body. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Keep statistics synthesized into football takeaways rather than complete stat lines. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts, a suppressed tracked-player angle, or branded intro/sign-off language. Start directly on the football subject.`,
       });
 
-      if (response.output_text) {
-        const repairedEpisode = JSON.parse(response.output_text);
+      if (repairedGeneration.data) {
+        const repairedEpisode = repairedGeneration.data;
         const repairedInspection = inspectEpisode(repairedEpisode);
         const repairedViolation = listenerFacingViolation(repairedEpisode, payload);
         const repairedValid = repairedInspection.words >= MIN_COMPLETE_WORDS
@@ -428,6 +414,7 @@ export default async function handler(req, res) {
           && repairedInspection.hosts >= 2
           && !repairedViolation;
         if (repairedValid || (!violation && repairedInspection.words > inspection.words)) {
+          generation = repairedGeneration;
           episode = repairedEpisode;
           inspection = repairedInspection;
           violation = repairedViolation;
@@ -437,20 +424,23 @@ export default async function handler(req, res) {
 
     if (violation) {
       return json(res, 422, {
-        error: 'The draft still sounded like an AI/editorial report or duplicated the show intro instead of a clean football conversation, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
+        error: 'The draft still sounded like production notes or duplicated the show intro instead of a clean football conversation, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
       });
     }
 
     const completedEpisode = applyPodcastShowBookends({ episode, payload: req.body });
     const completedInspection = inspectEpisode(completedEpisode);
-    return json(res, 200, { episode: completedEpisode, model: MODEL, transcriptWords: completedInspection.words });
+    return json(res, 200, {
+      episode: completedEpisode,
+      model: generation.model,
+      provider: generation.provider,
+      transcriptWords: completedInspection.words,
+    });
   } catch (error) {
-    console.error('OpenAI podcast generation failed', error);
-    const status = error?.status === 429 ? 429 : 502;
-    return json(res, status, {
-      error: status === 429
-        ? 'Podcast generation is temporarily busy. Try again shortly.'
-        : 'The episode could not be generated. No career data was changed.',
+    console.error('Podcast generation failed', error);
+    return json(res, 502, {
+      error: 'The episode could not be generated. No career data was changed.',
+      code: error?.code || 'PODCAST_GENERATION_FAILED',
     });
   }
 }

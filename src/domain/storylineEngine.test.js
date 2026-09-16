@@ -47,6 +47,32 @@ test('builds a response thread from the last loss during the next pregame', () =
   assert.match(model.previous.copy, /loss against Baylor, 21-45/);
 });
 
+test('schedule-only team results become the Storyline Engine season record without creating player stats', () => {
+  const state = {
+    ...baseState,
+    currentWeek: 3,
+    currentWeekSetup: { type: 'game', week: 3, opponent: 'UCLA' },
+    weeklyUpdates: baseState.weeklyUpdates.slice(1, 2),
+    gameLogs: baseState.gameLogs.slice(1, 2),
+    rtg: { rank: 'QB1' },
+    seasonSchedules: [{
+      season: 2,
+      school: 'Oregon',
+      entries: [
+        { week: 1, opponent: 'UTSA', result: 'W', teamScore: 31, opponentScore: 20, status: 'completed' },
+        { week: 2, opponent: 'Baylor', result: 'L', teamScore: 21, opponentScore: 45, status: 'completed' },
+        { week: 3, opponent: 'UCLA', status: 'upcoming' },
+      ],
+    }],
+  };
+  const model = buildStorylineEngine(state, { season: 2, week: 2, phase: 'postgame', opponent: 'Baylor' });
+  const seasonArc = model.activeThreads.find((thread) => thread.key === 'team:season-record');
+
+  assert.equal(model.record, '1-1');
+  assert.equal(seasonArc?.title, '1-1 through 2 decided games');
+  assert.equal(model.latestGame.opponent, 'Baylor');
+});
+
 test('remembers opponent history and ranked context without inventing tendencies', () => {
   const model = buildStorylineEngine(baseState, { season: 2, week: 4, phase: 'pregame', opponent: 'UCLA' });
 

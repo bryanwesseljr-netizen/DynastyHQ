@@ -107,7 +107,6 @@ export const buildMediaNetworkLayer = (state = {}, context = {}) => {
   const ticker = [];
   if (score && opponent) ticker.push({ source: 'FINAL', text: `${result ? `${result} · ` : ''}${score} vs ${opponent}` });
   if (official.status === 'captured' && official.headline) ticker.push({ source: 'EA SPORTS NETWORK', text: official.headline });
-  else if (official.status === 'legacy-evidence' && official.factCount) ticker.push({ source: 'EA SPORTS NETWORK', text: `${official.factCount} verified official-coverage facts preserved` });
   if (dynasty.headline) ticker.push({ source: 'DYNASTYHQ', text: dynasty.headline });
   if (dynasty.podcastReady) ticker.push({ source: 'THE HUDDLE', text: dynasty.podcastTitle || 'Episode ready' });
 

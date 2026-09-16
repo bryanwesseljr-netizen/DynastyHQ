@@ -9,8 +9,10 @@ import footballStadiumBg from '../assets/dynastyhq-football-stadium-bg.webp';
 import matchupHelmets from '../assets/matchup-helmets.webp';
 import { buildDashboardV2 } from '../domain/dashboardV2';
 import { buildGameweekFlow } from '../domain/gameweekFlow';
+import { buildGameWeekImmersion } from '../domain/gameWeekImmersion.js';
 import './broadcast-dashboard.css';
 import './broadcast-reference.css';
+import './game-week-immersion.css';
 
 const numberValue = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -76,21 +78,6 @@ const chronicleTitle = (entry = {}) => {
   return `Season ${entry.season || 1} · Week ${entry.week ?? '—'}`;
 };
 
-const latestPublishedOpponent = (state = {}) => sortedByWeek(state.gameLogs || [])
-  .reverse()
-  .find((game) => (
-    game
-    && game.stage !== 'high-school'
-    && !game.evaluation
-    && clean(game.opponent)
-  ))?.opponent || '';
-
-const currentOpponent = (state = {}) => {
-  const setup = state.currentWeekSetup || {};
-  const draftGame = state.weeklyAgendaDraft?.newGame || state.weeklyAgendaDraft?.game || {};
-  return clean(setup.opponent || draftGame.opponent || latestPublishedOpponent(state)) || 'NEXT OPPONENT';
-};
-
 const workflowCopy = (flow = {}) => {
   const steps = flow.steps || [];
   const scanComplete = steps.find((step) => step.id === 'logged')?.state === 'complete';
@@ -106,37 +93,44 @@ const workflowCopy = (flow = {}) => {
 const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const model = buildDashboardV2(state);
   const flow = buildGameweekFlow(state);
+  const immersion = buildGameWeekImmersion(state, model, flow);
   const player = state.player || {};
-  const school = clean(model.institution || player.college || player.school) || 'YOUR PROGRAM';
-  const opponent = currentOpponent(state);
-  const latestGame = sortedByWeek(state.gameLogs || []).at(-1) || null;
+  const school = immersion.school;
+  const opponent = immersion.opponent;
+  const latestGame = immersion.latestGame || sortedByWeek(state.gameLogs || []).at(-1) || null;
   const newsItems = latestNewsItems(state);
   const chronicle = [...(state.careerChronicle || [])].filter(Boolean).reverse().slice(0, 4);
   const latestPodcast = [...(state.podcastEpisodes || [])].filter(Boolean).reverse().at(0) || null;
   const record = `${model.record?.wins || 0}-${model.record?.losses || 0}`;
   const compPct = state.rtg?.completionPct || state.rtg?.compPct || model.totals?.completionPct;
   const gameDate = formatDate(latestGame?.publishedAt || latestGame?.date || latestGame?.occurredAt);
-  const weekType = state.currentWeekSetup?.type;
-  const isBye = weekType === 'bye';
-  const headline = isBye ? 'THE STORY CONTINUES THIS WEEK' : 'THE STORY CONTINUES SATURDAY';
   const stageLabel = model.stage === 'OC' ? 'OFFENSIVE COORDINATOR' : model.stage === 'HC' ? 'HEAD COACH' : model.stage === 'Retired' ? 'LEGACY' : display(player.pos, 'PLAYER');
   const open = (target) => onNavigate?.(target);
+  const rightTeamMeta = immersion.mode === 'pregame'
+    ? (state.currentWeekSetup?.opponentRecord || '—')
+    : (latestGame?.opponentRecord || '—');
+  const rightTeamLabel = immersion.mode === 'pregame'
+    ? 'CONFERENCE'
+    : immersion.mode === 'postgame'
+      ? 'FINAL OPPONENT'
+      : 'LAST OPPONENT';
 
   return (
     <div
       id="dynastyhq-command-center"
       className="dhq-broadcast-dashboard relative z-10"
-      data-dashboard-version="3"
+      data-dashboard-version="4"
       data-dashboard-modules={model.moduleIds.join(',')}
+      data-game-week-state={immersion.mode}
     >
       <div id="dhq-gameweek-flow-dashboard" hidden />
 
       <main className="dhq-broadcast-main">
-        <section className="dhq-broadcast-hero" aria-labelledby="broadcast-week-title">
+        <section className="dhq-broadcast-hero" aria-labelledby="broadcast-week-title" data-week-state={immersion.mode}>
           <div className="dhq-broadcast-hero__angles" aria-hidden="true" />
-          <span className="dhq-broadcast-hero__kicker">CURRENT WEEK</span>
-          <h1 id="broadcast-week-title">{headline}</h1>
-          <img className="dhq-broadcast-helmets" src={matchupHelmets} alt="Navy and red football helmets facing each other" />
+          <span className="dhq-broadcast-hero__kicker">{immersion.kicker}</span>
+          <h1 id="broadcast-week-title">{immersion.headline}</h1>
+          <img className="dhq-broadcast-helmets" src={matchupHelmets} alt="Matchup presentation" />
 
           <div className="dhq-broadcast-team dhq-broadcast-team--left">
             <strong>{shortName(school)}</strong>
@@ -145,22 +139,59 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
           </div>
           <div className="dhq-broadcast-team dhq-broadcast-team--right">
             <strong>{shortName(opponent, 'OPPONENT')}</strong>
-            <span>{state.currentWeekSetup?.opponentRecord || '—'}</span>
-            <small>{opponent === 'NEXT OPPONENT' ? 'ADD IN GAME HUB' : 'CONFERENCE'}</small>
+            <span>{rightTeamMeta}</span>
+            <small>{opponent === 'NEXT OPPONENT' ? 'ADD IN GAME HUB' : rightTeamLabel}</small>
           </div>
 
           <div className="dhq-broadcast-versus">
-            <b>{isBye ? 'BYE' : 'VS'}</b>
-            <span>{state.currentWeekSetup?.kickoff || (isBye ? `WEEK ${state.currentWeek ?? model.week}` : 'SATURDAY, 7:30 PM')}</span>
-            <small>{state.currentWeekSetup?.venue || (isBye ? 'DEVELOPMENT WEEK' : 'STADIUM DETAILS PENDING')}</small>
+            <b>{immersion.center}</b>
+            <span>{immersion.centerLine}</span>
+            <small>{immersion.centerDetail}</small>
           </div>
 
           {!readOnly ? (
             <div className="dhq-broadcast-hero__buttons">
-              <button type="button" className="dhq-broadcast-primary" onClick={() => open('importSession')}>IMPORT SESSION <CloudUpload size={16} /></button>
+              <button type="button" className="dhq-broadcast-primary" onClick={() => open(immersion.primaryTarget)}>
+                {immersion.primaryLabel}
+                {immersion.mode === 'pregame' ? <CloudUpload size={16} /> : <ChevronRight size={17} />}
+              </button>
               <button type="button" className="dhq-broadcast-secondary" onClick={() => open('gameHub')}>VIEW WEEK HUB <ChevronRight size={17} /></button>
             </div>
           ) : null}
+        </section>
+
+        <section className="dhq-gameweek-immersion" aria-label="Game week immersion" data-week-state={immersion.mode}>
+          <article className="dhq-immersion-panel dhq-immersion-previous">
+            <span className="dhq-immersion-eyebrow">STORY SO FAR</span>
+            <h2>{immersion.previous.title}</h2>
+            <p>{immersion.previous.copy}</p>
+            <button type="button" onClick={() => open('chronicle')}>OPEN CHRONICLE <ChevronRight size={14} /></button>
+          </article>
+
+          <article className="dhq-immersion-panel dhq-immersion-keys">
+            <span className="dhq-immersion-eyebrow">{immersion.mode === 'pregame' ? 'GAME PLAN' : 'WEEK STATE'}</span>
+            <h2>{immersion.keysTitle}</h2>
+            <div className="dhq-immersion-key-list">
+              {immersion.keys.map((key, index) => (
+                <div key={`${key.title}-${index}`}>
+                  <b>{index + 1}</b>
+                  <span><strong>{key.title}</strong><small>{key.detail}</small></span>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="dhq-immersion-panel dhq-immersion-scout">
+            <span className="dhq-immersion-eyebrow">{immersion.scout.eyebrow}</span>
+            <h2>{shortName(immersion.scout.team, 'OPPONENT')}</h2>
+            <div className="dhq-immersion-scout-facts">
+              {immersion.scout.facts.length ? immersion.scout.facts.map((fact) => (
+                <div key={`${fact.label}-${fact.value}`}><span>{fact.label}</span><strong>{fact.value}</strong></div>
+              )) : <div className="dhq-immersion-scout-empty">Verified details pending</div>}
+            </div>
+            <p>{immersion.scout.note}</p>
+            <button type="button" onClick={() => open('gameHub')}>OPEN GAME HUB <ChevronRight size={14} /></button>
+          </article>
         </section>
 
         <section className="dhq-broadcast-cards" aria-label="Career dashboard">

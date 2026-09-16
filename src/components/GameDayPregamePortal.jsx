@@ -11,7 +11,7 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react';
-import { buildGameDayBrief } from '../domain/gameDayBrief.js';
+import { buildGameDayBrief } from '../domain/gameDayBriefV2.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './game-day-pregame.css';
 
@@ -171,10 +171,10 @@ const GameDayPregamePortal = () => {
         </article>
 
         <article className="dhq-gameday-card dhq-gameday-card--storylines">
-          <div className="dhq-gameday-card__heading"><span><Sparkles size={15} /> STORYLINES TO WATCH</span><small>WHAT CAN CHANGE</small></div>
+          <div className="dhq-gameday-card__heading"><span><Sparkles size={15} /> STORYLINES TO WATCH</span><small>STORYLINE ENGINE 2.0</small></div>
           <div className="dhq-gameday__storylines">
             {brief.storylines.map((story) => (
-              <div key={`${story.label}-${story.title}`}>
+              <div key={story.key || `${story.label}-${story.title}`}>
                 <small>{story.label}</small>
                 <strong>{story.title}</strong>
                 <p>{story.detail}</p>

@@ -1,3 +1,4 @@
+import { officialCoverageCandidateFromAnalysis } from '../domain/officialCoverageCapture.js';
 import { recordAiScanUsage } from './aiUsageTracker.js';
 import { readPaidVisionFallbackEnabled } from './visionFallbackPreference.js';
 
@@ -134,5 +135,14 @@ export const analyzeScreenshot = async ({
   }
 
   recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
-  return normalizeScreenshotAnalysis(body);
+  const normalized = normalizeScreenshotAnalysis(body);
+  const candidate = useFreeCollegeScanner
+    ? officialCoverageCandidateFromAnalysis({ analysis: normalized?.analysis || {}, fileName })
+    : null;
+  if (candidate && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('dynastyhq:official-coverage-captured', {
+      detail: candidate,
+    }));
+  }
+  return normalized;
 };

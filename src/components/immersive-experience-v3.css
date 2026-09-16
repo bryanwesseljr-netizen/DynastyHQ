@@ -1,0 +1,510 @@
+/* DynastyHQ UX Simplification + Immersion Redesign
+ * Keep the intelligence; reveal it with hierarchy instead of stacking every system.
+ */
+
+:root {
+  --dhq-v3-text: #f8fbff;
+  --dhq-v3-muted: #a8b5c1;
+  --dhq-v3-soft: #7f909f;
+  --dhq-v3-border: rgba(160, 178, 193, .22);
+  --dhq-v3-panel: rgba(5, 15, 24, .94);
+}
+
+/* -------------------------------------------------------------------------- */
+/* HOME: hero -> what matters now -> schedule. Hide builder machinery.         */
+/* -------------------------------------------------------------------------- */
+
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-immersion-pulse,
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-gameweek-immersion,
+#dynastyhq-command-center[data-dhq-experience="v3"] [data-storyline-home="true"],
+#dynastyhq-command-center[data-dhq-experience="v3"] [data-media-network-home="true"],
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-broadcast-cards,
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-broadcast-lower-row {
+  display: none !important;
+}
+
+.dhq-v3-focus {
+  margin: 16px 0 18px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--dhq-team-primary, #226b4b) 50%, rgba(151, 166, 180, .34));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 12%, transparent), transparent 35%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--dhq-team-primary, #1c6849) 26%, rgba(5, 18, 29, .98)),
+      color-mix(in srgb, var(--dhq-team-primary, #1c6849) 9%, rgba(2, 9, 15, .98)) 72%);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, .28);
+  color: var(--dhq-v3-text);
+}
+
+.dhq-v3-focus__header {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(260px, 1.1fr);
+  gap: 30px;
+  align-items: end;
+  padding: 24px 26px 22px;
+  border-bottom: 1px solid rgba(170, 186, 199, .14);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dhq-team-primary, #226b4b) 18%, rgba(2, 10, 17, .72)),
+    transparent);
+}
+
+.dhq-v3-focus__header > div > span,
+.dhq-v3-focus-card > span,
+.dhq-v3-story-feature__label,
+.dhq-v3-game-overview__intro > span,
+.dhq-v3-game-overview__beats article > span,
+.dhq-v3-section-intro > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dhq-team-highlight, #f5df45);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.dhq-v3-focus__header h2 {
+  max-width: 760px;
+  margin: 7px 0 0;
+  color: var(--dhq-v3-text);
+  font-size: clamp(23px, 3vw, 38px);
+  font-weight: 950;
+  font-style: italic;
+  line-height: 1.02;
+  letter-spacing: -.025em;
+  text-transform: uppercase;
+}
+
+.dhq-v3-focus__header > p {
+  margin: 0;
+  color: #c7d2dc;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.dhq-v3-focus__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(169, 187, 201, .12);
+}
+
+.dhq-v3-focus-card {
+  display: flex;
+  min-width: 0;
+  min-height: 150px;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 0;
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 17%, rgba(5, 16, 25, .96)),
+      rgba(3, 11, 18, .96));
+  padding: 20px;
+  color: var(--dhq-v3-text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, background .18s ease;
+}
+
+.dhq-v3-focus-card:hover,
+.dhq-v3-focus-card:focus-visible {
+  background: linear-gradient(155deg,
+    color-mix(in srgb, var(--dhq-team-primary, #226b4b) 26%, rgba(5, 16, 25, .98)),
+    rgba(3, 11, 18, .98));
+  outline: none;
+}
+
+.dhq-v3-focus-card strong {
+  margin-top: 15px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.dhq-v3-focus-card small {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 7px;
+  color: #aebcc8;
+  font-size: 10px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.dhq-v3-focus-card i,
+.dhq-v3-story-feature i {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 18px;
+  color: color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 74%, white);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-v3-story-feature {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, .75fr) minmax(280px, 1.25fr);
+  gap: 7px 26px;
+  align-items: center;
+  border: 0;
+  border-top: 1px solid rgba(170, 186, 199, .14);
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 7%, rgba(3, 12, 19, .98)),
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 14%, rgba(3, 12, 19, .98)));
+  padding: 18px 22px;
+  color: var(--dhq-v3-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dhq-v3-story-feature > strong {
+  grid-column: 1;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 950;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.dhq-v3-story-feature > p {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+  color: #aebbc6;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.dhq-v3-story-feature > i { grid-column: 1; padding-top: 4px; }
+
+/* -------------------------------------------------------------------------- */
+/* GAME HUB: explicit sections instead of one endless information wall.        */
+/* -------------------------------------------------------------------------- */
+
+.dhq-v3-game-nav-shell {
+  margin: 13px 0 16px;
+}
+
+.dhq-v3-game-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--dhq-team-primary, #226b4b) 44%, rgba(149, 165, 179, .32));
+  border-radius: 14px;
+  background: rgba(2, 10, 17, .92);
+}
+
+.dhq-v3-game-tabs button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-right: 1px solid rgba(154, 172, 187, .13);
+  background: transparent;
+  color: #8f9eaa;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .11em;
+  cursor: pointer;
+}
+
+.dhq-v3-game-tabs button:last-child { border-right: 0; }
+.dhq-v3-game-tabs button:hover { color: #dce5ec; }
+.dhq-v3-game-tabs button.is-active {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--dhq-team-primary, #226b4b) 42%, rgba(8, 23, 33, .96)),
+    color-mix(in srgb, var(--dhq-team-primary, #226b4b) 20%, rgba(3, 12, 19, .98)));
+  color: var(--dhq-team-highlight, #f5df45);
+  box-shadow: inset 0 -2px var(--dhq-team-highlight, #f5df45);
+}
+
+.dhq-v3-game-overview,
+.dhq-v3-section-intro {
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, var(--dhq-team-primary, #226b4b) 42%, rgba(149, 165, 179, .3));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 9%, transparent), transparent 34%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 24%, rgba(5, 17, 26, .98)),
+      rgba(2, 10, 17, .98));
+  color: var(--dhq-v3-text);
+}
+
+.dhq-v3-game-overview__intro {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(280px, 1.2fr);
+  gap: 8px 28px;
+  padding: 23px 24px 20px;
+  border-bottom: 1px solid rgba(160, 177, 190, .14);
+}
+
+.dhq-v3-game-overview__intro h2 {
+  grid-column: 1;
+  margin: 4px 0 0;
+  color: #fff;
+  font-size: clamp(20px, 2.6vw, 31px);
+  font-weight: 950;
+  font-style: italic;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.dhq-v3-game-overview__intro p {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  margin: 0;
+  color: #b2bfca;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dhq-v3-game-overview__beats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(160, 177, 190, .12);
+}
+
+.dhq-v3-game-overview__beats article {
+  min-width: 0;
+  background: rgba(2, 10, 17, .88);
+  padding: 17px 18px;
+}
+
+.dhq-v3-game-overview__beats article strong {
+  display: block;
+  margin-top: 8px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.dhq-v3-game-overview__beats article small {
+  display: block;
+  margin-top: 5px;
+  color: #91a1ae;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.dhq-v3-game-overview__actions {
+  display: flex;
+  gap: 8px;
+  padding: 14px 18px;
+}
+
+.dhq-v3-game-overview__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 42%, rgba(166, 180, 191, .28));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dhq-team-primary, #226b4b) 20%, rgba(4, 14, 22, .96));
+  padding: 9px 12px;
+  color: #eef4f8;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.dhq-v3-section-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 17px;
+}
+
+.dhq-v3-section-intro p {
+  max-width: 680px;
+  margin: 0;
+  color: #9eacb7;
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+/* Default completed-game sections are hidden in the V3 hub. The selected tab
+ * reveals only the content that belongs to that mental model. */
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-season-hub,
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-summary-grid,
+.dhq-game-hub[data-dhq-experience="v3"] [data-storyline-game-hub="true"],
+.dhq-game-hub[data-dhq-experience="v3"] [data-media-network-hub="true"],
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-story-grid,
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-media-section {
+  display: none !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="story"] [data-storyline-game-hub="true"],
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="story"] .dhq-gh-story-grid {
+  display: block !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="story"] .dhq-gh-story-grid {
+  display: grid !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="story"] .dhq-gh-podcast-panel {
+  display: none !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="media"] [data-media-network-hub="true"] {
+  display: block !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="media"] .dhq-gh-story-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="media"] .dhq-gh-story-grid > :not(.dhq-gh-podcast-panel) {
+  display: none !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="stats"] .dhq-gh-summary-grid {
+  display: grid !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="photos"] .dhq-gh-media-section {
+  display: block !important;
+}
+
+.dhq-game-hub[data-dhq-experience="v3"][data-dhq-section="season"] .dhq-season-hub {
+  display: block !important;
+}
+
+/* Friendly user-facing copy: hide builder labels when V3 is active. */
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-story-director .dhq-gh-card__heading span {
+  font-size: 0;
+}
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-story-director .dhq-gh-card__heading span::after {
+  content: 'THE STORY';
+  font-size: 9px;
+}
+
+/* Keep advanced/correction tooling out of the primary reading flow. */
+.dhq-game-hub[data-dhq-experience="v3"] .dhq-gh-advanced { margin-top: 14px; opacity: .72; }
+
+/* -------------------------------------------------------------------------- */
+/* Adaptive team palette + legibility.                                        */
+/* -------------------------------------------------------------------------- */
+
+body[data-dhq-team-accent="true"] :is(
+  .dhq-v3-focus,
+  .dhq-v3-game-overview,
+  .dhq-v3-section-intro,
+  .dhq-v3-game-tabs,
+  .dhq-season-strip,
+  .dhq-season-hub,
+  .dhq-media-network,
+  .dhq-storyline-board
+) {
+  --dhq-v3-card-text: #f8fbff;
+  --dhq-v3-card-muted: #afbdc8;
+}
+
+body[data-dhq-team-accent="true"] :is(
+  .dhq-v3-focus,
+  .dhq-v3-game-overview,
+  .dhq-v3-section-intro,
+  .dhq-season-strip,
+  .dhq-season-hub,
+  .dhq-media-network,
+  .dhq-storyline-board
+) :is(h1, h2, h3, strong) {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .28);
+}
+
+body[data-dhq-team-accent="true"] :is(
+  .dhq-v3-focus,
+  .dhq-v3-game-overview,
+  .dhq-v3-section-intro,
+  .dhq-season-strip,
+  .dhq-season-hub,
+  .dhq-media-network,
+  .dhq-storyline-board
+) :is(p, small) {
+  color: var(--dhq-v3-card-muted, #afbdc8);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive/mobile-first hierarchy.                                         */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .dhq-v3-focus__header,
+  .dhq-v3-game-overview__intro {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .dhq-v3-focus__header > p,
+  .dhq-v3-game-overview__intro p {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .dhq-v3-story-feature {
+    grid-template-columns: 1fr;
+  }
+  .dhq-v3-story-feature > p,
+  .dhq-v3-story-feature > i,
+  .dhq-v3-story-feature > strong {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .dhq-v3-focus { border-radius: 14px; }
+  .dhq-v3-focus__header { padding: 18px; }
+  .dhq-v3-focus__header h2 { font-size: 24px; }
+  .dhq-v3-focus__grid { grid-template-columns: 1fr; }
+  .dhq-v3-focus-card { min-height: 112px; padding: 16px 17px; }
+  .dhq-v3-focus-card strong { margin-top: 9px; font-size: 17px; }
+  .dhq-v3-focus-card i { padding-top: 11px; }
+  .dhq-v3-story-feature { padding: 16px 17px; }
+
+  .dhq-v3-game-tabs {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dhq-v3-game-tabs::-webkit-scrollbar { display: none; }
+  .dhq-v3-game-tabs button {
+    min-width: 92px;
+    flex: 0 0 auto;
+    border-right: 1px solid rgba(154, 172, 187, .13);
+    padding: 0 12px;
+  }
+  .dhq-v3-game-overview__beats { grid-template-columns: 1fr; }
+  .dhq-v3-game-overview__intro { padding: 18px; }
+  .dhq-v3-game-overview__intro h2 { font-size: 22px; }
+  .dhq-v3-game-overview__actions { flex-direction: column; }
+  .dhq-v3-game-overview__actions button { justify-content: center; }
+  .dhq-v3-section-intro { align-items: flex-start; flex-direction: column; }
+  .dhq-v3-section-intro p { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dhq-v3-focus-card { transition: none; }
+}

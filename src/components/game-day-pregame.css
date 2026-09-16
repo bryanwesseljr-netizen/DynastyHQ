@@ -1,0 +1,549 @@
+.dhq-gh-pregame-grid--enhanced-hidden {
+  display: none !important;
+}
+
+.dhq-gameday {
+  margin-bottom: 12px;
+}
+
+.dhq-gameday__topline {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 0 14px;
+  border: 1px solid rgba(213, 177, 75, .26);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(28, 20, 6, .82), rgba(5, 16, 25, .95) 42%, rgba(4, 13, 21, .95));
+  box-shadow: inset 0 1px rgba(255,255,255,.025);
+}
+
+.dhq-gameday__topline > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.dhq-gameday__topline span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d8b95d;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+
+.dhq-gameday__topline strong {
+  color: #aeb7bf;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.dhq-gameday__status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #e8ebed;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-gameday__status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c5a84d;
+  box-shadow: 0 0 0 3px rgba(197, 168, 77, .12);
+}
+
+.dhq-gameday[data-ready="false"] .dhq-gameday__status i {
+  background: #707b84;
+  box-shadow: none;
+}
+
+.dhq-gameday__editorial-grid,
+.dhq-gameday__lower-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.dhq-gameday__editorial-grid {
+  grid-template-columns: 1.17fr 1fr .86fr;
+}
+
+.dhq-gameday__lower-grid {
+  grid-template-columns: 1fr 1.05fr 1fr;
+  margin-top: 12px;
+}
+
+.dhq-gameday-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(146, 158, 169, .42);
+  border-radius: 7px;
+  background: linear-gradient(155deg, rgba(5, 19, 31, .97), rgba(2, 10, 17, .96));
+  box-shadow: 0 15px 34px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.025);
+}
+
+.dhq-gameday-card--previous {
+  background: linear-gradient(145deg, rgba(10, 27, 40, .98), rgba(2, 10, 17, .96));
+}
+
+.dhq-gameday-card--keys {
+  border-color: rgba(205, 172, 74, .36);
+  background: linear-gradient(155deg, rgba(25, 22, 12, .93), rgba(3, 12, 19, .97) 62%);
+}
+
+.dhq-gameday-card--handoff {
+  border-color: rgba(204, 171, 72, .32);
+  background: linear-gradient(155deg, rgba(24, 20, 8, .92), rgba(4, 13, 21, .97));
+}
+
+.dhq-gameday-card__heading {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(145, 155, 166, .16);
+  background: rgba(255,255,255,.012);
+}
+
+.dhq-gameday-card__heading > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #f2f3f4;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.dhq-gameday-card__heading > span::before {
+  width: 2px;
+  height: 12px;
+  content: "";
+  background: #d3b14d;
+}
+
+.dhq-gameday-card__heading svg {
+  color: #d9bb60;
+}
+
+.dhq-gameday-card__heading > small {
+  color: #6e7a84;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.dhq-gameday-card__body {
+  padding: 15px;
+}
+
+.dhq-gameday-card__body h2,
+.dhq-gameday-card--scout h2 {
+  margin: 0 0 7px;
+  color: #fff;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 21px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+}
+
+.dhq-gameday-card__body > p,
+.dhq-gameday__scout-note,
+.dhq-gameday__storylines p,
+.dhq-gameday__keys p {
+  margin: 0;
+  color: #929ca5;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.dhq-gameday__previous-result {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 9px 10px;
+  border: 1px solid rgba(146, 158, 169, .18);
+  border-radius: 5px;
+  background: rgba(1, 8, 14, .58);
+}
+
+.dhq-gameday__previous-result span,
+.dhq-gameday__previous-result strong,
+.dhq-gameday__previous-result b {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+
+.dhq-gameday__previous-result span { color: #6d7882; }
+.dhq-gameday__previous-result strong { color: #d9dde0; }
+.dhq-gameday__previous-result b { color: #fff; }
+
+.dhq-gameday__keys {
+  padding: 5px 14px 9px;
+}
+
+.dhq-gameday__keys > div {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(145, 155, 166, .13);
+}
+
+.dhq-gameday__keys > div:last-child {
+  border-bottom: 0;
+}
+
+.dhq-gameday__keys > div > b {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(211, 177, 77, .48);
+  border-radius: 50%;
+  background: rgba(211, 177, 77, .09);
+  color: #e3c568;
+  font-size: 10px;
+}
+
+.dhq-gameday__keys strong {
+  display: block;
+  color: #f0f2f3;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+.dhq-gameday__keys p {
+  margin-top: 3px;
+}
+
+.dhq-gameday__keys small {
+  display: block;
+  margin-top: 5px;
+  color: #696f72;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.dhq-gameday-card--scout .dhq-gameday-card__body {
+  padding-top: 16px;
+}
+
+.dhq-gameday__scout-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.dhq-gameday__scout-facts > div {
+  padding: 9px;
+  border: 1px solid rgba(145,155,166,.17);
+  border-radius: 5px;
+  background: rgba(1, 8, 14, .55);
+}
+
+.dhq-gameday__scout-facts span,
+.dhq-gameday__scout-facts strong {
+  display: block;
+}
+
+.dhq-gameday__scout-facts span {
+  color: #6f7a83;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.dhq-gameday__scout-facts strong {
+  margin-top: 2px;
+  color: #eef0f1;
+  font-size: 10px;
+}
+
+.dhq-gameday__scout-empty {
+  margin-top: 10px;
+  padding: 13px;
+  border: 1px dashed rgba(143, 154, 164, .26);
+  border-radius: 5px;
+  color: #727d86;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.dhq-gameday__scout-note {
+  margin-top: 11px;
+}
+
+.dhq-gameday__player-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 15px 9px;
+}
+
+.dhq-gameday__player-head > div > strong {
+  display: block;
+  color: #fff;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 22px;
+  font-style: italic;
+  letter-spacing: .025em;
+}
+
+.dhq-gameday__player-head > div > span {
+  display: block;
+  margin-top: 2px;
+  color: #88939c;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.dhq-gameday__player-head > b {
+  border: 1px solid rgba(213, 178, 78, .38);
+  border-radius: 4px;
+  background: rgba(213, 178, 78, .09);
+  color: #dec05f;
+  padding: 5px 7px;
+  font-size: 7px;
+  letter-spacing: .1em;
+}
+
+.dhq-gameday__season-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 2px 15px 10px;
+  overflow: hidden;
+  border: 1px solid rgba(145,155,166,.16);
+  border-radius: 5px;
+  background: rgba(255,255,255,.05);
+}
+
+.dhq-gameday__season-stats > div {
+  padding: 9px 4px;
+  background: rgba(1,8,14,.68);
+  text-align: center;
+}
+
+.dhq-gameday__season-stats b {
+  display: block;
+  color: #fff;
+  font-size: 17px;
+}
+
+.dhq-gameday__season-stats span {
+  display: block;
+  margin-top: 2px;
+  color: #727e87;
+  font-size: 5px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+
+.dhq-gameday__player-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 0 15px 15px;
+  color: #77828b;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.dhq-gameday__player-context strong {
+  color: #dce0e2;
+}
+
+.dhq-gameday__storylines {
+  padding: 5px 14px 10px;
+}
+
+.dhq-gameday__storylines > div {
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(145,155,166,.13);
+}
+
+.dhq-gameday__storylines > div:last-child { border-bottom: 0; }
+.dhq-gameday__storylines small { display:block; color:#c6a94f; font-size:6px; font-weight:900; letter-spacing:.12em; }
+.dhq-gameday__storylines strong { display:block; margin-top:2px; color:#edf0f1; font-size:9px; }
+.dhq-gameday__storylines p { margin-top:3px; }
+
+.dhq-gameday__handoff-flow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 13px;
+  color: #8e989f;
+}
+
+.dhq-gameday__handoff-flow span {
+  color: #c8cdd1;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.dhq-gameday__handoff-flow svg { color:#c7aa50; }
+
+.dhq-gameday__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.dhq-gameday__actions button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 5px;
+  padding: 0 12px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-gameday__actions .is-primary {
+  border: 1px solid #d4b34e;
+  background: linear-gradient(#c3a13f, #82681d);
+  color: #091018;
+  box-shadow: inset 0 1px rgba(255,255,255,.2), 0 8px 20px rgba(93,72,13,.22);
+}
+
+.dhq-gameday__actions .is-secondary {
+  border: 1px solid rgba(145,157,168,.38);
+  background: rgba(2,10,17,.74);
+  color: #d5dadd;
+}
+
+.dhq-gameday__actions button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+
+@media (max-width: 980px) {
+  .dhq-gameday__editorial-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dhq-gameday-card--previous {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-gameday__lower-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dhq-gameday-card--handoff {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .dhq-gameday__topline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+  }
+
+  .dhq-gameday__topline > div:first-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dhq-gameday__status {
+    font-size: 7px;
+  }
+
+  .dhq-gameday__editorial-grid,
+  .dhq-gameday__lower-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dhq-gameday-card--previous,
+  .dhq-gameday-card--handoff {
+    grid-column: auto;
+  }
+
+  .dhq-gameday-card__heading {
+    min-height: 39px;
+    padding: 0 11px;
+  }
+
+  .dhq-gameday-card__heading > span {
+    font-size: 7px;
+  }
+
+  .dhq-gameday-card__heading > small {
+    max-width: 42%;
+    font-size: 5px;
+  }
+
+  .dhq-gameday-card__body {
+    padding: 13px;
+  }
+
+  .dhq-gameday-card__body h2,
+  .dhq-gameday-card--scout h2 {
+    font-size: 19px;
+  }
+
+  .dhq-gameday__previous-result {
+    grid-template-columns: auto 1fr;
+  }
+
+  .dhq-gameday__previous-result b {
+    grid-column: 1 / -1;
+  }
+
+  .dhq-gameday__scout-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dhq-gameday__season-stats {
+    margin-right: 12px;
+    margin-left: 12px;
+  }
+
+  .dhq-gameday__player-head,
+  .dhq-gameday__player-context {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .dhq-gameday__actions {
+    flex-direction: column;
+  }
+
+  .dhq-gameday__actions button {
+    width: 100%;
+  }
+}

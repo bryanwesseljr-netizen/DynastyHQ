@@ -2,6 +2,7 @@ import WeekSetupPortal from './WeekSetupPortal.jsx';
 import GameweekFlowPortal from './GameweekFlowPortal.jsx';
 import QuickImportPortal from './QuickImportPortal.jsx';
 import SessionImportPortal from './SessionImportPortal.jsx';
+import SeasonSchedulePortal from './SeasonSchedulePortal.jsx';
 import CareerOverviewPortal from './CareerOverviewPortal.jsx';
 import CareerOverviewViewportPortal from './CareerOverviewViewportPortal.jsx';
 import CareerStandbyPortal from './CareerStandbyPortal.jsx';
@@ -59,6 +60,7 @@ const OwnerEnhancements = () => (
     <FreshStartPortal />
     <ImmersionPortal />
     <StorylineContinuityPortal />
+    <SeasonSchedulePortal />
     <PodcastUniversalBrandPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />

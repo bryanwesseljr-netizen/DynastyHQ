@@ -1,6 +1,11 @@
 .dhq-broadcast-hero[data-week-state="pregame"] {
-  border-color: rgba(255, 214, 72, 0.34);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), 0 0 42px rgba(255, 207, 70, 0.055), inset 0 1px rgba(255,255,255,0.025);
+  border-color: rgba(255, 214, 72, 0.4);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), 0 0 48px rgba(255, 207, 70, 0.075), inset 0 1px rgba(255,255,255,0.03);
+}
+
+.dhq-broadcast-hero[data-week-state="pregame"] .dhq-broadcast-primary {
+  border-color: rgba(245, 214, 93, 0.72);
+  box-shadow: 0 0 22px rgba(239, 207, 90, 0.11), inset 0 1px rgba(255,255,255,0.06);
 }
 
 .dhq-broadcast-hero[data-week-state="postgame"] {
@@ -26,27 +31,64 @@
   letter-spacing: 0.09em;
 }
 
+.dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-versus span,
+.dhq-broadcast-hero[data-week-state="between"] .dhq-broadcast-versus span {
+  margin-top: 6px;
+  color: #f7f7f8;
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+}
+
+.dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-versus small {
+  color: #d88b9a;
+}
+
 .dhq-gameweek-immersion {
   display: grid;
-  grid-template-columns: 1.22fr 1fr 0.9fr;
-  gap: 11px;
+  grid-template-columns: 1.15fr 0.95fr 0.95fr;
+  gap: 9px;
   width: min(1180px, 100%);
-  margin: 0 auto 11px;
+  margin: 0 auto 9px;
 }
 
 .dhq-immersion-panel {
   position: relative;
   min-width: 0;
-  min-height: 174px;
-  padding: 15px 17px 42px;
+  min-height: 154px;
+  padding: 13px 15px 36px;
   overflow: hidden;
-  border: 1px solid rgba(149, 165, 179, 0.43);
+  border: 1px solid rgba(149, 165, 179, 0.4);
   border-radius: 8px;
   background:
     linear-gradient(150deg, rgba(5, 19, 31, 0.955), rgba(2, 10, 17, 0.955)),
     radial-gradient(circle at 18% 0%, rgba(70, 113, 145, 0.11), transparent 46%);
-  box-shadow: 0 11px 28px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255,255,255,0.02);
+  box-shadow: 0 9px 24px rgba(0, 0, 0, 0.24), inset 0 1px rgba(255,255,255,0.02);
   backdrop-filter: blur(5px) saturate(112%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.dhq-immersion-panel:hover {
+  border-color: rgba(172, 188, 201, 0.54);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255,255,255,0.025);
+}
+
+.dhq-gameweek-immersion[data-week-state="pregame"] .dhq-immersion-panel {
+  border-color: rgba(202, 187, 116, 0.42);
+  background:
+    linear-gradient(150deg, rgba(5, 22, 30, 0.965), rgba(2, 12, 17, 0.97)),
+    radial-gradient(circle at 16% 0%, rgba(201, 179, 76, 0.12), transparent 48%);
+}
+
+.dhq-gameweek-immersion[data-week-state="postgame"] .dhq-immersion-panel {
+  border-color: rgba(151, 99, 110, 0.42);
+  background:
+    linear-gradient(150deg, rgba(8, 18, 28, 0.965), rgba(5, 9, 15, 0.97)),
+    radial-gradient(circle at 16% 0%, rgba(151, 42, 62, 0.1), transparent 48%);
+}
+
+.dhq-gameweek-immersion[data-week-state="between"] .dhq-immersion-panel {
+  border-color: rgba(93, 137, 163, 0.42);
 }
 
 .dhq-immersion-panel::before {
@@ -70,17 +112,25 @@
 
 .dhq-immersion-eyebrow {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   color: #8d969f;
-  font-size: 0.52rem;
+  font-size: 0.49rem;
   font-weight: 900;
   letter-spacing: 0.15em;
+}
+
+.dhq-gameweek-immersion[data-week-state="pregame"] .dhq-immersion-eyebrow {
+  color: #b6a96a;
+}
+
+.dhq-gameweek-immersion[data-week-state="postgame"] .dhq-immersion-eyebrow {
+  color: #a9868e;
 }
 
 .dhq-immersion-panel h2 {
   margin: 0;
   color: #f4f5f6;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 900;
   letter-spacing: 0.05em;
 }
@@ -89,18 +139,22 @@
   color: #f1d47b;
 }
 
+.dhq-gameweek-immersion[data-week-state="postgame"] .dhq-immersion-previous h2 {
+  color: #f0c2ca;
+}
+
 .dhq-immersion-previous p,
 .dhq-immersion-scout p {
-  margin: 12px 0 0;
+  margin: 9px 0 0;
   color: #a9b0b7;
-  font-size: 0.69rem;
-  line-height: 1.52;
+  font-size: 0.66rem;
+  line-height: 1.45;
 }
 
 .dhq-immersion-panel > button {
   position: absolute;
-  right: 17px;
-  bottom: 10px;
+  right: 15px;
+  bottom: 9px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -108,7 +162,7 @@
   border: 0;
   background: transparent;
   color: #9ea7af;
-  font-size: 0.53rem;
+  font-size: 0.51rem;
   font-weight: 900;
   letter-spacing: 0.07em;
   cursor: pointer;
@@ -120,26 +174,26 @@
 
 .dhq-immersion-key-list {
   display: grid;
-  gap: 7px;
-  margin-top: 10px;
+  gap: 5px;
+  margin-top: 8px;
 }
 
 .dhq-immersion-key-list > div {
   display: grid;
-  grid-template-columns: 25px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 23px minmax(0, 1fr);
+  gap: 7px;
   align-items: start;
 }
 
 .dhq-immersion-key-list > div > b {
   display: grid;
-  width: 23px;
-  height: 23px;
+  width: 21px;
+  height: 21px;
   place-items: center;
   border: 1px solid rgba(242, 207, 103, 0.5);
   border-radius: 50%;
   color: #f1d47b;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
 }
 
 .dhq-gameweek-immersion[data-week-state="postgame"] .dhq-immersion-key-list > div > b {
@@ -160,30 +214,30 @@
 
 .dhq-immersion-key-list strong {
   color: #eef0f2;
-  font-size: 0.62rem;
-  line-height: 1.15;
+  font-size: 0.59rem;
+  line-height: 1.12;
 }
 
 .dhq-immersion-key-list small {
-  margin-top: 2px;
+  margin-top: 1px;
   color: #8e979f;
-  font-size: 0.55rem;
-  line-height: 1.3;
+  font-size: 0.52rem;
+  line-height: 1.25;
 }
 
 .dhq-immersion-scout-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  margin-top: 11px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .dhq-immersion-scout-facts > div {
   min-width: 0;
-  padding: 7px 8px;
-  border: 1px solid rgba(149, 165, 179, 0.25);
+  padding: 6px 7px;
+  border: 1px solid rgba(149, 165, 179, 0.23);
   border-radius: 5px;
-  background: rgba(8, 22, 34, 0.66);
+  background: rgba(8, 22, 34, 0.62);
 }
 
 .dhq-immersion-scout-facts span,
@@ -196,22 +250,22 @@
 
 .dhq-immersion-scout-facts span {
   color: #78838d;
-  font-size: 0.48rem;
+  font-size: 0.46rem;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
 
 .dhq-immersion-scout-facts strong {
-  margin-top: 2px;
+  margin-top: 1px;
   color: #f0f2f3;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
 }
 
 .dhq-immersion-scout-facts .dhq-immersion-scout-empty {
   grid-column: 1 / -1;
   color: #7f8992;
-  font-size: 0.59rem;
-  line-height: 1.3;
+  font-size: 0.56rem;
+  line-height: 1.25;
   text-align: center;
 }
 
@@ -222,47 +276,66 @@
 
   .dhq-immersion-previous {
     grid-column: 1 / -1;
+    min-height: 118px;
+    padding-right: min(26vw, 225px);
+  }
+
+  .dhq-immersion-keys,
+  .dhq-immersion-scout {
+    min-height: 150px;
   }
 }
 
 @media (max-width: 767px) {
   .dhq-gameweek-immersion {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 7px;
     width: 100%;
-    margin-bottom: 9px;
+    margin-bottom: 8px;
   }
 
   .dhq-immersion-previous {
     grid-column: auto;
+    min-height: 0;
+    padding-right: 14px;
+  }
+
+  .dhq-immersion-keys,
+  .dhq-immersion-scout {
+    min-height: 0;
   }
 
   .dhq-immersion-panel {
     min-height: 0;
-    padding: 13px 14px 38px;
+    padding: 12px 13px 36px;
     border-radius: 7px;
   }
 
   .dhq-immersion-panel h2 {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
   }
 
   .dhq-immersion-previous p,
   .dhq-immersion-scout p {
-    margin-top: 9px;
-    font-size: 0.64rem;
+    margin-top: 8px;
+    font-size: 0.62rem;
   }
 
   .dhq-immersion-key-list {
-    gap: 8px;
+    gap: 7px;
   }
 
   .dhq-immersion-key-list small {
-    font-size: 0.53rem;
+    font-size: 0.51rem;
   }
 
   .dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-versus b,
   .dhq-broadcast-hero[data-week-state="between"] .dhq-broadcast-versus b {
     font-size: 1.56rem;
+  }
+
+  .dhq-broadcast-hero[data-week-state="postgame"] .dhq-broadcast-versus span,
+  .dhq-broadcast-hero[data-week-state="between"] .dhq-broadcast-versus span {
+    font-size: 0.76rem;
   }
 }

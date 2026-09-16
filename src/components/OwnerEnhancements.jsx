@@ -30,6 +30,7 @@ import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
 import PodcastArtworkHydrationPortal from './PodcastArtworkHydrationPortal.jsx';
 import PodcastLocalShowPortal from './PodcastLocalShowPortal.jsx';
 import PodcastMasterAudioPortalV2 from './PodcastMasterAudioPortalV2.jsx';
+import PodcastFinishedAudioIntegrationPortal from './PodcastFinishedAudioIntegrationPortal.jsx';
 import PodcastSeekControlsPortal from './PodcastSeekControlsPortal.jsx';
 import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
 import EditorialLanguageRealismPortal from './EditorialLanguageRealismPortal.jsx';
@@ -95,6 +96,7 @@ const OwnerEnhancements = () => (
     <PodcastLocalShowPortal />
     <PodcastHumanizedAudioPortal />
     <PodcastMasterAudioPortalV2 />
+    <PodcastFinishedAudioIntegrationPortal />
     <PodcastSeekControlsPortal />
   </OwnerCareerProvider>
 );

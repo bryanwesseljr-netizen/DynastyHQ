@@ -118,7 +118,7 @@ const GameDayPregamePortal = () => {
         </article>
 
         <article className="dhq-gameday-card dhq-gameday-card--keys">
-          <div className="dhq-gameday-card__heading"><span><Target size={15} /> 3 KEYS TO THE GAME</span><small>GROUNDed IN SAVED CONTEXT</small></div>
+          <div className="dhq-gameday-card__heading"><span><Target size={15} /> 3 KEYS TO THE GAME</span><small>GROUNDED IN SAVED CONTEXT</small></div>
           <div className="dhq-gameday__keys">
             {brief.keys.map((key, index) => (
               <div key={`${key.title}-${index}`}>

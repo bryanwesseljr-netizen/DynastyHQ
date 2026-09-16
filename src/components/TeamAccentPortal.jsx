@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { buildAdaptiveTeamTheme } from '../domain/adaptiveTeamTheme.js';
 import { resolveCareerTeamMediaProfile } from '../domain/teamMediaProfile';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../newsroom-program-theme.css';
@@ -46,11 +47,31 @@ const TeamAccentPortal = () => {
     const secondary = profile.secondary || '#cbd5e1';
     const accent = profile.accent || '#ffffff';
     const highlight = resolveProgramHighlight(primary, secondary);
+    const adaptive = buildAdaptiveTeamTheme({ primary, secondary, highlight });
 
-    root.style.setProperty('--dhq-team-primary', primary);
-    root.style.setProperty('--dhq-team-secondary', secondary);
-    root.style.setProperty('--dhq-team-accent', accent);
-    root.style.setProperty('--dhq-team-highlight', highlight);
+    const variables = {
+      '--dhq-team-primary': primary,
+      '--dhq-team-secondary': secondary,
+      '--dhq-team-accent': accent,
+      '--dhq-team-highlight': highlight,
+      '--dhq-team-on-primary': adaptive.onPrimary,
+      '--dhq-team-on-highlight': adaptive.onHighlight,
+      '--dhq-team-surface': adaptive.surface,
+      '--dhq-team-surface-strong': adaptive.surfaceStrong,
+      '--dhq-team-surface-alt': adaptive.surfaceAlt,
+      '--dhq-team-text': adaptive.onSurface,
+      '--dhq-team-muted': adaptive.muted,
+      '--dhq-team-subtle': adaptive.subtle,
+      '--dhq-team-border': adaptive.border,
+      '--dhq-team-focus': adaptive.focus,
+      '--dhq-program-primary': primary,
+      '--dhq-program-secondary': secondary,
+      '--dhq-program-accent': accent,
+      '--dhq-program-highlight': highlight,
+      '--dhq-program-on-primary': adaptive.onPrimary,
+    };
+    Object.entries(variables).forEach(([name, value]) => root.style.setProperty(name, value));
+
     body?.setAttribute('data-dhq-team-accent', 'true');
     body?.setAttribute('data-dhq-team-school', safeLabel(profile.shortName || profile.school));
 
@@ -79,10 +100,7 @@ const TeamAccentPortal = () => {
       observer?.disconnect();
       body?.removeAttribute('data-dhq-team-accent');
       body?.removeAttribute('data-dhq-team-school');
-      root.style.removeProperty('--dhq-team-primary');
-      root.style.removeProperty('--dhq-team-secondary');
-      root.style.removeProperty('--dhq-team-accent');
-      root.style.removeProperty('--dhq-team-highlight');
+      Object.keys(variables).forEach((name) => root.style.removeProperty(name));
     };
   }, [career, profile]);
 

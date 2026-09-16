@@ -76,10 +76,19 @@ const chronicleTitle = (entry = {}) => {
   return `Season ${entry.season || 1} · Week ${entry.week ?? '—'}`;
 };
 
+const latestPublishedOpponent = (state = {}) => sortedByWeek(state.gameLogs || [])
+  .reverse()
+  .find((game) => (
+    game
+    && game.stage !== 'high-school'
+    && !game.evaluation
+    && clean(game.opponent)
+  ))?.opponent || '';
+
 const currentOpponent = (state = {}) => {
   const setup = state.currentWeekSetup || {};
   const draftGame = state.weeklyAgendaDraft?.newGame || state.weeklyAgendaDraft?.game || {};
-  return clean(setup.opponent || draftGame.opponent) || 'NEXT OPPONENT';
+  return clean(setup.opponent || draftGame.opponent || latestPublishedOpponent(state)) || 'NEXT OPPONENT';
 };
 
 const workflowCopy = (flow = {}) => {

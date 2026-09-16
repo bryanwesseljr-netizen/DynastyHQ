@@ -12,6 +12,7 @@ test('adaptive team theme keeps readable text on Oregon-style program colors', (
   assert.ok(contrastRatio(theme.primary, theme.onPrimary) >= 4.5);
   assert.ok(contrastRatio(theme.highlight, theme.onHighlight) >= 4.5);
   assert.ok(contrastRatio(theme.surface, theme.onSurface) >= 4.5);
+  assert.ok(contrastRatio(theme.surface, theme.readableHighlight) >= 4.5);
   assert.equal(theme.onHighlight, '#071018');
 });
 
@@ -19,4 +20,11 @@ test('adaptive team theme remains readable for bright primary programs', () => {
   const theme = buildAdaptiveTeamTheme({ primary: '#ffcc00', highlight: '#003366' });
   assert.ok(contrastRatio(theme.primary, theme.onPrimary) >= 4.5);
   assert.ok(contrastRatio(theme.surfaceStrong, theme.onSurface) >= 4.5);
+  assert.ok(contrastRatio(theme.surface, theme.readableHighlight) >= 4.5);
+});
+
+test('dark team accents are lifted only when needed for card readability', () => {
+  const theme = buildAdaptiveTeamTheme({ primary: '#18453b', secondary: '#ffffff', highlight: '#18453b' });
+  assert.ok(contrastRatio(theme.surface, theme.readableHighlight) >= 4.5);
+  assert.notEqual(theme.readableHighlight.toLowerCase(), '#18453b');
 });

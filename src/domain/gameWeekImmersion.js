@@ -5,7 +5,7 @@ const finite = (value, fallback = 0) => {
 };
 
 const sortedGames = (state = {}) => [...(state.gameLogs || [])]
-  .filter((game) => game && clean(game.opponent) && !game.evaluation)
+  .filter((game) => game && clean(game.opponent) && game.stage !== 'high-school' && !game.evaluation)
   .sort((left, right) => (
     finite(left?.season, 1) - finite(right?.season, 1)
     || finite(left?.week, 0) - finite(right?.week, 0)

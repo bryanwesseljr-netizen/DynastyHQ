@@ -45,6 +45,16 @@ export const mixHex = (foreground, background, amount = 0.5) => {
   return `#${rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 };
 
+const readableAccentFor = (accent, surface, onSurface) => {
+  if (contrastRatio(accent, surface) >= 4.5) return accent;
+  const toward = onSurface === '#f8fbff' ? '#f8fbff' : '#071018';
+  for (const weight of [0.72, 0.55, 0.38, 0.22]) {
+    const candidate = mixHex(accent, toward, weight);
+    if (contrastRatio(candidate, surface) >= 4.5) return candidate;
+  }
+  return onSurface;
+};
+
 export const buildAdaptiveTeamTheme = ({
   primary = '#334155',
   secondary = '#0f172a',
@@ -58,11 +68,13 @@ export const buildAdaptiveTeamTheme = ({
   const surfaceAlt = mixHex(safeHighlight, '#07111b', 0.10);
   const onSurface = bestTextColor(surface);
   const darkSurface = onSurface === '#f8fbff';
+  const readableHighlight = readableAccentFor(safeHighlight, surface, onSurface);
 
   return {
     primary: safePrimary,
     secondary: safeSecondary,
     highlight: safeHighlight,
+    readableHighlight,
     onPrimary: bestTextColor(safePrimary),
     onHighlight: bestTextColor(safeHighlight),
     surface,
@@ -72,6 +84,6 @@ export const buildAdaptiveTeamTheme = ({
     muted: darkSurface ? '#b8c4cd' : '#37434b',
     subtle: darkSurface ? '#8797a4' : '#56616a',
     border: mixHex(safeHighlight, '#64748b', 0.34),
-    focus: safeHighlight,
+    focus: readableHighlight,
   };
 };

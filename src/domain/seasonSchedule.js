@@ -152,6 +152,19 @@ export const syncScheduleWithCareer = (state = {}, scheduleInput = null) => {
   };
 };
 
+const fallbackTeamResults = (state = {}, season, throughWeek) => {
+  const byWeek = new Map();
+  arrayOf(state.weeklyUpdates)
+    .filter((entry) => Number(entry?.season || 1) === season && Number(entry?.week ?? 0) <= throughWeek)
+    .filter((entry) => entry?.game && entry.game.stage !== 'high-school' && !entry.game.evaluation)
+    .forEach((entry) => byWeek.set(Number(entry.week), { ...entry.game, week: Number(entry.week), season }));
+  arrayOf(state.gameLogs)
+    .filter((game) => Number(game?.season || 1) === season && Number(game?.week ?? 0) <= throughWeek)
+    .filter((game) => game?.stage !== 'high-school' && !game?.evaluation)
+    .forEach((game) => byWeek.set(Number(game.week), game));
+  return [...byWeek.values()].sort((left, right) => Number(left.week ?? 0) - Number(right.week ?? 0));
+};
+
 export const teamRecordThroughWeek = (state = {}, season = state.currentSeason || 1, week = Number.MAX_SAFE_INTEGER) => {
   const targetSeason = Math.max(1, Number(season) || 1);
   const throughWeek = Number.isFinite(Number(week)) ? Number(week) : Number.MAX_SAFE_INTEGER;
@@ -160,16 +173,12 @@ export const teamRecordThroughWeek = (state = {}, season = state.currentSeason |
     const synced = syncScheduleWithCareer(state, schedule);
     return { ...recordDetails(synced.entries.filter((entry) => entry.week <= throughWeek)), source: 'schedule' };
   }
-  const games = arrayOf(state.gameLogs)
-    .filter((game) => Number(game?.season || 1) === targetSeason && Number(game?.week ?? 0) <= throughWeek)
-    .filter((game) => game?.stage !== 'high-school' && !game?.evaluation)
-    .sort((left, right) => Number(left.week ?? 0) - Number(right.week ?? 0));
-  return { ...recordDetails(games), source: 'game-log' };
+  return { ...recordDetails(fallbackTeamResults(state, targetSeason, throughWeek)), source: 'career-results' };
 };
 
 export const teamRecordForSeason = (state = {}, season = state.currentSeason || 1) => {
   const record = teamRecordThroughWeek(state, season);
-  return { wins: record.wins, losses: record.losses, games: record.games, source: record.source };
+  return { wins: record.wins, losses: record.losses, games: record.games, source: record.source === 'schedule' ? 'schedule' : 'game-log' };
 };
 
 export const nextScheduledGame = (state = {}, season = state.currentSeason || 1) => {

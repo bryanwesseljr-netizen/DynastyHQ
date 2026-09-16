@@ -1,7 +1,7 @@
 import { resolveTeamMediaProfile } from './teamMediaProfile.js';
 
 const ESPN_TEAMS_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=500';
-const TEAM_DIRECTORY_URL = '/api/college-team-brands';
+const TEAM_DIRECTORY_URL = '/api/analyze-rtg-status?resource=team-directory';
 const CACHE_KEY = 'dynastyhq-college-team-brands-v2';
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
@@ -92,11 +92,8 @@ const toBrand = (team = {}) => {
     primaryColor: catalog.source === 'fbs-2026' ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
     secondaryColor: catalog.source === 'fbs-2026' ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
     logo: teamId
-      ? `/api/college-team-logo?id=${encodeURIComponent(teamId)}`
-      : clean(team.logo)
-        || team.logos?.find?.((logo) => String(logo?.href || '').includes('/500/'))?.href
-        || team.logos?.[0]?.href
-        || '',
+      ? `/api/analyze-rtg-status?resource=team-logo&id=${encodeURIComponent(teamId)}`
+      : '',
     aliases: teamAliases(team),
     source: 'espn+fbs-2026',
   };

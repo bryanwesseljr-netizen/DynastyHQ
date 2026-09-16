@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
 import {
+  EDITORIAL_LANGUAGE_VERSION,
   normalizeNewsroomIssueLanguage,
   normalizePodcastEpisodeLanguage,
 } from '../domain/editorialRealism.js';
@@ -16,18 +17,22 @@ const careerAtPublication = (career = {}, publicationId = '') => {
     : career;
 };
 
-const issueTextSignature = (issue = {}) => JSON.stringify((issue.articles || []).map((article) => ({
-  id: article?.id,
-  kicker: article?.kicker,
-  headline: article?.headline,
-  dek: article?.dek,
-  paragraphs: article?.paragraphs,
-  sectionHeadings: article?.sectionHeadings,
-  pullQuote: article?.pullQuote,
-  sidebars: article?.sidebars,
-})));
+const issueTextSignature = (issue = {}) => JSON.stringify({
+  editorialLanguageVersion: Number(issue?.editorialLanguageVersion) || 0,
+  articles: (issue.articles || []).map((article) => ({
+    id: article?.id,
+    kicker: article?.kicker,
+    headline: article?.headline,
+    dek: article?.dek,
+    paragraphs: article?.paragraphs,
+    sectionHeadings: article?.sectionHeadings,
+    pullQuote: article?.pullQuote,
+    sidebars: article?.sidebars,
+  })),
+});
 
 const episodeTextSignature = (episode = {}) => JSON.stringify({
+  editorialLanguageVersion: Number(episode?.editorialLanguageVersion) || 0,
   id: episode?.id,
   title: episode?.title,
   summary: episode?.summary,
@@ -46,6 +51,13 @@ const changedKeys = (previous, current) => new Set(
     .map(([key]) => key),
 );
 
+const idsNeedingInitialNormalization = (items = []) => new Set(
+  items
+    .filter((item) => Number(item?.editorialLanguageVersion) !== EDITORIAL_LANGUAGE_VERSION)
+    .map((item) => item?.publicationId || item?.id || '')
+    .filter(Boolean),
+);
+
 const EditorialLanguageRealismPortal = () => {
   const { user, career } = useOwnerCareer();
   const busyRef = useRef(false);
@@ -54,14 +66,18 @@ const EditorialLanguageRealismPortal = () => {
   useEffect(() => {
     if (!career) return undefined;
     const currentSignatures = collectSignatures(career);
+    let changedIssueIds;
+    let changedEpisodeIds;
+
     if (!baselineRef.current) {
       baselineRef.current = currentSignatures;
-      return undefined;
+      changedIssueIds = idsNeedingInitialNormalization(career.newsroomIssues || []);
+      changedEpisodeIds = idsNeedingInitialNormalization(career.podcastEpisodes || []);
+    } else {
+      changedIssueIds = changedKeys(baselineRef.current.issues, currentSignatures.issues);
+      changedEpisodeIds = changedKeys(baselineRef.current.episodes, currentSignatures.episodes);
+      baselineRef.current = currentSignatures;
     }
-
-    const changedIssueIds = changedKeys(baselineRef.current.issues, currentSignatures.issues);
-    const changedEpisodeIds = changedKeys(baselineRef.current.episodes, currentSignatures.episodes);
-    baselineRef.current = currentSignatures;
 
     if (!user || !db || busyRef.current || (!changedIssueIds.size && !changedEpisodeIds.size)) return undefined;
 
@@ -75,6 +91,7 @@ const EditorialLanguageRealismPortal = () => {
           const snapshot = await transaction.get(masterRef);
           if (!snapshot.exists()) return;
           const remote = snapshot.data();
+          const before = collectSignatures(remote);
           const newsroomIssues = (remote.newsroomIssues || []).map((issue) => {
             const publicationId = issue?.publicationId || issue?.id || '';
             return changedIssueIds.has(publicationId)
@@ -88,10 +105,12 @@ const EditorialLanguageRealismPortal = () => {
               : episode;
           });
           const nextCareer = { ...remote, newsroomIssues, podcastEpisodes };
-          normalizedSnapshot = collectSignatures(nextCareer);
-          if (issueTextSignature({ articles: newsroomIssues.flatMap((issue) => issue.articles || []) })
-              === issueTextSignature({ articles: (remote.newsroomIssues || []).flatMap((issue) => issue.articles || []) })
-            && JSON.stringify(podcastEpisodes) === JSON.stringify(remote.podcastEpisodes || [])) return;
+          const after = collectSignatures(nextCareer);
+          normalizedSnapshot = after;
+
+          const issueChanged = [...changedIssueIds].some((id) => before.issues.get(id) !== after.issues.get(id));
+          const episodeChanged = [...changedEpisodeIds].some((id) => before.episodes.get(id) !== after.episodes.get(id));
+          if (!issueChanged && !episodeChanged) return;
 
           const revision = Number(remote?._sync?.revision) || 0;
           transaction.update(masterRef, {

@@ -161,7 +161,7 @@ export const scheduleWeekSetup = (state = {}) => {
   return {
     week: next.week,
     type: 'game',
-    phase: 'regular',
+    phase: 'regular-season',
     label: next.label || `Week ${next.week}`,
     customLabel: '',
     opponent: next.opponent,

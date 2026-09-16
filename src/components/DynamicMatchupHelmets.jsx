@@ -1,29 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import genericMatchupHelmets from '../assets/matchup-helmets.webp';
 import { catalogTeamBrand, fallbackTeamBrand, resolveTeamBrand } from '../domain/teamBrandResolver.js';
 
-const TeamTint = ({ brand, side }) => (
+const TeamLogo = ({ brand, teamName, side }) => (
   <div
-    className={`dhq-generic-matchup-helmets__tint dhq-generic-matchup-helmets__tint--${side}`}
-    style={{
-      '--dhq-team-primary': brand.primaryColor,
-      '--dhq-team-secondary': brand.secondaryColor,
-      WebkitMaskImage: `url(${genericMatchupHelmets})`,
-      maskImage: `url(${genericMatchupHelmets})`,
-    }}
-    aria-hidden="true"
-  />
-);
-
-const TeamDecal = ({ brand, teamName, side }) => (
-  <div
-    className={`dhq-generic-helmet-decal dhq-generic-helmet-decal--${side}`}
+    className={`dhq-matchup-team-logo dhq-matchup-team-logo--${side}`}
     style={{
       '--dhq-team-primary': brand.primaryColor,
       '--dhq-team-secondary': brand.secondaryColor,
     }}
     role="img"
-    aria-label={`${teamName || brand.displayName} helmet logo`}
+    aria-label={`${teamName || brand.displayName} logo`}
   >
     {brand.logo ? (
       <img src={brand.logo} alt="" draggable="false" />
@@ -71,23 +57,15 @@ const DynamicMatchupHelmets = ({
 
   return (
     <div
-      className={`dhq-dynamic-matchup-helmets dhq-generic-matchup-helmets ${className}`.trim()}
+      className={`dhq-dynamic-matchup-helmets dhq-team-logo-matchup ${className}`.trim()}
       data-home-team={homeTeam || ''}
       data-away-team={awayTeam || ''}
       data-home-brand-source={home.source}
       data-away-brand-source={away.source}
-      aria-label={`${homeTeam || 'Home team'} versus ${awayTeam || 'Away team'} helmets`}
+      aria-label={`${homeTeam || 'Home team'} versus ${awayTeam || 'Away team'} logos`}
     >
-      <img
-        className="dhq-generic-matchup-helmets__base"
-        src={genericMatchupHelmets}
-        alt=""
-        draggable="false"
-      />
-      <TeamTint brand={home} side="left" />
-      <TeamTint brand={away} side="right" />
-      <TeamDecal brand={home} teamName={homeTeam} side="left" />
-      <TeamDecal brand={away} teamName={awayTeam} side="right" />
+      <TeamLogo brand={home} teamName={homeTeam} side="left" />
+      <TeamLogo brand={away} teamName={awayTeam} side="right" />
     </div>
   );
 };

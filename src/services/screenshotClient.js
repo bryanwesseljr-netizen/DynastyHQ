@@ -1,5 +1,7 @@
 import { recordAiScanUsage } from './aiUsageTracker.js';
 import { readPaidVisionFallbackEnabled } from './visionFallbackPreference.js';
+import { reportSessionLaneResult } from './sessionImportTelemetry.js';
+import { postFreeVisionJson } from './freeVisionQuotaQueue.js';
 
 const OFFENSIVE_TOTAL_YARD_KEYS = new Set([
   'game.teamTotalYards',
@@ -101,13 +103,10 @@ export const analyzeScreenshot = async ({
     : '/api/analyze-screenshot';
   const allowPaidFallback = readPaidVisionFallbackEnabled();
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
+  const { response, body } = await postFreeVisionJson({
+    url: endpoint,
+    idToken,
+    body: {
       imageDataUrl,
       fileName,
       careerPhase,
@@ -117,22 +116,33 @@ export const analyzeScreenshot = async ({
       uploadContext,
       allowPaidFallback,
       ...(useFreeCollegeScanner ? { scanKind: 'game' } : {}),
-    }),
+    },
   });
 
-  let body = {};
-  try {
-    body = await response.json();
-  } catch {
-    // Keep the user-facing error useful even if an upstream proxy returns HTML.
-  }
-
   if (!response.ok) {
-    const error = new Error(body.error || 'Screenshot analysis failed.');
+    const message = body.error || 'Screenshot analysis failed.';
+    reportSessionLaneResult({
+      fileName,
+      lane: 'game',
+      status: 'failed',
+      message,
+    });
+    const error = new Error(message);
     error.status = response.status;
     throw error;
   }
 
   recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
-  return normalizeScreenshotAnalysis(body);
+  const normalized = normalizeScreenshotAnalysis(body);
+  const analysis = normalized?.analysis || normalized || {};
+  reportSessionLaneResult({
+    fileName,
+    lane: 'game',
+    status: 'analyzed',
+    factCount: (analysis.facts || []).length,
+    screenType: Array.isArray(analysis.screenTypes)
+      ? analysis.screenTypes.filter((type) => type !== 'unknown').join(', ')
+      : (analysis.screenType || ''),
+  });
+  return normalized;
 };

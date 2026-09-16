@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import './services/podcastBinaryTransport.js'
 import AuthAwareApp from './components/AuthAwareApp.jsx'
 import OwnerEnhancements from './components/OwnerEnhancements.jsx'
+import PreviewReseedMount from './components/PreviewReseedMount.jsx'
+import { OwnerCareerProvider } from './components/OwnerCareerContext.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
 import PublicShareGuard from './components/PublicShareGuard.jsx'
 import PublicNewsroomArticlePage from './components/PublicNewsroomArticlePage.jsx'
@@ -31,6 +33,7 @@ import './active-program-theme-v3.css'
 import './active-program-theme-v4.css'
 import './navigation-state-v5.css'
 import './navigation-state-v6.css'
+import './session-import-review-layer.css'
 
 const viewContext = resolveViewContext(window.location.search)
 const sharedArticleId = readSharedNewsroomArticleId(window.location.search)
@@ -46,6 +49,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <>
         <AuthAwareApp />
         {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
+        {!viewContext.isPublicShare ? (
+          <OwnerCareerProvider><PreviewReseedMount /></OwnerCareerProvider>
+        ) : null}
         <DuplicateGuardPortal />
       </>
     )}

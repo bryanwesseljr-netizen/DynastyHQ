@@ -5,7 +5,8 @@ import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
 import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
 import { compressImage } from '../services/imageCompression';
-import { analyzeRtgStatusScreenshot } from '../services/rtgStatusScannerClient';
+import { buildSessionAnalysisContactSheet, SESSION_ANALYSIS_BATCH_SIZE } from '../services/sessionAnalysisContactSheet.js';
+import { analyzeRtgStatusScreenshot, analyzeRtgStatusScreenshotPair } from '../services/rtgStatusScannerClient';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const SCREEN_LABELS = {
@@ -18,29 +19,14 @@ const SCREEN_LABELS = {
 };
 
 const TARGET_SCREENS = Object.keys(SCREEN_LABELS);
-
 const NUMERIC_KEYS = new Set([
-  'player.overall',
-  'rtg.coachTrust',
-  'rtg.trustToNext',
-  'rtg.skillPoints',
-  'rtg.weeklyPoints',
-  'rtg.gpa',
-  'rtg.examWeeks',
-  'rtg.academicsCoachHappinessBonus',
-  'rtg.leadershipCoachHappinessBonus',
-  'rtg.leadershipComposureBonus',
-  'rtg.fitnessCoachHappinessBonus',
-  'rtg.fitnessComposureBonus',
-  'rtg.fitnessWeightBonus',
-  'rtg.followers',
-  'rtg.nextFanMilestone',
-  'rtg.nilWeeklyCost',
-  'rtg.openNilSlots',
+  'player.overall', 'rtg.coachTrust', 'rtg.trustToNext', 'rtg.skillPoints', 'rtg.weeklyPoints',
+  'rtg.gpa', 'rtg.examWeeks', 'rtg.academicsCoachHappinessBonus', 'rtg.leadershipCoachHappinessBonus',
+  'rtg.leadershipComposureBonus', 'rtg.fitnessCoachHappinessBonus', 'rtg.fitnessComposureBonus',
+  'rtg.fitnessWeightBonus', 'rtg.followers', 'rtg.nextFanMilestone', 'rtg.nilWeeklyCost', 'rtg.openNilSlots',
 ]);
 
 const valuePresent = (value) => value !== '' && value !== null && value !== undefined;
-
 const normalizeNumeric = (value) => {
   const raw = String(value ?? '').trim().toLowerCase().replace(/,/g, '');
   const suffix = raw.endsWith('k') ? 1000 : raw.endsWith('m') ? 1000000 : 1;
@@ -48,7 +34,6 @@ const normalizeNumeric = (value) => {
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed * suffix : '';
 };
-
 const normalizeFactValue = (key, value) => NUMERIC_KEYS.has(key) ? normalizeNumeric(value) : String(value ?? '').trim();
 const shortValue = (value, fallback = '—') => valuePresent(value) ? String(value) : fallback;
 
@@ -89,53 +74,75 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
     setMessage(null);
     const factMap = new Map();
     const nextScreens = [];
+    let failedCount = 0;
+
+    const consumeAnalysis = (fileName, analysis = {}) => {
+      nextScreens.push({ fileName, screenType: analysis.screenType || 'unknown' });
+      (analysis.facts || []).forEach((fact) => {
+        const key = String(fact.key || '');
+        if (!key) return;
+        const value = normalizeFactValue(key, fact.value);
+        if (!valuePresent(value)) return;
+        const next = {
+          key,
+          label: fact.label || key,
+          value,
+          confidence: Number(fact.confidence) || 0,
+          evidence: fact.evidence || '',
+          selected: true,
+          conflict: false,
+        };
+        const existing = factMap.get(key);
+        if (!existing) {
+          factMap.set(key, next);
+          return;
+        }
+        if (String(existing.value) === String(next.value)) {
+          if (next.confidence > existing.confidence) factMap.set(key, next);
+          return;
+        }
+        const preferred = next.confidence > existing.confidence ? next : existing;
+        factMap.set(key, { ...preferred, conflict: true });
+      });
+    };
+
     try {
       const idToken = await user.getIdToken();
-      for (let index = 0; index < files.length; index += 1) {
-        const file = files[index];
-        setProgress(`Analyzing ${index + 1} of ${files.length}: ${file.name}`);
-        const imageDataUrl = await compressImage(file, 2400, 0.9);
-        const result = await analyzeRtgStatusScreenshot({
-          idToken,
-          imageDataUrl,
-          fileName: file.name,
-          player: career.player,
-        });
-        const analysis = result.analysis || {};
-        nextScreens.push({ fileName: file.name, screenType: analysis.screenType || 'unknown' });
-        (analysis.facts || []).forEach((fact) => {
-          const key = String(fact.key || '');
-          if (!key) return;
-          const value = normalizeFactValue(key, fact.value);
-          if (!valuePresent(value)) return;
-          const next = {
-            key,
-            label: fact.label || key,
-            value,
-            confidence: Number(fact.confidence) || 0,
-            evidence: fact.evidence || '',
-            selected: true,
-            conflict: false,
-          };
-          const existing = factMap.get(key);
-          if (!existing) {
-            factMap.set(key, next);
-            return;
+      for (let start = 0; start < files.length; start += SESSION_ANALYSIS_BATCH_SIZE) {
+        const batch = files.slice(start, start + SESSION_ANALYSIS_BATCH_SIZE);
+        setProgress(`Analyzing RTG screenshots ${start + 1}–${Math.min(start + batch.length, files.length)} of ${files.length}`);
+        try {
+          if (batch.length === 2) {
+            const sheet = await buildSessionAnalysisContactSheet(batch);
+            const results = await analyzeRtgStatusScreenshotPair({
+              idToken,
+              imageDataUrl: sheet.imageDataUrl,
+              fileNames: batch.map((file) => file.name),
+              player: career.player,
+            });
+            results.forEach(({ fileName, analysis }) => consumeAnalysis(fileName, analysis));
+          } else {
+            const file = batch[0];
+            const imageDataUrl = await compressImage(file, 2400, 0.9);
+            const result = await analyzeRtgStatusScreenshot({ idToken, imageDataUrl, fileName: file.name, player: career.player });
+            consumeAnalysis(file.name, result.analysis || {});
           }
-          if (String(existing.value) === String(next.value)) {
-            if (next.confidence > existing.confidence) factMap.set(key, next);
-            return;
-          }
-          const preferred = next.confidence > existing.confidence ? next : existing;
-          factMap.set(key, { ...preferred, conflict: true });
-        });
+        } catch (error) {
+          failedCount += batch.length;
+          batch.forEach((file) => nextScreens.push({ fileName: file.name, screenType: 'failed' }));
+          console.warn(`RTG Status could not analyze ${batch.map((file) => file.name).join(', ')}`, error);
+        }
       }
+
       setScreens(nextScreens);
       setRows([...factMap.values()].sort((a, b) => a.key.localeCompare(b.key)));
-      setMessage({
-        type: 'success',
-        text: factMap.size ? `${factMap.size} RTG facts extracted. Review before applying.` : 'No reliable RTG facts were found. Nothing was saved.',
-      });
+      if (factMap.size) {
+        setMessage({ type: failedCount ? 'error' : 'success', text: `${factMap.size} RTG facts extracted. Review before applying.${failedCount ? ` ${failedCount} screenshot${failedCount === 1 ? '' : 's'} failed analysis; successful RTG reads were kept.` : ''}` });
+      } else if (failedCount) {
+        setMessage({ type: 'error', text: `${failedCount} RTG screenshot${failedCount === 1 ? '' : 's'} could not be analyzed. Your career data was not changed.` });
+      } else {
+        setMessage({ type: 'success', text: 'No reliable RTG facts were found. Nothing was saved.' });
+      }
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'RTG scan failed. Your career data was not changed.' });
     } finally {
@@ -176,19 +183,12 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
             ...(remote.rtg || {}),
             ...rtgPatch,
             lastStatusScan: {
-              scannedAt: new Date().toISOString(),
-              publicationId: work.publicationId,
-              season: work.season,
-              week: work.week,
+              scannedAt: new Date().toISOString(), publicationId: work.publicationId, season: work.season, week: work.week,
               screenTypes: [...new Set(screens.map((entry) => entry.screenType).filter((type) => TARGET_SCREENS.includes(type)))],
               factCount: approved.length,
             },
           },
-          _sync: {
-            revision: (Number(remote?._sync?.revision) || 0) + 1,
-            deviceId: 'rtg-status-intake',
-            updatedAt: new Date().toISOString(),
-          },
+          _sync: { revision: (Number(remote?._sync?.revision) || 0) + 1, deviceId: 'rtg-status-intake', updatedAt: new Date().toISOString() },
         });
       });
       setRows([]);
@@ -209,27 +209,14 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
         <p>Recommended screens: Coach / Overview, Academics, Leadership, Health, Fitness, and Brand. Nothing is saved until you approve the extracted facts.</p>
         <label className={`dhq-rtg-intake-upload ${busy ? 'opacity-50' : ''}`}>
           {busy ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />} {busy ? 'Scanning…' : 'Upload RTG Screens'}
-          <input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={busy} className="hidden" onChange={(event) => {
-            scanFiles(event.target.files);
-            event.target.value = '';
-          }} />
+          <input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={busy} className="hidden" onChange={(event) => { scanFiles(event.target.files); event.target.value = ''; }} />
         </label>
       </div>
-
       {progress ? <div className="dhq-intake-message">{progress}</div> : null}
-
       <div className="dhq-intake-status-grid">
-        {statusCards.map(([title, primary, secondary]) => (
-          <div key={title} className="dhq-intake-status-card"><span>{title}</span><strong>{primary}</strong><small>{secondary}</small></div>
-        ))}
+        {statusCards.map(([title, primary, secondary]) => <div key={title} className="dhq-intake-status-card"><span>{title}</span><strong>{primary}</strong><small>{secondary}</small></div>)}
       </div>
-
-      {screens.length ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {TARGET_SCREENS.map((type) => <span key={type} className={`rounded-full border px-2 py-1 text-[7px] font-black uppercase ${detected.has(type) ? 'border-emerald-400/20 bg-emerald-500/5 text-emerald-300' : 'border-slate-700 text-slate-500'}`}>{detected.has(type) ? '✓ ' : ''}{SCREEN_LABELS[type]}</span>)}
-        </div>
-      ) : null}
-
+      {screens.length ? <div className="mt-2 flex flex-wrap gap-1.5">{TARGET_SCREENS.map((type) => <span key={type} className={`rounded-full border px-2 py-1 text-[7px] font-black uppercase ${detected.has(type) ? 'border-emerald-400/20 bg-emerald-500/5 text-emerald-300' : 'border-slate-700 text-slate-500'}`}>{detected.has(type) ? '✓ ' : ''}{SCREEN_LABELS[type]}</span>)}</div> : null}
       {rows.length ? (
         <div className="dhq-intake-review">
           <div className="dhq-intake-review__header">Review extracted RTG facts</div>
@@ -245,7 +232,6 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
           <div className="dhq-intake-review__footer"><button type="button" disabled={busy} onClick={applyFacts}><CheckCircle2 size={13} className="mr-1 inline" /> Apply Verified RTG Facts</button></div>
         </div>
       ) : null}
-
       {message ? <p className={`dhq-intake-message ${message.type === 'error' ? 'is-error' : ''}`}>{message.text}</p> : null}
     </div>
   );
@@ -254,12 +240,11 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
 const RtgStatusIntakePortal = () => {
   const { user, career } = useOwnerCareer();
   const [host, setHost] = useState(null);
-
   useEffect(() => {
     const appRoot = document.getElementById('root');
     if (!appRoot) return undefined;
     const ensure = () => {
-      const next = appRoot.querySelector('#dhq-weekly-rtg-data-host');
+      const next = appRoot.querySelector('[data-session-import-rtg-review-host]') || appRoot.querySelector('#dhq-weekly-rtg-data-host');
       setHost((current) => current === next ? current : next);
     };
     ensure();
@@ -267,7 +252,6 @@ const RtgStatusIntakePortal = () => {
     observer.observe(appRoot, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
-
   if (!host || !user || !career) return null;
   return createPortal(<RtgStatusIntakeScanner user={user} career={career} />, host);
 };

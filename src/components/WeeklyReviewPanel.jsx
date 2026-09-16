@@ -14,6 +14,7 @@ const confidenceStyle = (confidence) => {
 const isRecruitingOffer = (key) => /^recruiting\..+\.offer$/.test(key);
 const isRecruitingInterest = (key) => /^recruiting\..+\.interest$/.test(key);
 const isRecruitingStars = (key) => /^recruiting\..+\.stars$/.test(key);
+const isSignedYardageFact = (key) => ['game.passYds', 'game.rushYds'].includes(key);
 const isNumericFact = (key) => [
   'game.homeScore', 'game.awayScore', 'game.passYds', 'game.passTD', 'game.rushYds',
   'game.rushTD', 'game.int', 'rtg.gpa', 'rtg.energy', 'rtg.coachTrust',
@@ -25,6 +26,14 @@ const isNumericFact = (key) => [
   || /^retention\..+\.(?:overall|nilDemand)$/.test(key)
   || /^recruiting\.profile\.(?:recruitStars|tapeScore|nationalRank|stateRank|positionRank|gameNumber|topSchoolsSelected)$/.test(key)
   || isRecruitingInterest(key) || isRecruitingStars(key);
+
+const QB_REQUIRED_FIELDS = [
+  { key: 'game.passYds', label: 'Passing yards', signed: true },
+  { key: 'game.passTD', label: 'Passing TDs', signed: false },
+  { key: 'game.rushYds', label: 'Rushing yards', signed: true },
+  { key: 'game.rushTD', label: 'Rushing TDs', signed: false },
+  { key: 'game.int', label: 'Interceptions', signed: false },
+];
 
 const FactEditor = ({ entry, onChange }) => {
   if (isRecruitingOffer(entry.key)) {
@@ -87,7 +96,7 @@ const FactEditor = ({ entry, onChange }) => {
   return (
     <input
       type={isNumericFact(entry.key) ? 'number' : 'text'}
-      min={isNumericFact(entry.key) ? 0 : undefined}
+      min={isNumericFact(entry.key) && !isSignedYardageFact(entry.key) ? 0 : undefined}
       max={max}
       step={entry.key === 'rtg.gpa' ? 0.01 : (isNumericFact(entry.key) ? 1 : undefined)}
       value={entry.value}
@@ -115,10 +124,12 @@ const WeeklyReviewPanel = ({
 }) => {
   const [viewMode, setViewMode] = useState('attention');
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [missingFactValues, setMissingFactValues] = useState({});
 
   useEffect(() => {
     setViewMode('attention');
     setSourcesOpen(false);
+    setMissingFactValues({});
   }, [draft?.id, draft?.week]);
 
   if (!draft) return null;
@@ -154,6 +165,24 @@ const WeeklyReviewPanel = ({
   const rushYds = factValue('game.rushYds');
   const rushTD = factValue('game.rushTD');
   const hasGameSnapshot = [opponent, result, homeScore, awayScore, passYds, passTD, interceptions, rushYds, rushTD].some((value) => value !== undefined && value !== '');
+  const missingQbStats = (!isHighSchool
+    && draft.careerPhase === 'Player'
+    && (draft.weekType || WEEK_TYPES.GAME) === WEEK_TYPES.GAME)
+    ? QB_REQUIRED_FIELDS.filter((field) => {
+        const value = factValue(field.key);
+        return value === undefined || value === null || value === '';
+      })
+    : [];
+  const addMissingStat = (field) => {
+    const value = missingFactValues[field.key];
+    if (value === undefined || String(value).trim() === '') return;
+    onChangeFact(field.key, value);
+    setMissingFactValues((current) => {
+      const next = { ...current };
+      delete next[field.key];
+      return next;
+    });
+  };
 
   return (
     <section className="dhq-postgame-review mb-6 overflow-hidden rounded-2xl border border-blue-500/40 bg-slate-900/95 shadow-2xl">
@@ -312,20 +341,62 @@ const WeeklyReviewPanel = ({
               )}
             </div>
             <div className="space-y-2">
-              {completeness.checks.map((check) => (
-                <div key={check.id} className={`rounded-lg border p-2.5 ${check.status === 'complete' ? 'border-emerald-500/20 bg-emerald-500/5' : (check.importance === 'required' ? 'border-amber-500/30 bg-amber-500/10' : 'border-slate-700 bg-slate-900/70')}`}>
-                  <div className="flex items-start gap-2">
-                    {check.status === 'complete'
-                      ? <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-400" />
-                      : <AlertTriangle size={14} className={`mt-0.5 shrink-0 ${check.importance === 'required' ? 'text-amber-400' : 'text-slate-500'}`} />}
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-slate-200">{check.label}</p>
-                      <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">{check.detail}</p>
-                      {check.status === 'missing' && <span className={`mt-1 inline-block text-[8px] font-black uppercase tracking-wider ${check.importance === 'required' ? 'text-amber-300' : 'text-slate-600'}`}>{check.importance}</span>}
+              {completeness.checks.map((check) => {
+                const showManualQbEntry = check.id === 'player-stats' && check.status === 'missing' && missingQbStats.length > 0;
+                return (
+                  <div key={check.id} className={`rounded-lg border p-2.5 ${check.status === 'complete' ? 'border-emerald-500/20 bg-emerald-500/5' : (check.importance === 'required' ? 'border-amber-500/30 bg-amber-500/10' : 'border-slate-700 bg-slate-900/70')}`}>
+                    <div className="flex items-start gap-2">
+                      {check.status === 'complete'
+                        ? <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-400" />
+                        : <AlertTriangle size={14} className={`mt-0.5 shrink-0 ${check.importance === 'required' ? 'text-amber-400' : 'text-slate-500'}`} />}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-200">{check.label}</p>
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">{check.detail}</p>
+                        {check.status === 'missing' && <span className={`mt-1 inline-block text-[8px] font-black uppercase tracking-wider ${check.importance === 'required' ? 'text-amber-300' : 'text-slate-600'}`}>{check.importance}</span>}
+                        {showManualQbEntry && (
+                          <div className="mt-3 space-y-2 border-t border-amber-500/20 pt-3" data-missing-qb-stat-entry>
+                            <p className="text-[9px] leading-relaxed text-amber-100/80">The scanner did not return the stat{missingQbStats.length === 1 ? '' : 's'} below. Enter the value shown in your game screenshot. Zero is a valid value and is never assumed automatically.</p>
+                            {missingQbStats.map((field) => {
+                              const value = missingFactValues[field.key] ?? '';
+                              return (
+                                <div key={field.key} className="rounded-lg border border-amber-500/20 bg-slate-950/45 p-2">
+                                  <label className="block text-[9px] font-black uppercase tracking-wide text-amber-200" htmlFor={`missing-${field.key}`}>{field.label}</label>
+                                  <div className="mt-1.5 flex gap-2">
+                                    <input
+                                      id={`missing-${field.key}`}
+                                      type="number"
+                                      min={field.signed ? undefined : 0}
+                                      step={1}
+                                      value={value}
+                                      placeholder="Enter 0 if none"
+                                      onChange={(event) => setMissingFactValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                                      onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                          event.preventDefault();
+                                          addMissingStat(field);
+                                        }
+                                      }}
+                                      className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 font-mono text-sm font-black text-white outline-none focus:border-amber-400"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={String(value).trim() === ''}
+                                      onClick={() => addMissingStat(field)}
+                                      className="shrink-0 rounded-lg bg-amber-400 px-3 py-2 text-[9px] font-black uppercase tracking-wide text-slate-950 disabled:cursor-not-allowed disabled:opacity-35"
+                                    >
+                                      Add missing stat
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {completeness.missingRequired > 0 && <p className="mt-3 text-[10px] leading-relaxed text-amber-200">Intentional partial updates are allowed. Missing facts stay missing; DynastyHQ will not convert them to zero or invent them.</p>}
           </div>

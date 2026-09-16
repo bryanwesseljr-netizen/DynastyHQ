@@ -24,6 +24,16 @@ test('dynamic helmet resolver reuses the 2026 FBS identity catalog immediately',
   assert.equal(ohioState.secondaryColor, '#666666');
 });
 
+test('published-week regression programs get deterministic logo fallbacks', () => {
+  const oregon = catalogTeamBrand('Oregon');
+  const baylor = catalogTeamBrand('Baylor');
+
+  assert.equal(oregon.source, 'fbs-2026-static-logo');
+  assert.match(oregon.logo, /\/2483\.png$/);
+  assert.equal(baylor.source, 'fbs-2026-static-logo');
+  assert.match(baylor.logo, /\/239\.png$/);
+});
+
 test('college brand hydration uses a free cached team directory rather than AI', () => {
   assert.match(TEAM_BRAND_SOURCE_URL, /site\.api\.espn\.com/);
   assert.match(TEAM_BRAND_SOURCE_URL, /college-football\/teams/);
@@ -53,7 +63,7 @@ test('dynamic helmet portal replaces Home and Game Hub static art only for verif
   assert.match(portal, /\.dhq-game-hub \.dhq-gh-hero > img/);
   assert.match(portal, /currentWeekSetup/);
   assert.match(portal, /publicationIdFor\(game\.season, game\.week\) === selectedValue/);
-  assert.match(portal, /catalogTeamBrand\(name\)\.source === 'fbs-2026'/);
+  assert.match(portal, /catalogTeamBrand\(name\)\.source\.startsWith\('fbs-2026'\)/);
   assert.match(portal, /dynamic: !highSchool && isFbsTeam\(school\) && isFbsTeam\(opponent\)/);
   assert.match(portal, /classList\.toggle\('dhq-dynamic-helmet-source-hidden', homeModel\.dynamic\)/);
   assert.match(portal, /classList\.toggle\('dhq-dynamic-helmet-source-hidden', gameHubModel\.dynamic\)/);

@@ -9,7 +9,7 @@ import './dynamic-matchup-helmets.css';
 const clean = (value) => String(value ?? '').trim();
 const numberOf = (value) => Number(value) || 0;
 const publicationIdFor = (season, week) => `season-${numberOf(season) || 1}-week-${numberOf(week) || 1}`;
-const isFbsTeam = (name) => catalogTeamBrand(name).source === 'fbs-2026';
+const isFbsTeam = (name) => catalogTeamBrand(name).source.startsWith('fbs-2026');
 
 const currentSchoolFor = (state = {}) => {
   const stage = deriveCareerStage(state);

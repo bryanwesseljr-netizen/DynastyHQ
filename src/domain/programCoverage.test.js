@@ -69,6 +69,35 @@ test('QB3 with no appearance remains program-first while a completed game earns 
   assert.deepEqual(context.storyPlans.map((plan) => plan.outletId), ['college-local', 'college-regional']);
 });
 
+test('team schedule supplies the real record when an earlier win had no tracked-player appearance', () => {
+  const game = {
+    opponent: 'Baylor', result: 'L', homeScore: 21, awayScore: 45,
+    passYds: 180, passTD: 1, rushYds: 35, rushTD: 0, int: 1, didPlay: true,
+    season: 1, week: 2,
+  };
+  const state = {
+    ...baseState([update(2, { rank: 'QB1', game })], [game], [
+      verifiedFact(2, 'game.result', 'Result', 'L'),
+      verifiedFact(2, 'game.homeScore', 'Team score', 21),
+      verifiedFact(2, 'game.awayScore', 'Opponent score', 45),
+    ]),
+    seasonSchedules: [{
+      season: 1,
+      school: 'Cincinnati',
+      entries: [
+        { week: 1, opponent: 'Week 1 Opponent', result: 'W', teamScore: 31, opponentScore: 17, status: 'completed' },
+        { week: 2, opponent: 'Baylor', result: 'L', teamScore: 21, opponentScore: 45, status: 'completed' },
+      ],
+    }],
+  };
+  const context = buildProgramCoverageContext(state, issue(2));
+
+  assert.equal(context.program.record, '1-1');
+  assert.equal(context.program.games, 2);
+  assert.equal(context.facts.find((fact) => fact.key === 'program.seasonRecord')?.value, '1-1');
+  assert.equal(context.relevance.didPlay, true);
+});
+
 test('QB3 to QB2 promotion creates a major quarterback-room story even without player production', () => {
   const game = {
     opponent: 'Opponent', result: 'L', homeScore: 17, awayScore: 24,

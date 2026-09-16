@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   mergeSeasonSchedule,
   nextScheduledGame,
+  normalizeScheduleEntry,
   scheduleWeekSetup,
   syncScheduleWithCareer,
   teamRecordForSeason,
@@ -70,6 +71,31 @@ test('multiple schedule screenshots merge by week and preserve known finals', ()
   assert.equal(merged.entries[0].result, 'W');
   assert.equal(merged.entries[1].homeAway, 'away');
   assert.equal(merged.entries[2].isBye, true);
+});
+
+test('schedule setup identifies a current bye without skipping to the next opponent', () => {
+  const state = {
+    currentSeason: 1,
+    currentWeek: 3,
+    seasonSchedules: [{
+      season: 1,
+      entries: [
+        { week: 3, opponent: 'BYE', isBye: true, status: 'bye' },
+        { week: 4, opponent: 'Iowa State', status: 'upcoming' },
+      ],
+    }],
+  };
+  const setup = scheduleWeekSetup(state);
+  assert.equal(setup.week, 3);
+  assert.equal(setup.type, 'bye');
+  assert.equal(setup.opponent, '');
+  assert.equal(nextScheduledGame(state)?.opponent, 'Iowa State');
+});
+
+test('Week 0 is preserved when the game schedule explicitly includes it', () => {
+  const entry = normalizeScheduleEntry({ week: 0, opponent: 'Colorado', status: 'upcoming' }, 7);
+  assert.equal(entry.week, 0);
+  assert.equal(entry.opponent, 'Colorado');
 });
 
 test('upsert keeps schedules separated by season', () => {

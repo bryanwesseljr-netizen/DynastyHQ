@@ -8,12 +8,31 @@ import '../team-newsroom-refinements.css';
 
 const clean = (value) => String(value ?? '').trim();
 
+const scrollNodeTop = (node) => {
+  if (!node) return;
+  try {
+    if (typeof node.scrollTo === 'function') node.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    else node.scrollTop = 0;
+  } catch {
+    node.scrollTop = 0;
+  }
+};
+
 const scrollNewsroomTop = () => {
   const main = document.querySelector('main[data-active-tab="newsroom"]');
-  if (main?.scrollTo) {
-    main.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    return;
+  scrollNodeTop(main);
+
+  let ancestor = main?.parentElement || null;
+  while (ancestor && ancestor !== document.body) {
+    const style = window.getComputedStyle?.(ancestor);
+    const scrollable = /(auto|scroll)/.test(style?.overflowY || '') && ancestor.scrollHeight > ancestor.clientHeight;
+    if (scrollable) scrollNodeTop(ancestor);
+    ancestor = ancestor.parentElement;
   }
+
+  scrollNodeTop(document.scrollingElement);
+  if (document.documentElement) document.documentElement.scrollTop = 0;
+  if (document.body) document.body.scrollTop = 0;
   window.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
 };
 
@@ -76,10 +95,6 @@ const NewsroomArticleExperiencePortal = () => {
           const teamButton = findTeamNewsButton(root);
           if (!teamButton) return;
 
-          // Once the all-articles home exists, one Team News selection is enough.
-          // Scroll only when the destination is actually ready. The old behavior
-          // scrolled on every retry timer, which fought normal mobile swipes while
-          // lazy Newsroom content was still mounting.
           if (teamButton.getAttribute('data-active') !== 'true') teamButton.click();
           scrollOnce();
           if (generation === homeResetGeneration) homeResetGeneration += 1;
@@ -93,8 +108,6 @@ const NewsroomArticleExperiencePortal = () => {
         .find((button) => /^the newsroom$/i.test(clean(button.textContent)));
       const newsroomActive = newsroomNavButton?.getAttribute('aria-current') === 'page';
 
-      // A fresh navigation into The Newsroom always means the team/all-articles home.
-      // This catches first-login lazy mounts as well as normal tab changes.
       if (newsroomActive && !wasNewsroomActive) forceNewsroomHome();
       wasNewsroomActive = newsroomActive;
 
@@ -143,7 +156,6 @@ const NewsroomArticleExperiencePortal = () => {
         article.style.setProperty('--article-team-accent', accent);
       }
 
-      // Keep every owner-only article production surface backstage by default.
       const director = newsroomRoot.querySelector('[data-editorial-photo-director]');
       if (director) {
         director.classList.add('dhq-newsroom-director-backstage');
@@ -160,7 +172,10 @@ const NewsroomArticleExperiencePortal = () => {
       const storyKey = `${issueSelect?.value || ''}:${audience}:${headline}`;
       if (storyKey && storyKey !== lastStoryKey) {
         lastStoryKey = storyKey;
-        window.requestAnimationFrame(scrollNewsroomTop);
+        window.requestAnimationFrame(() => {
+          scrollNewsroomTop();
+          window.setTimeout(scrollNewsroomTop, 80);
+        });
       }
     };
 
@@ -184,7 +199,6 @@ const NewsroomArticleExperiencePortal = () => {
 
     const handleNewsroomPointerDown = (event) => {
       if (isNewsroomDeskButton(event)) {
-        // Explicit desk navigation always wins over any refresh/login home-reset timers.
         cancelHomeReset();
         return;
       }

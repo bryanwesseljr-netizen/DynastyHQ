@@ -28,6 +28,10 @@ test('pregame mode uses configured active opponent and carries last result into 
   assert.equal(model.center, 'VS');
   assert.equal(model.centerLine, '7:30 PM');
   assert.equal(model.keysTitle, '3 KEYS TO THE GAME');
+  assert.equal(model.primaryLabel, 'OPEN GAME DAY');
+  assert.equal(model.primaryTarget, 'gameHub');
+  assert.equal(model.secondaryLabel, 'IMPORT AFTER GAME');
+  assert.equal(model.secondaryTarget, 'importSession');
   assert.match(model.previous.copy, /loss against Baylor, 21-45/);
   assert.equal(model.scout.team, 'UCLA');
   assert.deepEqual(model.scout.facts.map((fact) => fact.value), ['2-0', '7:30 PM', 'Autzen Stadium']);
@@ -50,6 +54,8 @@ test('postgame mode turns the hero into a final and points to wrap-up work', () 
   assert.equal(model.centerLine, '21-45');
   assert.equal(model.primaryLabel, 'CONTINUE WRAP-UP');
   assert.equal(model.primaryTarget, 'podcast');
+  assert.equal(model.secondaryLabel, 'VIEW WEEK HUB');
+  assert.equal(model.secondaryTarget, 'gameHub');
   assert.equal(model.keysTitle, 'WEEK WRAP-UP');
   assert.match(model.keys[1].detail, /Podcast/);
 });
@@ -64,6 +70,8 @@ test('between weeks mode holds the latest result until the new week is configure
   assert.equal(model.center, 'FINAL');
   assert.equal(model.primaryLabel, 'SET UP WEEK 3');
   assert.equal(model.primaryTarget, 'agenda');
+  assert.equal(model.secondaryLabel, 'VIEW LAST GAME');
+  assert.equal(model.secondaryTarget, 'gameHub');
   assert.match(model.previous.copy, /Set up Week 3/);
 });
 

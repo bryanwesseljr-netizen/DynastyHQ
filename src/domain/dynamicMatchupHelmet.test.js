@@ -48,13 +48,18 @@ test('helmet decals use existing same-origin RTG function instead of extra serve
   assert.match(rtgApi, /a\.espncdn\.com\/i\/teamlogos\/ncaa\/500/);
 });
 
-test('matchup helmet component applies team colors and an unmirrored logo decal', async () => {
+test('matchup helmet component renders dimensional side-profile shells with unmirrored logo decals', async () => {
   const component = await readFile(componentUrl, 'utf8');
 
   assert.match(component, /fill=\{brand\.primaryColor\}/);
   assert.match(component, /stroke=\{brand\.secondaryColor\}/);
   assert.match(component, /href=\{brand\.logo\}/);
-  assert.match(component, /decalX = side === 'right' \? 117 : 96/);
+  assert.match(component, /decalX = side === 'right' \? 132 : 92/);
+  assert.match(component, /circle cx="177" cy="105" r="15"/);
+  assert.match(component, /M53 54C84 26 128 17 172 21C199 23 221 31 239 45/);
+  assert.match(component, /M228 119C249 119 267 122 283 129/);
+  assert.match(component, /helmet-shell-glow/);
+  assert.match(component, /helmet-lower-shade/);
   assert.match(component, /<g transform=\{mirror\}>[\s\S]*<\/g>[\s\S]*\{brand\.logo \?/);
 });
 

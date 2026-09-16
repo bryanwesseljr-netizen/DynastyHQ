@@ -27,7 +27,7 @@ test('media network keeps official in-game coverage separate from DynastyHQ edit
   assert.ok(model.ticker.some((item) => item.source === 'DYNASTYHQ'));
 });
 
-test('legacy official evidence is labeled as preserved evidence and never invents an official headline', () => {
+test('legacy official evidence stays available as archive metadata but never becomes a ticker headline', () => {
   const state = {
     currentSeason: 2,
     currentWeek: 2,
@@ -39,5 +39,6 @@ test('legacy official evidence is labeled as preserved evidence and never invent
   assert.equal(model.official.status, 'legacy-evidence');
   assert.equal(model.official.factCount, 23);
   assert.equal(model.official.headline, '');
-  assert.ok(model.ticker.some((item) => item.source === 'EA SPORTS NETWORK' && /23 verified/.test(item.text)));
+  assert.equal(model.ticker.some((item) => item.source === 'EA SPORTS NETWORK'), false);
+  assert.equal(model.ticker.some((item) => /verified official-coverage facts preserved/i.test(item.text)), false);
 });

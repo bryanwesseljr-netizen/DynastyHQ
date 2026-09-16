@@ -72,6 +72,10 @@
 .dhq-media-network--newsroom { margin: 0; }
 .dhq-media-network--newsroom .dhq-media-network__lane { padding: 13px 15px; }
 
+/* The combined network board becomes the canonical Game Hub media surface. */
+.dhq-game-hub:has(.dhq-media-network--hub) .dhq-gh-official-card,
+.dhq-game-hub:has(.dhq-media-network--hub) .dhq-gh-newsroom-card { display: none; }
+
 @media (max-width: 760px) {
   .dhq-media-network__header { align-items: flex-start; flex-direction: column; gap: 5px; }
   .dhq-media-network__header div { align-items: flex-start; flex-direction: column; gap: 3px; }

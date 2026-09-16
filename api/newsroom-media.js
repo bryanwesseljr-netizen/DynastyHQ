@@ -10,7 +10,8 @@ const safePart = (value, fallback) => String(value || fallback)
   .replace(/-+/g, '-')
   .slice(0, 120);
 
-const ownerPrefix = (userId) => `dynasty-hq/${safePart(userId, 'owner')}/newsroom-media/`;
+const mediaNamespace = () => (process.env.VERCEL_ENV === 'production' ? 'dynasty-hq' : 'dynasty-hq-preview');
+const ownerPrefix = (userId) => `${mediaNamespace()}/${safePart(userId, 'owner')}/newsroom-media/`;
 
 const parseBody = (body) => {
   if (!body) return {};

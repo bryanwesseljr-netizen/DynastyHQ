@@ -16,6 +16,7 @@ import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
 import NavigationStatePortal from './NavigationStatePortal.jsx';
 import FreshStartPortal from './FreshStartPortal.jsx';
 import ImmersionPortal from './ImmersionPortal.jsx';
+import StorylineContinuityPortal from './StorylineContinuityPortal.jsx';
 import PodcastUniversalBrandPortal from './PodcastUniversalBrandPortal.jsx';
 import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
 import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
@@ -57,6 +58,7 @@ const OwnerEnhancements = () => (
     <MobileBroadcastNavPortal />
     <FreshStartPortal />
     <ImmersionPortal />
+    <StorylineContinuityPortal />
     <PodcastUniversalBrandPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />

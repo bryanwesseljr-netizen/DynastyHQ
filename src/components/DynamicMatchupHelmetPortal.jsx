@@ -23,6 +23,42 @@ const historicalSchoolFor = (game = {}, fallback) => (
   clean(game.school || game.team || game.program || game.playerSchool || game.college) || fallback
 );
 
+const latestPublishedCollegeGameFor = (state = {}) => {
+  const games = Array.isArray(state.gameLogs) ? state.gameLogs : [];
+  return [...games]
+    .filter((game) => game && game.stage !== 'high-school' && !game.evaluation && clean(game.opponent))
+    .sort((a, b) => {
+      const seasonDelta = numberOf(b.season) - numberOf(a.season);
+      if (seasonDelta) return seasonDelta;
+      return numberOf(b.week) - numberOf(a.week);
+    })[0] || null;
+};
+
+const currentMatchupFor = (state = {}) => {
+  const setup = state.currentWeekSetup || {};
+  const draftGame = state.weeklyAgendaDraft?.newGame || state.weeklyAgendaDraft?.game || {};
+  const currentSchool = currentSchoolFor(state);
+  const activeOpponent = clean(setup.opponent || draftGame.opponent);
+  if (activeOpponent) {
+    return {
+      school: currentSchool,
+      opponent: activeOpponent,
+      source: 'active-week',
+    };
+  }
+
+  const latestGame = latestPublishedCollegeGameFor(state);
+  if (latestGame) {
+    return {
+      school: historicalSchoolFor(latestGame, currentSchool),
+      opponent: clean(latestGame.opponent),
+      source: 'latest-published-game',
+    };
+  }
+
+  return { school: currentSchool, opponent: '', source: 'unresolved' };
+};
+
 const DynamicMatchupHelmetPortal = () => {
   const { career } = useOwnerCareer();
   const [homeHost, setHomeHost] = useState(null);
@@ -87,16 +123,14 @@ const DynamicMatchupHelmetPortal = () => {
   const homeModel = useMemo(() => {
     const state = career || {};
     const stage = deriveCareerStage(state);
-    const setup = state.currentWeekSetup || {};
-    const draftGame = state.weeklyAgendaDraft?.newGame || state.weeklyAgendaDraft?.game || {};
-    const school = currentSchoolFor(state);
-    const opponent = clean(setup.opponent || draftGame.opponent) || 'NEXT OPPONENT';
+    const matchup = currentMatchupFor(state);
+    const opponent = matchup.opponent || 'NEXT OPPONENT';
     const highSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
     return {
-      school,
+      school: matchup.school,
       opponent,
       highSchool,
-      dynamic: !highSchool && isFbsTeam(school) && isFbsTeam(opponent),
+      dynamic: !highSchool && isFbsTeam(matchup.school) && isFbsTeam(opponent),
     };
   }, [career]);
 
@@ -123,13 +157,14 @@ const DynamicMatchupHelmetPortal = () => {
       };
     }
 
-    const opponent = clean(state.currentWeekSetup?.opponent) || 'OPPONENT TBD';
+    const matchup = currentMatchupFor(state);
+    const opponent = matchup.opponent || 'OPPONENT TBD';
     const highSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
     return {
-      school: currentSchool,
+      school: matchup.school,
       opponent,
       highSchool,
-      dynamic: !highSchool && isFbsTeam(currentSchool) && isFbsTeam(opponent),
+      dynamic: !highSchool && isFbsTeam(matchup.school) && isFbsTeam(opponent),
     };
   }, [career, selectionRevision, gameHubHost]);
 

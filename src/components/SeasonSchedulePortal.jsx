@@ -48,12 +48,32 @@ const ScheduleRow = ({ entry, compact = false, currentWeek = 0 }) => (
   </div>
 );
 
+const setupsMatch = (left = {}, right = {}) => (
+  Number(left.week) === Number(right.week)
+  && clean(left.type || 'game') === clean(right.type || 'game')
+  && clean(left.opponent).toLowerCase() === clean(right.opponent).toLowerCase()
+);
+
+const mergedSetup = (suggested, existing = {}) => {
+  if (!suggested) return existing;
+  if (suggested.type === 'bye') return suggested;
+  const sameOpponent = clean(existing.opponent).toLowerCase() === clean(suggested.opponent).toLowerCase();
+  return {
+    ...suggested,
+    opponentRecord: sameOpponent ? (existing.opponentRecord || '') : '',
+    kickoff: sameOpponent ? (existing.kickoff || suggested.kickoff || '') : (suggested.kickoff || ''),
+    venue: sameOpponent ? (existing.venue || suggested.venue || '') : (suggested.venue || ''),
+    note: sameOpponent ? (existing.note || '') : '',
+  };
+};
+
 const SeasonSchedulePortal = () => {
   const { user, career, ready } = useOwnerCareer();
   const [homeMount, setHomeMount] = useState(null);
   const [hubMount, setHubMount] = useState(null);
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]);
+  const [draftSchedule, setDraftSchedule] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -146,8 +166,8 @@ const SeasonSchedulePortal = () => {
     const suggested = scheduleWeekSetup(career);
     if (!suggested || Number(suggested.week) !== Number(career.currentWeek)) return;
     const current = career.currentWeekSetup || {};
-    if (Number(current.week) === Number(suggested.week) && clean(current.opponent).toLowerCase() === clean(suggested.opponent).toLowerCase()) return;
-    const key = `${season}:${suggested.week}:${suggested.opponent}`;
+    if (setupsMatch(current, suggested)) return;
+    const key = `${season}:${suggested.week}:${suggested.type}:${suggested.opponent}`;
     if (syncKeyRef.current === key) return;
     syncKeyRef.current = key;
 
@@ -158,16 +178,10 @@ const SeasonSchedulePortal = () => {
       const remote = snapshot.data();
       if (Number(remote.currentWeek) !== Number(suggested.week)) return;
       const remoteCurrent = remote.currentWeekSetup || {};
-      if (Number(remoteCurrent.week) === Number(suggested.week) && clean(remoteCurrent.opponent).toLowerCase() === clean(suggested.opponent).toLowerCase()) return;
+      if (setupsMatch(remoteCurrent, suggested)) return;
       const revision = (Number(remote?._sync?.revision) || 0) + 1;
       transaction.update(careerRef, {
-        currentWeekSetup: {
-          ...suggested,
-          opponentRecord: remoteCurrent.opponentRecord || '',
-          kickoff: remoteCurrent.kickoff || suggested.kickoff || '',
-          venue: remoteCurrent.venue || suggested.venue || '',
-          note: remoteCurrent.note || '',
-        },
+        currentWeekSetup: mergedSetup(suggested, remoteCurrent),
         '_sync.revision': revision,
         '_sync.deviceId': DEVICE_ID,
         '_sync.updatedAt': new Date().toISOString(),
@@ -177,15 +191,24 @@ const SeasonSchedulePortal = () => {
     });
   }, [career, schedule, season, user]);
 
+  const openImporter = () => {
+    setOpen(true);
+    setError('');
+    setMessage('');
+    setFiles([]);
+    setDraftSchedule(null);
+  };
+
   const addFiles = (list) => {
     const images = [...(list || [])].filter((file) => file.type?.startsWith('image/')).slice(0, MAX_FILES);
     setFiles(images);
+    setDraftSchedule(null);
     setError('');
     setMessage('');
   };
 
-  const saveImportedSchedule = async () => {
-    if (!files.length || !user || !career || !db) return;
+  const inspectSchedule = async () => {
+    if (!files.length || !user || !career) return;
     setBusy(true);
     setError('');
     setMessage('');
@@ -219,25 +242,29 @@ const SeasonSchedulePortal = () => {
         throw new Error('DynastyHQ could not find a readable season schedule in those screenshots. Try a clearer schedule screen.');
       }
 
+      setDraftSchedule(merged);
+      setMessage(`DynastyHQ found ${merged.entries.length} schedule row${merged.entries.length === 1 ? '' : 's'}. Review them below, then save the season.`);
+    } catch (scheduleError) {
+      setError(scheduleError?.message || 'The schedule could not be read.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmSchedule = async () => {
+    if (!draftSchedule || !user || !career || !db) return;
+    setBusy(true);
+    setError('');
+    try {
       const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
       await runTransaction(db, async (transaction) => {
         const snapshot = await transaction.get(careerRef);
         if (!snapshot.exists()) throw new Error('Career save was not found. Reload DynastyHQ and try again.');
         const remote = snapshot.data();
-        let next = upsertSeasonSchedule(remote, merged);
+        let next = upsertSeasonSchedule(remote, draftSchedule);
         const suggested = scheduleWeekSetup(next);
         if (suggested && Number(suggested.week) === Number(next.currentWeek)) {
-          const existingSetup = next.currentWeekSetup || {};
-          next = {
-            ...next,
-            currentWeekSetup: {
-              ...suggested,
-              opponentRecord: existingSetup.opponentRecord || '',
-              kickoff: existingSetup.kickoff || suggested.kickoff || '',
-              venue: existingSetup.venue || suggested.venue || '',
-              note: existingSetup.note || '',
-            },
-          };
+          next = { ...next, currentWeekSetup: mergedSetup(suggested, next.currentWeekSetup || {}) };
         }
         const revision = (Number(remote?._sync?.revision) || 0) + 1;
         transaction.set(careerRef, {
@@ -246,11 +273,12 @@ const SeasonSchedulePortal = () => {
         });
       });
 
-      setMessage(`Season ${season} schedule saved. Team record and next-opponent context now use the schedule automatically.`);
+      setMessage(`Season ${season} schedule saved. Team record and next-opponent context now update automatically.`);
       setFiles([]);
+      setDraftSchedule(null);
       window.setTimeout(() => setOpen(false), 900);
     } catch (scheduleError) {
-      setError(scheduleError?.message || 'The schedule could not be imported.');
+      setError(scheduleError?.message || 'The schedule could not be saved.');
     } finally {
       setBusy(false);
     }
@@ -262,7 +290,7 @@ const SeasonSchedulePortal = () => {
     <section className="dhq-season-strip" aria-label="Season schedule">
       <div className="dhq-season-strip__heading">
         <div><span><CalendarDays size={14} /> SEASON SCHEDULE</span><strong>{schedule?.entries?.length ? `${record.wins}-${record.losses} · ${schedule.entries.length} WEEKS SAVED` : 'IMPORT ONCE · USE ALL SEASON'}</strong></div>
-        <button type="button" onClick={() => { setOpen(true); setError(''); setMessage(''); }}>{schedule?.entries?.length ? <><RefreshCw size={13} /> UPDATE</> : <><CloudUpload size={13} /> IMPORT SCHEDULE</>}</button>
+        <button type="button" onClick={openImporter}>{schedule?.entries?.length ? <><RefreshCw size={13} /> UPDATE</> : <><CloudUpload size={13} /> IMPORT SCHEDULE</>}</button>
       </div>
       {homeWindow.length ? (
         <div className="dhq-season-strip__rows">{homeWindow.map((entry) => <ScheduleRow key={entry.week} entry={entry} compact currentWeek={career.currentWeek} />)}</div>
@@ -278,7 +306,7 @@ const SeasonSchedulePortal = () => {
     <section className="dhq-season-hub" aria-label="Full season schedule">
       <div className="dhq-season-hub__heading">
         <div><span><CalendarDays size={15} /> SEASON SCHEDULE</span><h2>{schedule?.school || career.player?.college || career.player?.school || 'Current Program'} · {record.wins}-{record.losses}</h2></div>
-        <button type="button" onClick={() => { setOpen(true); setError(''); setMessage(''); }}>{schedule?.entries?.length ? 'UPDATE SCHEDULE' : 'IMPORT SCHEDULE'}</button>
+        <button type="button" onClick={openImporter}>{schedule?.entries?.length ? 'UPDATE SCHEDULE' : 'IMPORT SCHEDULE'}</button>
       </div>
       {schedule?.entries?.length ? (
         <div className="dhq-season-hub__grid">{schedule.entries.map((entry) => <ScheduleRow key={entry.week} entry={entry} currentWeek={career.currentWeek} />)}</div>
@@ -298,21 +326,34 @@ const SeasonSchedulePortal = () => {
         <h2 id="dhq-schedule-modal-title">Upload the schedule once. DynastyHQ handles the rest.</h2>
         <p>Choose the CFB 27 schedule screenshot. If the full season takes more than one screen, add up to {MAX_FILES} screenshots now. Completed games count toward the team record even when your player did not appear.</p>
 
-        <button type="button" className="dhq-schedule-modal__drop" onClick={() => inputRef.current?.click()} disabled={busy}>
-          <CloudUpload size={26} />
-          <strong>{files.length ? `${files.length} screenshot${files.length === 1 ? '' : 's'} ready` : 'Choose schedule screenshot'}</strong>
-          <small>PNG, JPEG or WebP · up to {MAX_FILES} schedule screens</small>
-        </button>
-        <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }} />
+        {!draftSchedule ? (
+          <>
+            <button type="button" className="dhq-schedule-modal__drop" onClick={() => inputRef.current?.click()} disabled={busy}>
+              <CloudUpload size={26} />
+              <strong>{files.length ? `${files.length} screenshot${files.length === 1 ? '' : 's'} ready` : 'Choose schedule screenshot'}</strong>
+              <small>PNG, JPEG or WebP · up to {MAX_FILES} schedule screens</small>
+            </button>
+            <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }} />
+            {files.length ? <div className="dhq-schedule-modal__files">{files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}</div> : null}
+          </>
+        ) : (
+          <div className="dhq-schedule-modal__review">
+            <div className="dhq-schedule-modal__review-head"><span>REVIEW EXTRACTED SCHEDULE</span><button type="button" onClick={() => { setDraftSchedule(null); setMessage(''); }} disabled={busy}>CHOOSE DIFFERENT SCREENSHOTS</button></div>
+            <div className="dhq-schedule-modal__review-list">{draftSchedule.entries.map((entry) => <ScheduleRow key={entry.week} entry={entry} currentWeek={career.currentWeek} />)}</div>
+          </div>
+        )}
 
-        {files.length ? <div className="dhq-schedule-modal__files">{files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}</div> : null}
         {error ? <div className="dhq-schedule-modal__error">{error}</div> : null}
         {message ? <div className="dhq-schedule-modal__success"><CheckCircle2 size={14} /> {message}</div> : null}
 
         <div className="dhq-schedule-modal__safety"><ShieldCheck size={15} /><span>The schedule is saved as team calendar data, not as player appearances. Weekly game screenshots still own player stats and career production.</span></div>
         <div className="dhq-schedule-modal__actions">
           <button type="button" className="is-secondary" onClick={() => setOpen(false)} disabled={busy}>CANCEL</button>
-          <button type="button" className="is-primary" onClick={saveImportedSchedule} disabled={busy || !files.length}>{busy ? <><Loader2 className="animate-spin" size={15} /> READING SCHEDULE…</> : 'IMPORT SEASON SCHEDULE'}</button>
+          {draftSchedule ? (
+            <button type="button" className="is-primary" onClick={confirmSchedule} disabled={busy}>{busy ? <><Loader2 className="animate-spin" size={15} /> SAVING…</> : 'SAVE SEASON SCHEDULE'}</button>
+          ) : (
+            <button type="button" className="is-primary" onClick={inspectSchedule} disabled={busy || !files.length}>{busy ? <><Loader2 className="animate-spin" size={15} /> READING SCHEDULE…</> : 'READ SCHEDULE'}</button>
+          )}
         </div>
       </section>
     </div>,

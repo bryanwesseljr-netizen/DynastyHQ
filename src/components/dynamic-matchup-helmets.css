@@ -61,33 +61,33 @@
 }
 
 /*
- * Decals are anchored to the broad shell panel, not the center of the source image.
- * The two x positions are exact mirrors around 50% so every matchup starts balanced.
+ * Decals sit in the smooth upper-rear shell zones shown in the visual QA reference.
+ * The x positions are exact mirrors around 50% so the matchup remains balanced.
  */
 .dhq-generic-helmet-decal {
   position: absolute;
-  top: 38.5%;
+  top: 25.5%;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 11.75%;
-  height: 24%;
+  width: 9%;
+  height: 20%;
   transform: translate(-50%, -50%);
 }
 
 .dhq-generic-helmet-decal--left {
-  left: 15.25%;
+  left: 14%;
 }
 
 .dhq-generic-helmet-decal--right {
-  left: 84.75%;
+  left: 86%;
 }
 
 .dhq-generic-helmet-decal img {
   display: block;
-  width: 86%;
-  height: 86%;
+  width: 90%;
+  height: 90%;
   object-fit: contain;
   object-position: 50% 50%;
   filter:
@@ -99,8 +99,8 @@
 .dhq-generic-helmet-decal span {
   display: grid;
   place-items: center;
-  width: 86%;
-  height: 86%;
+  width: 90%;
+  height: 90%;
   border-radius: 50%;
   background: color-mix(in srgb, var(--dhq-team-primary) 76%, rgba(4, 12, 18, .8) 24%);
   color: var(--dhq-team-secondary);
@@ -127,17 +127,17 @@
 
 @media (max-width: 767px) {
   .dhq-generic-helmet-decal {
-    top: 39%;
-    width: 11.5%;
-    height: 23.5%;
+    top: 25.5%;
+    width: 9%;
+    height: 20%;
   }
 
   .dhq-generic-helmet-decal--left {
-    left: 15.25%;
+    left: 14%;
   }
 
   .dhq-generic-helmet-decal--right {
-    left: 84.75%;
+    left: 86%;
   }
 
   .dhq-gh-matchup-helmets {

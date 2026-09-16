@@ -42,9 +42,16 @@ const wordCount = (value) => String(value || '').trim().split(/\s+/).filter(Bool
 const MIN_SCRIPT_TURNS = 10;
 const MIN_SCRIPT_WORDS = 400;
 const MAX_SCRIPT_WORDS = 950;
+const MAX_SCRIPT_GENERATION_ATTEMPTS = 3;
+const RETRY_TARGET_MIN_WORDS = 500;
+const RETRY_TARGET_MAX_WORDS = 700;
+
+const isShowBookend = (segment = {}) => /^show-(?:open|close)-/i.test(String(segment?.id || '').trim());
 
 const inspectGeneratedScript = (episode) => {
-  const segments = Array.isArray(episode?.segments) ? episode.segments.filter((segment) => String(segment?.text || '').trim()) : [];
+  const segments = Array.isArray(episode?.segments)
+    ? episode.segments.filter((segment) => String(segment?.text || '').trim() && !isShowBookend(segment))
+    : [];
   const words = segments.reduce((total, segment) => total + wordCount(segment.text), 0);
   const hostIds = new Set(segments.map((segment) => String(segment?.hostId || '').trim()).filter(Boolean));
   return {
@@ -55,13 +62,48 @@ const inspectGeneratedScript = (episode) => {
   };
 };
 
+const payloadForScriptAttempt = (payload, attempt, inspection) => {
+  if (!attempt || !inspection || inspection.valid) return payload;
+  const currentDecision = payload?.coverageDecision || {};
+  const currentRange = currentDecision.podcastWordRange || {};
+
+  if ((inspection.words || 0) < MIN_SCRIPT_WORDS) {
+    const min = Math.max(Number(currentRange.min) || 0, RETRY_TARGET_MIN_WORDS);
+    const max = Math.min(
+      MAX_SCRIPT_WORDS,
+      Math.max(Number(currentRange.max) || 0, RETRY_TARGET_MAX_WORDS, min + 75),
+    );
+    return {
+      ...payload,
+      coverageDecision: {
+        ...currentDecision,
+        podcastWordRange: { min, max },
+      },
+    };
+  }
+
+  if ((inspection.words || 0) > MAX_SCRIPT_WORDS) {
+    const max = Math.min(Number(currentRange.max) || MAX_SCRIPT_WORDS, 850);
+    const min = Math.min(Math.max(Number(currentRange.min) || MIN_SCRIPT_WORDS, MIN_SCRIPT_WORDS), max);
+    return {
+      ...payload,
+      coverageDecision: {
+        ...currentDecision,
+        podcastWordRange: { min, max },
+      },
+    };
+  }
+
+  return payload;
+};
+
 const incompleteScriptMessage = (inspection = {}) => {
   const reasons = [];
   if ((inspection.segments || 0) < MIN_SCRIPT_TURNS) reasons.push(`${inspection.segments || 0} turns; at least ${MIN_SCRIPT_TURNS} required`);
   if ((inspection.hosts || 0) < 2) reasons.push('both Mark and Sarah were not present');
   if ((inspection.words || 0) < MIN_SCRIPT_WORDS) reasons.push(`${inspection.words || 0} words; at least ${MIN_SCRIPT_WORDS} required`);
   if ((inspection.words || 0) > MAX_SCRIPT_WORDS) reasons.push(`${inspection.words || 0} words; maximum ${MAX_SCRIPT_WORDS}`);
-  return `The podcast script was incomplete (${reasons.join('; ') || 'unknown validation issue'}). Please try generating it again.`;
+  return `The podcast script was still incomplete after automatic repair (${reasons.join('; ') || 'unknown validation issue'}). Please try generating it again.`;
 };
 
 const base64ToBytes = (base64) => {
@@ -185,8 +227,9 @@ export const generatePodcastScript = async ({ idToken, payload, prepareAudio = t
   let generated = null;
   let inspection = null;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    generated = await request('/api/generate-podcast', { idToken, body: payload });
+  for (let attempt = 0; attempt < MAX_SCRIPT_GENERATION_ATTEMPTS; attempt += 1) {
+    const requestPayload = payloadForScriptAttempt(payload, attempt, inspection);
+    generated = await request('/api/generate-podcast', { idToken, body: requestPayload });
     inspection = inspectGeneratedScript(generated?.episode);
     if (inspection.valid) break;
   }

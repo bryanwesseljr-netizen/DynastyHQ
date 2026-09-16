@@ -1,4 +1,5 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
+import { buildStorylineEngine } from './storylineEngine.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const wordCount = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
@@ -186,6 +187,17 @@ const targetWordRangeFor = (coverageDecision, plan = {}) => {
   return base;
 };
 
+const mergeStorylineThreads = (coverageThreads = [], continuityThreads = []) => {
+  const byKey = new Map();
+  continuityThreads.forEach((thread) => {
+    if (thread?.key) byKey.set(thread.key, thread);
+  });
+  coverageThreads.forEach((thread) => {
+    if (thread?.key) byKey.set(thread.key, thread);
+  });
+  return [...byKey.values()].slice(0, 12);
+};
+
 export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const issue = (state.newsroomIssues || []).find((entry) => matchesPublication(entry, publicationId));
   if (!issue?.articles?.length) throw new Error('Choose a published newsroom edition first.');
@@ -196,6 +208,25 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     error.code = 'NO_NEWSWORTHY_NEWSROOM';
     throw error;
   }
+  const continuity = coverageStage === 'college-player' ? buildStorylineEngine(state, {
+    season: Math.max(1, Number(issue.season) || 1),
+    week: Math.max(0, Number(issue.week) || 0),
+    publicationId: issue.publicationId || issue.id,
+    opponent: clean(coverageContext?.program?.currentGame?.opponent, 160),
+    phase: coverageContext?.program?.currentGame ? 'postgame' : 'current',
+  }) : null;
+  const storylineThreads = mergeStorylineThreads(
+    coverageContext?.storylineThreads || [],
+    continuity?.editorialThreads || [],
+  );
+  const coverageDecision = coverageContext?.coverageDecision ? {
+    ...coverageContext.coverageDecision,
+    storylineKeys: [...new Set([
+      ...(coverageContext.coverageDecision.storylineKeys || []),
+      ...(continuity?.storylineKeys || []),
+    ])].slice(0, 16),
+  } : null;
+
   const facts = sourceFactsFor(state, issue, coverageContext);
   if (!facts.length) throw new Error('This edition has no published football facts available for writing.');
 
@@ -237,17 +268,17 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       angle: clean(plan?.angle, 1400),
       subjectPriority: clean(plan?.subjectPriority, 80),
       playerMentionPolicy: clean(plan?.playerMentionPolicy, 80),
-      coverageTier: coverageContext?.coverageDecision?.tier || '',
-      audienceReach: coverageContext?.coverageDecision?.audienceReach?.level || '',
-      nationalAttentionReasons: coverageContext?.coverageDecision?.audienceReach?.nationalReasons || [],
-      targetWordRange: coverageContext ? targetWordRangeFor(coverageContext.coverageDecision, plan) : null,
-      activeStorylineKeys: coverageContext?.coverageDecision?.storylineKeys || [],
+      coverageTier: coverageDecision?.tier || '',
+      audienceReach: coverageDecision?.audienceReach?.level || '',
+      nationalAttentionReasons: coverageDecision?.audienceReach?.nationalReasons || [],
+      targetWordRange: coverageContext ? targetWordRangeFor(coverageDecision, plan) : null,
+      activeStorylineKeys: coverageDecision?.storylineKeys || [],
       focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
     };
   }).filter((brief) => brief.focusFactIds.length);
 
   const cappedBriefs = coverageStage === 'college-player'
-    ? articleBriefs.slice(0, Math.max(0, coverageContext.coverageDecision.articleCount))
+    ? articleBriefs.slice(0, Math.max(0, coverageDecision.articleCount))
     : articleBriefs;
   if (!cappedBriefs.length) throw new Error('This edition does not have a usable program-coverage assignment yet.');
 
@@ -261,16 +292,16 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     weekPhase: clean(issue.weekPhase, 80),
     careerPhase: clean(issue.careerPhase, 60),
     coverageStage,
-    coverageDecision: coverageContext?.coverageDecision || null,
-    storylineThreads: coverageContext?.storylineThreads || [],
+    coverageDecision,
+    storylineThreads,
     coveragePlan: coverageContext ? {
       program: coverageContext.program,
       playerRelevance: coverageContext.relevance,
-      coverageTier: coverageContext.coverageDecision.tier,
-      audienceReach: coverageContext.coverageDecision.audienceReach,
-      targetWordRange: coverageContext.coverageDecision.newsroomWordRange,
-      activeStorylineKeys: coverageContext.coverageDecision.storylineKeys,
-      playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
+      coverageTier: coverageDecision.tier,
+      audienceReach: coverageDecision.audienceReach,
+      targetWordRange: coverageDecision.newsroomWordRange,
+      activeStorylineKeys: coverageDecision.storylineKeys,
+      playerMentionPolicy: coverageDecision.playerMentionPolicy,
       editorialPrinciple: 'The team/game is the default story. Audience reach is earned separately from story importance. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
     } : null,
     player: {

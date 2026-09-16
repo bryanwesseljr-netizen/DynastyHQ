@@ -7,7 +7,7 @@ const baseState = {
   currentWeek: 3,
   player: { college: 'Oregon' },
   gameLogs: [
-    { season: 2, week: 2, opponent: 'Baylor', homeScore: 21, awayScore: 45, result: 'L' },
+    { season: 2, week: 2, stage: 'college', opponent: 'Baylor', homeScore: 21, awayScore: 45, result: 'L' },
   ],
 };
 
@@ -65,4 +65,21 @@ test('between weeks mode holds the latest result until the new week is configure
   assert.equal(model.primaryLabel, 'SET UP WEEK 3');
   assert.equal(model.primaryTarget, 'agenda');
   assert.match(model.previous.copy, /Set up Week 3/);
+});
+
+test('college fallback ignores older high-school games and evaluation entries', () => {
+  const state = {
+    ...baseState,
+    gameLogs: [
+      { season: 1, week: 12, stage: 'high-school', opponent: 'Westview', homeScore: 35, awayScore: 14, result: 'W' },
+      { season: 2, week: 1, stage: 'college', opponent: 'UTSA', homeScore: 31, awayScore: 20, result: 'W', evaluation: true },
+      { season: 2, week: 2, stage: 'college', opponent: 'Baylor', homeScore: 21, awayScore: 45, result: 'L' },
+    ],
+  };
+  const flow = { mode: 'active-week', activeWeek: { configured: false, week: 3, type: 'game' } };
+  const model = buildGameWeekImmersion(state, dashboard, flow);
+
+  assert.equal(model.latestGame.opponent, 'Baylor');
+  assert.equal(model.opponent, 'Baylor');
+  assert.equal(model.centerLine, '21-45');
 });

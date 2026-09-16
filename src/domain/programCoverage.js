@@ -1,4 +1,5 @@
 import { buildEditorialCoverageDecision, COVERAGE_TIERS } from './editorialCoverage.js';
+import { teamRecordThroughWeek } from './seasonSchedule.js';
 
 const clean = (value, max = 600) => String(value ?? '').trim().slice(0, max);
 
@@ -35,28 +36,6 @@ const totalIfComplete = (a, b) => {
   const first = finite(a);
   const second = finite(b);
   return first === null || second === null ? null : first + second;
-};
-
-const gameUpdatesForSeason = (state, issue) => (state.weeklyUpdates || [])
-  .filter((entry) => Number(entry.season || 1) === Number(issue.season || 1))
-  .filter((entry) => Number(entry.week ?? 0) <= Number(issue.week ?? 0))
-  .filter((entry) => entry?.game && !entry.game.evaluation && entry.game.stage !== 'high-school')
-  .sort((a, b) => Number(a.week ?? 0) - Number(b.week ?? 0));
-
-const recordContext = (updates = []) => {
-  const decided = updates.filter((entry) => ['W', 'L'].includes(entry?.game?.result));
-  const wins = decided.filter((entry) => entry.game.result === 'W').length;
-  const losses = decided.filter((entry) => entry.game.result === 'L').length;
-  const lastResult = decided[decided.length - 1]?.game?.result || '';
-  let streakCount = 0;
-  for (let index = decided.length - 1; index >= 0; index -= 1) {
-    if (decided[index]?.game?.result !== lastResult) break;
-    streakCount += 1;
-  }
-  const streak = streakCount >= 2
-    ? `${streakCount}-game ${lastResult === 'W' ? 'winning' : 'losing'} streak`
-    : '';
-  return { wins, losses, games: decided.length, streak, streakCount };
 };
 
 const priorRtgSnapshot = (state, issue, publicationId) => [...(state.weeklyUpdates || [])]
@@ -235,12 +214,10 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
   const publicationId = issue.publicationId || issue.id || '';
   const currentUpdate = currentUpdateFor(state, issue, publicationId);
   const currentGame = currentUpdate?.game || null;
-  const seasonGames = gameUpdatesForSeason(state, issue);
-  const priorSeasonGames = currentGame
-    ? seasonGames.filter((entry) => !publicationMatches(entry, publicationId))
-    : seasonGames;
-  const record = recordContext(seasonGames);
-  const priorRecord = recordContext(priorSeasonGames);
+  const season = Math.max(1, Number(issue.season) || Number(state.currentSeason) || 1);
+  const week = Math.max(0, Number(issue.week ?? 0) || 0);
+  const record = teamRecordThroughWeek(state, season, week);
+  const priorRecord = teamRecordThroughWeek(state, season, week - 1);
   const relevance = playerRelevanceFor({ state, issue, publicationId });
   const program = {
     school: clean(state.player?.college || state.player?.school || issue.outletProfile?.school, 160),

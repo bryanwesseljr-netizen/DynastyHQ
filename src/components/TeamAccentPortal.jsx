@@ -54,6 +54,7 @@ const TeamAccentPortal = () => {
       '--dhq-team-secondary': secondary,
       '--dhq-team-accent': accent,
       '--dhq-team-highlight': highlight,
+      '--dhq-team-readable-highlight': adaptive.readableHighlight,
       '--dhq-team-on-primary': adaptive.onPrimary,
       '--dhq-team-on-highlight': adaptive.onHighlight,
       '--dhq-team-surface': adaptive.surface,
@@ -68,6 +69,7 @@ const TeamAccentPortal = () => {
       '--dhq-program-secondary': secondary,
       '--dhq-program-accent': accent,
       '--dhq-program-highlight': highlight,
+      '--dhq-program-readable-highlight': adaptive.readableHighlight,
       '--dhq-program-on-primary': adaptive.onPrimary,
     };
     Object.entries(variables).forEach(([name, value]) => root.style.setProperty(name, value));

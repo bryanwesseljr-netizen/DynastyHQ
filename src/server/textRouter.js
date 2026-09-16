@@ -104,7 +104,6 @@ const callOpenAiText = async ({
   schema,
   schemaName,
   maxOutputTokens,
-  temperature,
   safetyIdentifier,
   openAiModel,
 }) => {
@@ -122,7 +121,6 @@ const callOpenAiText = async ({
     safety_identifier: safetyIdentifier,
     reasoning: { effort: 'low' },
     max_output_tokens: maxOutputTokens,
-    temperature,
     instructions,
     input: [{ role: 'user', content: [{ type: 'input_text', text: input }] }],
     text: {
@@ -175,7 +173,6 @@ export const generateTextFreeFirst = async ({
         schema,
         schemaName,
         maxOutputTokens,
-        temperature,
         safetyIdentifier,
         openAiModel,
       });

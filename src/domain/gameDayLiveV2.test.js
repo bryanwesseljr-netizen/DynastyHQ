@@ -50,6 +50,20 @@ test('builds a grounded pregame broadcast model from saved career context', () =
   assert.ok(live.media.items.some((item) => item.id === 'podcast'));
 });
 
+test('falls forward to the next scheduled game when player-week state is behind the team schedule', () => {
+  const live = buildGameDayLiveV2({
+    ...state,
+    currentWeek: 2,
+    currentWeekSetup: {},
+  });
+  assert.equal(live.ready, true);
+  assert.equal(live.week, 5);
+  assert.equal(live.opponent, 'Michigan State');
+  assert.equal(live.activationSource, 'season-schedule');
+  assert.equal(live.record, '2-1');
+  assert.equal(live.recentForm.at(-1).opponent, 'Oregon State');
+});
+
 test('does not invent opponent scout content when setup only has matchup identity', () => {
   const live = buildGameDayLiveV2({
     currentSeason: 1,

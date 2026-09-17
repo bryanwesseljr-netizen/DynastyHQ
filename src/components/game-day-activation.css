@@ -1,0 +1,8 @@
+.dhq-game-hub.dhq-game-day-live-schedule-derived .dhq-gh-hero.is-pregame,
+.dhq-game-hub.dhq-game-day-live-schedule-derived .dhq-gh-progress {
+  display: none !important;
+}
+
+.dhq-game-hub.dhq-game-day-live-schedule-derived [data-game-day-pregame="v2"] {
+  margin-top: 0;
+}

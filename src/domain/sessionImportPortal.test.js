@@ -91,3 +91,12 @@ test('Session Import supports pinch zoom and native mobile scrolling without loc
   assert.match(styles, /-webkit-overflow-scrolling: touch/);
   assert.match(styles, /overflow-y: auto/);
 });
+
+
+test('Session Import reveals the live verification desk even when Weekly Agenda hides the legacy scanner wrapper', async () => {
+  const styles = await readFile(stylesUrl, 'utf8');
+
+  assert.match(styles, /body\.dhq-session-import-review \.dhq-weekly-agenda-v2 \.dhq-agenda-v2-legacy-scanner:has\(\.dhq-postgame-review\)/);
+  assert.match(styles, /display: block !important/);
+  assert.match(styles, /body\.dhq-session-import-review \.dhq-postgame-review/);
+});

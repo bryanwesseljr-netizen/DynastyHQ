@@ -117,7 +117,8 @@ const SessionImportPortal = () => {
     setError('');
     let appliedHint = false;
     try { appliedHint = window.sessionStorage?.getItem('dhq-session-applied-week') === publicationId; } catch { /* session hint only */ }
-    setPhase(appliedHint ? 'rtg' : 'game');
+    const pendingReview = document.querySelector(`.dhq-postgame-review[data-publication-id="${publicationId}"]`);
+    setPhase(pendingReview ? 'review' : appliedHint ? 'rtg' : 'game');
   };
 
   const openWorkspace = () => {
@@ -162,39 +163,24 @@ const SessionImportPortal = () => {
   }, [publicationId]);
 
   useEffect(() => {
-    if (!open || phase !== 'review') return undefined;
-    const root = document.getElementById('root') || document.body;
-    const marked = new Set();
-    const revealReviewPath = () => {
-      const next = new Set();
-      const review = document.querySelector('.dhq-postgame-review');
-      const agenda = review?.closest?.('.dhq-weekly-agenda-workspace');
-      let node = agenda ? review.parentElement : null;
-      while (node && node !== agenda) {
-        next.add(node);
-        node = node.parentElement;
-      }
-      // This observer also watches class changes. Only write actual differences,
-      // otherwise revealing the desk continuously retriggers its own observer.
-      marked.forEach((entry) => {
-        if (!next.has(entry)) entry.classList.remove('dhq-session-import-review-path');
-      });
-      marked.clear();
-      next.forEach((entry) => {
-        if (!entry.classList.contains('dhq-session-import-review-path')) {
-          entry.classList.add('dhq-session-import-review-path');
-        }
-        marked.add(entry);
-      });
+    const applied = (event) => {
+      if (!open || event.detail?.publicationId !== publicationId) return;
+      try { window.sessionStorage?.setItem('dhq-session-applied-week', publicationId); } catch { /* session hint only */ }
+      setPhase('rtg');
     };
-    revealReviewPath();
-    const observer = new MutationObserver(revealReviewPath);
-    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    const discarded = () => { if (open) setPhase('game'); };
+    const review = () => {
+      if (open && document.querySelector('.dhq-postgame-review')) setPhase('review');
+    };
+    window.addEventListener('dynastyhq:game-data-applied', applied);
+    window.addEventListener('dynastyhq:game-data-discarded', discarded);
+    window.addEventListener('dynastyhq:review-game-data', review);
     return () => {
-      observer.disconnect();
-      marked.forEach((node) => node?.classList?.remove('dhq-session-import-review-path'));
+      window.removeEventListener('dynastyhq:game-data-applied', applied);
+      window.removeEventListener('dynastyhq:game-data-discarded', discarded);
+      window.removeEventListener('dynastyhq:review-game-data', review);
     };
-  }, [open, phase]);
+  }, [open, publicationId]);
 
   useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
@@ -278,6 +264,7 @@ const SessionImportPortal = () => {
       </div>
 
       <main className="dhq-session-import__main">
+        {['analyzing', 'review'].includes(phase) ? <div id="dhq-process-week2-inbox-host" /> : null}
         {phase === 'game' ? (
           <section className="dhq-session-import__card dhq-session-import__upload-card">
             <div className="dhq-session-import__headline">
@@ -350,9 +337,12 @@ const SessionImportPortal = () => {
         ) : null}
 
         {phase === 'review' ? (
-          <section className="dhq-session-import__review-heading" aria-live="polite">
-            <span><ShieldCheck size={14} /> GAME DATA · VERIFICATION DESK</span>
-            <strong>Review only what DynastyHQ flags. Apply the verified Game Data to unlock RTG Status.</strong>
+          <section aria-label="Game Data review">
+            <div className="dhq-session-import__review-heading" aria-live="polite">
+              <h1 id="dhq-session-import-title">Review Game Data</h1>
+              <p>Confirm or correct the flagged values below. Then apply Game Data to continue to RTG Status and optional Coverage.</p>
+            </div>
+            <div id="dhq-session-game-review-host" />
           </section>
         ) : null}
 

@@ -60,14 +60,16 @@ test('Session Import still reuses the verified game scanner and verification des
   assert.match(portalSource, /Nothing publishes from this screen/);
 });
 
-test('Session Import keeps the old agenda hidden while the Game Data review is presented as the verification desk', async () => {
-  const styles = await readFile(stylesUrl, 'utf8');
-
-  assert.match(styles, /body\.dhq-session-import-review \.dhq-weekly-agenda-workspace/);
-  assert.match(styles, /pointer-events: none !important/);
-  assert.match(styles, /body\.dhq-session-import-review \.dhq-postgame-review/);
-  assert.match(styles, /position: fixed !important/);
-  assert.match(styles, /pointer-events: auto !important/);
+test('Session Import mounts the live React verification form inside its own scroll container', async () => {
+  const [portal, panel, styles] = await Promise.all([
+    readFile(portalSourceUrl, 'utf8'),
+    readFile(new URL('../components/WeeklyReviewPanel.jsx', import.meta.url), 'utf8'),
+    readFile(stylesUrl, 'utf8'),
+  ]);
+  assert.match(portal, /id="dhq-session-game-review-host"/);
+  assert.match(panel, /createPortal\(panel, sessionHost\)/);
+  assert.match(panel, /Apply Game Data & Continue to RTG Status/);
+  assert.doesNotMatch(styles, /body\.dhq-session-import-review \.dhq-weekly-agenda-workspace/);
 });
 
 test('Session Import has responsive styling for the lane guide and Process Week summary', async () => {
@@ -93,23 +95,20 @@ test('Session Import supports pinch zoom and native mobile scrolling without loc
 });
 
 
-test('Session Import reveals the live verification desk even when Weekly Agenda hides the legacy scanner wrapper', async () => {
-  const styles = await readFile(stylesUrl, 'utf8');
-
-  assert.match(styles, /body\.dhq-session-import-review \.dhq-weekly-agenda-v2 \.dhq-agenda-v2-legacy-scanner:has\(\.dhq-postgame-review\)/);
-  assert.match(styles, /display: block !important/);
-  assert.match(styles, /body\.dhq-session-import-review \.dhq-postgame-review/);
+test('Session Import advances only after the matching Game Data apply event', async () => {
+  const [portal, app] = await Promise.all([readFile(portalSourceUrl, 'utf8'), readFile(appSourceUrl, 'utf8')]);
+  assert.match(app, /dynastyhq:game-data-applied/);
+  assert.match(portal, /event\.detail\?\.publicationId !== publicationId/);
+  assert.match(portal, /dynastyhq:game-data-discarded/);
 });
 
-
-test('Session Import reveals every hidden ancestor of the live verification desk', async () => {
-  const [portalSource, styles] = await Promise.all([
+test('review flagged items focuses the form and the session owns the inbox mount', async () => {
+  const [portal, process] = await Promise.all([
     readFile(portalSourceUrl, 'utf8'),
-    readFile(stylesUrl, 'utf8'),
+    readFile(new URL('../components/ProcessWeek2Portal.jsx', import.meta.url), 'utf8'),
   ]);
-
-  assert.match(portalSource, /dhq-session-import-review-path/);
-  assert.match(portalSource, /while \(node && node !== agenda\)/);
-  assert.match(styles, /\.dhq-session-import-review-path/);
-  assert.match(styles, /display: block !important/);
+  assert.match(portal, /id="dhq-process-week2-inbox-host"/);
+  assert.match(process, /dynastyhq:review-game-data/);
+  assert.match(process, /#dhq-session-game-review-host \.dhq-postgame-review/);
+  assert.match(process, /target\.focus/);
 });

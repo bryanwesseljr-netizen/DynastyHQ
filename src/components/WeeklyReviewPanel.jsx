@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck,
   Eye, FileImage, ShieldCheck, Trash2, X,
@@ -115,6 +116,18 @@ const WeeklyReviewPanel = ({
 }) => {
   const [viewMode, setViewMode] = useState('attention');
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sessionHost, setSessionHost] = useState(null);
+
+  useEffect(() => {
+    const syncHost = () => {
+      const next = document.getElementById('dhq-session-game-review-host');
+      setSessionHost((current) => current === next ? current : next);
+    };
+    syncHost();
+    const observer = new MutationObserver(syncHost);
+    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setViewMode('attention');
@@ -155,8 +168,18 @@ const WeeklyReviewPanel = ({
   const rushTD = factValue('game.rushTD');
   const hasGameSnapshot = [opponent, result, homeScore, awayScore, passYds, passTD, interceptions, rushYds, rushTD].some((value) => value !== undefined && value !== '');
 
-  return (
-    <section className="dhq-postgame-review mb-6 overflow-hidden rounded-2xl border border-blue-500/40 bg-slate-900/95 shadow-2xl">
+  const panel = (
+    <section tabIndex={-1} data-publication-id={`season-${Number(draft.season) || 1}-week-${Number(draft.week) || 0}`} aria-label={`Week ${draft.week} verification desk`} className="dhq-postgame-review mb-6 overflow-hidden rounded-2xl border border-blue-500/40 bg-slate-900/95 shadow-2xl">
+      {sessionHost ? (
+        <div className="dhq-session-review-next">
+          <div><strong>Next: RTG Status → Optional Coverage</strong><p>{canApply
+            ? (completeness.missingRequired > 0 ? 'Some essential values are missing. Continue only if this partial update is intentional.' : 'Game Data is ready. Apply it to continue.')
+            : `${blockingCount} flagged issue${blockingCount === 1 ? '' : 's'} must be resolved before continuing.`}</p></div>
+          <button type="button" disabled={!canApply} onClick={onApply}>
+            {completeness.missingRequired > 0 ? 'Apply Partial Game Data & Continue to RTG Status' : 'Apply Game Data & Continue to RTG Status'}
+          </button>
+        </div>
+      ) : null}
       <div className="border-b border-slate-700/70 bg-gradient-to-r from-blue-950/60 via-slate-950/70 to-slate-950/90 p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -377,7 +400,7 @@ const WeeklyReviewPanel = ({
             {!canApply && blockingCount > 0 && <p className="mt-2 text-center text-[10px] leading-relaxed text-amber-300">{blockingCount} flagged review item{blockingCount === 1 ? '' : 's'} remaining.</p>}
             <button
               type="button"
-              onClick={onDiscard}
+              onClick={() => { onDiscard(); window.dispatchEvent(new CustomEvent('dynastyhq:game-data-discarded')); }}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-300 transition-colors hover:border-red-500/50 hover:text-red-300"
             >
               <Trash2 size={14} /> Discard scan
@@ -387,6 +410,7 @@ const WeeklyReviewPanel = ({
       </div>
     </section>
   );
+  return sessionHost ? createPortal(panel, sessionHost) : panel;
 };
 
 export default WeeklyReviewPanel;

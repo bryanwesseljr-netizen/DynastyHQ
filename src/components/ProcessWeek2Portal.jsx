@@ -281,7 +281,7 @@ const ProcessWeek2Portal = () => {
       });
 
       const liveKey = session ? `${publicationId}:${session.className}` : '';
-      if (session && session.classList.contains('is-upload') && sessionKeyRef.current !== publicationId) {
+      if (session && session.classList.contains('is-game') && sessionKeyRef.current !== publicationId) {
         sessionKeyRef.current = publicationId;
         setAnalyses([]);
         setExpectedScreens(0);
@@ -290,23 +290,8 @@ const ProcessWeek2Portal = () => {
       }
 
       let nextHost = null;
-      if (session && !session.classList.contains('is-upload')) {
+      if (session) {
         nextHost = document.getElementById('dhq-process-week2-inbox-host');
-        if (!nextHost) {
-          nextHost = document.createElement('div');
-          nextHost.id = 'dhq-process-week2-inbox-host';
-        }
-        const main = session.querySelector('.dhq-session-import__main');
-        const complete = session.querySelector('.dhq-session-import__complete-card');
-        const reviewHeading = session.querySelector('.dhq-session-import__review-heading');
-        if (complete) {
-          const actions = complete.querySelector('.dhq-session-import__complete-actions');
-          if (nextHost.parentElement !== complete) complete.appendChild(nextHost);
-          if (actions && nextHost.nextElementSibling !== actions) actions.before(nextHost);
-        } else if (main) {
-          if (nextHost.parentElement !== main) main.prepend(nextHost);
-          if (reviewHeading && nextHost.nextElementSibling !== reviewHeading) reviewHeading.before(nextHost);
-        }
       } else if (!session && review.hasApplied) {
         const applied = document.querySelector('.dhq-agenda-v3-applied-ready');
         if (applied) {
@@ -344,8 +329,18 @@ const ProcessWeek2Portal = () => {
 
   const reviewFlags = () => {
     setConfirmOpen(false);
-    const target = document.querySelector('.dhq-postgame-review') || document.querySelector('.dhq-agenda-v3-applied-ready');
-    target?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    window.dispatchEvent(new CustomEvent('dynastyhq:review-game-data'));
+    window.requestAnimationFrame(() => {
+      const target = document.querySelector('#dhq-session-game-review-host .dhq-postgame-review')
+        || document.querySelector('.dhq-postgame-review')
+        || document.querySelector('.dhq-agenda-v3-applied-ready');
+      if (!target) {
+        setError('The scanner has not produced a review draft yet. Wait for analysis to finish.');
+        return;
+      }
+      target.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      target.focus?.({ preventScroll: true });
+    });
   };
 
   const publish = () => {

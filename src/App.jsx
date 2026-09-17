@@ -747,6 +747,9 @@ const App = () => {
     setCoachUpdate((current) => ({ ...current, ...(scanDraft.coachPatch || {}) }));
     setAppliedScanDraft({ ...scanDraft, status: 'ready' });
     setScanDraft(null);
+    window.dispatchEvent(new CustomEvent('dynastyhq:game-data-applied', {
+      detail: { publicationId: `season-${Number(scanDraft.season || appState.currentSeason) || 1}-week-${Number(scanDraft.week ?? appState.currentWeek) || 0}` },
+    }));
     setMessageModal({ isOpen: true, text: 'Verified draft applied. Correct anything needed, then publish the week.', type: 'success' });
     setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 4000);
   };

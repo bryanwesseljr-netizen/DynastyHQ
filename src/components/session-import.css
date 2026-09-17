@@ -404,50 +404,26 @@
 
 .dhq-session-import__review-heading strong { font-weight: 750; }
 
-body.dhq-session-import-review .dhq-weekly-agenda-workspace {
-  position: relative !important;
-  z-index: 10060 !important;
-  pointer-events: none !important;
+/* Render the live React review inside Session Import, in its normal scroll flow. */
+#dhq-session-game-review-host .dhq-postgame-review {
+  position: relative;
+  display: block;
+  margin: 16px 0;
+  border: 1px solid rgba(96, 165, 250, .42);
+  border-radius: 18px;
+  background: rgba(5, 14, 23, .98);
+  color: #f8fafc;
+  overflow: visible;
 }
-
-/* Weekly Agenda normally hides the legacy scanner wrapper. During Session Import review,
-   re-open only the wrapper that owns the live verification desk so flagged facts are visible. */
-body.dhq-session-import-review .dhq-weekly-agenda-v2 .dhq-agenda-v2-legacy-scanner:has(.dhq-postgame-review) {
-  display: block !important;
+.dhq-session-import__review-heading { display: block; font-size: 13px; }
+.dhq-session-import__review-heading p { margin-top: 10px; line-height: 1.5; }
+.dhq-session-review-next { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; border-bottom: 1px solid #334155; }
+.dhq-session-review-next p { margin-top: 6px; color: #cbd5e1; font-size: 12px; }
+.dhq-session-review-next button { flex-shrink: 0; max-width: 100%; border-radius: 9px; padding: 14px; background: #2563eb; color: white; font-size: 12px; font-weight: 800; cursor: pointer; }
+.dhq-session-review-next button:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+@media (max-width: 720px) {
+  .dhq-session-review-next { flex-direction: column; align-items: stretch; }
 }
-
-body.dhq-session-import-review .dhq-session-import-review-path {
-  display: block !important;
-}
-
-body.dhq-session-import-review .dhq-weekly-agenda-workspace * { visibility: hidden; }
-
-body.dhq-session-import-review .dhq-postgame-review,
-body.dhq-session-import-review .dhq-postgame-review * {
-  visibility: visible !important;
-}
-
-body.dhq-session-import-review .dhq-postgame-review {
-  position: fixed !important;
-  top: 150px !important;
-  right: max(16px, calc((100vw - 1180px) / 2)) !important;
-  bottom: 16px !important;
-  left: max(16px, calc((100vw - 1180px) / 2)) !important;
-  z-index: 10061 !important;
-  margin: 0 !important;
-  overflow-y: auto !important;
-  pointer-events: auto !important;
-  border: 1px solid rgba(96, 165, 250, 0.42) !important;
-  border-radius: 18px !important;
-  background: rgba(5, 14, 23, 0.98) !important;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.54) !important;
-}
-
-body.dhq-session-import-review .dhq-postgame-review > div:first-child {
-  background: linear-gradient(100deg, rgba(11, 37, 64, 0.95), rgba(4, 12, 21, 0.98)) !important;
-}
-
-body.dhq-session-import-review .dhq-postgame-review button:not(:disabled) { cursor: pointer; }
 
 .dhq-session-import__lane-guide {
   display: grid;
@@ -623,13 +599,5 @@ body.dhq-session-import-review .dhq-postgame-review button:not(:disabled) { curs
   .dhq-session-import__processing-stats span { font-size: 6.5px; }
   .dhq-session-import__review-heading { padding: 0 5px; }
   .dhq-session-import__review-heading strong { display: none; }
-  body.dhq-session-import-review .dhq-postgame-review {
-    top: 122px !important;
-    right: 7px !important;
-    bottom: 7px !important;
-    left: 7px !important;
-    border-radius: 14px !important;
-  }
-  body.dhq-session-import-review .dhq-postgame-review > div:first-child { padding: 16px !important; }
-  body.dhq-session-import-review .dhq-postgame-review > div:last-child { padding: 14px !important; }
+
 }

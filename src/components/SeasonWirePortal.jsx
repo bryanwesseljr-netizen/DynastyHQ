@@ -60,16 +60,28 @@ const buildSeasonWireItems = (career = {}) => {
   const schedule = seasonScheduleFor(career, season);
   const syncedSchedule = schedule ? syncScheduleWithCareer(career, schedule) : null;
   const latest = latestCompletedGame(career, season);
+  const setup = career.currentWeekSetup || {};
+  const setupOpponent = clean(setup.opponent);
+  const setupWeek = Math.max(0, numberOf(setup.week ?? career.currentWeek, 0));
+  const activeGameDay = clean(setup.type).toLowerCase() !== 'bye' && Boolean(setupOpponent);
   const contextWeek = Math.max(0, numberOf(career.currentWeek, latest?.week || 0));
   const story = buildStorylineEngine(career, {
     season,
     week: contextWeek,
-    opponent: clean(career.currentWeekSetup?.opponent),
-    phase: clean(career.currentWeekSetup?.opponent) ? 'pregame' : 'current',
+    opponent: setupOpponent,
+    phase: setupOpponent ? 'pregame' : 'current',
   });
   const headline = latestNewsroomHeadline(career);
   const podcast = latestReadyPodcast(career);
   const items = [];
+
+  if (activeGameDay) items.push({
+    id: 'game-day',
+    label: 'GAME DAY',
+    text: `W${setupWeek} · ${setupOpponent.toUpperCase()}${clean(setup.opponentRank) ? ` · #${clean(setup.opponentRank).replace(/^#/, '')}` : ''}${clean(setup.venue) ? ` · ${clean(setup.venue).toUpperCase()}` : ''}`,
+    target: 'gameHub',
+    Icon: Radio,
+  });
 
   items.push({
     id: 'record',
@@ -106,7 +118,7 @@ const buildSeasonWireItems = (career = {}) => {
     });
   }
 
-  if (next) items.push({
+  if (next && (!activeGameDay || Number(next.week) !== setupWeek || clean(next.opponent).toLowerCase() !== setupOpponent.toLowerCase())) items.push({
     id: 'next',
     label: 'NEXT',
     text: `W${next.week} · ${clean(next.opponent).toUpperCase()}${next.homeAway === 'away' ? ' · AWAY' : next.homeAway === 'home' ? ' · HOME' : ''}`,
@@ -115,8 +127,9 @@ const buildSeasonWireItems = (career = {}) => {
   });
 
   if (syncedSchedule?.entries?.length) {
+    const anchorWeek = activeGameDay ? setupWeek : next?.week;
     const upcoming = syncedSchedule.entries
-      .filter((entry) => !entry.isBye && !entry.completed && (!next || entry.week > next.week))
+      .filter((entry) => !entry.isBye && !entry.completed && (!anchorWeek || entry.week > anchorWeek))
       .slice(0, 2)
       .map((entry) => `W${entry.week} ${clean(entry.opponent).toUpperCase()}`);
     if (upcoming.length) items.push({

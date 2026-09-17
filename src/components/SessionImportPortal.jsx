@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -8,10 +7,13 @@ import {
   FileImage,
   Images,
   Loader2,
+  Newspaper,
+  ScanLine,
   ShieldCheck,
   Sparkles,
   X,
 } from 'lucide-react';
+import { coverageReferenceFor } from '../domain/coverageReferences.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './session-import.css';
 
@@ -43,7 +45,7 @@ const waitForScannerInput = (timeoutMs = 8000) => new Promise((resolve, reject) 
       return;
     }
     if (Date.now() - startedAt >= timeoutMs) {
-      reject(new Error('DynastyHQ could not open the verified scanner. Return to Game Hub and try again.'));
+      reject(new Error('DynastyHQ could not open the verified Game Data scanner. Return to Game Hub and try again.'));
       return;
     }
     window.setTimeout(check, 90);
@@ -51,7 +53,7 @@ const waitForScannerInput = (timeoutMs = 8000) => new Promise((resolve, reject) 
   check();
 });
 
-const handoffFiles = async (files) => {
+const handoffGameFiles = async (files) => {
   const gameHubButton = findButton(/^game hub$/i);
   if (!gameHubButton) throw new Error('Game Hub is not available from this screen.');
   window.__dhqAllowLegacyGameHubOnce = true;
@@ -71,15 +73,24 @@ const formatBytes = (bytes = 0) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const laneStepForPhase = (phase) => {
+  if (phase === 'rtg') return 2;
+  if (phase === 'coverage') return 3;
+  if (phase === 'ready') return 4;
+  return 1;
+};
+
 const SessionImportPortal = () => {
   const { career } = useOwnerCareer();
   const fileInputRef = useRef(null);
-  const phaseRef = useRef('upload');
+  const phaseRef = useRef('game');
   const previousOverflowRef = useRef('');
   const [open, setOpen] = useState(false);
-  const [phase, setPhase] = useState('upload');
+  const [phase, setPhase] = useState('game');
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
+  const [rtgSkipped, setRtgSkipped] = useState(false);
+  const [coverageSkipped, setCoverageSkipped] = useState(false);
   const [error, setError] = useState('');
 
   const season = career?.currentSeason || 1;
@@ -87,6 +98,11 @@ const SessionImportPortal = () => {
   const opponent = clean(career?.currentWeekSetup?.opponent) || 'Current week';
   const publicationId = `season-${Number(season) || 1}-week-${Number(week) || 1}`;
   const totalBytes = useMemo(() => files.reduce((total, file) => total + Number(file.size || 0), 0), [files]);
+  const lastRtgScan = career?.rtg?.lastStatusScan || null;
+  const rtgCurrent = Boolean(lastRtgScan
+    && (lastRtgScan.publicationId === publicationId
+      || (Number(lastRtgScan.season) === Number(season) && Number(lastRtgScan.week) === Number(week))));
+  const coverageSaved = useMemo(() => coverageReferenceFor(career, publicationId), [career, publicationId]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -97,8 +113,12 @@ const SessionImportPortal = () => {
   const reset = () => {
     setFiles([]);
     setDragging(false);
+    setRtgSkipped(false);
+    setCoverageSkipped(false);
     setError('');
-    setPhase('upload');
+    let appliedHint = false;
+    try { appliedHint = window.sessionStorage?.getItem('dhq-session-applied-week') === publicationId; } catch { /* session hint only */ }
+    setPhase(appliedHint ? 'rtg' : 'game');
   };
 
   const openWorkspace = () => {
@@ -116,7 +136,10 @@ const SessionImportPortal = () => {
     if (home) {
       window.setTimeout(() => findButton(/^home$/i)?.click(), 30);
     } else if (focusApplied) {
-      window.setTimeout(() => findButton(/^game hub$/i)?.click(), 50);
+      window.setTimeout(() => {
+        window.__dhqAllowLegacyGameHubOnce = true;
+        findButton(/^game hub$/i)?.click();
+      }, 50);
     }
   };
 
@@ -134,13 +157,13 @@ const SessionImportPortal = () => {
     };
     root.addEventListener('click', interceptDashboardImport, true);
     return () => root.removeEventListener('click', interceptDashboardImport, true);
-  }, []);
+  }, [publicationId]);
 
   useEffect(() => {
     const openFromGameHub = () => openWorkspace();
     window.addEventListener('dynastyhq:open-session-import', openFromGameHub);
     return () => window.removeEventListener('dynastyhq:open-session-import', openFromGameHub);
-  }, []);
+  }, [publicationId]);
 
   useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
@@ -153,7 +176,7 @@ const SessionImportPortal = () => {
       }
       if (!review && applied && phaseRef.current === 'review') {
         try { window.sessionStorage?.setItem('dhq-session-applied-week', publicationId); } catch { /* session hint only */ }
-        setPhase('applied');
+        setPhase('rtg');
       }
     };
     refresh();
@@ -175,44 +198,45 @@ const SessionImportPortal = () => {
       const keyed = new Map(current.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file]));
       incoming.forEach((file) => keyed.set(`${file.name}:${file.size}:${file.lastModified}`, file));
       const next = [...keyed.values()];
-      if (next.length > MAX_SCREENSHOTS) setError(`Session Import currently accepts up to ${MAX_SCREENSHOTS} screenshots at once.`);
+      if (next.length > MAX_SCREENSHOTS) setError(`Game Data currently accepts up to ${MAX_SCREENSHOTS} screenshots at once.`);
       return next.slice(0, MAX_SCREENSHOTS);
     });
   };
 
   const removeFile = (index) => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
 
-  const processSession = async () => {
+  const processGameData = async () => {
     if (!files.length) return;
     setError('');
     setPhase('analyzing');
     try {
-      await handoffFiles(files);
+      await handoffGameFiles(files);
     } catch (handoffError) {
-      setPhase('upload');
-      setError(handoffError?.message || 'The session could not be handed to the verified scanner.');
+      setPhase('game');
+      setError(handoffError?.message || 'Game Data could not be handed to the verified scanner.');
     }
   };
 
   if (!open || typeof document === 'undefined') return null;
 
-  const step = phase === 'upload' ? 1 : phase === 'analyzing' ? 2 : phase === 'review' ? 3 : 4;
+  const step = laneStepForPhase(phase);
+  const canClose = !['analyzing', 'review'].includes(phase);
 
-  return createPortal(
+  return (
     <div className={`dhq-session-import is-${phase}`} role="dialog" aria-modal="true" aria-labelledby="dhq-session-import-title">
       <div className="dhq-session-import__stadium" aria-hidden="true" />
       <header className="dhq-session-import__topbar">
         <button type="button" className="dhq-session-import__brand" onClick={() => closeWorkspace({ home: true })}><span>DYNASTY</span><b>HQ</b></button>
         <div className="dhq-session-import__context"><span>SESSION IMPORT</span><strong>SEASON {season} · WEEK {week}</strong></div>
-        {phase === 'upload' ? <button type="button" className="dhq-session-import__close" onClick={() => closeWorkspace()} aria-label="Close Session Import"><X size={19} /></button> : null}
+        {canClose ? <button type="button" className="dhq-session-import__close" onClick={() => closeWorkspace()} aria-label="Close Session Import"><X size={19} /></button> : null}
       </header>
 
       <div className="dhq-session-import__stepbar" aria-label="Session Import progress">
         {[
-          ['1', 'Upload'],
-          ['2', 'Analyze'],
-          ['3', 'Verify'],
-          ['4', 'Confirm'],
+          ['1', 'Game Data'],
+          ['2', 'RTG Status'],
+          ['3', 'Coverage'],
+          ['4', 'Process Week'],
         ].map(([number, label], index) => {
           const itemStep = index + 1;
           return (
@@ -224,18 +248,24 @@ const SessionImportPortal = () => {
       </div>
 
       <main className="dhq-session-import__main">
-        {phase === 'upload' ? (
+        {phase === 'game' ? (
           <section className="dhq-session-import__card dhq-session-import__upload-card">
             <div className="dhq-session-import__headline">
-              <span><CloudUpload size={17} /> CURRENT SESSION</span>
-              <h1 id="dhq-session-import-title">Drop the screenshots. DynastyHQ handles the week.</h1>
-              <p>Upload the useful CFB 27 screens from this game or week together. The verified scanner will identify the facts, flag uncertain reads, and give you one confirmation step before anything is applied.</p>
+              <span><ScanLine size={17} /> 1 · GAME DATA</span>
+              <h1 id="dhq-session-import-title">Start with what happened on the field.</h1>
+              <p>Upload only the screens that establish the game: final score, your player line, useful game/team stats, and any EA SPORTS Network article pages you captured. RTG menu screens and optional media context get their own lanes next.</p>
             </div>
 
             <div className="dhq-session-import__meta-row">
               <div><span>WEEK</span><strong>{week}</strong></div>
               <div><span>OPPONENT</span><strong>{opponent}</strong></div>
-              <div><span>SCREENSHOTS</span><strong>{files.length}/{MAX_SCREENSHOTS}</strong></div>
+              <div><span>GAME SCREENS</span><strong>{files.length}/{MAX_SCREENSHOTS}</strong></div>
+            </div>
+
+            <div className="dhq-session-import__lane-guide">
+              <div className="is-active"><ScanLine size={15} /><span><strong>GAME DATA</strong><small>Score · your stats · game facts · EA SPORTS Network</small></span></div>
+              <div><Sparkles size={15} /><span><strong>RTG STATUS</strong><small>OVR · role · Coach Trust · GPA · health · brand</small></span></div>
+              <div><Newspaper size={15} /><span><strong>COVERAGE DATA</strong><small>Optional teammate · opponent · scoring context</small></span></div>
             </div>
 
             <button
@@ -248,14 +278,14 @@ const SessionImportPortal = () => {
               onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files); }}
             >
               <span className="dhq-session-import__drop-icon"><Images size={28} /></span>
-              <strong>{files.length ? 'Add more screenshots' : 'Choose screenshots'}</strong>
-              <small>Tap to browse or drag images here · up to {MAX_SCREENSHOTS} per session</small>
+              <strong>{files.length ? 'Add more Game Data screens' : 'Choose Game Data screenshots'}</strong>
+              <small>Keep Coach/Overview, Academics, Leadership, Health, Fitness, Brand, teammate stats and scoring-summary context out of this lane.</small>
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }} />
 
             {files.length ? (
               <div className="dhq-session-import__queue">
-                <div className="dhq-session-import__queue-head"><span><FileImage size={14} /> READY TO PROCESS</span><small>{files.length} file{files.length === 1 ? '' : 's'} · {formatBytes(totalBytes)}</small></div>
+                <div className="dhq-session-import__queue-head"><span><FileImage size={14} /> GAME DATA READY</span><small>{files.length} file{files.length === 1 ? '' : 's'} · {formatBytes(totalBytes)}</small></div>
                 <div className="dhq-session-import__file-grid">
                   {files.map((file, index) => (
                     <div key={`${file.name}:${file.size}:${file.lastModified}`}>
@@ -272,45 +302,83 @@ const SessionImportPortal = () => {
 
             <div className="dhq-session-import__actions">
               <button type="button" className="is-secondary" onClick={() => closeWorkspace()}><ArrowLeft size={15} /> Back</button>
-              <button type="button" className="is-primary" disabled={!files.length} onClick={processSession}>PROCESS SESSION <ChevronRight size={16} /></button>
+              <button type="button" className="is-primary" disabled={!files.length} onClick={processGameData}>ANALYZE GAME DATA <ChevronRight size={16} /></button>
             </div>
-            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Nothing is published automatically.</strong> Extracted facts still pass through DynastyHQ’s verification desk before they can update the week.</span></div>
+            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Three lanes, three jobs.</strong> DynastyHQ will not use the RTG Status or Coverage Data lanes to overwrite your verified game line.</span></div>
           </section>
         ) : null}
 
         {phase === 'analyzing' ? (
           <section className="dhq-session-import__card dhq-session-import__processing-card">
             <div className="dhq-session-import__processing-icon"><Loader2 size={34} /></div>
-            <span>PROCESS WEEK</span>
-            <h1 id="dhq-session-import-title">Reading {files.length} screenshot{files.length === 1 ? '' : 's'}…</h1>
-            <p>The scanner is identifying scores, player stats, game context, and other supported facts. It will surface anything uncertain instead of guessing.</p>
+            <span>GAME DATA · ANALYZING</span>
+            <h1 id="dhq-session-import-title">Reading {files.length} game screenshot{files.length === 1 ? '' : 's'}…</h1>
+            <p>The verified scanner is identifying the result, your stat line, supported game context and official in-game coverage. Uncertain reads will be flagged instead of guessed.</p>
             <div className="dhq-session-import__scanline"><i /></div>
-            <div className="dhq-session-import__processing-stats"><div><strong>{files.length}</strong><span>SCREENS</span></div><div><Sparkles size={18} /><span>AI ANALYSIS</span></div><div><ShieldCheck size={18} /><span>VERIFY NEXT</span></div></div>
+            <div className="dhq-session-import__processing-stats"><div><strong>{files.length}</strong><span>GAME SCREENS</span></div><div><Sparkles size={18} /><span>AI ANALYSIS</span></div><div><ShieldCheck size={18} /><span>VERIFY NEXT</span></div></div>
           </section>
         ) : null}
 
         {phase === 'review' ? (
           <section className="dhq-session-import__review-heading" aria-live="polite">
-            <span><ShieldCheck size={14} /> VERIFICATION DESK</span>
-            <strong>Review only what DynastyHQ flags. High-confidence facts can stay untouched.</strong>
+            <span><ShieldCheck size={14} /> GAME DATA · VERIFICATION DESK</span>
+            <strong>Review only what DynastyHQ flags. Apply the verified Game Data to unlock RTG Status.</strong>
           </section>
         ) : null}
 
-        {phase === 'applied' ? (
-          <section className="dhq-session-import__card dhq-session-import__complete-card">
-            <div className="dhq-session-import__complete-icon"><CheckCircle2 size={38} /></div>
-            <span>SESSION CONFIRMED</span>
-            <h1 id="dhq-session-import-title">Verified data is ready in Game Hub.</h1>
-            <p>Your reviewed scanner draft has been applied to the current week. Nothing was invented, and the week is still yours to publish from Game Hub.</p>
-            <div className="dhq-session-import__complete-actions">
-              <button type="button" className="is-secondary" onClick={() => closeWorkspace({ home: true })}>RETURN HOME</button>
-              <button type="button" className="is-primary" onClick={() => closeWorkspace({ focusApplied: true })}>CONTINUE TO GAME HUB <ChevronRight size={16} /></button>
+        {phase === 'rtg' ? (
+          <section className="dhq-session-import__card dhq-session-import__lane-card">
+            <div className="dhq-session-import__lane-header">
+              <span><Sparkles size={17} /> 2 · RTG STATUS</span>
+              <strong className={rtgCurrent ? 'is-complete' : ''}>{rtgCurrent ? 'UPDATED' : 'RECOMMENDED'}</strong>
+              <h1 id="dhq-session-import-title">Now update the player state.</h1>
+              <p>This lane is only for the RTG menus: Coach / Overview, Academics, Leadership, Health, Fitness and Brand. It updates OVR, role, Coach Trust, Skill Points, GPA and other career-state values — never your Week {week} game stats.</p>
+            </div>
+            <div id="dhq-weekly-rtg-data-host" data-session-import-host="rtg" className="dhq-session-import__embedded-scanner" />
+            <div className="dhq-session-import__actions">
+              {!rtgCurrent ? <button type="button" className="is-secondary" onClick={() => { setRtgSkipped(true); setPhase('coverage'); }}>SKIP — NOTHING CHANGED</button> : null}
+              <button type="button" className="is-primary" disabled={!rtgCurrent} onClick={() => setPhase('coverage')}>CONTINUE TO COVERAGE <ChevronRight size={16} /></button>
             </div>
           </section>
         ) : null}
+
+        {phase === 'coverage' ? (
+          <section className="dhq-session-import__card dhq-session-import__lane-card">
+            <div className="dhq-session-import__lane-header">
+              <span><Newspaper size={17} /> 3 · COVERAGE DATA</span>
+              <strong className={coverageSaved ? 'is-complete' : ''}>{coverageSaved ? 'ADDED' : 'OPTIONAL'}</strong>
+              <h1 id="dhq-session-import-title">Add context only if the story needs it.</h1>
+              <p>Teammate stats, opponent stats and scoring-summary screens belong here. They can enrich The Newsroom and The Huddle, but this lane cannot overwrite your RTG stats or career totals.</p>
+            </div>
+            <div id="dhq-weekly-coverage-data-host" data-session-import-host="coverage" className="dhq-session-import__embedded-scanner" />
+            <div className="dhq-session-import__actions">
+              <button type="button" className="is-secondary" onClick={() => setPhase('rtg')}><ArrowLeft size={15} /> RTG Status</button>
+              {!coverageSaved ? <button type="button" className="is-secondary" onClick={() => { setCoverageSkipped(true); setPhase('ready'); }}>SKIP OPTIONAL COVERAGE</button> : null}
+              <button type="button" className="is-primary" disabled={!coverageSaved} onClick={() => setPhase('ready')}>CONTINUE TO PROCESS WEEK <ChevronRight size={16} /></button>
+            </div>
+          </section>
+        ) : null}
+
+        {phase === 'ready' ? (
+          <section className="dhq-session-import__card dhq-session-import__complete-card dhq-session-import__ready-card">
+            <div className="dhq-session-import__complete-icon"><CheckCircle2 size={38} /></div>
+            <span>4 · PROCESS WEEK</span>
+            <h1 id="dhq-session-import-title">The week is cleanly separated and ready.</h1>
+            <p>Game Data is verified. RTG Status and Coverage Data were either updated in their own lanes or deliberately skipped. Process Week can now build the Week {week} story without mixing data sources.</p>
+            <div className="dhq-session-import__ready-summary">
+              <div className="is-done"><ScanLine size={16} /><span><small>GAME DATA</small><strong>VERIFIED</strong></span></div>
+              <div className={rtgCurrent ? 'is-done' : 'is-skipped'}><Sparkles size={16} /><span><small>RTG STATUS</small><strong>{rtgCurrent ? 'UPDATED' : rtgSkipped ? 'NO CHANGES' : 'SKIPPED'}</strong></span></div>
+              <div className={coverageSaved ? 'is-done' : 'is-skipped'}><Newspaper size={16} /><span><small>COVERAGE DATA</small><strong>{coverageSaved ? 'ADDED' : coverageSkipped ? 'OPTIONAL · SKIPPED' : 'NOT ADDED'}</strong></span></div>
+            </div>
+            <div className="dhq-session-import__complete-actions">
+              <button type="button" className="is-secondary" onClick={() => setPhase('coverage')}><ArrowLeft size={15} /> Coverage</button>
+              <button type="button" className="is-primary" onClick={() => closeWorkspace({ focusApplied: true })}>OPEN PROCESS WEEK <ChevronRight size={16} /></button>
+            </div>
+            <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Nothing publishes from this screen.</strong> Process Week still gives you the final verification and publishing decision.</span></div>
+          </section>
+        ) : null}
       </main>
-    </div>,
-    document.body,
+    </div>
   );
 };
 

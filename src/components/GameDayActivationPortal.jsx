@@ -33,7 +33,9 @@ const GameDayActivationPortal = () => {
 
       const liveHost = hub.querySelector('[data-game-day-pregame="v2"]');
       const pregameHero = hub.querySelector('.dhq-gh-hero.is-pregame');
-      const scheduleDerived = Boolean(next && liveHost && pregameHero);
+      const liveActive = Boolean(liveHost && pregameHero);
+      const scheduleDerived = Boolean(next && liveActive);
+      hub.classList.toggle('dhq-game-day-live-active', liveActive);
       hub.classList.toggle('dhq-game-day-live-schedule-derived', scheduleDerived);
       if (scheduleDerived) {
         hub.dataset.dhqGameDayWeek = String(next.week);
@@ -58,7 +60,8 @@ const GameDayActivationPortal = () => {
     observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true, attributeFilter: ['class'] });
     return () => {
       observer.disconnect();
-      document.querySelector('.dhq-game-hub')?.classList.remove('dhq-game-day-live-schedule-derived');
+      const hub = document.querySelector('.dhq-game-hub');
+      hub?.classList.remove('dhq-game-day-live-active', 'dhq-game-day-live-schedule-derived');
     };
   }, [career]);
 

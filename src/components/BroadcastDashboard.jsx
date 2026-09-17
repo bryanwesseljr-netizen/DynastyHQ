@@ -101,7 +101,10 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const newsItems = latestNewsItems(state);
   const chronicle = [...(state.careerChronicle || [])].filter(Boolean).reverse().slice(0, 4);
   const latestPodcast = [...(state.podcastEpisodes || [])].filter(Boolean).reverse().at(0) || null;
-  const record = `${model.record?.wins || 0}-${model.record?.losses || 0}`;
+  const currentRecord = `${model.record?.wins || 0}-${model.record?.losses || 0}`;
+  const record = immersion.mode === 'postgame' && immersion.latestGameRecord
+    ? `${immersion.latestGameRecord.wins || 0}-${immersion.latestGameRecord.losses || 0}`
+    : currentRecord;
   const compPct = state.rtg?.completionPct || state.rtg?.compPct || model.totals?.completionPct;
   const gameDate = formatDate(latestGame?.publishedAt || latestGame?.date || latestGame?.occurredAt);
   const stageLabel = model.stage === 'OC' ? 'OFFENSIVE COORDINATOR' : model.stage === 'HC' ? 'HEAD COACH' : model.stage === 'Retired' ? 'LEGACY' : display(player.pos, 'PLAYER');

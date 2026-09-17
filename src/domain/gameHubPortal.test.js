@@ -34,7 +34,7 @@ test('Game Hub preserves the verified scanner through an explicit one-shot legac
   assert.match(sessionImport, /findButton\(\/\^game hub\$\/i\)/);
 });
 
-test('Game Hub can launch Session Import without routing through the old page', async () => {
+test('Game Hub can launch Session Import and the redesigned session hands back to Process Week', async () => {
   const [gameHub, sessionImport] = await Promise.all([
     readFile(gameHubUrl, 'utf8'),
     readFile(sessionImportUrl, 'utf8'),
@@ -42,7 +42,8 @@ test('Game Hub can launch Session Import without routing through the old page', 
 
   assert.match(gameHub, /dynastyhq:open-session-import/);
   assert.match(sessionImport, /addEventListener\('dynastyhq:open-session-import'/);
-  assert.match(sessionImport, /CONTINUE TO GAME HUB/);
+  assert.match(sessionImport, /OPEN PROCESS WEEK/);
+  assert.match(sessionImport, /closeWorkspace\(\{ focusApplied: true \}\)/);
 });
 
 test('Game Hub matches the broadcast homepage framing and remains responsive', async () => {

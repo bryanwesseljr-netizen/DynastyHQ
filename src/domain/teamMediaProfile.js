@@ -186,7 +186,9 @@ export const resolveTeamMediaProfile = ({ school = '', outletProfile = null, sta
     || effectiveOutletProfile?.nationalOutletName,
   ) || 'College Football Central';
   const teamNewsLabel = clean(override.teamNewsLabel || catalogProfile.teamNewsLabel) || `${shortName} Football`;
-  const podcastName = clean(override.podcastName || catalogProfile.podcastName) || `${shortName} Football Notebook`;
+  // The show identity is universal across schools. Team profiles can still
+  // supply subtitle/tagline/colors, but they must never rename The Huddle.
+  const podcastName = 'The Huddle Podcast';
 
   return {
     school: resolvedSchool,

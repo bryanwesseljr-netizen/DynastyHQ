@@ -12,12 +12,19 @@ test('owner enhancements mount the zero-work immersion and universal podcast lay
   assert.match(owner, /<PodcastUniversalBrandPortal \/>/);
 });
 
-test('immersion surfaces expose season pulse, stakes, memory lane, postgame wrap and record book', () => {
+test('Game Day Live owns pregame storytelling while legacy immersion keeps postgame and career history', () => {
   const portal = read('../components/ImmersionPortal.jsx');
+  const gameDay = read('../components/GameDayPregamePortal.jsx');
+
   assert.match(portal, /SEASON PULSE/);
-  assert.match(portal, /WHAT'S AT STAKE/);
-  assert.match(portal, /MEMORY LANE/);
   assert.match(portal, /DYNASTYHQ BROADCAST WRAP/);
   assert.match(portal, /Career Record Book/);
   assert.match(portal, /THE HUDDLE PODCAST/);
+  assert.doesNotMatch(portal, /WHAT'S AT STAKE/);
+  assert.doesNotMatch(portal, /MEMORY LANE/);
+
+  assert.match(gameDay, /GAME DAY LIVE/);
+  assert.match(gameDay, /WHAT'S AT STAKE/);
+  assert.match(gameDay, /AROUND THE PROGRAM/);
+  assert.match(gameDay, /PLAYER SPOTLIGHT/);
 });

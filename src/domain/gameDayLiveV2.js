@@ -16,6 +16,21 @@ const scoreText = (entry = {}) => (
     : ''
 );
 
+const recordFromEntries = (entries = []) => {
+  const results = list(entries)
+    .map((entry) => clean(entry?.result).toUpperCase())
+    .filter((result) => result === 'W' || result === 'L');
+  if (!results.length) return '';
+  const wins = results.filter((result) => result === 'W').length;
+  const losses = results.filter((result) => result === 'L').length;
+  return `${wins}-${losses}`;
+};
+
+const venueCity = (venue = '') => {
+  const parts = clean(venue).split(',').map((part) => part.trim()).filter(Boolean);
+  return parts.length >= 3 ? parts.at(-2) : '';
+};
+
 const scheduleContext = (state = {}, season = 1, week = 0) => {
   const schedule = seasonScheduleFor(state, season);
   if (!schedule?.entries?.length) return { current: null, recent: [], next: [] };
@@ -87,20 +102,45 @@ const teamResultSentence = (brief, entry) => {
   return `${brief.school} ${result === 'W' ? 'beat' : result === 'L' ? 'fell to' : 'played'} ${clean(entry.opponent)}${score ? ` ${score}` : ''}.`;
 };
 
+const playerStoryTitle = (brief, playerName, role) => {
+  if (role === 'QB1') return `${playerName} leads ${brief.school} into Week ${brief.week} as the starter`;
+  if (role) return `${playerName} enters Week ${brief.week} as ${brief.school}'s ${role}`;
+  return `${playerName} enters Week ${brief.week} in the spotlight`;
+};
+
+const momentumTitle = (brief, entry = {}) => {
+  const result = clean(entry.result).toUpperCase();
+  const opponent = clean(entry.opponent);
+  if (result === 'W') return `${brief.school} carries momentum from ${opponent}`;
+  if (result === 'L') return `${brief.school} gets a response opportunity after ${opponent}`;
+  return `${brief.school} turns the page from ${opponent}`;
+};
+
+const nextTestTitle = (brief, schedule = {}) => {
+  if (schedule.current?.homeAway === 'away') {
+    const city = venueCity(brief.venue);
+    return city ? `The next test comes on the road in ${city}` : 'The next test comes on the road';
+  }
+  if (schedule.current?.homeAway === 'home') return `${brief.school} gets the next test at home`;
+  if (schedule.current?.homeAway === 'neutral') return 'A neutral-site test is next';
+  return `Week ${brief.week} brings the next test`;
+};
+
 const stakesFor = ({ brief, latestGame, setup = {}, schedule = {} }) => {
   const items = [];
   const role = clean(brief.player?.role).toUpperCase();
   const playerName = clean(brief.player?.name) || 'The quarterback';
   const coachTrust = brief.player?.coachTrust;
+  const enteringRecord = recordFromEntries(schedule.recent) || clean(brief.record);
 
-  if (role) {
+  if (playerName) {
     const lastLine = playerLineSentence(latestGame);
     items.push({
       label: 'YOUR STORY',
-      title: `${role} moves into Week ${brief.week} against ${brief.opponent}`,
+      title: playerStoryTitle(brief, playerName, role),
       detail: latestGame
-        ? `${playerName}'s last player line came against ${clean(latestGame.opponent)}: ${lastLine}.${coachTrust !== null ? ` Coach Trust is ${numberOf(coachTrust).toLocaleString()}.` : ''}`
-        : `${playerName} enters the matchup as ${role}.${coachTrust !== null ? ` Coach Trust is ${numberOf(coachTrust).toLocaleString()}.` : ''}`,
+        ? `${playerName}'s last verified appearance came against ${clean(latestGame.opponent)}: ${lastLine}.${coachTrust !== null ? ` Coach Trust: ${numberOf(coachTrust).toLocaleString()}.` : ''}`
+        : `${playerName} enters the matchup${role ? ` as ${role}` : ''}.${coachTrust !== null ? ` Coach Trust: ${numberOf(coachTrust).toLocaleString()}.` : ''}`,
     });
   }
 
@@ -108,31 +148,32 @@ const stakesFor = ({ brief, latestGame, setup = {}, schedule = {} }) => {
   if (latestTeamResult) {
     items.push({
       label: 'TEAM MOMENTUM',
-      title: `${brief.school} enters ${brief.opponent} week at ${brief.record}`,
-      detail: `${teamResultSentence(brief, latestTeamResult)} The focus now shifts to Week ${brief.week}.`,
+      title: momentumTitle(brief, latestTeamResult),
+      detail: `${teamResultSentence(brief, latestTeamResult)}${enteringRecord ? ` ${brief.school} enters Week ${brief.week} at ${enteringRecord}.` : ''}`,
     });
   }
 
   const rank = clean(brief.matchup?.rank);
+  const opponentRecord = clean(brief.matchup?.record);
   if (rank) {
     items.push({
       label: 'THE STAGE',
-      title: `${brief.opponent} comes in at ${rank.startsWith('#') ? rank : `#${rank}`}`,
-      detail: clean(brief.matchup?.record)
-        ? `${brief.opponent} enters ${clean(brief.matchup.record)}. ${brief.venue ? `${brief.venue} is the setting.` : ''}`.trim()
-        : `${brief.venue ? `${brief.venue} is the setting for` : 'Week ' + brief.week + ' brings'} the next test.`,
+      title: `${brief.opponent} brings a ${rank.startsWith('#') ? rank : `#${rank}`} matchup`,
+      detail: [
+        opponentRecord ? `${brief.opponent} enters ${opponentRecord}` : '',
+        clean(brief.matchup?.kickoff),
+        clean(brief.matchup?.venue),
+      ].filter(Boolean).join(' · ') || `Week ${brief.week} brings the next test.`,
     });
   } else {
-    const site = schedule.current?.homeAway === 'home'
-      ? `${brief.opponent} comes to ${brief.school}`
-      : schedule.current?.homeAway === 'away'
-        ? `${brief.school} goes on the road to face ${brief.opponent}`
-        : `${brief.school} meets ${brief.opponent}`;
     items.push({
       label: 'NEXT TEST',
-      title: site,
-      detail: [clean(brief.matchup?.kickoff), clean(brief.matchup?.venue)].filter(Boolean).join(' · ')
-        || `Week ${brief.week} is next on the schedule.`,
+      title: nextTestTitle(brief, schedule),
+      detail: [
+        opponentRecord ? `${brief.opponent} enters ${opponentRecord}` : brief.opponent,
+        clean(brief.matchup?.kickoff),
+        clean(brief.matchup?.venue),
+      ].filter(Boolean).join(' · ') || `Week ${brief.week} is next on the schedule.`,
     });
   }
 
@@ -190,10 +231,11 @@ export const buildGameDayLiveV2 = (state = {}) => {
   const venue = clean(brief.matchup?.venue)
     || (schedule.current?.homeAway === 'home' ? 'Home' : schedule.current?.homeAway === 'away' ? 'Away' : schedule.current?.homeAway === 'neutral' ? 'Neutral site' : '');
   const kickoff = clean(brief.matchup?.kickoff || schedule.current?.date);
-  const enrichedBrief = { ...brief, venue, kickoff };
+  const enteringRecord = recordFromEntries(schedule.recent) || brief.record;
+  const enrichedBrief = { ...brief, record: enteringRecord, venue, kickoff };
 
   return {
-    ...brief,
+    ...enrichedBrief,
     activationSource: effective.source,
     venue,
     kickoff,

@@ -1,8 +1,11 @@
-.dhq-game-hub.dhq-game-day-live-schedule-derived .dhq-gh-hero.is-pregame,
-.dhq-game-hub.dhq-game-day-live-schedule-derived .dhq-gh-progress {
+.dhq-game-hub.dhq-game-day-live-active .dhq-gh-hero.is-pregame,
+.dhq-game-hub.dhq-game-day-live-active .dhq-gh-progress,
+.dhq-game-hub.dhq-game-day-live-active .dhq-gh-pregame-grid,
+.dhq-game-hub.dhq-game-day-live-active .dhq-gh-official-card,
+.dhq-game-hub.dhq-game-day-live-active #dhq-immersion-game-host {
   display: none !important;
 }
 
-.dhq-game-hub.dhq-game-day-live-schedule-derived [data-game-day-pregame="v2"] {
+.dhq-game-hub.dhq-game-day-live-active [data-game-day-pregame="v2"] {
   margin-top: 0;
 }

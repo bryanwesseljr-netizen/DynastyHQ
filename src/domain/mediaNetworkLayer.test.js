@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildMediaNetworkLayer } from './mediaNetworkLayer.js';
+import { buildMediaNetworkLayer, latestMeaningfulMediaContext } from './mediaNetworkLayer.js';
 
 test('media network keeps official in-game coverage separate from DynastyHQ editorial media', () => {
   const state = {
@@ -41,4 +41,36 @@ test('legacy official evidence stays available as archive metadata but never bec
   assert.equal(model.official.headline, '');
   assert.equal(model.ticker.some((item) => item.source === 'EA SPORTS NETWORK'), false);
   assert.equal(model.ticker.some((item) => /verified official-coverage facts preserved/i.test(item.text)), false);
+});
+
+test('home and pregame surfaces keep the latest real media story even when the team schedule has advanced', () => {
+  const state = {
+    currentSeason: 2,
+    currentWeek: 5,
+    player: { college: 'Oregon' },
+    seasonSchedules: [{
+      season: 2,
+      school: 'Oregon',
+      entries: [
+        { week: 2, opponent: 'Baylor', status: 'completed', result: 'L', teamScore: 21, opponentScore: 45 },
+        { week: 3, opponent: 'Oregon State', status: 'completed', result: 'W', teamScore: 33, opponentScore: 15 },
+        { week: 5, opponent: 'Michigan State', status: 'upcoming', homeAway: 'home' },
+      ],
+    }],
+    newsroomIssues: [{
+      season: 2,
+      week: 2,
+      publicationId: 'season-2-week-2',
+      articles: [{ headline: 'Oregon Falls to Baylor in Season Opener', dek: 'The first start became a difficult road test.' }],
+    }],
+    podcastEpisodes: [{ season: 2, week: 2, publicationId: 'season-2-week-2', title: 'Oregon Week 2: The Reality Check', status: 'published', audioStatus: 'ready' }],
+  };
+
+  const context = latestMeaningfulMediaContext(state);
+  assert.equal(context.season, 2);
+  assert.equal(context.week, 2);
+  assert.equal(context.opponent, 'Baylor');
+  const media = buildMediaNetworkLayer(state, context);
+  assert.equal(media.dynasty.newsroomReady, true);
+  assert.equal(media.dynasty.podcastReady, true);
 });

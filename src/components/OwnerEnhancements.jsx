@@ -5,6 +5,7 @@ import SessionImportPortal from './SessionImportPortal.jsx';
 import SeasonSchedulePortal from './SeasonSchedulePortal.jsx';
 import MediaNetworkLayerPortal from './MediaNetworkLayerPortal.jsx';
 import ImmersiveExperienceV3Portal from './ImmersiveExperienceV3Portal.jsx';
+import ExperienceRepairPortal from './ExperienceRepairPortal.jsx';
 import SeasonWirePortal from './SeasonWirePortal.jsx';
 import GameHubOverviewSchedulePortal from './GameHubOverviewSchedulePortal.jsx';
 import CareerOverviewPortal from './CareerOverviewPortal.jsx';
@@ -67,6 +68,7 @@ const OwnerEnhancements = () => (
     <SeasonSchedulePortal />
     <MediaNetworkLayerPortal />
     <ImmersiveExperienceV3Portal />
+    <ExperienceRepairPortal />
     <SeasonWirePortal />
     <GameHubOverviewSchedulePortal />
     <PodcastUniversalBrandPortal />

@@ -410,6 +410,12 @@ body.dhq-session-import-review .dhq-weekly-agenda-workspace {
   pointer-events: none !important;
 }
 
+/* Weekly Agenda normally hides the legacy scanner wrapper. During Session Import review,
+   re-open only the wrapper that owns the live verification desk so flagged facts are visible. */
+body.dhq-session-import-review .dhq-weekly-agenda-v2 .dhq-agenda-v2-legacy-scanner:has(.dhq-postgame-review) {
+  display: block !important;
+}
+
 body.dhq-session-import-review .dhq-weekly-agenda-workspace * { visibility: hidden; }
 
 body.dhq-session-import-review .dhq-postgame-review,

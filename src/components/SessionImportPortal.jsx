@@ -162,6 +162,32 @@ const SessionImportPortal = () => {
   }, [publicationId]);
 
   useEffect(() => {
+    if (!open || phase !== 'review') return undefined;
+    const root = document.getElementById('root') || document.body;
+    const marked = new Set();
+    const revealReviewPath = () => {
+      marked.forEach((node) => node?.classList?.remove('dhq-session-import-review-path'));
+      marked.clear();
+      const review = document.querySelector('.dhq-postgame-review');
+      const agenda = review?.closest?.('.dhq-weekly-agenda-workspace');
+      if (!review || !agenda) return;
+      let node = review.parentElement;
+      while (node && node !== agenda) {
+        node.classList.add('dhq-session-import-review-path');
+        marked.add(node);
+        node = node.parentElement;
+      }
+    };
+    revealReviewPath();
+    const observer = new MutationObserver(revealReviewPath);
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    return () => {
+      observer.disconnect();
+      marked.forEach((node) => node?.classList?.remove('dhq-session-import-review-path'));
+    };
+  }, [open, phase]);
+
+  useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
     const refresh = () => {
       const review = document.querySelector('.dhq-postgame-review');

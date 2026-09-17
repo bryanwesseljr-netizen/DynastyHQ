@@ -7,6 +7,7 @@ const targetFromLabel = (value) => {
   if (/^(home|dashboard)$/.test(label)) return 'home';
   if (/^(career|legacy)$/.test(label)) return 'career';
   if (/^(game hub|weekly agenda|log weekly agenda)$/.test(label)) return 'gameHub';
+  if (/^(offseason|offseason war room)$/.test(label)) return 'offseason';
   if (/^(the )?newsroom$/.test(label)) return 'newsroom';
   if (label === 'chronicle') return 'chronicle';
   if (/^(podcast|gridiron grind podcast)$/.test(label)) return 'podcast';
@@ -36,12 +37,14 @@ const activeFromDom = () => {
   // reports dashboard/Home while the portal handoff is settling.
   if (document.querySelector('.dhq-career-overview')) return 'career';
   if (document.querySelector('.dhq-game-hub')) return 'gameHub';
+  if (document.body.classList.contains('dhq-player-offseason-open')) return 'offseason';
   if (document.body.classList.contains('dhq-career-overview-open')) return 'career';
   if (document.body.classList.contains('dhq-game-hub-open')) return 'gameHub';
 
   const activeTab = document.querySelector('main.dhq-page-main')?.dataset?.activeTab || 'dashboard';
   if (activeTab === 'trophies') return 'career';
   if (activeTab === 'dataEntry') return 'gameHub';
+  if (activeTab === 'offseason') return 'offseason';
   if (activeTab === 'dashboard') return 'home';
   if (['newsroom', 'chronicle', 'podcast'].includes(activeTab)) return activeTab;
   return 'home';
@@ -240,9 +243,9 @@ const NavigationStatePortal = () => {
     document.addEventListener('pointerdown', captureIntent, true);
     document.addEventListener('click', captureIntent, true);
 
-    // Observe both body classes and portal insertion/removal. Career/Game Hub
-    // render as body-level portals, outside #root, so watching only #root misses
-    // the most authoritative state change.
+    // Observe both body classes and portal insertion/removal. Career, Game Hub,
+    // and the player Offseason experience render as portals, outside the normal
+    // app route, so their visible portal state is authoritative.
     const bodyObserver = new MutationObserver(scheduleSync);
     bodyObserver.observe(document.body, {
       childList: true,

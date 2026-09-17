@@ -166,17 +166,26 @@ const SessionImportPortal = () => {
     const root = document.getElementById('root') || document.body;
     const marked = new Set();
     const revealReviewPath = () => {
-      marked.forEach((node) => node?.classList?.remove('dhq-session-import-review-path'));
-      marked.clear();
+      const next = new Set();
       const review = document.querySelector('.dhq-postgame-review');
       const agenda = review?.closest?.('.dhq-weekly-agenda-workspace');
-      if (!review || !agenda) return;
-      let node = review.parentElement;
+      let node = agenda ? review.parentElement : null;
       while (node && node !== agenda) {
-        node.classList.add('dhq-session-import-review-path');
-        marked.add(node);
+        next.add(node);
         node = node.parentElement;
       }
+      // This observer also watches class changes. Only write actual differences,
+      // otherwise revealing the desk continuously retriggers its own observer.
+      marked.forEach((entry) => {
+        if (!next.has(entry)) entry.classList.remove('dhq-session-import-review-path');
+      });
+      marked.clear();
+      next.forEach((entry) => {
+        if (!entry.classList.contains('dhq-session-import-review-path')) {
+          entry.classList.add('dhq-session-import-review-path');
+        }
+        marked.add(entry);
+      });
     };
     revealReviewPath();
     const observer = new MutationObserver(revealReviewPath);

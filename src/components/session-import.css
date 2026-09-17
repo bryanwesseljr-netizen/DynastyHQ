@@ -435,6 +435,141 @@ body.dhq-session-import-review .dhq-postgame-review > div:first-child {
 
 body.dhq-session-import-review .dhq-postgame-review button:not(:disabled) { cursor: pointer; }
 
+.dhq-session-import__lane-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.dhq-session-import__lane-guide > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  background: rgba(2, 8, 14, 0.34);
+  padding: 11px 12px;
+  color: #64748b;
+}
+
+.dhq-session-import__lane-guide > div.is-active {
+  border-color: rgba(251, 191, 36, 0.34);
+  background: rgba(251, 191, 36, 0.055);
+  color: #fbbf24;
+}
+
+.dhq-session-import__lane-guide svg { flex: 0 0 auto; }
+.dhq-session-import__lane-guide span { min-width: 0; }
+.dhq-session-import__lane-guide strong { display: block; color: #cbd5e1; font-size: 8px; font-weight: 950; letter-spacing: 0.11em; }
+.dhq-session-import__lane-guide small { display: block; margin-top: 3px; overflow: hidden; color: #64748b; font-size: 8px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+
+.dhq-session-import__lane-card {
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.dhq-session-import__lane-header {
+  position: relative;
+  padding-right: 130px;
+}
+
+.dhq-session-import__lane-header > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #fbbf24;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dhq-session-import__lane-header > strong {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.07);
+  padding: 6px 9px;
+  color: #93c5fd;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.11em;
+}
+
+.dhq-session-import__lane-header > strong.is-complete {
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(34, 197, 94, 0.08);
+  color: #86efac;
+}
+
+.dhq-session-import__lane-header p {
+  max-width: 820px;
+  margin-top: 14px;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.dhq-session-import__embedded-scanner {
+  min-height: 118px;
+  margin-top: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 15px;
+  background: rgba(2, 8, 14, 0.34);
+  padding: 15px;
+}
+
+.dhq-session-import__embedded-scanner:empty::before {
+  content: 'Loading verified lane…';
+  display: block;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dhq-session-import__embedded-scanner .dhq-rtg-intake-top,
+.dhq-session-import__embedded-scanner .dhq-coverage-intake-top {
+  margin: 0;
+}
+
+.dhq-session-import__embedded-scanner .dhq-intake-status-grid {
+  margin-top: 14px;
+}
+
+.dhq-session-import__ready-card { min-height: 500px; }
+
+.dhq-session-import__ready-summary {
+  display: grid;
+  width: min(760px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.dhq-session-import__ready-summary > div {
+  display: flex;
+  min-height: 88px;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 13px;
+  background: rgba(2, 8, 14, 0.34);
+  padding: 14px;
+  text-align: left;
+}
+
+.dhq-session-import__ready-summary > div.is-done { border-color: rgba(74, 222, 128, 0.28); }
+.dhq-session-import__ready-summary > div.is-done svg { color: #4ade80; }
+.dhq-session-import__ready-summary > div.is-skipped svg { color: #64748b; }
+.dhq-session-import__ready-summary span { min-width: 0; }
+.dhq-session-import__ready-summary small { display: block; color: #64748b; font-size: 7px; font-weight: 950; letter-spacing: 0.12em; }
+.dhq-session-import__ready-summary strong { display: block; margin-top: 4px; color: #e2e8f0; font-size: 10px; font-weight: 950; }
+
 @keyframes dhq-session-spin { to { transform: rotate(360deg); } }
 @keyframes dhq-session-scan { 0%, 100% { transform: translateX(-15%); } 50% { transform: translateX(215%); } }
 
@@ -448,20 +583,27 @@ body.dhq-session-import-review .dhq-postgame-review button:not(:disabled) { curs
   .dhq-session-import__context { display: none; }
   .dhq-session-import__stepbar { top: 56px; min-height: 50px; justify-content: space-between; padding: 0 12px; }
   .dhq-session-import__stepbar > div { font-size: 7px; letter-spacing: 0.07em; }
+  .dhq-session-import__stepbar > div span { max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dhq-session-import__stepbar i { width: 22px; height: 22px; margin-right: 5px; }
-  .dhq-session-import__stepbar b { width: 10px; margin: 0 6px; }
+  .dhq-session-import__stepbar b { width: 8px; margin: 0 4px; }
   .dhq-session-import__main { width: calc(100% - 20px); padding: 18px 0 30px; }
-  .dhq-session-import__upload-card { padding: 20px 16px; }
+  .dhq-session-import__upload-card, .dhq-session-import__lane-card { padding: 20px 16px; }
   .dhq-session-import h1 { font-size: 28px; line-height: 1.02; }
-  .dhq-session-import__headline p, .dhq-session-import__processing-card > p, .dhq-session-import__complete-card > p { font-size: 11px; }
+  .dhq-session-import__headline p, .dhq-session-import__processing-card > p, .dhq-session-import__complete-card > p, .dhq-session-import__lane-header p { font-size: 11px; }
   .dhq-session-import__meta-row { grid-template-columns: 70px minmax(0, 1fr) 92px; margin-top: 22px; }
   .dhq-session-import__meta-row > div { padding: 10px 9px; }
   .dhq-session-import__meta-row strong { font-size: 10px; }
+  .dhq-session-import__lane-guide { grid-template-columns: 1fr; }
+  .dhq-session-import__lane-guide small { white-space: normal; }
   .dhq-session-import__dropzone { min-height: 166px; padding: 18px; }
-  .dhq-session-import__dropzone small { max-width: 240px; text-align: center; line-height: 1.45; }
+  .dhq-session-import__dropzone small { max-width: 280px; text-align: center; line-height: 1.45; }
   .dhq-session-import__file-grid { grid-template-columns: 1fr; }
+  .dhq-session-import__lane-header { padding-right: 0; }
+  .dhq-session-import__lane-header > strong { position: static; display: inline-block; margin: 10px 0 2px; }
+  .dhq-session-import__embedded-scanner { padding: 10px; }
+  .dhq-session-import__ready-summary { grid-template-columns: 1fr; }
   .dhq-session-import__actions, .dhq-session-import__complete-actions { display: grid; grid-template-columns: 1fr; }
-  .dhq-session-import__actions .is-primary { grid-row: 1; }
+  .dhq-session-import__actions .is-primary, .dhq-session-import__complete-actions .is-primary { grid-row: 1; }
   .dhq-session-import__processing-card, .dhq-session-import__complete-card { min-height: 380px; padding: 28px 18px; }
   .dhq-session-import__processing-stats { gap: 6px; }
   .dhq-session-import__processing-stats span { font-size: 6.5px; }

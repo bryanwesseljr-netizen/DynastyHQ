@@ -11,7 +11,9 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
+import { CAREER_STAGES } from '../domain/commandCenter.js';
 import { buildOffseasonPlanner } from '../domain/offseasonPlanner.js';
+import PlayerOffseasonMode from './PlayerOffseasonMode.jsx';
 
 const toneClasses = {
   info: 'border-blue-500/30 bg-blue-950/30 text-blue-100',
@@ -123,6 +125,11 @@ const AllocationPlan = ({ model }) => (
 
 const OffseasonPlanner = ({ state, onNavigate, readOnly = false }) => {
   const model = buildOffseasonPlanner(state);
+
+  if (model.stage === CAREER_STAGES.COLLEGE) {
+    return <PlayerOffseasonMode state={state} onNavigate={onNavigate} readOnly={readOnly} />;
+  }
+
   if (!model.hasOffice) return (
     <div className="relative z-10 mx-auto max-w-3xl rounded-2xl border border-slate-700 bg-slate-900/90 p-10 text-center shadow-2xl">
       <LockKeyhole size={42} className="mx-auto text-slate-600" /><h2 className="mt-4 text-2xl font-black uppercase text-white">Offseason Planner Locked</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-slate-400">This office unlocks after your verified offensive-coordinator hiring milestone.</p>

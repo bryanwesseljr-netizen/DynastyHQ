@@ -1,0 +1,287 @@
+.dhq-process2-inbox {
+  width: min(1080px, calc(100% - 28px));
+  margin: 14px auto;
+  border: 1px solid color-mix(in srgb, var(--team-accent, #60a5fa) 34%, rgba(255,255,255,.08));
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--team-primary, #123) 22%, rgba(6,14,24,.96)), rgba(5,11,20,.97));
+  box-shadow: 0 18px 46px rgba(0,0,0,.28);
+  padding: 16px;
+  color: #f8fafc;
+}
+
+.dhq-process2-inbox > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.dhq-process2-inbox > header > div:first-child { min-width: 0; }
+.dhq-process2-inbox > header span,
+.dhq-process2-confirm__eyebrow,
+.dhq-postgame-premiere > section > span,
+.dhq-postgame-premiere__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--team-accent-contrast, #93c5fd);
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.dhq-process2-inbox h2 {
+  margin: 5px 0 0;
+  color: #fff;
+  font-size: clamp(20px, 4vw, 30px);
+  font-weight: 1000;
+  letter-spacing: -.025em;
+}
+
+.dhq-process2-inbox > header p {
+  max-width: 720px;
+  margin: 5px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.dhq-process2-inbox__meter {
+  min-width: 100px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: center;
+  background: rgba(255,255,255,.035);
+}
+
+.dhq-process2-inbox__meter strong { display: block; color: #fff; font-size: 20px; font-weight: 1000; }
+.dhq-process2-inbox__meter span { color: #64748b; font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+
+.dhq-process2-inbox__detections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dhq-process2-inbox__detections article {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 11px;
+  padding: 10px;
+  background: rgba(255,255,255,.025);
+  color: #86efac;
+}
+
+.dhq-process2-inbox__detections article.is-waiting { color: #93c5fd; }
+.dhq-process2-inbox__detections strong { display: block; color: #e2e8f0; font-size: 9px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.dhq-process2-inbox__detections small { display: block; margin-top: 3px; color: #64748b; font-size: 8px; line-height: 1.4; }
+
+.dhq-process2-inbox__optional,
+.dhq-process2-confirm__will-update,
+.dhq-postgame-premiere__media {
+  margin-top: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(2,6,23,.28);
+}
+
+.dhq-process2-inbox__optional span,
+.dhq-process2-confirm__will-update span,
+.dhq-postgame-premiere__media span {
+  color: #94a3b8;
+  font-size: 7px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.dhq-process2-inbox__optional p,
+.dhq-process2-confirm__will-update p { margin: 4px 0 0; color: #64748b; font-size: 8px; line-height: 1.5; }
+
+.dhq-process2-inbox__actions,
+.dhq-process2-confirm__actions,
+.dhq-postgame-premiere__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.dhq-process2-inbox button,
+.dhq-process2-confirm button,
+.dhq-postgame-premiere button {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dhq-process2-inbox button.is-primary,
+.dhq-process2-confirm button.is-primary,
+.dhq-postgame-premiere button.is-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--team-accent, #3b82f6) 68%, white 10%);
+  background: var(--team-accent, #2563eb);
+  color: var(--team-accent-text, #fff);
+}
+
+.dhq-process2-inbox button.is-secondary,
+.dhq-process2-confirm button.is-secondary,
+.dhq-postgame-premiere button.is-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(148,163,184,.2);
+  background: rgba(15,23,42,.7);
+  color: #cbd5e1;
+}
+
+.dhq-process2-inbox__error {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  border: 1px solid rgba(248,113,113,.25);
+  border-radius: 9px;
+  padding: 9px 11px;
+  background: rgba(127,29,29,.14);
+  color: #fca5a5;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.dhq-process2-inbox.is-ready-to-publish { border-color: rgba(74,222,128,.28); }
+.dhq-process2-inbox.is-almost-ready { border-color: rgba(250,204,21,.28); }
+.dhq-process2-inbox.is-needs-attention { border-color: rgba(248,113,113,.3); }
+.dhq-process2-inbox.is-compact .dhq-process2-inbox__optional { display: none; }
+
+.dhq-process2-confirm,
+.dhq-postgame-premiere {
+  position: fixed;
+  inset: 0;
+  z-index: 100200;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(2,6,23,.82);
+  backdrop-filter: blur(14px);
+}
+
+.dhq-process2-confirm > section {
+  position: relative;
+  width: min(760px, 100%);
+  border: 1px solid color-mix(in srgb, var(--team-accent, #60a5fa) 36%, rgba(255,255,255,.08));
+  border-radius: 18px;
+  padding: 22px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--team-primary, #10243a) 22%, #07111f), #050b14 72%);
+  box-shadow: 0 30px 90px rgba(0,0,0,.5);
+}
+
+.dhq-process2-confirm__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 34px;
+  min-height: 34px !important;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid rgba(148,163,184,.16);
+  background: rgba(15,23,42,.7);
+  color: #cbd5e1;
+}
+
+.dhq-process2-confirm h2 { margin: 8px 42px 0 0; color: #fff; font-size: clamp(24px, 6vw, 42px); line-height: 1; font-weight: 1000; letter-spacing: -.035em; }
+.dhq-process2-confirm > section > p { max-width: 650px; margin: 10px 0 0; color: #94a3b8; font-size: 11px; line-height: 1.6; }
+
+.dhq-process2-confirm__summary,
+.dhq-postgame-premiere__beats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dhq-process2-confirm__summary article,
+.dhq-postgame-premiere__beats article {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,.03);
+}
+
+.dhq-process2-confirm__summary span,
+.dhq-postgame-premiere__beats span { color: #64748b; font-size: 7px; font-weight: 1000; letter-spacing: .1em; }
+.dhq-process2-confirm__summary strong,
+.dhq-postgame-premiere__beats strong { display: block; margin-top: 5px; color: #f8fafc; font-size: 15px; font-weight: 1000; }
+.dhq-process2-confirm__summary small,
+.dhq-postgame-premiere__beats small { display: block; margin-top: 4px; color: #94a3b8; font-size: 8px; line-height: 1.45; }
+
+.dhq-postgame-premiere { overflow-y: auto; }
+.dhq-postgame-premiere__backdrop { position: fixed; inset: 0; background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--team-primary, #164e63) 28%, transparent), transparent 58%); pointer-events: none; }
+.dhq-postgame-premiere > section {
+  position: relative;
+  width: min(900px, 100%);
+  border: 1px solid color-mix(in srgb, var(--team-accent, #60a5fa) 40%, rgba(255,255,255,.08));
+  border-radius: 22px;
+  overflow: hidden;
+  padding: 28px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--team-primary, #153047) 27%, rgba(6,13,23,.97)), rgba(3,8,15,.985));
+  box-shadow: 0 34px 100px rgba(0,0,0,.58);
+}
+
+.dhq-postgame-premiere__live { margin-bottom: 18px; color: #fca5a5; }
+.dhq-postgame-premiere h1 { margin: 6px 0 0; color: #fff; font-size: clamp(48px, 12vw, 94px); line-height: .88; font-weight: 1000; letter-spacing: -.055em; }
+.dhq-postgame-premiere h2 { margin: 10px 0 0; color: #cbd5e1; font-size: clamp(16px, 4vw, 24px); font-weight: 900; letter-spacing: -.015em; }
+.dhq-postgame-premiere__media strong { display: block; margin-top: 5px; color: #f8fafc; font-size: 12px; }
+.dhq-postgame-premiere__media small { display: block; margin-top: 4px; color: #64748b; font-size: 8px; line-height: 1.5; }
+
+.dhq-postgame-premiere__next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 12px;
+  color: var(--team-accent-contrast, #93c5fd);
+}
+.dhq-postgame-premiere__next span { color: #64748b; font-size: 7px; font-weight: 1000; letter-spacing: .11em; }
+.dhq-postgame-premiere__next strong { color: #f8fafc; font-size: 11px; }
+
+@media (max-width: 720px) {
+  .dhq-process2-inbox { width: calc(100% - 18px); padding: 13px; }
+  .dhq-process2-inbox > header { gap: 9px; }
+  .dhq-process2-inbox__meter { min-width: 78px; padding: 8px; }
+  .dhq-process2-inbox__detections { grid-template-columns: 1fr 1fr; }
+  .dhq-process2-confirm, .dhq-postgame-premiere { padding: 0; align-items: end; }
+  .dhq-process2-confirm > section, .dhq-postgame-premiere > section { width: 100%; max-height: 94vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 19px 15px 18px; }
+  .dhq-process2-confirm__summary, .dhq-postgame-premiere__beats { grid-template-columns: 1fr; }
+  .dhq-process2-inbox__actions, .dhq-process2-confirm__actions, .dhq-postgame-premiere__actions { flex-direction: column-reverse; }
+  .dhq-process2-inbox__actions button, .dhq-process2-confirm__actions button, .dhq-postgame-premiere__actions button { width: 100%; }
+  .dhq-postgame-premiere h1 { font-size: clamp(48px, 20vw, 78px); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dhq-postgame-premiere > section { animation: dhq-process2-rise .42s cubic-bezier(.2,.75,.2,1); }
+  .dhq-process2-confirm > section { animation: dhq-process2-rise .24s ease-out; }
+}
+
+@keyframes dhq-process2-rise {
+  from { opacity: 0; transform: translateY(18px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

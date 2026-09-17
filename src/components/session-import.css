@@ -416,6 +416,10 @@ body.dhq-session-import-review .dhq-weekly-agenda-v2 .dhq-agenda-v2-legacy-scann
   display: block !important;
 }
 
+body.dhq-session-import-review .dhq-session-import-review-path {
+  display: block !important;
+}
+
 body.dhq-session-import-review .dhq-weekly-agenda-workspace * { visibility: hidden; }
 
 body.dhq-session-import-review .dhq-postgame-review,

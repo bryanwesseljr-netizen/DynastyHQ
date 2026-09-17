@@ -141,7 +141,10 @@ export const analyzeScreenshot = async ({
     : null;
   if (candidate && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('dynastyhq:official-coverage-captured', {
-      detail: candidate,
+      detail: {
+        ...candidate,
+        sourceImageDataUrl: imageDataUrl,
+      },
     }));
   }
   return normalized;

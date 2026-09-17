@@ -78,3 +78,16 @@ test('Session Import has responsive styling for the lane guide and Process Week 
   assert.match(styles, /\.dhq-session-import__ready-summary/);
   assert.match(styles, /@media \(max-width: 720px\)/);
 });
+
+
+test('Session Import supports pinch zoom and native mobile scrolling without locking the body', async () => {
+  const [portalSource, styles] = await Promise.all([
+    readFile(portalSourceUrl, 'utf8'),
+    readFile(stylesUrl, 'utf8'),
+  ]);
+
+  assert.doesNotMatch(portalSource, /document\.body\.style\.overflow = 'hidden'/);
+  assert.match(styles, /touch-action: pan-x pan-y pinch-zoom/);
+  assert.match(styles, /-webkit-overflow-scrolling: touch/);
+  assert.match(styles, /overflow-y: auto/);
+});

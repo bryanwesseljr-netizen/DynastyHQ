@@ -32,6 +32,7 @@ import CoverageDataIntakePortal from './CoverageDataIntakePortal.jsx';
 import RtgStatusIntakePortal from './RtgStatusIntakePortal.jsx';
 import WeeklyAppearanceAndLocationPortal from './WeeklyAppearanceAndLocationPortal.jsx';
 import CollegeGameCoverageRepairPortal from './CollegeGameCoverageRepairPortal.jsx';
+import OfficialCoverageCapturePortal from './OfficialCoverageCapturePortal.jsx';
 import CollegeCareerAgendaCardPortal from './CollegeCareerAgendaCardPortal.jsx';
 import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal.jsx';
 import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
@@ -74,6 +75,7 @@ const OwnerEnhancements = () => (
     <PodcastUniversalBrandPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />
+    <OfficialCoverageCapturePortal />
     <WeekSetupPortal />
     <GameweekFlowPortal />
     <QuickImportPortal />

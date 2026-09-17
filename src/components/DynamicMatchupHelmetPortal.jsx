@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
+import { buildDashboardV2 } from '../domain/dashboardV2.js';
+import { buildGameweekFlow } from '../domain/gameweekFlow.js';
+import { buildGameWeekImmersion } from '../domain/gameWeekImmersion.js';
 import { catalogTeamBrand } from '../domain/teamBrandResolver.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import DynamicMatchupHelmets from './DynamicMatchupHelmets.jsx';
@@ -57,6 +60,20 @@ const currentMatchupFor = (state = {}) => {
   }
 
   return { school: currentSchool, opponent: '', source: 'unresolved' };
+};
+
+const homeHeroMatchupFor = (state = {}) => {
+  const dashboard = buildDashboardV2(state);
+  const flow = buildGameweekFlow(state);
+  const immersion = buildGameWeekImmersion(state, dashboard, flow);
+  const school = clean(immersion.school) || currentSchoolFor(state);
+  const opponent = clean(immersion.opponent);
+
+  return {
+    school,
+    opponent,
+    mode: immersion.mode,
+  };
 };
 
 const DynamicMatchupHelmetPortal = () => {
@@ -123,13 +140,14 @@ const DynamicMatchupHelmetPortal = () => {
   const homeModel = useMemo(() => {
     const state = career || {};
     const stage = deriveCareerStage(state);
-    const matchup = currentMatchupFor(state);
+    const matchup = homeHeroMatchupFor(state);
     const opponent = matchup.opponent || 'NEXT OPPONENT';
     const highSchool = stage === CAREER_STAGES.HIGH_SCHOOL;
     return {
       school: matchup.school,
       opponent,
       highSchool,
+      mode: matchup.mode,
       dynamic: !highSchool && isFbsTeam(matchup.school) && isFbsTeam(opponent),
     };
   }, [career]);

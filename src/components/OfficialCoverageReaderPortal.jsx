@@ -17,10 +17,12 @@ const currentGameHubContext = () => {
 };
 
 const articlePages = (article = {}) => list(article.pages)
-  .filter((page) => clean(page.sourceImageUrl) || clean(page.summary) || clean(page.headline));
+  .filter((page) => clean(page.sourceImageUrl) || clean(page.body) || clean(page.summary) || clean(page.headline));
 
 const canRead = (article = {}) => Boolean(
   clean(article.headline)
+  || clean(article.dek)
+  || clean(article.body)
   || clean(article.summary)
   || articlePages(article).length,
 );
@@ -31,8 +33,15 @@ const findArticleByHeadline = (career = {}, headline = '') => {
   return list(career.eaSportsNetworkArticles).find((entry) => clean(entry.headline).toLowerCase() === wanted) || null;
 };
 
+const articleParagraphs = (article = {}) => clean(article.body)
+  .split(/\n{2,}/)
+  .map((paragraph) => paragraph.trim())
+  .filter(Boolean);
+
 const Reader = ({ article, onClose }) => {
   const pages = articlePages(article);
+  const paragraphs = articleParagraphs(article);
+  const standfirst = clean(article.dek || article.summary);
   return createPortal(
     <div className="dhq-official-reader" role="dialog" aria-modal="true" aria-labelledby="dhq-official-reader-title" onClick={onClose}>
       <article className="dhq-official-reader__sheet" onClick={(event) => event.stopPropagation()}>
@@ -47,7 +56,13 @@ const Reader = ({ article, onClose }) => {
         <div className="dhq-official-reader__story">
           <div className="dhq-official-reader__masthead">EA <b>SPORTS</b> NETWORK</div>
           <h1 id="dhq-official-reader-title">{article.headline || 'Official game coverage'}</h1>
-          {article.summary ? <p className="dhq-official-reader__summary">{article.summary}</p> : null}
+          {standfirst ? <p className="dhq-official-reader__summary">{standfirst}</p> : null}
+          {clean(article.byline) ? <p className="dhq-official-reader__byline">{clean(article.byline)}</p> : null}
+          {paragraphs.length ? (
+            <div className="dhq-official-reader__body">
+              {paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 24)}`}>{paragraph}</p>)}
+            </div>
+          ) : null}
           <div className="dhq-official-reader__meta">
             <span><FileImage size={13} /> {pages.length || article.sourceFiles?.length || 1} captured page{(pages.length || article.sourceFiles?.length || 1) === 1 ? '' : 's'}</span>
             <span>Preserved from College Football 27</span>
@@ -62,16 +77,20 @@ const Reader = ({ article, onClose }) => {
             </div>
             {pages.map((page, index) => (
               <figure key={`${page.sourceFileName || 'page'}-${index}`}>
-                <figcaption><span>PAGE {index + 1}</span><small>{page.sourceFileName || 'CFB 27 capture'}</small></figcaption>
+                <figcaption>
+                  <span>{page.pageLabel || `PAGE ${index + 1}`}</span>
+                  <small>{page.sourceFileName || 'CFB 27 capture'}</small>
+                </figcaption>
                 {page.sourceImageUrl ? <img src={page.sourceImageUrl} alt={`EA SPORTS Network source page ${index + 1}`} loading="lazy" /> : null}
-                {!page.sourceImageUrl && page.summary ? <p>{page.summary}</p> : null}
+                {!page.sourceImageUrl && page.body ? <p>{page.body}</p> : null}
+                {!page.sourceImageUrl && !page.body && page.summary ? <p>{page.summary}</p> : null}
               </figure>
             ))}
           </section>
         ) : (
           <section className="dhq-official-reader__legacy">
             <ExternalLink size={16} />
-            <div><strong>TEXT CAPTURE PRESERVED</strong><p>This article was captured before source-page image archiving was enabled, so DynastyHQ can preserve the verified headline and summary but not recreate the original page image.</p></div>
+            <div><strong>TEXT CAPTURE PRESERVED</strong><p>This article was captured before source-page image archiving was enabled, so DynastyHQ can preserve the verified text it has without recreating missing source imagery.</p></div>
           </section>
         )}
       </article>

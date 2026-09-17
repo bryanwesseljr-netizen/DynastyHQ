@@ -213,11 +213,17 @@ const WeekSetupPanel = () => {
 
   if (!user || !career) return null;
 
-  const phaseCopy = normalized.phase === WEEK_PHASES.PRESEASON
-    ? 'Use this for Week 0, opening-camp weeks, or another verified preseason bye. Publishing records a non-game baseline and then moves the calendar forward.'
-    : normalized.phase === WEEK_PHASES.POSTSEASON
-      ? 'Use the Display Label for the exact bracket language shown in CFB 27, such as “CFP First-Round Bye.” A postseason bye never creates a win, loss, appearance, or box score.'
-      : 'A regular-season bye records development and weekly changes without adding an opponent, score, appearance, win, or loss.';
+  const phaseCopy = isBye
+    ? (normalized.phase === WEEK_PHASES.PRESEASON
+      ? 'Use this for Week 0, opening-camp weeks, or another verified preseason bye. Publishing records a non-game baseline and then moves the calendar forward.'
+      : normalized.phase === WEEK_PHASES.POSTSEASON
+        ? 'Use the Display Label for the exact bracket language shown in CFB 27, such as “CFP First-Round Bye.” A postseason bye never creates a win, loss, appearance, or box score.'
+        : 'A regular-season bye records development and weekly changes without adding an opponent, score, appearance, win, or loss.')
+    : (normalized.phase === WEEK_PHASES.PRESEASON
+      ? 'A preseason game week anchors the matchup and week identity. Scores, player production, and results still come from verified postgame data.'
+      : normalized.phase === WEEK_PHASES.POSTSEASON
+        ? 'A postseason game week anchors the opponent and bracket context. Use the Display Label for the exact playoff or bowl language shown in CFB 27; the final result still comes from verified postgame data.'
+        : 'A regular-season game week anchors the opponent, kickoff, venue, and week identity. Scores and player production still come from verified postgame data.');
 
   return (
     <section className="mb-6 overflow-hidden rounded-2xl border border-amber-400/35 bg-slate-950/90 shadow-2xl" data-week-setup-panel>

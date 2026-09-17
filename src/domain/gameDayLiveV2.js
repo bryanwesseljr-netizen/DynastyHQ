@@ -1,6 +1,6 @@
 import { buildGameDayBrief } from './gameDayBriefV2.js';
 import { buildMediaNetworkLayer, latestCompletedMediaContext } from './mediaNetworkLayer.js';
-import { seasonScheduleFor, syncScheduleWithCareer } from './seasonSchedule.js';
+import { nextScheduledGame, seasonScheduleFor, syncScheduleWithCareer } from './seasonSchedule.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const list = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
@@ -100,11 +100,48 @@ const stakesFor = ({ brief, latestGame, setup = {} }) => {
   return items.slice(0, 3);
 };
 
-export const buildGameDayLiveV2 = (state = {}) => {
-  const brief = buildGameDayBrief(state);
+const effectivePregameState = (state = {}) => {
+  const currentSeason = Math.max(1, numberOf(state.currentSeason, 1));
   const setup = state.currentWeekSetup || {};
-  const schedule = scheduleContext(state, brief.season, brief.week);
-  const latestGame = latestGameFor(state, brief.season, brief.week) || brief.previousGame || null;
+  const explicitOpponent = clean(setup.opponent);
+  const explicitGame = clean(setup.type).toLowerCase() !== 'bye' && Boolean(explicitOpponent);
+  if (explicitGame) return { state, source: 'week-setup' };
+
+  const next = nextScheduledGame(state, currentSeason);
+  if (!next) return { state, source: 'career' };
+
+  const derivedSetup = {
+    ...setup,
+    week: Number(next.week),
+    type: 'game',
+    phase: clean(setup.phase) || 'regular-season',
+    label: clean(next.label) || `Week ${next.week}`,
+    opponent: clean(next.opponent),
+    opponentRecord: '',
+    opponentRank: '',
+    kickoff: clean(next.date),
+    venue: next.homeAway === 'home' ? 'Home' : next.homeAway === 'away' ? 'Away' : next.homeAway === 'neutral' ? 'Neutral site' : '',
+    note: '',
+    source: 'season-schedule-next-game',
+  };
+
+  return {
+    state: {
+      ...state,
+      currentWeek: Number(next.week),
+      currentWeekSetup: derivedSetup,
+    },
+    source: 'season-schedule',
+  };
+};
+
+export const buildGameDayLiveV2 = (state = {}) => {
+  const effective = effectivePregameState(state);
+  const workingState = effective.state;
+  const brief = buildGameDayBrief(workingState);
+  const setup = workingState.currentWeekSetup || {};
+  const schedule = scheduleContext(workingState, brief.season, brief.week);
+  const latestGame = latestGameFor(workingState, brief.season, brief.week) || brief.previousGame || null;
   const latestMedia = mediaSpotlights(state);
   const previousTotalTD = numberOf(latestGame?.passTD) + numberOf(latestGame?.rushTD);
   const venue = clean(brief.matchup?.venue)
@@ -113,6 +150,7 @@ export const buildGameDayLiveV2 = (state = {}) => {
 
   return {
     ...brief,
+    activationSource: effective.source,
     venue,
     kickoff,
     schedule,

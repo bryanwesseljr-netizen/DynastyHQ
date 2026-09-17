@@ -84,7 +84,6 @@ const SessionImportPortal = () => {
   const { career } = useOwnerCareer();
   const fileInputRef = useRef(null);
   const phaseRef = useRef('game');
-  const previousOverflowRef = useRef('');
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState('game');
   const [files, setFiles] = useState([]);
@@ -123,8 +122,6 @@ const SessionImportPortal = () => {
 
   const openWorkspace = () => {
     reset();
-    previousOverflowRef.current = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     document.body.classList.add('dhq-session-import-mode');
     setOpen(true);
   };
@@ -132,7 +129,6 @@ const SessionImportPortal = () => {
   const closeWorkspace = ({ home = false, focusApplied = false } = {}) => {
     setOpen(false);
     document.body.classList.remove('dhq-session-import-mode', 'dhq-session-import-review');
-    document.body.style.overflow = previousOverflowRef.current;
     if (home) {
       window.setTimeout(() => findButton(/^home$/i)?.click(), 30);
     } else if (focusApplied) {
@@ -187,7 +183,6 @@ const SessionImportPortal = () => {
 
   useEffect(() => () => {
     document.body.classList.remove('dhq-session-import-mode', 'dhq-session-import-review');
-    document.body.style.overflow = previousOverflowRef.current;
   }, []);
 
   const addFiles = (fileList) => {

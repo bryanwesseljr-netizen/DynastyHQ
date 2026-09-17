@@ -23,12 +23,19 @@ const publishedWeeks = (career = {}) => [...(career.weeklyUpdates || [])]
 export const resolveWeeklyWorkContext = (career = {}) => {
   const currentSeason = finite(career.currentSeason, 1);
   const currentWeek = Math.max(0, finite(career.currentWeek, 0));
+  const currentSetup = career.currentWeekSetup || {};
+  const currentSetupWeek = Number(currentSetup.week);
+  const hasExplicitCurrentSetup = Number.isFinite(currentSetupWeek)
+    && currentSetupWeek === currentWeek
+    && ['game', 'bye'].includes(String(currentSetup.type || 'game').toLowerCase());
+
   const latest = publishedWeeks(career).at(-1) || null;
   const latestSeason = finite(latest?.season, currentSeason);
   const latestWeek = Math.max(0, finite(latest?.week, 0));
   const latestPublicationId = latest?.publicationId || latest?.weekKey || latest?.id
     || weeklyPublicationId(latestSeason, latestWeek);
-  const wrapUp = latest
+  const wrapUp = !hasExplicitCurrentSetup
+    && latest
     && latestSeason === currentSeason
     && currentWeek <= latestWeek + 1
     && !finalizationExists(career, latestPublicationId)
@@ -38,7 +45,7 @@ export const resolveWeeklyWorkContext = (career = {}) => {
   const season = wrapUp?.season ?? currentSeason;
   const week = wrapUp?.week ?? currentWeek;
   const publicationId = wrapUp?.publicationId || weeklyPublicationId(season, week);
-  const setup = career.currentWeekSetup || {};
+  const setup = currentSetup;
   const setupWeek = Number(setup.week);
   const setupReady = Number.isFinite(setupWeek)
     && setupWeek === week

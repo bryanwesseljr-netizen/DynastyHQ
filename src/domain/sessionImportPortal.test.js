@@ -100,3 +100,16 @@ test('Session Import reveals the live verification desk even when Weekly Agenda 
   assert.match(styles, /display: block !important/);
   assert.match(styles, /body\.dhq-session-import-review \.dhq-postgame-review/);
 });
+
+
+test('Session Import reveals every hidden ancestor of the live verification desk', async () => {
+  const [portalSource, styles] = await Promise.all([
+    readFile(portalSourceUrl, 'utf8'),
+    readFile(stylesUrl, 'utf8'),
+  ]);
+
+  assert.match(portalSource, /dhq-session-import-review-path/);
+  assert.match(portalSource, /while \(node && node !== agenda\)/);
+  assert.match(styles, /\.dhq-session-import-review-path/);
+  assert.match(styles, /display: block !important/);
+});

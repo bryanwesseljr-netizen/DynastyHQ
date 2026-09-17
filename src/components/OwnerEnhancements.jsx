@@ -2,6 +2,7 @@ import WeekSetupPortal from './WeekSetupPortal.jsx';
 import GameweekFlowPortal from './GameweekFlowPortal.jsx';
 import QuickImportPortal from './QuickImportPortal.jsx';
 import SessionImportPortal from './SessionImportPortal.jsx';
+import ProcessWeek2Portal from './ProcessWeek2Portal.jsx';
 import SeasonSchedulePortal from './SeasonSchedulePortal.jsx';
 import MediaNetworkLayerPortal from './MediaNetworkLayerPortal.jsx';
 import ImmersiveExperienceV3Portal from './ImmersiveExperienceV3Portal.jsx';
@@ -84,6 +85,7 @@ const OwnerEnhancements = () => (
     <GameweekFlowPortal />
     <QuickImportPortal />
     <SessionImportPortal />
+    <ProcessWeek2Portal />
     <GameHubPortal />
     <GameDayPregamePortal />
     <GameHubIntegrationPortal />

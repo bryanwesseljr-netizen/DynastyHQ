@@ -18,10 +18,25 @@ const matchesWeek = (entry = {}, season = 1, week = 0, publicationId = publicati
 
 const firstArticle = (issue = {}) => arrayOf(issue.articles).find((article) => clean(article?.headline)) || null;
 
-const podcastReady = (episode) => Boolean(
-  episode
-  && (episode.audioStatus === 'ready' || ['ready', 'published'].includes(clean(episode.status, 40).toLowerCase()))
+const podcastReady = (episode = {}) => (
+  episode?.status === 'scripted'
+  || episode?.status === 'ready'
+  || episode?.status === 'published'
+  || episode?.audioStatus === 'ready'
+  || (episode?.segments || []).length >= 10
 );
+
+const opponentForContext = (state = {}, season = 1, week = 0, fallback = '') => {
+  const game = arrayOf(state.gameLogs).find((entry) => matchesWeek(entry, season, week));
+  if (clean(game?.opponent)) return clean(game.opponent, 160);
+  const update = arrayOf(state.weeklyUpdates).find((entry) => matchesWeek(entry, season, week));
+  if (clean(update?.game?.opponent)) return clean(update.game.opponent, 160);
+  const schedule = seasonScheduleFor(state, season);
+  const row = schedule?.entries?.length
+    ? syncScheduleWithCareer(state, schedule).entries.find((entry) => numberOf(entry.week) === numberOf(week))
+    : null;
+  return clean(row?.opponent || fallback, 160);
+};
 
 export const latestCompletedMediaContext = (state = {}) => {
   const season = Math.max(1, numberOf(state.currentSeason, 1));
@@ -41,6 +56,46 @@ export const latestCompletedMediaContext = (state = {}) => {
   return game
     ? { season: numberOf(game.season, season) || season, week: numberOf(game.week), opponent: clean(game.opponent, 160) }
     : { season, week: Math.max(0, numberOf(state.currentWeek)), opponent: '' };
+};
+
+export const latestMeaningfulMediaContext = (state = {}) => {
+  const candidates = [];
+  const add = (entry, type, meaningful = true) => {
+    if (!entry || !meaningful) return;
+    const season = Math.max(1, numberOf(entry.season, state.currentSeason || 1));
+    const week = Math.max(0, numberOf(entry.week));
+    candidates.push({
+      season,
+      week,
+      opponent: opponentForContext(state, season, week, entry.opponent),
+      type,
+    });
+  };
+
+  arrayOf(state.newsroomIssues).forEach((issue) => {
+    const article = firstArticle(issue);
+    add(issue, 'newsroom', Boolean(article || clean(issue?.headline)));
+  });
+
+  arrayOf(state.podcastEpisodes).forEach((episode) => {
+    add(episode, 'podcast', podcastReady(episode) && Boolean(clean(episode?.title || episode?.headline)));
+  });
+
+  const officialPool = [
+    ...arrayOf(state.officialCoverage),
+    ...arrayOf(state.eaSportsNetworkArticles),
+    ...arrayOf(state.eaSportsNetwork),
+  ];
+  officialPool.forEach((entry) => add(entry, 'official', Boolean(clean(entry?.headline || entry?.title))));
+
+  candidates.sort((left, right) => (
+    numberOf(right.season, 1) - numberOf(left.season, 1)
+    || numberOf(right.week) - numberOf(left.week)
+  ));
+
+  const latest = candidates[0];
+  if (latest) return { season: latest.season, week: latest.week, opponent: latest.opponent };
+  return latestCompletedMediaContext(state);
 };
 
 export const buildMediaNetworkLayer = (state = {}, context = {}) => {

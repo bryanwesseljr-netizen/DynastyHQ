@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Activity, BookOpen, Headphones, History, Sparkles, Target, Trophy } from 'lucide-react';
+import { Activity, BookOpen, Headphones, Sparkles, Trophy } from 'lucide-react';
 import { buildImmersionModel } from '../domain/immersionEngine.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './immersion.css';
-
-const clean = (value) => String(value ?? '').trim();
 
 const ensureHostAfter = (anchor, id) => {
   if (!anchor?.parentElement) return null;
@@ -49,30 +47,6 @@ const Pulse = ({ model }) => (
   </section>
 );
 
-const PregameIntel = ({ model }) => (
-  <section className="dhq-immersion-game-grid" aria-label="Automatic game intelligence">
-    <article className="dhq-immersion-card">
-      <header><Target size={15} /><span>WHAT'S AT STAKE</span></header>
-      {model.stakes.length ? model.stakes.map((item) => <div className="dhq-immersion-line" key={item.id}><small>{item.label}</small><strong>{item.detail}</strong></div>) : <p>No extra setup needed. DynastyHQ will build the stakes as verified career data accumulates.</p>}
-    </article>
-    <article className="dhq-immersion-card">
-      <header><History size={15} /><span>{model.previousMeeting ? 'MEMORY LANE' : 'ACTIVE STORYLINES'}</span></header>
-      {model.previousMeeting ? (
-        <>
-          <div className="dhq-immersion-memory-score"><b>{clean(model.previousMeeting.result) || '—'}</b><strong>{model.previousMeeting.homeScore ?? '—'}-{model.previousMeeting.awayScore ?? '—'}</strong></div>
-          <p>Last meeting vs {model.currentOpponent} · Season {model.previousMeeting.season || 1}, Week {model.previousMeeting.week || '—'}</p>
-          <small>DYNASTYHQ-ERA SERIES {model.series.wins}-{model.series.losses}</small>
-        </>
-      ) : model.storylines.slice(0, 3).map((item) => <div className="dhq-immersion-line" key={item.id}><small>{item.label}</small><strong>{item.detail}</strong></div>)}
-    </article>
-    <article className="dhq-immersion-card">
-      <header><Sparkles size={15} /><span>STORY DIRECTOR LIVE</span></header>
-      {model.storylines.slice(0, 3).map((item) => <div className="dhq-immersion-line" key={item.id}><small>{item.label}</small><strong>{item.detail}</strong></div>)}
-      {!model.storylines.length ? <p>No major narrative thread yet. That's okay — DynastyHQ won't manufacture one.</p> : null}
-    </article>
-  </section>
-);
-
 const PostgameWrap = ({ model }) => {
   const wrap = model.postgameWrap;
   if (!wrap) return null;
@@ -95,7 +69,7 @@ const RecordBook = ({ model }) => {
     <section className="dhq-immersion-recordbook" aria-label="Automatic career record book">
       <div className="dhq-immersion-recordbook__heading"><div><span>AUTOMATIC HISTORY</span><h2>Career Record Book</h2></div><BookOpen size={21} /></div>
       <div className="dhq-immersion-record-grid">
-        {records.map(([label, record]) => <article key={label}><span>{label}</span><strong>{record?.value ?? '—'}</strong><small>{record ? `vs ${record.opponent} · S${record.season} W${record.week}` : 'No verified college game yet'}</small></article>)}
+        {records.map(([label, record]) => <article key={label}><span>{label}</span><strong>{record?.value ?? '—'}</strong><small>{record ? `vs ${record.opponent} · S${record.season} W${record.week}` : 'No college game on file yet'}</small></article>)}
         <article><span>Career Passing</span><strong>{model.recordBook.careerPassingYards.toLocaleString()}</strong><small>{model.recordBook.careerTotalTouchdowns} total touchdowns</small></article>
       </div>
       {model.recordWatch.length ? <div className="dhq-immersion-watch"><Trophy size={14} /><strong>RECORD WATCH</strong><span>{model.recordWatch[0].remaining} away from {model.recordWatch[0].label}</span></div> : null}
@@ -154,7 +128,7 @@ const ImmersionPortal = () => {
   return (
     <>
       {targets.home ? createPortal(<Pulse model={model} />, targets.home) : null}
-      {targets.gameHub ? createPortal(gameHubPregame ? <PregameIntel model={model} /> : <PostgameWrap model={model} />, targets.gameHub) : null}
+      {targets.gameHub && !gameHubPregame ? createPortal(<PostgameWrap model={model} />, targets.gameHub) : null}
       {targets.career ? createPortal(<RecordBook model={model} />, targets.career) : null}
     </>
   );

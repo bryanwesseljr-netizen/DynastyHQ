@@ -105,5 +105,5 @@ export const replaceCoverageReferences = (state = {}, {
 };
 
 export const coverageReferenceFor = (state = {}, publicationId = '') => (
-  (state.coverageReferences || []).find((entry) => entry?.publicationId === publicationId) || null
+  (state?.coverageReferences || []).find((entry) => entry?.publicationId === publicationId) || null
 );

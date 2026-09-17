@@ -38,6 +38,9 @@ const GameDayActivationPortal = () => {
       if (scheduleDerived) {
         hub.dataset.dhqGameDayWeek = String(next.week);
         hub.dataset.dhqGameDayOpponent = clean(next.opponent);
+        const context = hub.querySelector('.dhq-game-hub__toolbar > div:first-child strong');
+        const label = `Season ${Number(career.currentSeason) || 1} · Week ${next.week}`;
+        if (context && clean(context.textContent) !== label) context.textContent = label;
       } else {
         delete hub.dataset.dhqGameDayWeek;
         delete hub.dataset.dhqGameDayOpponent;
@@ -52,7 +55,7 @@ const GameDayActivationPortal = () => {
 
     sync();
     const observer = new MutationObserver(schedule);
-    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true, attributeFilter: ['class'] });
     return () => {
       observer.disconnect();
       document.querySelector('.dhq-game-hub')?.classList.remove('dhq-game-day-live-schedule-derived');

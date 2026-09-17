@@ -64,6 +64,45 @@ test('falls forward to the next scheduled game when player-week state is behind 
   assert.equal(live.recentForm.at(-1).opponent, 'Oregon State');
 });
 
+test('historical backfill pregame uses distinct player, momentum, and matchup angles', () => {
+  const live = buildGameDayLiveV2({
+    ...state,
+    currentWeek: 3,
+    currentWeekSetup: {
+      week: 3,
+      type: 'game',
+      opponent: 'Oregon State',
+      opponentRecord: '0-2',
+      venue: 'Reser Stadium, Corvallis, OR',
+      kickoff: 'Saturday, 3:30 PM',
+    },
+    player: { ...state.player, name: 'Bryan Wessel', number: '6' },
+    rtg: { ...state.rtg, rank: 'QB1', coachTrust: 1148 },
+    gameLogs: [state.gameLogs[0]],
+    seasonSchedules: [{
+      ...state.seasonSchedules[0],
+      entries: state.seasonSchedules[0].entries.map((entry) => (
+        entry.week === 3 ? { ...entry, homeAway: 'away' } : entry
+      )),
+    }],
+  });
+
+  assert.equal(live.record, '1-1');
+  assert.equal(live.stakes[0].label, 'YOUR STORY');
+  assert.match(live.stakes[0].title, /Bryan Wessel leads Oregon into Week 3 as the starter/);
+  assert.doesNotMatch(live.stakes[0].title, /^QB1 moves/);
+  assert.match(live.stakes[0].detail, /last verified appearance came against Baylor/);
+
+  assert.equal(live.stakes[1].label, 'TEAM MOMENTUM');
+  assert.match(live.stakes[1].title, /response opportunity after Baylor/);
+  assert.match(live.stakes[1].detail, /enters Week 3 at 1-1/);
+
+  assert.equal(live.stakes[2].label, 'NEXT TEST');
+  assert.equal(live.stakes[2].title, 'The next test comes on the road in Corvallis');
+  assert.match(live.stakes[2].detail, /Oregon State enters 0-2/);
+  assert.match(live.stakes[2].detail, /Reser Stadium, Corvallis, OR/);
+});
+
 test('does not invent opponent scout content when setup only has matchup identity', () => {
   const live = buildGameDayLiveV2({
     currentSeason: 1,

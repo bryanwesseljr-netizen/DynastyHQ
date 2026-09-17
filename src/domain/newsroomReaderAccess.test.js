@@ -44,7 +44,7 @@ test('article reader shows complete photos and gives publication tabs their own 
   assert.match(styles, /flex-wrap: wrap !important/);
 });
 
-test('homepage matchup immersion falls back to the latest published college opponent', async () => {
+test('homepage matchup immersion keeps active pregame and completed postgame opponents isolated', async () => {
   const [dashboard, immersion] = await Promise.all([
     readFile(dashboardUrl, 'utf8'),
     readFile(immersionUrl, 'utf8'),
@@ -57,5 +57,7 @@ test('homepage matchup immersion falls back to the latest published college oppo
   assert.match(immersion, /const activeOpponentFor/);
   assert.match(immersion, /state\.currentWeekSetup/);
   assert.match(immersion, /state\.weeklyAgendaDraft\?\.newGame/);
-  assert.match(immersion, /const opponent = activeOpponent \|\| clean\(latestGame\?\.opponent\) \|\| 'NEXT OPPONENT'/);
+  assert.match(immersion, /const opponent = mode === 'pregame'/);
+  assert.match(immersion, /activeOpponent \|\| clean\(latestGame\?\.opponent\) \|\| 'NEXT OPPONENT'/);
+  assert.match(immersion, /clean\(latestGame\?\.opponent\) \|\| activeOpponent \|\| 'NEXT OPPONENT'/);
 });

@@ -6,6 +6,7 @@ import ProcessWeek2Portal from './ProcessWeek2Portal.jsx';
 import SeasonSchedulePortal from './SeasonSchedulePortal.jsx';
 import MediaNetworkLayerPortal from './MediaNetworkLayerPortal.jsx';
 import ImmersiveExperienceV3Portal from './ImmersiveExperienceV3Portal.jsx';
+import CareerStoryExperiencePortal from './CareerStoryExperiencePortal.jsx';
 import ExperienceRepairPortal from './ExperienceRepairPortal.jsx';
 import SeasonWirePortal from './SeasonWirePortal.jsx';
 import GameHubOverviewSchedulePortal from './GameHubOverviewSchedulePortal.jsx';
@@ -73,6 +74,7 @@ const OwnerEnhancements = () => (
     <SeasonSchedulePortal />
     <MediaNetworkLayerPortal />
     <ImmersiveExperienceV3Portal />
+    <CareerStoryExperiencePortal />
     <ExperienceRepairPortal />
     <SeasonWirePortal />
     <GameHubOverviewSchedulePortal />

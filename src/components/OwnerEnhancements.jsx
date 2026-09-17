@@ -60,6 +60,7 @@ import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
 import PublicMediaProfileSharePortal from './PublicMediaProfileSharePortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
 import DynamicMatchupHelmetPortal from './DynamicMatchupHelmetPortal.jsx';
+import PlayerOffseasonNavigationPortal from './PlayerOffseasonNavigationPortal.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 
 const OwnerEnhancements = () => (
@@ -68,6 +69,7 @@ const OwnerEnhancements = () => (
     <NavigationStatePortal />
     <DynamicMatchupHelmetPortal />
     <MobileBroadcastNavPortal />
+    <PlayerOffseasonNavigationPortal />
     <FreshStartPortal />
     <ImmersionPortal />
     <StorylineContinuityPortal />

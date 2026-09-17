@@ -60,6 +60,42 @@ test('postgame mode turns the hero into a final and points to wrap-up work', () 
   assert.match(model.keys[1].detail, /Podcast/);
 });
 
+test('postgame hero never mixes the active next opponent into the previous final', () => {
+  const state = {
+    ...baseState,
+    currentWeekSetup: {
+      type: 'game',
+      week: 3,
+      opponent: 'Oregon State',
+      opponentRecord: '0-2',
+      kickoff: 'Saturday, 3:30 PM',
+      venue: 'Reser Stadium, Corvallis, OR',
+    },
+    seasonSchedules: [{
+      season: 2,
+      school: 'Oregon',
+      entries: [
+        { week: 1, opponent: 'North Dakota State', result: 'W', teamScore: 42, opponentScore: 24, completed: true },
+        { week: 2, opponent: 'Baylor', result: 'L', teamScore: 21, opponentScore: 45, completed: true },
+        { week: 3, opponent: 'Oregon State', result: 'W', teamScore: 33, opponentScore: 15, completed: true },
+      ],
+    }],
+  };
+  const flow = {
+    mode: 'wrap-up',
+    activeWeek: { configured: true, week: 3, type: 'game' },
+    nextAction: { target: 'gameHub' },
+    steps: [],
+  };
+  const model = buildGameWeekImmersion(state, dashboard, flow);
+
+  assert.equal(model.mode, 'postgame');
+  assert.equal(model.opponent, 'Baylor');
+  assert.equal(model.centerLine, '21-45');
+  assert.equal(model.latestGameRecord.wins, 1);
+  assert.equal(model.latestGameRecord.losses, 1);
+});
+
 test('between weeks mode holds the latest result until the new week is configured', () => {
   const flow = { mode: 'active-week', activeWeek: { configured: false, week: 3, type: 'game' } };
   const model = buildGameWeekImmersion(baseState, dashboard, flow);

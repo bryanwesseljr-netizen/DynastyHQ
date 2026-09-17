@@ -98,6 +98,20 @@ test('dynamic matchup portal replaces Home and Game Hub static art only for veri
   assert.match(styles, /\.dhq-gh-matchup-helmets/);
 });
 
+test('Home dynamic logos use the exact same immersion matchup as the visible hero text', async () => {
+  const portal = await readFile(portalUrl, 'utf8');
+
+  assert.match(portal, /import \{ buildDashboardV2 \} from '\.\.\/domain\/dashboardV2\.js'/);
+  assert.match(portal, /import \{ buildGameweekFlow \} from '\.\.\/domain\/gameweekFlow\.js'/);
+  assert.match(portal, /import \{ buildGameWeekImmersion \} from '\.\.\/domain\/gameWeekImmersion\.js'/);
+  assert.match(portal, /const homeHeroMatchupFor/);
+  assert.match(portal, /const dashboard = buildDashboardV2\(state\)/);
+  assert.match(portal, /const flow = buildGameweekFlow\(state\)/);
+  assert.match(portal, /const immersion = buildGameWeekImmersion\(state, dashboard, flow\)/);
+  assert.match(portal, /const matchup = homeHeroMatchupFor\(state\)/);
+  assert.doesNotMatch(portal, /const homeModel[\s\S]*?const matchup = currentMatchupFor\(state\)[\s\S]*?\}, \[career\]\);/);
+});
+
 test('published college matchup becomes the dynamic art fallback after the active week clears', async () => {
   const portal = await readFile(portalUrl, 'utf8');
 

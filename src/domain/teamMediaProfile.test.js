@@ -16,7 +16,7 @@ test('2026 FBS media catalog covers the complete 138-team DynastyHQ alignment', 
   assert.equal(Object.keys(FBS_TEAM_MEDIA_PROFILES_2026).length, 138);
 });
 
-test('Cincinnati resolves to the Nippert Notebook and Bearcats team-media identity', () => {
+test('Cincinnati resolves to the universal Huddle show with Bearcats team-media identity', () => {
   const profile = resolveTeamMediaProfile({
     school: 'Cincinnati',
     outletProfile: {
@@ -30,13 +30,13 @@ test('Cincinnati resolves to the Nippert Notebook and Bearcats team-media identi
   assert.equal(profile.nickname, 'Bearcats');
   assert.equal(profile.localOutletName, 'Bearcats Insider');
   assert.equal(profile.regionalOutletName, 'Cincinnati Enquirer');
-  assert.equal(profile.podcastName, 'Nippert Notebook');
+  assert.equal(profile.podcastName, 'The Huddle Podcast');
   assert.equal(profile.podcastSubtitle, 'Cincinnati Football Podcast');
   assert.equal(profile.primary, '#e00122');
   assert.equal(profile.profileSource, 'fbs-2026');
 });
 
-test('representative future FBS destinations receive real team identity instead of generic branding', () => {
+test('representative future FBS destinations receive real team identity without renaming the universal podcast', () => {
   const cases = [
     ['UCF', 'Knights', 'Orlando', '#BA9B37'],
     ['Delaware', 'Blue Hens', 'Newark', '#033594'],
@@ -52,7 +52,7 @@ test('representative future FBS destinations receive real team identity instead 
     assert.equal(profile.city, city);
     assert.equal(profile.primary, primary);
     assert.equal(profile.localOutletName, `${nickname} Insider`);
-    assert.equal(profile.podcastName, `${school} Football Notebook`);
+    assert.equal(profile.podcastName, 'The Huddle Podcast');
     assert.equal(profile.profileSource, 'fbs-2026');
   });
 });
@@ -167,7 +167,7 @@ test('new coaching destination does not inherit the previous programs saved medi
   assert.equal(profile.nickname, 'Knights');
   assert.equal(profile.localOutletName, 'Knights Insider');
   assert.equal(profile.regionalOutletName, 'Orlando College Sports');
-  assert.equal(profile.podcastName, 'UCF Football Notebook');
+  assert.equal(profile.podcastName, 'The Huddle Podcast');
   assert.notEqual(profile.localOutletName, 'Bearcats Insider');
 });
 
@@ -187,11 +187,11 @@ test('explicit coach school wins when the coaching profile supplies the current 
   assert.equal(profile.nickname, 'Spartans');
 });
 
-test('unknown programs still receive a usable generated identity', () => {
+test('unknown programs still receive a usable generated identity while retaining The Huddle', () => {
   const profile = resolveTeamMediaProfile({ school: 'Test University' });
   assert.equal(profile.school, 'Test University');
   assert.match(profile.localOutletName, /Test/);
-  assert.match(profile.podcastName, /Test/);
+  assert.equal(profile.podcastName, 'The Huddle Podcast');
   assert.ok(profile.primary);
   assert.equal(profile.profileSource, 'generated');
 });

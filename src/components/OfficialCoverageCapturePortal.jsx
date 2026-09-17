@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db, firebaseApp } from '../firebase';
 import { publicationIdFor } from '../domain/officialCoverageCapture.js';
@@ -23,14 +23,18 @@ const writePending = (items) => {
   try { window.sessionStorage?.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* best-effort session queue */ }
 };
 
-const uniqueText = (values = []) => [...new Set(values.map((value) => clean(value)).filter(Boolean))];
+const uniqueText = (values = [], max = 1600) => [...new Set(values.map((value) => clean(value, max)).filter(Boolean))];
 
 const mergePages = (currentPages = [], incoming = {}) => {
   const key = clean(incoming.sourceFileName, 220) || `page-${currentPages.length + 1}`;
   const page = {
     sourceFileName: clean(incoming.sourceFileName, 220),
-    headline: clean(incoming.headline, 260),
-    summary: clean(incoming.summary, 1800),
+    headline: clean(incoming.headline, 320),
+    dek: clean(incoming.dek, 1800),
+    byline: clean(incoming.byline, 300),
+    body: clean(incoming.body, 12000),
+    pageLabel: clean(incoming.pageLabel, 220),
+    summary: clean(incoming.summary, 2400),
     sourceImageUrl: clean(incoming.sourceImageUrl, 4000),
     storagePath: clean(incoming.storagePath, 4000),
     mimeType: clean(incoming.mimeType, 120),
@@ -47,10 +51,13 @@ const mergeCandidate = (current = {}, incoming = {}) => ({
   sourceImageDataUrl: undefined,
   outlet: 'EA SPORTS Network',
   headline: !/^ea sports network game coverage$/i.test(clean(incoming.headline))
-    ? clean(incoming.headline, 260)
-    : clean(current.headline, 260) || clean(incoming.headline, 260),
-  summary: uniqueText([current.summary, incoming.summary]).join(' ').slice(0, 2400),
-  sourceFiles: uniqueText([...(current.sourceFiles || []), incoming.sourceFileName]),
+    ? clean(incoming.headline, 320)
+    : clean(current.headline, 320) || clean(incoming.headline, 320),
+  dek: clean(current.dek, 1800) || clean(incoming.dek, 1800),
+  byline: clean(current.byline, 300) || clean(incoming.byline, 300),
+  body: uniqueText([current.body, incoming.body], 12000).join('\n\n').slice(0, 24000),
+  summary: uniqueText([current.summary, incoming.summary], 2400).join(' ').slice(0, 4800),
+  sourceFiles: uniqueText([...(current.sourceFiles || []), incoming.sourceFileName], 220),
   pages: mergePages(current.pages, incoming),
   capturedAt: current.capturedAt || incoming.capturedAt || new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -84,6 +91,7 @@ const OfficialCoverageCapturePortal = () => {
   const { user, career } = useOwnerCareer();
   const careerRef = useRef(career);
   const busyRef = useRef(false);
+  const [queueVersion, setQueueVersion] = useState(0);
 
   useEffect(() => { careerRef.current = career; }, [career]);
 
@@ -98,6 +106,7 @@ const OfficialCoverageCapturePortal = () => {
       const publicationId = clean(candidate.publicationId) || publicationIdFor(season, week);
       const baseCandidate = { ...candidate, season, week, publicationId };
       queueCandidate(baseCandidate);
+      setQueueVersion((value) => value + 1);
 
       if (!user || !candidate.sourceImageDataUrl) return;
       try {
@@ -118,6 +127,7 @@ const OfficialCoverageCapturePortal = () => {
           storagePath: stored.storagePath,
           mimeType: stored.mimeType,
         });
+        setQueueVersion((value) => value + 1);
       } catch (error) {
         console.warn('DynastyHQ preserved EA coverage text but could not archive the source screenshot', error);
       }
@@ -181,7 +191,7 @@ const OfficialCoverageCapturePortal = () => {
 
     persist();
     return () => { cancelled = true; busyRef.current = false; };
-  }, [career, user]);
+  }, [career, user, queueVersion]);
 
   return null;
 };

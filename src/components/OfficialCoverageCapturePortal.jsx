@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
-import { appId, db } from '../firebase';
+import { appId, db, firebaseApp } from '../firebase';
 import { publicationIdFor } from '../domain/officialCoverageCapture.js';
+import { uploadNewsroomMedia } from '../services/newsroomMediaStorage.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
-const STORAGE_KEY = 'dynastyhq-pending-official-coverage-v1';
-const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'official-coverage-capture-v1';
+const STORAGE_KEY = 'dynastyhq-pending-official-coverage-v2';
+const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'official-coverage-capture-v2';
 const clean = (value, max = 1600) => String(value ?? '').trim().slice(0, max);
 const list = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
 
@@ -24,27 +25,50 @@ const writePending = (items) => {
 
 const uniqueText = (values = []) => [...new Set(values.map((value) => clean(value)).filter(Boolean))];
 
+const mergePages = (currentPages = [], incoming = {}) => {
+  const key = clean(incoming.sourceFileName, 220) || `page-${currentPages.length + 1}`;
+  const page = {
+    sourceFileName: clean(incoming.sourceFileName, 220),
+    headline: clean(incoming.headline, 260),
+    summary: clean(incoming.summary, 1800),
+    sourceImageUrl: clean(incoming.sourceImageUrl, 4000),
+    storagePath: clean(incoming.storagePath, 4000),
+    mimeType: clean(incoming.mimeType, 120),
+    capturedAt: incoming.capturedAt || new Date().toISOString(),
+  };
+  const pages = new Map(list(currentPages).map((item, index) => [clean(item.sourceFileName, 220) || `page-${index + 1}`, item]));
+  pages.set(key, { ...(pages.get(key) || {}), ...page });
+  return [...pages.values()];
+};
+
 const mergeCandidate = (current = {}, incoming = {}) => ({
   ...current,
   ...incoming,
+  sourceImageDataUrl: undefined,
   outlet: 'EA SPORTS Network',
   headline: !/^ea sports network game coverage$/i.test(clean(incoming.headline))
     ? clean(incoming.headline, 260)
     : clean(current.headline, 260) || clean(incoming.headline, 260),
-  summary: uniqueText([current.summary, incoming.summary]).join(' ').slice(0, 1800),
+  summary: uniqueText([current.summary, incoming.summary]).join(' ').slice(0, 2400),
   sourceFiles: uniqueText([...(current.sourceFiles || []), incoming.sourceFileName]),
-  pages: [
-    ...(current.pages || []),
-    {
-      sourceFileName: clean(incoming.sourceFileName, 220),
-      headline: clean(incoming.headline, 260),
-      summary: clean(incoming.summary, 1200),
-      capturedAt: incoming.capturedAt || new Date().toISOString(),
-    },
-  ].filter((page, index, pages) => pages.findIndex((item) => item.sourceFileName === page.sourceFileName && item.summary === page.summary) === index),
+  pages: mergePages(current.pages, incoming),
   capturedAt: current.capturedAt || incoming.capturedAt || new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
+
+const queueCandidate = (candidate = {}) => {
+  const pending = readPending();
+  const existingIndex = pending.findIndex((entry) => entry.publicationId === candidate.publicationId);
+  const base = existingIndex >= 0
+    ? pending[existingIndex]
+    : { season: candidate.season, week: candidate.week, publicationId: candidate.publicationId, pages: [], sourceFiles: [] };
+  const merged = mergeCandidate(base, candidate);
+  if (existingIndex >= 0) pending[existingIndex] = merged;
+  else pending.push(merged);
+  writePending(pending.slice(-12));
+  window.dispatchEvent(new CustomEvent('dynastyhq:official-coverage-queued', { detail: merged }));
+  return merged;
+};
 
 const weekApplied = (career = {}, publicationId = '') => {
   const appliedHint = (() => {
@@ -65,25 +89,42 @@ const OfficialCoverageCapturePortal = () => {
 
   useEffect(() => {
     if (!career) return undefined;
-    const onCapture = (event) => {
+    const onCapture = async (event) => {
       const candidate = event.detail || {};
       if (!clean(candidate.outlet) || !/ea sports/i.test(clean(candidate.outlet))) return;
       const current = careerRef.current || {};
       const season = Number(candidate.season ?? current.currentSeason) || 1;
       const week = Math.max(0, Number(candidate.week ?? current.currentWeek) || 0);
       const publicationId = clean(candidate.publicationId) || publicationIdFor(season, week);
-      const pending = readPending();
-      const existingIndex = pending.findIndex((entry) => entry.publicationId === publicationId);
-      const base = existingIndex >= 0 ? pending[existingIndex] : { season, week, publicationId, pages: [], sourceFiles: [] };
-      const merged = mergeCandidate(base, { ...candidate, season, week, publicationId });
-      if (existingIndex >= 0) pending[existingIndex] = merged;
-      else pending.push(merged);
-      writePending(pending.slice(-12));
-      window.dispatchEvent(new CustomEvent('dynastyhq:official-coverage-queued', { detail: merged }));
+      const baseCandidate = { ...candidate, season, week, publicationId };
+      queueCandidate(baseCandidate);
+
+      if (!user || !candidate.sourceImageDataUrl) return;
+      try {
+        const assetId = `ea-network-s${season}-w${week}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const stored = await uploadNewsroomMedia({
+          firebaseApp,
+          appId,
+          userId: user.uid,
+          assetId,
+          imageDataUrl: candidate.sourceImageDataUrl,
+          fileName: candidate.sourceFileName || `ea-sports-network-s${season}-w${week}.jpg`,
+          origin: 'ea-network-source',
+        });
+        queueCandidate({
+          ...baseCandidate,
+          sourceImageDataUrl: undefined,
+          sourceImageUrl: stored.downloadUrl,
+          storagePath: stored.storagePath,
+          mimeType: stored.mimeType,
+        });
+      } catch (error) {
+        console.warn('DynastyHQ preserved EA coverage text but could not archive the source screenshot', error);
+      }
     };
     window.addEventListener('dynastyhq:official-coverage-captured', onCapture);
     return () => window.removeEventListener('dynastyhq:official-coverage-captured', onCapture);
-  }, [career]);
+  }, [career, user]);
 
   useEffect(() => {
     if (!user || !db || !career || busyRef.current) return undefined;
@@ -102,18 +143,18 @@ const OfficialCoverageCapturePortal = () => {
           const articles = list(remote.eaSportsNetworkArticles);
           ready.forEach((candidate) => {
             const index = articles.findIndex((entry) => entry?.publicationId === candidate.publicationId);
-            const article = {
-              ...(index >= 0 ? articles[index] : {}),
-              ...candidate,
+            const existing = index >= 0 ? articles[index] : {};
+            const article = mergeCandidate(existing, candidate);
+            Object.assign(article, {
               id: candidate.publicationId,
               publicationId: candidate.publicationId,
               season: candidate.season,
               week: candidate.week,
               outlet: 'EA SPORTS Network',
               source: 'cfb27-session-import',
-              captureStatus: 'confirmed-source',
-              preservedAt: new Date().toISOString(),
-            };
+              captureStatus: article.pages?.some((page) => page.sourceImageUrl) ? 'source-pages-preserved' : 'confirmed-source',
+              preservedAt: existing.preservedAt || new Date().toISOString(),
+            });
             if (index >= 0) articles[index] = article;
             else articles.push(article);
           });

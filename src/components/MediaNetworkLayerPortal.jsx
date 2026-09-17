@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, ChevronRight, Headphones, Newspaper, Radio, ShieldCheck } from 'lucide-react';
-import { buildMediaNetworkLayer, latestCompletedMediaContext } from '../domain/mediaNetworkLayer.js';
+import { buildMediaNetworkLayer, latestMeaningfulMediaContext } from '../domain/mediaNetworkLayer.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './media-network-layer.css';
 
@@ -12,13 +12,6 @@ const visibleNavButton = (label) => {
   const buttons = [...document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button')]
     .filter((button) => matcher.test(clean(button.textContent)));
   return buttons.find((button) => button.offsetParent !== null) || buttons[0] || null;
-};
-
-const parseHubContext = () => {
-  const label = clean(document.querySelector('.dhq-game-hub__toolbar strong')?.textContent);
-  const match = label.match(/season\s+(\d+)\s*[·•-]?\s*week\s+(\d+)/i);
-  if (!match) return null;
-  return { season: Number(match[1]), week: Number(match[2]) };
 };
 
 const newsroomSelect = () => document.querySelector('[aria-label="Choose weekly newsroom edition"]');
@@ -51,32 +44,33 @@ const OfficialLane = ({ model, compact = false }) => {
     <article className="dhq-media-network__lane is-official">
       <div className="dhq-media-network__lane-head">
         <span><Radio size={13} /> EA SPORTS NETWORK</span>
-        <b>{captured ? 'OFFICIAL FEED' : legacy ? 'VERIFIED ARCHIVE' : 'AWAITING CAPTURE'}</b>
+        <b>{captured ? 'OFFICIAL FEED' : legacy ? 'ARCHIVE' : 'NO STORY ON FILE'}</b>
       </div>
-      <strong>{captured ? (official.headline || 'Official game coverage') : legacy ? 'Official coverage evidence preserved' : 'No official article captured for this week'}</strong>
+      <strong>{captured ? (official.headline || 'Official game coverage') : legacy ? 'Older official-coverage material is attached to this week' : 'No EA SPORTS Network article is attached to this edition'}</strong>
       {!compact ? <p>{captured
         ? (official.summary || 'Official in-game coverage captured from College Football 27.')
         : legacy
-          ? `${official.factCount || 0} verified coverage fact${official.factCount === 1 ? '' : 's'} remain attached to this week. The older importer did not preserve the original article identity, so DynastyHQ will not invent one.`
-          : 'This lane stays empty until an EA SPORTS Network screen is actually captured from the game.'}</p> : null}
-      {official.factCount > 0 ? <small><ShieldCheck size={11} /> {official.factCount} VERIFIED FACTS</small> : null}
+          ? 'This week predates direct article preservation, so DynastyHQ keeps the older source material without inventing an article.'
+          : 'If CFB 27 publishes an article and you capture it, the original story will appear here.'}</p> : null}
+      {official.factCount > 0 && legacy ? <small><ShieldCheck size={11} /> ARCHIVED SOURCE MATERIAL</small> : null}
     </article>
   );
 };
 
 const DynastyLane = ({ model, compact = false, onNewsroom, onPodcast }) => {
   const { dynasty } = model;
+  const hasStory = dynasty.newsroomReady || dynasty.podcastReady;
   return (
     <article className="dhq-media-network__lane is-dynasty">
       <div className="dhq-media-network__lane-head">
         <span><Newspaper size={13} /> DYNASTYHQ</span>
-        <b>{dynasty.newsroomReady ? 'EDITORIAL DESK' : 'DESK OPEN'}</b>
+        <b>{hasStory ? 'COVERAGE READY' : 'NO NEW EDITION'}</b>
       </div>
-      <strong>{dynasty.headline || 'DynastyHQ coverage follows the verified career story'}</strong>
-      {!compact ? <p>{dynasty.dek || 'Newsroom, podcast, photos, and career context remain separate from the official in-game feed.'}</p> : null}
+      <strong>{dynasty.headline || dynasty.podcastTitle || `No DynastyHQ feature was published for Week ${model.week}`}</strong>
+      {!compact ? <p>{dynasty.dek || (hasStory ? 'The latest DynastyHQ media from this week is ready.' : 'Not every week needs a story. When the career creates one, it will appear here.')}</p> : null}
       <div className="dhq-media-network__chips">
-        <button type="button" disabled={!dynasty.newsroomReady} onClick={onNewsroom}><Newspaper size={11} /> {dynasty.newsroomReady ? 'NEWSROOM READY' : 'NO ARTICLE'}</button>
-        <button type="button" disabled={!dynasty.podcastReady} onClick={onPodcast}><Headphones size={11} /> {dynasty.finishedPodcast ? 'FINISHED EPISODE' : dynasty.podcastReady ? 'PODCAST READY' : 'NO EPISODE'}</button>
+        <button type="button" disabled={!dynasty.newsroomReady} onClick={onNewsroom}><Newspaper size={11} /> {dynasty.newsroomReady ? 'READ STORY' : 'NO ARTICLE'}</button>
+        <button type="button" disabled={!dynasty.podcastReady} onClick={onPodcast}><Headphones size={11} /> {dynasty.finishedPodcast ? 'PLAY EPISODE' : dynasty.podcastReady ? 'OPEN THE HUDDLE' : 'NO EPISODE'}</button>
         {dynasty.frontPageReady ? <span><CheckCircle2 size={11} /> FRONT PAGE</span> : null}
         {dynasty.photoCount > 0 ? <span>{dynasty.photoCount} PHOTO{dynasty.photoCount === 1 ? '' : 'S'}</span> : null}
       </div>
@@ -84,17 +78,17 @@ const DynastyLane = ({ model, compact = false, onNewsroom, onPodcast }) => {
   );
 };
 
-const NetworkWire = ({ items = [], variant = 'hub', onNewsroom }) => {
+const NetworkWire = ({ items = [], variant = 'home', onNewsroom }) => {
   const visibleItems = items.slice(0, variant === 'home' || variant === 'newsroom' ? 3 : 4);
   if (!visibleItems.length) return null;
   const loopItems = [...visibleItems, ...visibleItems];
   const ariaText = visibleItems.map((item) => `${item.source}: ${item.text}`).join('. ');
 
   return (
-    <div className="dhq-network-wire" aria-label={`Live Network Wire. ${ariaText}`}>
+    <div className="dhq-network-wire" aria-label={`Network Wire. ${ariaText}`}>
       <div className="dhq-network-wire__bug" aria-hidden="true">
         <span className="dhq-network-wire__live-dot" />
-        <div><b>LIVE</b><strong>NETWORK WIRE</strong></div>
+        <div><b>LATEST</b><strong>NETWORK WIRE</strong></div>
       </div>
       <div className="dhq-network-wire__viewport">
         <div className="dhq-network-wire__track" aria-hidden="true">
@@ -108,13 +102,13 @@ const NetworkWire = ({ items = [], variant = 'hub', onNewsroom }) => {
         </div>
       </div>
       {variant !== 'newsroom' ? (
-        <button type="button" className="dhq-network-wire__desk" onClick={onNewsroom}>OPEN MEDIA DESK <ChevronRight size={12} /></button>
+        <button type="button" className="dhq-network-wire__desk" onClick={onNewsroom}>OPEN NEWSROOM <ChevronRight size={12} /></button>
       ) : null}
     </div>
   );
 };
 
-const NetworkBoard = ({ model, variant = 'hub', onNewsroom, onPodcast }) => {
+const NetworkBoard = ({ model, variant = 'home', onNewsroom, onPodcast }) => {
   if (!model) return null;
   const compact = variant === 'home' || variant === 'newsroom';
   return (
@@ -135,14 +129,11 @@ const NetworkBoard = ({ model, variant = 'hub', onNewsroom, onPodcast }) => {
 const MediaNetworkLayerPortal = () => {
   const { career } = useOwnerCareer();
   const [homeMount, setHomeMount] = useState(null);
-  const [hubMount, setHubMount] = useState(null);
   const [newsroomMount, setNewsroomMount] = useState(null);
-  const [hubContext, setHubContext] = useState(null);
   const [newsroomContext, setNewsroomContext] = useState(null);
 
-  const homeContext = useMemo(() => career ? latestCompletedMediaContext(career) : null, [career]);
+  const homeContext = useMemo(() => career ? latestMeaningfulMediaContext(career) : null, [career]);
   const homeModel = useMemo(() => career && homeContext ? buildMediaNetworkLayer(career, homeContext) : null, [career, homeContext]);
-  const hubModel = useMemo(() => career && hubContext ? buildMediaNetworkLayer(career, hubContext) : null, [career, hubContext]);
   const newsroomModel = useMemo(() => career && newsroomContext ? buildMediaNetworkLayer(career, newsroomContext) : null, [career, newsroomContext]);
 
   const openNewsroom = () => (visibleNavButton('The Newsroom') || visibleNavButton('Newsroom'))?.click();
@@ -151,7 +142,6 @@ const MediaNetworkLayerPortal = () => {
   useEffect(() => {
     if (!career) return undefined;
     let homeNode = null;
-    let hubNode = null;
     let newsroomNode = null;
     let scheduled = false;
 
@@ -165,16 +155,6 @@ const MediaNetworkLayerPortal = () => {
         setHomeMount((current) => current === homeNode ? current : homeNode);
       } else {
         cleanup(homeNode); homeNode = null; setHomeMount(null);
-      }
-
-      const hubAnchor = document.querySelector('.dhq-game-hub .dhq-gh-official-card');
-      const nextHub = parseHubContext();
-      if (hubAnchor && nextHub) {
-        hubNode = hubNode?.isConnected ? hubNode : ensureMount(hubAnchor, 'beforebegin', '[data-media-network-hub="true"]', 'mediaNetworkHub');
-        setHubMount((current) => current === hubNode ? current : hubNode);
-        setHubContext((current) => current?.season === nextHub.season && current?.week === nextHub.week ? current : nextHub);
-      } else {
-        cleanup(hubNode); hubNode = null; setHubMount(null); setHubContext(null);
       }
 
       const root = newsroomRoot();
@@ -201,7 +181,6 @@ const MediaNetworkLayerPortal = () => {
     return () => {
       observer.disconnect();
       cleanup(homeNode);
-      cleanup(hubNode);
       cleanup(newsroomNode);
     };
   }, [career]);
@@ -209,7 +188,6 @@ const MediaNetworkLayerPortal = () => {
   return (
     <>
       {homeMount && homeModel ? createPortal(<NetworkBoard model={homeModel} variant="home" onNewsroom={openNewsroom} onPodcast={openPodcast} />, homeMount) : null}
-      {hubMount && hubModel ? createPortal(<NetworkBoard model={hubModel} variant="hub" onNewsroom={openNewsroom} onPodcast={openPodcast} />, hubMount) : null}
       {newsroomMount && newsroomModel ? createPortal(<NetworkBoard model={newsroomModel} variant="newsroom" onNewsroom={openNewsroom} onPodcast={openPodcast} />, newsroomMount) : null}
     </>
   );

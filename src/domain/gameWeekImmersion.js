@@ -1,4 +1,5 @@
 import { buildGameDayBrief } from './gameDayBrief.js';
+import { teamRecordThroughWeek } from './seasonSchedule.js';
 
 const clean = (value) => String(value ?? '').trim();
 const finite = (value, fallback = 0) => {
@@ -130,9 +131,19 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   else if (configured && activeOpponent) mode = 'pregame';
   else if (latestGame) mode = 'between';
 
-  const opponent = activeOpponent || clean(latestGame?.opponent) || 'NEXT OPPONENT';
+  // Pregame belongs to the active Week Setup. Postgame/between-week presentation
+  // belongs to the completed game. Never combine a future opponent with an older
+  // final score just because Week Setup has already advanced.
+  const opponent = mode === 'pregame'
+    ? (activeOpponent || clean(latestGame?.opponent) || 'NEXT OPPONENT')
+    : (clean(latestGame?.opponent) || activeOpponent || 'NEXT OPPONENT');
   const score = scoreFor(latestGame || {});
   const result = clean(latestGame?.result).toUpperCase();
+  const latestGameSeason = finite(latestGame?.season, state.currentSeason || 1);
+  const latestGameWeek = finite(latestGame?.week, week);
+  const latestGameRecord = latestGame
+    ? teamRecordThroughWeek(state, latestGameSeason, latestGameWeek)
+    : null;
 
   const presentation = mode === 'pregame'
     ? {
@@ -213,6 +224,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     school,
     opponent,
     latestGame,
+    latestGameRecord,
     activeOpponent,
     week,
     score,

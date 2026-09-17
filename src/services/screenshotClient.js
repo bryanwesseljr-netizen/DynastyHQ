@@ -136,6 +136,18 @@ export const analyzeScreenshot = async ({
 
   recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
   const normalized = normalizeScreenshotAnalysis(body);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('dynastyhq:screenshot-analyzed', {
+      detail: {
+        fileName: String(fileName || ''),
+        analysis: normalized?.analysis || {},
+        scanKind: body.scanKind || (useFreeCollegeScanner ? 'game' : 'general'),
+        provider: body.provider || '',
+      },
+    }));
+  }
+
   const candidate = useFreeCollegeScanner
     ? officialCoverageCandidateFromAnalysis({ analysis: normalized?.analysis || {}, fileName })
     : null;

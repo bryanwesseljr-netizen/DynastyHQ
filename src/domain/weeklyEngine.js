@@ -420,11 +420,23 @@ const getInterestLevel = (interest) => {
 const EDITABLE_NUMERIC_KEYS = new Set([
   'game.homeScore',
   'game.awayScore',
+  'game.teamRank',
+  'game.opponentRank',
   'game.passYds',
   'game.passTD',
   'game.rushYds',
   'game.rushTD',
   'game.int',
+  'game.teamTotalYards',
+  'game.opponentTotalYards',
+  'game.teamFirstDowns',
+  'game.opponentFirstDowns',
+  'game.teamTurnovers',
+  'game.opponentTurnovers',
+  'game.teamRushYds',
+  'game.opponentRushYds',
+  'game.teamPassYds',
+  'game.opponentPassYds',
   'rtg.gpa',
   'rtg.energy',
   'rtg.coachTrust',
@@ -1016,6 +1028,46 @@ export const parseScreenshotText = ({ text, sourceId, fileName = 'Screenshot', r
   };
 };
 
+const deriveTeamRushingFromOffense = (facts = []) => {
+  const byKey = new Map(facts.map((entry) => [entry.key, entry]));
+  const derived = [];
+  [
+    {
+      rushKey: 'game.teamRushYds',
+      totalKey: 'game.teamTotalYards',
+      passKey: 'game.teamPassYds',
+      label: 'Team rushing yards',
+    },
+    {
+      rushKey: 'game.opponentRushYds',
+      totalKey: 'game.opponentTotalYards',
+      passKey: 'game.opponentPassYds',
+      label: 'Opponent rushing yards',
+    },
+  ].forEach(({ rushKey, totalKey, passKey, label }) => {
+    if (byKey.has(rushKey)) return;
+    const totalFact = byKey.get(totalKey);
+    const passFact = byKey.get(passKey);
+    const total = Number(totalFact?.value);
+    const passing = Number(passFact?.value);
+    if (!Number.isFinite(total) || !Number.isFinite(passing)) return;
+    const rushing = total - passing;
+    if (!Number.isFinite(rushing) || rushing < 0) return;
+    derived.push({
+      id: `derived:${rushKey}`,
+      key: rushKey,
+      label,
+      value: rushing,
+      confidence: Math.min(0.97, Number(totalFact?.confidence) || 0.9, Number(passFact?.confidence) || 0.9),
+      evidence: `Derived exactly from visible Total Offense (${total}) minus Passing Yards (${passing}).`,
+      sourceId: totalFact?.sourceId || passFact?.sourceId || 'derived-team-stats',
+      verified: false,
+      derived: true,
+    });
+  });
+  return [...facts, ...derived];
+};
+
 export const mergeScanResult = (draft, result) => {
   const factsByKey = new Map(draft.facts.map((entry) => [entry.key, entry]));
   const conflictsByKey = new Map((draft.conflicts || []).map((entry) => [entry.key, entry]));
@@ -1050,13 +1102,20 @@ export const mergeScanResult = (draft, result) => {
   const playersById = new Map((draft.retentionPatches || []).map((player) => [player.id, player]));
   (result.retentionPatches || []).forEach((player) => playersById.set(player.id, player));
 
+  const mergedFacts = deriveTeamRushingFromOffense([...factsByKey.values()]);
+  const mergedGamePatch = { ...draft.gamePatch, ...result.gamePatch };
+  mergedFacts.forEach((entry) => {
+    if (entry.key === 'game.teamRushYds') mergedGamePatch.teamRushYds = entry.value;
+    if (entry.key === 'game.opponentRushYds') mergedGamePatch.opponentRushYds = entry.value;
+  });
+
   return {
     ...draft,
     status: 'review',
     sources: [...draft.sources, result.source],
-    facts: [...factsByKey.values()],
+    facts: mergedFacts,
     conflicts: [...conflictsByKey.values()],
-    gamePatch: { ...draft.gamePatch, ...result.gamePatch },
+    gamePatch: mergedGamePatch,
     rtgPatch: {
       ...draft.rtgPatch,
       ...result.rtgPatch,

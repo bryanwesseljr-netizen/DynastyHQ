@@ -357,14 +357,36 @@ const ProcessWeek2Portal = () => {
       setError('The underlying week still has a required verification item before it can be published.');
       return;
     }
+
     setPublishBusy(true);
     try { window.sessionStorage?.setItem('dhq-process-week2-publishing', publicationId); } catch { /* session hint only */ }
     button.click();
+
+    // The legacy agenda may open its optional roleplay press-conference step instead of actually
+    // publishing. Process Week already presented the user with the final confirmation, so bypass
+    // that legacy interstitial and commit the verified week without a fabricated quote.
+    window.setTimeout(() => {
+      const roleplayBypass = [...document.querySelectorAll('button')].find((entry) => (
+        /publish without a roleplay quote/i.test(clean(entry.textContent))
+      ));
+      roleplayBypass?.click();
+    }, 80);
+
     window.setTimeout(() => {
       const continueButton = document.querySelector('.dhq-session-import__complete-actions .is-primary');
       continueButton?.click();
-    }, 120);
-    window.setTimeout(() => setPublishBusy(false), 10000);
+    }, 160);
+
+    // Do not silently return to an apparently idle Publish Week button. If the cloud snapshot
+    // has not produced the published weekly entry, surface a concrete retry message.
+    window.setTimeout(() => {
+      let pending = '';
+      try { pending = window.sessionStorage?.getItem('dhq-process-week2-publishing') || ''; } catch { /* no-op */ }
+      if (pending === publicationId) {
+        setPublishBusy(false);
+        setError('Publish did not complete. Your verified draft is still safe. Try Publish Week again; if it repeats, refresh this preview before retrying.');
+      }
+    }, 12000);
   };
 
   if (!career) return null;

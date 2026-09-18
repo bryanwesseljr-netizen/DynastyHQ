@@ -382,3 +382,39 @@ test('normalizes offseason roster needs and named retention decisions', () => {
   assert.equal(result.facts.some((entry) => entry.key === 'retention.player-test-prospect-f.risk'), true);
   assert.deepEqual(result.source.detectedTypes, ['Roster Management', 'Roster Retention']);
 });
+
+
+test('preserves visible zero QB stats, prefixes player labels, and keeps both team rushing totals', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'postgame-zeroes',
+    fileName: 'oregon-state-postgame.png',
+    recruiting: [],
+    careerPhase: 'Player',
+    analysis: {
+      screenTypes: ['box_score'],
+      screenTitle: 'Postgame Stats',
+      summary: 'Player and team comparison stats.',
+      facts: [
+        { key: 'game.passYds', label: 'Passing yards', value: '185', confidence: 0.98, evidence: 'PASS YDS 185' },
+        { key: 'game.passTD', label: 'Passing TDs', value: '0', confidence: 0.98, evidence: 'PASS TD 0' },
+        { key: 'game.rushYds', label: 'Rushing yards', value: '46', confidence: 0.98, evidence: 'RUSH YDS 46' },
+        { key: 'game.rushTD', label: 'Rushing TDs', value: '0', confidence: 0.98, evidence: 'RUSH TD 0' },
+        { key: 'game.int', label: 'Interceptions', value: '1', confidence: 0.98, evidence: 'INT 1' },
+        { key: 'game.teamRushYds', label: 'Rushing Yards', value: '276', confidence: 0.98, evidence: 'ORE rushing yards 276' },
+        { key: 'game.opponentRushYds', label: 'Rushing Yards', value: '60', confidence: 0.98, evidence: 'ORST rushing yards 60' },
+      ],
+    },
+  });
+
+  assert.equal(result.gamePatch.passTD, 0);
+  assert.equal(result.gamePatch.rushTD, 0);
+  assert.equal(result.gamePatch.teamRushYds, 276);
+  assert.equal(result.gamePatch.opponentRushYds, 60);
+  assert.equal(result.facts.find((entry) => entry.key === 'game.passYds').label, 'Player passing yards');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.passTD').label, 'Player passing TDs');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.rushYds').label, 'Player rushing yards');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.rushTD').label, 'Player rushing TDs');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.int').label, 'Player interceptions');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.teamRushYds').label, 'Team rushing yards');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.opponentRushYds').label, 'Opponent rushing yards');
+});

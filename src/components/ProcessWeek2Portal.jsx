@@ -86,6 +86,52 @@ const publicationMatches = (entry = {}, publicationId = '') => (
   || entry?.id === publicationId
 );
 
+const analysesFromAppliedSnapshot = (snapshot = {}) => {
+  const facts = list(snapshot.facts);
+  const sources = list(snapshot.sources);
+  if (!facts.length && !sources.length) return [];
+
+  const factsBySource = new Map();
+  facts.forEach((fact) => {
+    const sourceId = clean(fact?.sourceId) || 'applied-verified';
+    if (!factsBySource.has(sourceId)) factsBySource.set(sourceId, []);
+    factsBySource.get(sourceId).push(fact);
+  });
+
+  const sourceItems = sources.length ? sources : [{ id: 'applied-verified', fileName: 'Verified Game Data' }];
+  const analyses = sourceItems.map((source, index) => {
+    const sourceId = clean(source?.id || source?.sourceId) || `applied-${index + 1}`;
+    const sourceFacts = factsBySource.get(sourceId) || [];
+    const screenTypes = list(source?.detectedTypes || source?.screenTypes || source?.types);
+    const analysis = {
+      screenTypes,
+      screenTitle: clean(source?.screenTitle || source?.title || source?.fileName),
+      summary: clean(source?.summary),
+      facts: sourceFacts,
+    };
+    return {
+      fileName: clean(source?.fileName || source?.name) || `Verified screen ${index + 1}`,
+      analysis,
+      categories: classifyProcessWeekAnalysis(analysis),
+    };
+  });
+
+  const represented = new Set(sourceItems.map((source) => clean(source?.id || source?.sourceId)).filter(Boolean));
+  const ungroupedFacts = facts.filter((fact) => !represented.has(clean(fact?.sourceId)));
+  if (ungroupedFacts.length) {
+    const analysis = { screenTypes: ['box_score'], screenTitle: 'Verified applied facts', facts: ungroupedFacts };
+    analyses.push({ fileName: 'Verified applied facts', analysis, categories: classifyProcessWeekAnalysis(analysis) });
+  }
+
+  // If source metadata survived but source-level fact ids did not, preserve the verified facts in
+  // one synthetic analysis so result/player/team detections still rehydrate accurately.
+  if (!analyses.some((entry) => list(entry.analysis?.facts).length) && facts.length) {
+    const analysis = { screenTypes: ['box_score'], screenTitle: 'Verified applied facts', facts };
+    analyses.push({ fileName: 'Verified applied facts', analysis, categories: classifyProcessWeekAnalysis(analysis) });
+  }
+  return analyses;
+};
+
 const latestPublished = (career = {}) => list(career.weeklyUpdates).slice().sort((a, b) => (
   Number(a.season || 1) - Number(b.season || 1)
   || Number(a.week || 0) - Number(b.week || 0)
@@ -264,9 +310,32 @@ const ProcessWeek2Portal = () => {
         return next;
       });
     };
+    const onApplied = (event) => {
+      const snapshot = event.detail || {};
+      if (clean(snapshot.publicationId) !== publicationId) return;
+      const restored = analysesFromAppliedSnapshot(snapshot);
+      if (restored.length) {
+        setAnalyses(restored);
+        setExpectedScreens(Math.max(restored.length, list(snapshot.sources).length));
+      }
+    };
+
+    const existing = window.__dhqAppliedGameDataSnapshot;
+    if (existing && clean(existing.publicationId) === publicationId) {
+      const restored = analysesFromAppliedSnapshot(existing);
+      if (restored.length) {
+        setAnalyses(restored);
+        setExpectedScreens(Math.max(restored.length, list(existing.sources).length));
+      }
+    }
+
     window.addEventListener('dynastyhq:screenshot-analyzed', onAnalyzed);
-    return () => window.removeEventListener('dynastyhq:screenshot-analyzed', onAnalyzed);
-  }, []);
+    window.addEventListener('dynastyhq:game-data-applied', onApplied);
+    return () => {
+      window.removeEventListener('dynastyhq:screenshot-analyzed', onAnalyzed);
+      window.removeEventListener('dynastyhq:game-data-applied', onApplied);
+    };
+  }, [publicationId]);
 
   useEffect(() => {
     const root = document.getElementById('root') || document.body;

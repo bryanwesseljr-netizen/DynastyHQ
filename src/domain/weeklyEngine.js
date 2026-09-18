@@ -763,7 +763,14 @@ export const getWeeklyCompleteness = (draft) => {
   const isBye = draft.weekType === WEEK_TYPES.BYE;
   const isNoAppearance = draft.weekType === WEEK_TYPES.NO_APPEARANCE;
   const gameIdentityKeys = ['game.opponent', 'game.result', 'game.homeScore', 'game.awayScore'];
-  const playerStatKeys = ['game.passYds', 'game.passTD', 'game.rushYds', 'game.rushTD', 'game.int'];
+  const playerStatFields = [
+    ['game.passYds', 'Player passing yards'],
+    ['game.passTD', 'Player passing TDs'],
+    ['game.rushYds', 'Player rushing yards'],
+    ['game.rushTD', 'Player rushing TDs'],
+    ['game.int', 'Player interceptions'],
+  ];
+  const playerStatKeys = playerStatFields.map(([key]) => key);
   const playerStatusKeys = ['rtg.gpa', 'rtg.energy', 'rtg.coachTrust', 'rtg.skillPoints'];
   const wearKeys = ['rtg.wear.head', 'rtg.wear.chest', 'rtg.wear.arm', 'rtg.wear.legs'];
   const hasRecruiting = [...availableKeys].some((key) => key.startsWith('recruiting.'));
@@ -835,10 +842,15 @@ export const getWeeklyCompleteness = (draft) => {
       'required',
     );
     if (isPlayer && !isNoAppearance) {
+      const missingPlayerStats = playerStatFields
+        .filter(([key]) => !availableKeys.has(key))
+        .map(([, label]) => label);
       addCheck(
         'player-stats',
         'Quarterback stat line',
-        hasEveryFact(playerStatKeys, availableKeys) ? 'Passing, rushing, touchdown, and interception totals are complete.' : 'Add passing yards/TDs, rushing yards/TDs, and interceptions—even when a value is zero.',
+        hasEveryFact(playerStatKeys, availableKeys)
+          ? 'Passing, rushing, touchdown, and interception totals are complete. Zero values count as complete.'
+          : `Missing from extraction: ${missingPlayerStats.join(', ')}. A visible 0 is valid and should be captured.`,
         hasEveryFact(playerStatKeys, availableKeys) ? 'complete' : 'missing',
         'required',
       );

@@ -59,11 +59,8 @@ export const buildProcessWeekInbox = ({ analyses = [], expectedScreens = 0, revi
   const analyzedScreens = list(analyses).length;
   const attention = Number(review.attention) || 0;
   const missing = Number(review.missing) || 0;
-  // An applied draft has already passed the verification desk. Screenshot-analysis events are
-  // transient and disappear on refresh, so never downgrade a verified applied week merely because
-  // the Process Week portal remounted without those old events.
-  const hasResult = isBye || Boolean(counts.result) || Boolean(review.hasApplied);
-  const scanComplete = review.hasApplied || (expectedScreens > 0 ? analyzedScreens >= expectedScreens : analyzedScreens > 0);
+  const hasResult = isBye || Boolean(counts.result);
+  const scanComplete = expectedScreens > 0 ? analyzedScreens >= expectedScreens : analyzedScreens > 0;
 
   let state = 'analyzing';
   let label = 'ANALYZING SESSION';

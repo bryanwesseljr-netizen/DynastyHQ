@@ -45,3 +45,12 @@ test('keeps a session in attention state if final result is absent', () => {
   assert.equal(inbox.state, 'needs-attention');
   assert.equal(inbox.canPublish, false);
 });
+
+
+test('Process Week final publish bypasses the legacy roleplay interstitial', async () => {
+  const source = await import('node:fs/promises').then(({ readFile }) => (
+    readFile(new URL('../components/ProcessWeek2Portal.jsx', import.meta.url), 'utf8')
+  ));
+  assert.match(source, /publish without a roleplay quote/i);
+  assert.match(source, /Publish did not complete\. Your verified draft is still safe/);
+});

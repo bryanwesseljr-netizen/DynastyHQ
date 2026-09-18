@@ -442,6 +442,17 @@ const App = () => {
       const recoveryTimer = window.setTimeout(() => {
         setScanDraft(recoveredScan);
         setAppliedScanDraft(recoveredApplied);
+        if (recoveredApplied) {
+          const recoveredPublicationId = `season-${Number(recoveredApplied.season || appState.currentSeason) || 1}-week-${Number(recoveredApplied.week ?? appState.currentWeek) || 0}`;
+          window.__dhqAppliedGameDataSnapshot = {
+            publicationId: recoveredPublicationId,
+            facts: recoveredApplied.facts || [],
+            sources: recoveredApplied.sources || [],
+          };
+          window.dispatchEvent(new CustomEvent('dynastyhq:game-data-applied', {
+            detail: window.__dhqAppliedGameDataSnapshot,
+          }));
+        }
         if (recovery.record.newGame) setNewGame(recovery.record.newGame);
         if (recovery.record.rtgUpdate) setRtgUpdate(recovery.record.rtgUpdate);
         if (recovery.record.coachUpdate) setCoachUpdate(recovery.record.coachUpdate);
@@ -745,10 +756,17 @@ const App = () => {
       wear: { ...(current.wear || {}), ...(scanDraft.rtgPatch.wear || {}) },
     }));
     setCoachUpdate((current) => ({ ...current, ...(scanDraft.coachPatch || {}) }));
-    setAppliedScanDraft({ ...scanDraft, status: 'ready' });
+    const appliedDraft = { ...scanDraft, status: 'ready' };
+    setAppliedScanDraft(appliedDraft);
     setScanDraft(null);
+    const appliedPublicationId = `season-${Number(scanDraft.season || appState.currentSeason) || 1}-week-${Number(scanDraft.week ?? appState.currentWeek) || 0}`;
+    window.__dhqAppliedGameDataSnapshot = {
+      publicationId: appliedPublicationId,
+      facts: appliedDraft.facts || [],
+      sources: appliedDraft.sources || [],
+    };
     window.dispatchEvent(new CustomEvent('dynastyhq:game-data-applied', {
-      detail: { publicationId: `season-${Number(scanDraft.season || appState.currentSeason) || 1}-week-${Number(scanDraft.week ?? appState.currentWeek) || 0}` },
+      detail: window.__dhqAppliedGameDataSnapshot,
     }));
     setMessageModal({ isOpen: true, text: 'Verified draft applied. Correct anything needed, then publish the week.', type: 'success' });
     setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 4000);

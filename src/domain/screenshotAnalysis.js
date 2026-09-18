@@ -110,6 +110,30 @@ const GAME_KEYS = new Set([
   'game.opponentPassYds',
 ]);
 
+const GAME_FACT_LABELS = new Map([
+  ['game.opponent', 'Opponent'],
+  ['game.result', 'Result'],
+  ['game.homeScore', 'Team score'],
+  ['game.awayScore', 'Opponent score'],
+  ['game.teamRank', 'Team rank'],
+  ['game.opponentRank', 'Opponent rank'],
+  ['game.passYds', 'Player passing yards'],
+  ['game.passTD', 'Player passing TDs'],
+  ['game.rushYds', 'Player rushing yards'],
+  ['game.rushTD', 'Player rushing TDs'],
+  ['game.int', 'Player interceptions'],
+  ['game.teamTotalYards', 'Team total offense'],
+  ['game.opponentTotalYards', 'Opponent total offense'],
+  ['game.teamFirstDowns', 'Team first downs'],
+  ['game.opponentFirstDowns', 'Opponent first downs'],
+  ['game.teamTurnovers', 'Team turnovers'],
+  ['game.opponentTurnovers', 'Opponent turnovers'],
+  ['game.teamRushYds', 'Team rushing yards'],
+  ['game.opponentRushYds', 'Opponent rushing yards'],
+  ['game.teamPassYds', 'Team passing yards'],
+  ['game.opponentPassYds', 'Opponent passing yards'],
+]);
+
 const HIGH_SCHOOL_KEYS = new Set([
   ...Array.from({ length: 4 }, (_, index) => {
     const prefix = `highSchool.moment${index + 1}`;
@@ -519,7 +543,7 @@ export const normalizeScreenshotAnalysis = ({
     facts.push({
       id: `${sourceId}:${key}:${index}`,
       key: ledgerKey,
-      label: cleanString(rawFact.label) || key,
+      label: GAME_FACT_LABELS.get(ledgerKey) || cleanString(rawFact.label) || key,
       value,
       confidence: confidence(rawFact.confidence),
       evidence: cleanString(rawFact.evidence).slice(0, 180),

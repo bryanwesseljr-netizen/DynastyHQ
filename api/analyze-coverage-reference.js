@@ -20,6 +20,24 @@ const factSchema = (keys) => ({
   },
 });
 
+const visibleStatValueSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['value', 'confidence', 'evidence'],
+  properties: {
+    value: { type: 'string' },
+    confidence: { type: 'number', minimum: 0, maximum: 1 },
+    evidence: { type: 'string' },
+  },
+};
+
+const fixedStatLineSchema = (fields) => ({
+  type: 'object',
+  additionalProperties: false,
+  required: fields,
+  properties: Object.fromEntries(fields.map((field) => [field, visibleStatValueSchema])),
+});
+
 const GAME_KEYS = [
   'game.opponent', 'game.result', 'game.homeScore', 'game.awayScore',
   'game.teamRank', 'game.opponentRank',
@@ -60,12 +78,20 @@ const OFFICIAL_ARTICLE_SCHEMA = {
 const GAME_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['screenTypes', 'screenTitle', 'summary', 'officialArticle', 'facts'],
+  required: ['screenTypes', 'screenTitle', 'summary', 'officialArticle', 'playerStatLine', 'teamStatLine', 'facts'],
   properties: {
     screenTypes: { type: 'array', items: { type: 'string', enum: ['box_score', 'ea_sports_network_article', 'unknown'] } },
     screenTitle: { type: 'string' },
     summary: { type: 'string' },
     officialArticle: OFFICIAL_ARTICLE_SCHEMA,
+    playerStatLine: fixedStatLineSchema(['passYds', 'passTD', 'rushYds', 'rushTD', 'int']),
+    teamStatLine: fixedStatLineSchema([
+      'teamTotalYards', 'opponentTotalYards',
+      'teamFirstDowns', 'opponentFirstDowns',
+      'teamTurnovers', 'opponentTurnovers',
+      'teamRushYds', 'opponentRushYds',
+      'teamPassYds', 'opponentPassYds',
+    ]),
     facts: {
       ...factSchema(GAME_KEYS),
       maxItems: 28,
@@ -170,6 +196,8 @@ const GAME_INSTRUCTIONS = `You extract verified college-game facts AND recognize
 - game.homeScore means the tracked TEAM score and game.awayScore means the OPPONENT score regardless of venue.
 - game.result is W or L only when the final score and tracked team are clear.
 - game.passYds, passTD, rushYds, rushTD and int are the TRACKED PLAYER'S own totals only. Zero is a valid visible value.
+- PLAYER STAT-LINE CHECK: Always inspect the tracked player's full visible stat row/rows for PASS YDS, PASS TD, RUSH YDS, RUSH TD and INT. Populate playerStatLine for all five fields. A plainly visible zero MUST be returned as value="0"; use value="" only when that field truly is not visible in this screenshot. Do not skip TD or INT columns just because they are zero.
+- TEAM STAT-LINE CHECK: On a team-comparison screen, inspect the entire visible table through the Rushing Yards and Passing Yards rows. Populate teamStatLine for both teams. A plainly visible zero MUST be returned as "0"; use an empty value only when the field is not visible.
 - PASSING TABLE RULE: game.passYds comes ONLY from the tracked player's YDS/YARDS column in a passing-stat row. Never map CMP/COMP, ATT/ATTEMPTS, C/ATT, completion percentage, TD, INT, LONG, or rating into game.passYds. If the YDS column cannot be aligned confidently with the tracked player's row, omit game.passYds.
 - game.teamPassYds and game.opponentPassYds come ONLY from a plainly labeled team-level Passing Yards/YDS value. Never use team pass attempts or completions for these keys.
 - team* facts refer to the tracked team and opponent* facts to the opponent regardless of venue.
@@ -217,6 +245,43 @@ const SCHEDULE_INSTRUCTIONS = `You extract a college football season schedule fr
 - date, conference and label are optional visible text. Use empty strings when absent.
 - Do not infer kickoff time, rankings, opponent records, conference membership, rivalry status, postseason stakes, or player participation.
 - Confidence above 0.90 only for plainly legible rows. Evidence should briefly name the visible row/result used.`;
+
+const gameFactFromFixedStat = ({ key, label, stat }) => {
+  const value = String(stat?.value ?? '').trim();
+  if (value === '') return null;
+  const parsedConfidence = Number(stat?.confidence);
+  return {
+    key,
+    label,
+    value,
+    confidence: Number.isFinite(parsedConfidence) ? Math.min(0.99, Math.max(0, parsedConfidence)) : 0.85,
+    evidence: String(stat?.evidence || '').trim() || `Fixed stat-line check: ${label} ${value}`,
+    schoolName: '',
+    subjectName: '',
+  };
+};
+
+const augmentGameAnalysis = (analysis = {}) => {
+  if (!(analysis.screenTypes || []).includes('box_score')) return analysis;
+  const fixedFacts = [
+    ['game.passYds', 'Player passing yards', analysis.playerStatLine?.passYds],
+    ['game.passTD', 'Player passing TDs', analysis.playerStatLine?.passTD],
+    ['game.rushYds', 'Player rushing yards', analysis.playerStatLine?.rushYds],
+    ['game.rushTD', 'Player rushing TDs', analysis.playerStatLine?.rushTD],
+    ['game.int', 'Player interceptions', analysis.playerStatLine?.int],
+    ['game.teamTotalYards', 'Team total offense', analysis.teamStatLine?.teamTotalYards],
+    ['game.opponentTotalYards', 'Opponent total offense', analysis.teamStatLine?.opponentTotalYards],
+    ['game.teamFirstDowns', 'Team first downs', analysis.teamStatLine?.teamFirstDowns],
+    ['game.opponentFirstDowns', 'Opponent first downs', analysis.teamStatLine?.opponentFirstDowns],
+    ['game.teamTurnovers', 'Team turnovers', analysis.teamStatLine?.teamTurnovers],
+    ['game.opponentTurnovers', 'Opponent turnovers', analysis.teamStatLine?.opponentTurnovers],
+    ['game.teamRushYds', 'Team rushing yards', analysis.teamStatLine?.teamRushYds],
+    ['game.opponentRushYds', 'Opponent rushing yards', analysis.teamStatLine?.opponentRushYds],
+    ['game.teamPassYds', 'Team passing yards', analysis.teamStatLine?.teamPassYds],
+    ['game.opponentPassYds', 'Opponent passing yards', analysis.teamStatLine?.opponentPassYds],
+  ].map(([key, label, stat]) => gameFactFromFixedStat({ key, label, stat })).filter(Boolean);
+  return { ...analysis, facts: [...(analysis.facts || []), ...fixedFacts] };
+};
 
 const validImageDataUrl = (value) => (
   typeof value === 'string'
@@ -304,7 +369,7 @@ export default async function handler(req, res) {
       allowPaidFallback: body.allowPaidFallback === true,
     });
     return json(res, 200, {
-      analysis: result.analysis,
+      analysis: task.kind === 'game' ? augmentGameAnalysis(result.analysis) : result.analysis,
       scanKind: task.kind,
       provider: result.usage.provider,
       model: result.usage.model,

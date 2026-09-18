@@ -380,6 +380,10 @@ const WeeklyAgendaShell = ({
 };
 
 const GuidedActionBar = ({ agenda, setupReady, setupOpen, workflow, onToggleSetup }) => {
+  // Once verified Game Data is applied, Process Week owns the final publish flow.
+  // Hiding this legacy action prevents two different "publish" buttons from competing.
+  if (workflow.hasApplied) return null;
+
   const clickOriginal = (matcher) => {
     const originalActions = findOriginalActions(agenda);
     const button = findByText(originalActions, 'button', matcher);

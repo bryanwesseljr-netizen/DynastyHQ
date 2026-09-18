@@ -626,3 +626,49 @@ test('publishes verified retention players and offseason facts with the week', (
   assert.equal(next.factLedger.some((entry) => entry.key === 'roster.qb.need' && entry.verified), true);
   assert.equal(next.factLedger.some((entry) => entry.key === 'retention.player-test-prospect-f.risk' && entry.verified), true);
 });
+
+
+test('counts visible zero touchdowns as a complete quarterback stat line', () => {
+  const base = createEmptyScanDraft({
+    season: 2,
+    week: 3,
+    careerPhase: 'Player',
+    isCommitted: true,
+  });
+  const values = new Map([
+    ['game.opponent', 'Oregon State'],
+    ['game.result', 'W'],
+    ['game.homeScore', 33],
+    ['game.awayScore', 15],
+    ['game.passYds', 185],
+    ['game.passTD', 0],
+    ['game.rushYds', 46],
+    ['game.rushTD', 0],
+    ['game.int', 1],
+  ]);
+  const draft = mergeScanResult(base, {
+    source: { id: 'postgame', fileName: 'postgame.png', detectedTypes: ['Box Score'] },
+    facts: [...values].map(([key, value]) => ({
+      id: `postgame:${key}`,
+      key,
+      label: key,
+      value,
+      confidence: 0.98,
+      sourceId: 'postgame',
+    })),
+    gamePatch: Object.fromEntries([...values]
+      .filter(([key]) => key.startsWith('game.'))
+      .map(([key, value]) => [key.slice('game.'.length), value])),
+    rtgPatch: {},
+    coachPatch: {},
+    recruitingPatches: [],
+    retentionPatches: [],
+  });
+
+  const report = getWeeklyCompleteness(draft);
+  const qbCheck = report.checks.find((check) => check.id === 'player-stats');
+
+  assert.equal(qbCheck.status, 'complete');
+  assert.match(qbCheck.detail, /Zero values count as complete/);
+  assert.equal(report.missingRequired, 0);
+});

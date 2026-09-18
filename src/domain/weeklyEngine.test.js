@@ -672,3 +672,29 @@ test('counts visible zero touchdowns as a complete quarterback stat line', () =>
   assert.match(qbCheck.detail, /Zero values count as complete/);
   assert.equal(report.missingRequired, 0);
 });
+
+
+test('derives both team rushing totals from visible total offense and passing yards when the scanner omits the rushing row', () => {
+  const base = createEmptyScanDraft({ season: 2, week: 3, careerPhase: 'Player', isCommitted: true });
+  const result = {
+    source: { id: 'team-stats', fileName: 'team-stats.png', detectedTypes: ['Box Score'] },
+    facts: [
+      { id: 't1', key: 'game.teamTotalYards', label: 'Team total offense', value: 461, confidence: 0.98, sourceId: 'team-stats' },
+      { id: 't2', key: 'game.teamPassYds', label: 'Team passing yards', value: 185, confidence: 0.98, sourceId: 'team-stats' },
+      { id: 't3', key: 'game.opponentTotalYards', label: 'Opponent total offense', value: 314, confidence: 0.98, sourceId: 'team-stats' },
+      { id: 't4', key: 'game.opponentPassYds', label: 'Opponent passing yards', value: 254, confidence: 0.98, sourceId: 'team-stats' },
+    ],
+    gamePatch: { teamTotalYards: 461, teamPassYds: 185, opponentTotalYards: 314, opponentPassYds: 254 },
+    rtgPatch: {},
+    coachPatch: {},
+    recruitingPatches: [],
+    retentionPatches: [],
+  };
+  const draft = mergeScanResult(base, result);
+
+  assert.equal(draft.gamePatch.teamRushYds, 276);
+  assert.equal(draft.gamePatch.opponentRushYds, 60);
+  assert.equal(draft.facts.find((entry) => entry.key === 'game.teamRushYds').value, 276);
+  assert.equal(draft.facts.find((entry) => entry.key === 'game.opponentRushYds').value, 60);
+  assert.match(draft.facts.find((entry) => entry.key === 'game.teamRushYds').evidence, /Total Offense \(461\) minus Passing Yards \(185\)/);
+});

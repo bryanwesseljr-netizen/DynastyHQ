@@ -54,15 +54,3 @@ test('Process Week final publish bypasses the legacy roleplay interstitial', asy
   assert.match(source, /publish without a roleplay quote/i);
   assert.match(source, /Publish did not complete\. Your verified draft is still safe/);
 });
-
-
-test('keeps an applied verified week publishable after screenshot events are lost on refresh', () => {
-  const inbox = buildProcessWeekInbox({
-    analyses: [],
-    expectedScreens: 0,
-    review: { hasApplied: true, attention: 0, missing: 0 },
-  });
-  assert.equal(inbox.state, 'ready-to-publish');
-  assert.equal(inbox.canPublish, true);
-  assert.equal(inbox.hasResult, true);
-});

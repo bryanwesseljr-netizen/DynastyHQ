@@ -16,8 +16,11 @@ const isRecruitingOffer = (key) => /^recruiting\..+\.offer$/.test(key);
 const isRecruitingInterest = (key) => /^recruiting\..+\.interest$/.test(key);
 const isRecruitingStars = (key) => /^recruiting\..+\.stars$/.test(key);
 const isNumericFact = (key) => [
-  'game.homeScore', 'game.awayScore', 'game.passYds', 'game.passTD', 'game.rushYds',
-  'game.rushTD', 'game.int', 'rtg.gpa', 'rtg.energy', 'rtg.coachTrust',
+  'game.homeScore', 'game.awayScore', 'game.teamRank', 'game.opponentRank',
+  'game.passYds', 'game.passTD', 'game.rushYds', 'game.rushTD', 'game.int',
+  'game.teamTotalYards', 'game.opponentTotalYards', 'game.teamFirstDowns', 'game.opponentFirstDowns',
+  'game.teamTurnovers', 'game.opponentTurnovers', 'game.teamRushYds', 'game.opponentRushYds',
+  'game.teamPassYds', 'game.opponentPassYds', 'rtg.gpa', 'rtg.energy', 'rtg.coachTrust',
   'rtg.trustToNext', 'rtg.skillPoints', 'rtg.followers', 'rtg.valuation',
   'coach.dynastyPoints', 'coach.recruitingNIL', 'coach.rosterNIL', 'coach.staffBudget',
   'coach.facilitiesBudget', 'coach.rosterSize', 'coach.scholarshipsUsed', 'coach.portalDepartures',

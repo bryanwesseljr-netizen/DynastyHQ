@@ -2156,7 +2156,7 @@ const handleSaveGameClick = () => {
                   onClick={() => openNavItem(item)}
                   className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap font-black uppercase transition-colors ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <span>{displayLabel}</span>
+                  <span className="dhq-primary-nav-label">{displayLabel}</span>
                 </button>
               );
             })}

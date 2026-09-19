@@ -285,6 +285,9 @@ COACHING:
 - Keep management counters and game currencies out of reader-facing copy.
 
 WRITING QUALITY:
+- The reader should feel as if this article came from a real sports site after the game. Write the FOOTBALL STORY, not the provenance of the facts.
+- Never narrate DynastyHQ's verification discipline. Do not say that a number was "recorded," "preserved," "saved," "on file," "in the archive," or "verified" merely to explain why you are using it.
+- Never write phrases such as "numbers saved after the game," "recorded appearances," "verified data point," "career tracked one verified week at a time," "statistical baseline," "fields on file," "charting data," or "future screenshots." If unsupported tactical detail is unavailable, simply write around it like a real reporter would.
 - Cold-open each article with the actual sports story, not an explanation of what the article will discuss.
 - Each outlet needs a distinct angle, vocabulary and cadence.
 - Build around the strongest real idea, not every fact in the packet.
@@ -313,6 +316,52 @@ const completeEdition = (edition, payload) => {
   const expected = new Set(payload.articleBriefs.map((brief) => brief.outletId));
   const returned = articles.map((article) => text(article?.outletId, 80));
   return returned.length === new Set(returned).size && returned.every((outletId) => expected.has(outletId));
+};
+
+const articleWordCount = (article = {}) => (Array.isArray(article.paragraphs) ? article.paragraphs : [])
+  .join(' ')
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean)
+  .length;
+
+const READER_META_PATTERNS = [
+  /numbers saved after the game/i,
+  /recorded appearances?/i,
+  /tracked (?:one )?verified week at a time/i,
+  /verified data point/i,
+  /permanent (?:career )?archive/i,
+  /clean statistical baseline/i,
+  /fields on file/i,
+  /corresponding charting data/i,
+  /future screenshots/i,
+  /verified season evidence/i,
+  /saved personal preference order/i,
+];
+
+const editionQualityIssues = (edition, payload) => {
+  if (!completeEdition(edition, payload)) return ['edition structure is incomplete'];
+  const byOutlet = new Map((edition.articles || []).map((article) => [text(article?.outletId, 80), article]));
+  const issues = [];
+  payload.articleBriefs.forEach((brief) => {
+    const article = byOutlet.get(brief.outletId) || {};
+    const words = articleWordCount(article);
+    const softMinimum = brief.coverageTier === 'brief'
+      ? 120
+      : Math.max(140, Math.min(220, Math.round((Number(brief.targetWordRange?.min) || 260) * 0.5)));
+    if (words < softMinimum) issues.push(`${brief.outletName}: draft is too thin (${words} words)`);
+    const readerCopy = [
+      article.headline,
+      article.dek,
+      ...(article.paragraphs || []),
+      ...(article.sectionHeadings || []),
+      ...(article.sidebars || []).flatMap((sidebar) => [sidebar?.title, ...(sidebar?.items || [])]),
+    ].join(' ');
+    if (READER_META_PATTERNS.some((pattern) => pattern.test(readerCopy))) {
+      issues.push(`${brief.outletName}: copy sounds like DynastyHQ bookkeeping instead of sports journalism`);
+    }
+  });
+  return issues;
 };
 
 export default async function handler(req, res) {
@@ -349,7 +398,7 @@ export default async function handler(req, res) {
     const reachSummary = `${reach.level || 'local'}; national eligible=${Boolean(reach.nationalEligible)}${reach.nationalReasons?.length ? `; national reasons=${reach.nationalReasons.join(', ')}` : ''}`;
     const input = `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`;
 
-    const generated = await generateTextFreeFirst({
+    let generated = await generateTextFreeFirst({
       instructions: INSTRUCTIONS,
       input,
       schema: schemaFor(payload),
@@ -360,7 +409,40 @@ export default async function handler(req, res) {
       openAiModel: OPENAI_MODEL,
     });
 
-    if (!completeEdition(generated.data, payload)) {
+    let qualityIssues = editionQualityIssues(generated.data, payload);
+    if (qualityIssues.length) {
+      const repairInput = [
+        'Rewrite the ENTIRE edition. The first draft failed editorial QA.',
+        `Problems: ${qualityIssues.join(' | ')}`,
+        'Make every article read like real postgame sports journalism. Lead with the game/development, use the supplied facts naturally, and remove all tracker/database/verification language from reader-facing copy.',
+        'Keep every requested outlet and obey the original assignments.',
+        'ORIGINAL EDITORIAL PACKET:',
+        input,
+        'FIRST DRAFT TO REPLACE:',
+        JSON.stringify(generated.data),
+      ].join('\n');
+      const repaired = await generateTextFreeFirst({
+        instructions: INSTRUCTIONS,
+        input: repairInput,
+        schema: schemaFor(payload),
+        schemaName: 'dynastyhq_newsroom_edition',
+        maxOutputTokens: 10000,
+        temperature: 0.45,
+        safetyIdentifier: user.localId,
+        openAiModel: OPENAI_MODEL,
+      });
+      const repairedIssues = editionQualityIssues(repaired.data, payload);
+      // Prefer the repaired draft whenever it removed the reader-facing meta voice, even if
+      // a concise article lands a little under the soft word target.
+      const repairedHasMeta = repairedIssues.some((issue) => /bookkeeping/i.test(issue));
+      if (!repairedHasMeta && completeEdition(repaired.data, payload)) {
+        generated = repaired;
+        qualityIssues = repairedIssues;
+      }
+    }
+
+    if (!completeEdition(generated.data, payload)
+      || editionQualityIssues(generated.data, payload).some((issue) => /bookkeeping/i.test(issue))) {
       return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
     }
 
@@ -368,6 +450,7 @@ export default async function handler(req, res) {
       edition: generated.data,
       model: generated.model,
       provider: generated.provider,
+      editorialQa: qualityIssues.length ? 'accepted-after-repair' : 'passed',
     });
   } catch (error) {
     console.error('Newsroom generation failed', error);

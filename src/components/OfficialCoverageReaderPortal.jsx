@@ -8,6 +8,14 @@ import './official-coverage-reader.css';
 const clean = (value) => String(value ?? '').trim();
 const list = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
 
+const openOfficialInNewsroom = (request = {}) => {
+  window.dispatchEvent(new CustomEvent('dynastyhq:newsroom-official-focus', { detail: request }));
+  const buttons = [...document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button')];
+  const newsroom = buttons.find((button) => /^(?:the )?newsroom$/i.test(clean(button.textContent)) && button.offsetParent !== null)
+    || buttons.find((button) => /^(?:the )?newsroom$/i.test(clean(button.textContent)));
+  newsroom?.click();
+};
+
 const currentGameHubContext = () => {
   const hub = document.querySelector('.dhq-game-hub');
   if (!hub) return null;
@@ -116,7 +124,7 @@ const Reader = ({ article, onClose }) => {
         ) : (
           <section className="dhq-official-reader__legacy">
             <ExternalLink size={16} />
-            <div><strong>TEXT CAPTURE PRESERVED</strong><p>This article was captured before source-page image archiving was enabled, so DynastyHQ can preserve the verified text it has without recreating missing source imagery.</p></div>
+            <div><strong>OFFICIAL WIRE BRIEF</strong><p>Only the original headline and story brief were preserved from this edition. No additional copy is shown here.</p></div>
           </section>
         )}
       </article>
@@ -152,7 +160,12 @@ const OfficialCoverageReaderPortal = () => {
         button.dataset.openOfficialReader = 'game-hub';
         button.className = 'dhq-official-reader-trigger';
         button.textContent = articlePages(resolved.entry).length ? 'READ OFFICIAL ARTICLE' : 'VIEW OFFICIAL COVERAGE';
-        button.addEventListener('click', () => setArticle(resolved.entry));
+        button.addEventListener('click', () => openOfficialInNewsroom({
+          headline: resolved.entry?.headline || '',
+          season: context.season,
+          week: context.week,
+          source: 'game-hub-official-button',
+        }));
         card.appendChild(button);
       });
 
@@ -168,7 +181,12 @@ const OfficialCoverageReaderPortal = () => {
         button.dataset.openOfficialReader = 'chronicle';
         button.className = 'dhq-official-reader-trigger';
         button.textContent = articlePages(matched).length ? 'OPEN ORIGINAL ARTICLE' : 'VIEW OFFICIAL COVERAGE';
-        button.addEventListener('click', () => setArticle(matched));
+        button.addEventListener('click', () => openOfficialInNewsroom({
+          headline: matched?.headline || headline,
+          season: matched?.season,
+          week: matched?.week,
+          source: 'chronicle-official-button',
+        }));
         card.appendChild(button);
       });
     };
@@ -182,8 +200,19 @@ const OfficialCoverageReaderPortal = () => {
   useEffect(() => {
     if (!career) return undefined;
     const onOpenOfficial = (event) => {
-      const matched = findArticleForRequest(career, event.detail || {});
-      if (matched && canRead(matched)) setArticle(matched);
+      const request = event.detail || {};
+      const matched = findArticleForRequest(career, request);
+      if (!matched || !canRead(matched)) return;
+      if (request.presentation === 'modal') {
+        setArticle(matched);
+        return;
+      }
+      openOfficialInNewsroom({
+        headline: matched.headline || request.headline || '',
+        season: matched.season ?? request.season,
+        week: matched.week ?? request.week,
+        source: request.source || 'official-reader-route',
+      });
     };
     window.addEventListener('dynastyhq:open-official-coverage', onOpenOfficial);
     return () => window.removeEventListener('dynastyhq:open-official-coverage', onOpenOfficial);

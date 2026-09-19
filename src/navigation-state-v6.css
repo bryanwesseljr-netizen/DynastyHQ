@@ -405,19 +405,35 @@ body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-pr
 .dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-game-hub-active::after,
 #dhq-player-offseason-desktop-nav.is-active::after,
 #dhq-player-offseason-desktop-nav[aria-current="page"]::after {
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 50% !important;
-  display: block !important;
-  width: 38px !important;
-  height: 3px !important;
-  content: '' !important;
+  display: none !important;
+  content: none !important;
+  width: 0 !important;
+  height: 0 !important;
   border: 0 !important;
-  border-radius: 999px 999px 0 0 !important;
-  background: var(--dhq-program-highlight, #facc15) !important;
+  background: transparent !important;
   box-shadow: none !important;
-  transform: translateX(-50%) !important;
+  transform: none !important;
   pointer-events: none !important;
+}
+
+/* The only desktop active indicator is the short line directly beneath the
+   text label. This avoids the old lower bar and its visible left/right edges. */
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item > .dhq-primary-nav-label,
+#dhq-player-offseason-desktop-nav > .dhq-primary-nav-label {
+  border: 0 !important;
+  border-bottom: 3px solid transparent !important;
+  padding-bottom: 5px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item[aria-current="page"] > .dhq-primary-nav-label,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-nav-visual-active > .dhq-primary-nav-label,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-career-active > .dhq-primary-nav-label,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-game-hub-active > .dhq-primary-nav-label,
+#dhq-player-offseason-desktop-nav.is-active > .dhq-primary-nav-label,
+#dhq-player-offseason-desktop-nav[aria-current="page"] > .dhq-primary-nav-label {
+  border-bottom-color: var(--dhq-program-highlight, #facc15) !important;
 }
 
 /* Same single-underline language in the true mobile nav. */

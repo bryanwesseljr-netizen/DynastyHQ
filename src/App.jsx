@@ -2101,6 +2101,17 @@ const handleSaveGameClick = () => {
       .slice(-4)
       .reverse();
 
+    const resetPageScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      });
+    };
+
     const openNavItem = (item) => {
       if (item.id === 'rules') {
         setIsHouseRulesModalOpen(true);
@@ -2109,15 +2120,11 @@ const handleSaveGameClick = () => {
         window.setTimeout(() => {
           document.getElementById('recruit-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 0);
-      } else if (item.id === 'dashboard') {
-        setActiveTab('dashboard');
-        window.setTimeout(() => {
-          document.getElementById('dynastyhq-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 0);
       } else {
         if (item.id === 'newsroom') setNewsroomFocusId('');
         if (item.id === 'podcast') setPodcastFocusId('');
-        setActiveTab(item.id);
+        setActiveTab(item.id === 'dashboard' ? 'dashboard' : item.id);
+        resetPageScroll();
       }
       setMobileNavOpen(false);
     };

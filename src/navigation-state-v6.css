@@ -215,3 +215,63 @@ body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visua
     gap: 8px !important;
   }
 }
+
+
+/* Android desktop-site mode can preserve a horizontal page offset when any
+ * oversized page section widens the layout viewport. That is what made the
+ * DYNASTYHQ logo disappear off the left edge in the recorded navigation video.
+ * Keep horizontal scrolling inside intentional rails instead of on the page. */
+html,
+body,
+#root {
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+.dhq-broadcast-header {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: clip !important;
+}
+
+.dhq-broadcast-header__main {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Higher-specificity hard stop for the old theme-v3 selectors that used the
+ * text label span itself as an underline. */
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"] > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active > span:last-child {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]::before,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"]::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active::before,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active::before,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active::after,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active::before,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active::after {
+  display: none !important;
+  content: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}

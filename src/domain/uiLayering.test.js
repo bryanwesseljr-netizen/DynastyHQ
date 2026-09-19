@@ -264,3 +264,17 @@ test('high-school agenda separates saving a draft from publishing a completed we
   assert.match(appSource, /No Playable Moment data was required, and no game week was published/);
   assert.ok(appSource.indexOf('Save Progress Only') < appSource.indexOf('Process Completed Game Week'));
 });
+
+
+test('header notifications only show the yellow dot for unread items and support deletion', async () => {
+  const appSource = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+  const defaults = await readFile(new URL('./defaultCareerState.js', import.meta.url), 'utf8');
+
+  assert.match(defaults, /notificationCenter:[\s\S]*readIds: \[\][\s\S]*dismissedIds: \[\]/);
+  assert.match(appSource, /const hasUnreadNotifications = notificationItems\.some/);
+  assert.match(appSource, /hasUnreadNotifications \? <i \/> : null/);
+  assert.match(appSource, /const deleteNotification =/);
+  assert.match(appSource, /const clearNotifications =/);
+  assert.match(appSource, /Trash2 size=\{14\}/);
+  assert.match(appSource, /readIds: \[\.\.\.new Set/);
+});

@@ -150,8 +150,11 @@ test('desktop navigation keeps Podcast fully visible and uses a clean centered a
   assert.match(indexStyles, /gap: clamp\(18px, 2vw, 38px\)/);
   assert.match(indexStyles, /font-size: clamp\(\.84rem, \.88vw, 1rem\)/);
   assert.match(indexStyles, /@media \(min-width: 1200px\) and \(max-width: 1450px\)/);
-  assert.match(navState, /background-size: 40px 3px !important/);
+  assert.match(navState, /FINAL HEADER FIT \+ ACTIVE STATE/);
+  assert.match(navState, /flex: 1 1 0 !important/);
+  assert.match(navState, /font-size: 9\.5px !important/);
+  assert.match(navState, /background-image: none !important/);
   assert.match(navState, /box-shadow: none !important/);
   assert.doesNotMatch(navState, /dhq-primary-nav[\s\S]{0,800}box-shadow: inset 0 -3px 0/);
-  assert.match(offseasonStyles, /background-size: 40px 3px !important/);
+  assert.match(offseasonStyles, /background-image: none !important/);
 });

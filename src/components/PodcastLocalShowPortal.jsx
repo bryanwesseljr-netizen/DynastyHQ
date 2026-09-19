@@ -25,6 +25,7 @@ const PodcastLocalShowPortal = () => {
   const { user, career } = useOwnerCareer();
   const [mount, setMount] = useState(null);
   const [activePanel, setActivePanel] = useState('');
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState('');
   const [message, setMessage] = useState('');
   const [persistedArtwork, setPersistedArtwork] = useState({});
@@ -33,7 +34,10 @@ const PodcastLocalShowPortal = () => {
   const rundownOpen = activePanel === 'rundown';
   const notesOpen = activePanel === 'notes';
   const studioOpen = activePanel === 'studio';
-  const togglePanel = (panel) => setActivePanel((current) => current === panel ? '' : panel);
+  const togglePanel = (panel) => {
+    setActivePanel((current) => current === panel ? '' : panel);
+    setToolsOpen(false);
+  };
 
   const show = useMemo(() => resolvePodcastShow(career || {}), [career]);
   const teamKey = useMemo(() => teamKeyFor(show.school), [show.school]);
@@ -293,19 +297,31 @@ const PodcastLocalShowPortal = () => {
         </div>
       </div>
 
-      <div className="dhq-local-podcast__utility" aria-label="Podcast page sections">
-        <button type="button" aria-expanded={archiveOpen} data-active={archiveOpen} onClick={() => togglePanel('archive')}>
-          <Archive size={14} /> Previous Episodes <ChevronDown size={14} />
+      <div className="dhq-local-podcast__tools-shell">
+        <button
+          type="button"
+          className="dhq-local-podcast__tools-toggle"
+          aria-expanded={toolsOpen}
+          onClick={() => setToolsOpen((open) => !open)}
+        >
+          <Settings2 size={14} /> More <ChevronDown size={14} />
         </button>
-        <button type="button" aria-expanded={rundownOpen} data-active={rundownOpen} onClick={() => togglePanel('rundown')}>
-          <Layers3 size={14} /> Episode Rundown <ChevronDown size={14} />
-        </button>
-        <button type="button" aria-expanded={notesOpen} data-active={notesOpen} onClick={() => togglePanel('notes')}>
-          <StickyNote size={14} /> Show Notes <ChevronDown size={14} />
-        </button>
-        <button type="button" aria-expanded={studioOpen} data-active={studioOpen} onClick={() => togglePanel('studio')}>
-          <Settings2 size={14} /> Studio Controls <ChevronDown size={14} />
-        </button>
+        {toolsOpen && (
+          <div className="dhq-local-podcast__utility" aria-label="Podcast page sections">
+            <button type="button" aria-expanded={archiveOpen} data-active={archiveOpen} onClick={() => togglePanel('archive')}>
+              <Archive size={14} /> Previous Episodes <ChevronDown size={14} />
+            </button>
+            <button type="button" aria-expanded={rundownOpen} data-active={rundownOpen} onClick={() => togglePanel('rundown')}>
+              <Layers3 size={14} /> Episode Rundown <ChevronDown size={14} />
+            </button>
+            <button type="button" aria-expanded={notesOpen} data-active={notesOpen} onClick={() => togglePanel('notes')}>
+              <StickyNote size={14} /> Show Notes <ChevronDown size={14} />
+            </button>
+            <button type="button" aria-expanded={studioOpen} data-active={studioOpen} onClick={() => togglePanel('studio')}>
+              <Settings2 size={14} /> Studio Controls <ChevronDown size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {studioOpen && (

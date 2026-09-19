@@ -107,3 +107,41 @@ test('newsroom writer requires concise digital headlines', async () => {
   assert.match(source, /no more than 75 characters/i);
   assert.match(source, /headline: \{ type: 'string', maxLength: 90 \}/);
 });
+
+
+test('accepts a concise QA-passed dynamic edition instead of falling back to deterministic scaffold copy', () => {
+  const payload = buildNewsroomGenerationPayload(state, publicationId);
+  const conciseParagraph = 'The opening preference list gives the recruitment a clear shape, with regional options established before the evaluation games begin and enough room for performance to change the order as the process develops.';
+  const generated = {
+    articles: [{
+      outletId: 'recruiting',
+      storyImportance: 'routine',
+      storyFormat: 'recruiting-intel',
+      kicker: 'Recruiting Notebook',
+      headline: 'Regional options frame Wessel’s opening board',
+      dek: 'The first list creates a real race before the evaluation begins.',
+      dateline: '',
+      paragraphs: [conciseParagraph, conciseParagraph, conciseParagraph, conciseParagraph],
+      sectionHeadings: ['The early shape'],
+      pullQuote: 'The board is established, but the evaluation still has room to move it.',
+      sidebars: [{ title: 'Recruiting snapshot', items: ['Eastern Michigan is first in the personal preference order.'] }],
+      citedFactIds: payload.articleBriefs[0].focusFactIds,
+    }],
+  };
+  const edition = normalizeGeneratedNewsroomEdition({ generated, payload, model: 'gemini-test' });
+  assert.equal(edition.articles.length, 1);
+  assert.match(edition.articles[0].headline, /Regional options/);
+});
+
+test('newsroom API repairs tracker-like prose before returning a final edition', async () => {
+  const source = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(source, /numbers saved after the game/i);
+  assert.match(source, /failed editorial QA/i);
+  assert.match(source, /Rewrite the ENTIRE edition/i);
+  assert.match(source, /reader-facing meta voice/i);
+});
+
+test('deterministic weekly newsroom copy is explicitly marked as scaffold', async () => {
+  const source = await readFile(new URL('./newsroomEngine.js', import.meta.url), 'utf8');
+  assert.match(source, /editorialStatus: 'scaffold'/);
+});

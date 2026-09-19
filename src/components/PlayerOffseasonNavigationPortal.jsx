@@ -60,7 +60,7 @@ const makeDesktopButton = (onOpen) => {
   button.type = 'button';
   button.title = 'End-of-Season / Offseason';
   button.className = 'dhq-primary-nav-item dhq-player-offseason-nav relative flex shrink-0 items-center justify-center whitespace-nowrap font-black uppercase transition-colors text-slate-400 hover:text-white';
-  button.innerHTML = '<span>Offseason</span>';
+  button.innerHTML = '<span class="dhq-primary-nav-label">Offseason</span>';
   button.addEventListener('click', onOpen);
   return button;
 };

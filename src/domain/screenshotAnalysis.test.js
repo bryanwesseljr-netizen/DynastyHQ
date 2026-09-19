@@ -418,3 +418,31 @@ test('preserves visible zero QB stats, prefixes player labels, and keeps both te
   assert.equal(result.facts.find((entry) => entry.key === 'game.teamRushYds').label, 'Team rushing yards');
   assert.equal(result.facts.find((entry) => entry.key === 'game.opponentRushYds').label, 'Opponent rushing yards');
 });
+
+
+test('preserves EA Sports Network article detection metadata on the scanned source', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'official-story',
+    fileName: 'ea-network-page-1.png',
+    analysis: {
+      screenTypes: ['ea_sports_network_article'],
+      screenTitle: 'EA SPORTS Network',
+      summary: 'Official in-game story.',
+      officialArticle: {
+        outlet: 'EA SPORTS Network',
+        headline: 'BIGGEST BLOWOUT YET',
+        dek: 'Oregon controlled all four quarters.',
+        byline: 'EA SPORTS Network',
+        body: 'Oregon built the advantage quarter by quarter and never gave Michigan State an opening.',
+        pageLabel: 'Page 1',
+      },
+      facts: [],
+    },
+  });
+
+  assert.deepEqual(result.source.detectedTypes, ['EA SPORTS Network Article']);
+  assert.equal(result.source.officialCoverage.detected, true);
+  assert.equal(result.source.officialCoverage.headline, 'BIGGEST BLOWOUT YET');
+  assert.equal(result.source.officialCoverage.bodyCaptured, true);
+  assert.ok(result.source.officialCoverage.bodyCharacters > 0);
+});

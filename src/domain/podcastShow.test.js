@@ -91,4 +91,10 @@ test('Podcast defaults to a listener-first title and audio-player experience', a
   assert.match(studio, /autoPlayPublicationId/);
   assert.match(localStyles, /grid-template-columns: 148px minmax\(0, 1fr\)/);
   assert.match(localStyles, /dhq-podcast-listener-feed__episode/);
+  const localShow = await readFile(new URL('../components/PodcastLocalShowPortal.jsx', import.meta.url), 'utf8');
+  assert.match(localShow, /dhq-local-podcast__tools-toggle/);
+  assert.match(localShow, /> More <ChevronDown/);
+  assert.match(localShow, /toolsOpen &&/);
+  assert.match(localStyles, /Compact Podcast tools dropdown/);
+  assert.match(localStyles, /dhq-local-podcast__tools-shell > \.dhq-local-podcast__utility/);
 });

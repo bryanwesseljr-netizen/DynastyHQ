@@ -36,12 +36,18 @@ const ensureMount = (anchor, position, selector, dataKey) => {
   return node;
 };
 
-const OfficialLane = ({ model, compact = false }) => {
+const OfficialLane = ({ model, compact = false, onOfficial }) => {
   const { official } = model;
   const captured = official.status === 'captured';
   const legacy = official.status === 'legacy-evidence';
   return (
-    <article className="dhq-media-network__lane is-official">
+    <article
+      className={`dhq-media-network__lane is-official ${captured ? 'is-clickable' : ''}`}
+      role={captured ? 'button' : undefined}
+      tabIndex={captured ? 0 : undefined}
+      onClick={captured ? onOfficial : undefined}
+      onKeyDown={captured ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOfficial?.(); } } : undefined}
+    >
       <div className="dhq-media-network__lane-head">
         <span><Radio size={13} /> EA SPORTS NETWORK</span>
         <b>{captured ? 'OFFICIAL FEED' : legacy ? 'ARCHIVE' : 'NO STORY ON FILE'}</b>
@@ -108,7 +114,7 @@ const NetworkWire = ({ items = [], variant = 'home', onNewsroom }) => {
   );
 };
 
-const NetworkBoard = ({ model, variant = 'home', onNewsroom, onPodcast }) => {
+const NetworkBoard = ({ model, variant = 'home', onNewsroom, onPodcast, onOfficial }) => {
   if (!model) return null;
   const compact = variant === 'home' || variant === 'newsroom';
   return (
@@ -118,7 +124,7 @@ const NetworkBoard = ({ model, variant = 'home', onNewsroom, onPodcast }) => {
         <p>S{model.season} · W{model.week}{model.opponent ? ` · ${model.opponent.toUpperCase()}` : ''}</p>
       </header>
       <div className="dhq-media-network__lanes">
-        <OfficialLane model={model} compact={compact} />
+        <OfficialLane model={model} compact={compact} onOfficial={onOfficial} />
         <DynastyLane model={model} compact={compact} onNewsroom={onNewsroom} onPodcast={onPodcast} />
       </div>
       {/* Latest Network Wire retired: Season Wire is the single site-wide ticker. */}
@@ -138,6 +144,18 @@ const MediaNetworkLayerPortal = () => {
 
   const openNewsroom = () => (visibleNavButton('The Newsroom') || visibleNavButton('Newsroom'))?.click();
   const openPodcast = () => visibleNavButton('Podcast')?.click();
+  const openOfficial = (model) => {
+    if (!model || model.official?.status !== 'captured') return;
+    window.dispatchEvent(new CustomEvent('dynastyhq:newsroom-official-focus', {
+      detail: {
+        headline: model.official?.headline || '',
+        season: model.season,
+        week: model.week,
+        source: 'media-network',
+      },
+    }));
+    openNewsroom();
+  };
 
   useEffect(() => {
     if (!career) return undefined;
@@ -187,8 +205,8 @@ const MediaNetworkLayerPortal = () => {
 
   return (
     <>
-      {homeMount && homeModel ? createPortal(<NetworkBoard model={homeModel} variant="home" onNewsroom={openNewsroom} onPodcast={openPodcast} />, homeMount) : null}
-      {newsroomMount && newsroomModel ? createPortal(<NetworkBoard model={newsroomModel} variant="newsroom" onNewsroom={openNewsroom} onPodcast={openPodcast} />, newsroomMount) : null}
+      {homeMount && homeModel ? createPortal(<NetworkBoard model={homeModel} variant="home" onNewsroom={openNewsroom} onPodcast={openPodcast} onOfficial={() => openOfficial(homeModel)} />, homeMount) : null}
+      {newsroomMount && newsroomModel ? createPortal(<NetworkBoard model={newsroomModel} variant="newsroom" onNewsroom={openNewsroom} onPodcast={openPodcast} onOfficial={() => openOfficial(newsroomModel)} />, newsroomMount) : null}
     </>
   );
 };

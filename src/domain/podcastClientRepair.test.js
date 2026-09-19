@@ -22,3 +22,16 @@ test('podcast validation measures the conversation body instead of branded booke
   assert.match(source, /!isShowBookend\(segment\)/);
   assert.match(source, /still incomplete after automatic repair/);
 });
+
+
+test('podcast API owns full-length repair and never returns a sub-400 script as success', async () => {
+  const source = await readFile(new URL('../../api/generate-podcast.js', import.meta.url), 'utf8');
+
+  assert.match(source, /const MAX_EPISODE_GENERATION_ATTEMPTS = 3;/);
+  assert.match(source, /Produce 12 to 16 alternating host turns/);
+  assert.match(source, /do not finish below \$\{MIN_COMPLETE_WORDS\}/);
+  assert.match(source, /previous draft failed editorial quality control/i);
+  assert.match(source, /inspection\.words < MIN_COMPLETE_WORDS \|\| inspection\.segments < 12/);
+  assert.match(source, /PODCAST_SCRIPT_INCOMPLETE/);
+  assert.match(source, /editorialQa: 'passed'/);
+});

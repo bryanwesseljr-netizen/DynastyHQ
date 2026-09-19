@@ -38,9 +38,11 @@ body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-gam
 body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active::after,
 body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active::after,
 body[data-dhq-team-accent="true"] .dhq-career-active::after {
-  height: 3px !important;
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 11px color-mix(in srgb, var(--dhq-program-highlight) 56%, transparent) !important;
+  display: none !important;
+  content: none !important;
+  height: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 /* The hidden legacy mobile nav can still carry stale selection classes. */

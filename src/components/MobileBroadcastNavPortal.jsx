@@ -18,17 +18,17 @@ const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
 
 const primaryItems = [
   { id: 'dashboard', label: 'Home', matcher: /^home$/i },
-  { id: 'career', label: 'Career', matcher: /^career$/i },
   { id: 'gameHub', label: 'Game Hub', matcher: /^game hub$/i },
   { id: 'newsroom', label: 'Newsroom', matcher: /^(the )?newsroom$/i },
-  { id: 'chronicle', label: 'Chronicle', matcher: /^chronicle$/i },
   { id: 'podcast', label: 'Podcast', matcher: /^podcast$/i },
+  { id: 'offseason', label: 'Offseason', matcher: /^(offseason|offseason war room)$/i },
+  { id: 'career', label: 'Career', matcher: /^career$/i },
+  { id: 'chronicle', label: 'Chronicle', matcher: /^chronicle$/i },
 ];
 
 const secondaryItems = [
   { id: 'recruiting', label: 'Recruiting', matcher: /^recruiting board$/i, Icon: Map },
   { id: 'frontOffice', label: 'Front Office', matcher: /personnel.*nil office/i, Icon: Briefcase },
-  { id: 'offseason', label: 'Offseason', matcher: /offseason war room/i, Icon: Target },
   { id: 'settings', label: 'Settings', matcher: /^settings$/i, Icon: Settings },
   { id: 'rules', label: 'Career Handbook', matcher: /^career handbook$/i, Icon: FileText },
 ];
@@ -39,6 +39,7 @@ const findNavigationButton = (matcher) => {
 };
 
 const currentActive = () => {
+  if (document.body.classList.contains('dhq-player-offseason-open')) return 'offseason';
   if (document.body.classList.contains('dhq-career-overview-open')) return 'career';
   if (document.body.classList.contains('dhq-game-hub-open')) return 'gameHub';
   const activeTab = document.querySelector('main.dhq-page-main')?.dataset?.activeTab || 'dashboard';

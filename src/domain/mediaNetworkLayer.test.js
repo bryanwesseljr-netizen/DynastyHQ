@@ -124,7 +124,7 @@ test('Newsroom organizes editorial desks before the separated EA Sports Network 
   const regional = source.indexOf('Regional <span>');
   const national = source.indexOf('National <span>');
   const divider = source.indexOf('dhq-team-newsroom__desk-divider');
-  const official = source.indexOf('EA SPORTS NETWORK');
+  const official = source.indexOf('<b>EA SPORTS NETWORK</b>');
 
   assert.ok(front >= 0);
   assert.ok(team > front);

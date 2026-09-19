@@ -62,11 +62,7 @@ const hardResetButtonVisuals = (button, active) => {
   button.style.setProperty('filter', 'none', 'important');
   button.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important');
   button.style.setProperty('color', active ? '#f7faf8' : '#a9b3ad', 'important');
-  button.style.setProperty(
-    'box-shadow',
-    active ? 'inset 0 -3px 0 var(--dhq-program-highlight)' : 'none',
-    'important',
-  );
+  button.style.setProperty('box-shadow', 'none', 'important');
 
   [...button.children].forEach((child) => {
     if (!(child instanceof HTMLElement) || child.tagName !== 'SPAN') return;
@@ -77,6 +73,12 @@ const hardResetButtonVisuals = (button, active) => {
     child.style.setProperty('text-shadow', 'none', 'important');
     child.style.setProperty('color', 'inherit', 'important');
     child.style.setProperty('transform', 'none', 'important');
+
+    if (child.classList.contains('dhq-primary-nav-label')) {
+      child.style.setProperty('border', '0', 'important');
+      child.style.setProperty('border-bottom', active ? '3px solid var(--dhq-program-highlight)' : '3px solid transparent', 'important');
+      child.style.setProperty('padding-bottom', '5px', 'important');
+    }
 
     if (child.classList.contains('absolute')) {
       child.style.setProperty('display', 'none', 'important');
@@ -126,6 +128,16 @@ const NavigationStatePortal = () => {
         background-image: none !important;
         box-shadow: none !important;
         text-shadow: none !important;
+      }
+
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item > .dhq-primary-nav-label {
+        border: 0 !important;
+        border-bottom: 3px solid transparent !important;
+        padding-bottom: 5px !important;
+      }
+
+      html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active > .dhq-primary-nav-label {
+        border-bottom-color: var(--dhq-program-highlight) !important;
       }
 
       html body[data-dhq-team-accent="true"] #root .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item > span.absolute {

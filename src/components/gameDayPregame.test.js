@@ -29,3 +29,11 @@ test('Game Day portal is mounted and stacks to one column on mobile', () => {
   assert.match(styles, /@media \(max-width: 767px\)/);
   assert.match(styles, /\.dhq-gameday__editorial-grid,[\s\S]*\.dhq-gameday__lower-grid[\s\S]*grid-template-columns:\s*1fr/);
 });
+
+
+test('EA Sports Network headlines route from Game Hub into the Newsroom Official Feed', () => {
+  assert.match(portal, /dynastyhq:newsroom-official-focus/);
+  assert.match(portal, /source: 'around-the-program'/);
+  assert.match(portal, /openNav\(\['The Newsroom', 'Newsroom'\]\)/);
+  assert.doesNotMatch(portal, /source: 'around-the-program'[\s\S]{0,260}dynastyhq:open-official-coverage/);
+});

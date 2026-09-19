@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 const STYLE_ID = 'dhq-desktop-nav-runtime-final';
 
 const cssText = `
-@media (min-width: 1200px) {
+@media (min-width: 960px) {
   html body header.dhq-broadcast-header nav.dhq-primary-nav > button.dhq-primary-nav-item::before,
   html body header.dhq-broadcast-header nav.dhq-primary-nav > button.dhq-primary-nav-item::after {
     display: none !important;
@@ -83,9 +83,43 @@ const DesktopPrimaryNavFinalizer = () => {
     const sync = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        if (!window.matchMedia('(min-width: 1200px)').matches) return;
+        if (!window.matchMedia('(min-width: 960px)').matches) return;
 
-        const nav = document.querySelector('header.dhq-broadcast-header nav.dhq-primary-nav');
+        const header = document.querySelector('header.dhq-broadcast-header');
+        const headerMain = header?.querySelector('.dhq-broadcast-header__main');
+        const logo = header?.querySelector('.dhq-broadcast-header-logo');
+        const actions = header?.querySelector('.dhq-broadcast-header__actions');
+        const nav = header?.querySelector('nav.dhq-primary-nav');
+
+        if (header) {
+          setImportant(header, 'left', '0');
+          setImportant(header, 'right', '0');
+          setImportant(header, 'width', '100%');
+          setImportant(header, 'max-width', '100vw');
+          setImportant(header, 'overflow-x', 'hidden');
+        }
+
+        if (headerMain) {
+          setImportant(headerMain, 'width', '100%');
+          setImportant(headerMain, 'max-width', '100%');
+          setImportant(headerMain, 'min-width', '0');
+          setImportant(headerMain, 'padding-left', window.innerWidth < 1200 ? '12px' : '20px');
+          setImportant(headerMain, 'padding-right', window.innerWidth < 1200 ? '12px' : '20px');
+          setImportant(headerMain, 'box-sizing', 'border-box');
+        }
+
+        if (logo && window.innerWidth < 1200) {
+          setImportant(logo, 'width', '138px');
+          setImportant(logo, 'min-width', '138px');
+          setImportant(logo, 'padding-right', '8px');
+        }
+
+        if (actions && window.innerWidth < 1200) {
+          setImportant(actions, 'width', '42px');
+          setImportant(actions, 'min-width', '42px');
+          setImportant(actions, 'gap', '0');
+        }
+
         if (nav) {
           const buttons = [...nav.querySelectorAll(':scope > button.dhq-primary-nav-item')];
           setImportant(nav, 'display', 'grid');
@@ -101,8 +135,10 @@ const DesktopPrimaryNavFinalizer = () => {
             setImportant(button, 'min-width', '0');
             setImportant(button, 'max-width', 'none');
             setImportant(button, 'margin', '0');
-            setImportant(button, 'padding-left', '4px');
-            setImportant(button, 'padding-right', '4px');
+            setImportant(button, 'padding-left', window.innerWidth < 1200 ? '2px' : '4px');
+            setImportant(button, 'padding-right', window.innerWidth < 1200 ? '2px' : '4px');
+            setImportant(button, 'font-size', window.innerWidth < 1200 ? '9px' : '11px');
+            setImportant(button, 'letter-spacing', '0');
             setImportant(button, 'align-items', 'center');
             setImportant(button, 'justify-content', 'center');
             setImportant(button, 'border', '0');
@@ -131,8 +167,11 @@ const DesktopPrimaryNavFinalizer = () => {
 
         const main = document.querySelector('main.dhq-page-main');
         [document.documentElement, document.body, document.getElementById('root'), main].filter(Boolean).forEach((node) => {
+          setImportant(node, 'width', '100%');
           setImportant(node, 'max-width', '100vw');
+          setImportant(node, 'min-width', '0');
           setImportant(node, 'overflow-x', 'hidden');
+          setImportant(node, 'box-sizing', 'border-box');
         });
         if (main) {
           setImportant(main, 'width', '100%');

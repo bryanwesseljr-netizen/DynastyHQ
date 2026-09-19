@@ -59,12 +59,9 @@ body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item:not(.dh
  * no child span or pseudo-element can be mistaken for an active indicator. */
 body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active,
 body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active:is(:hover, :focus, :focus-visible, :active) {
-  color: #f8fafc !important;
-  background-color: transparent !important;
-  background-image: linear-gradient(var(--dhq-program-highlight), var(--dhq-program-highlight)) !important;
-  background-repeat: no-repeat !important;
-  background-position: center calc(100% - 1px) !important;
-  background-size: 40px 3px !important;
+  color: var(--dhq-program-highlight) !important;
+  background: transparent !important;
+  background-image: none !important;
   box-shadow: none !important;
   text-shadow: none !important;
   transform: none !important;
@@ -97,13 +94,124 @@ body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button:not(.dhq-nav-
 
 body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active,
 body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active:is(:hover, :focus, :focus-visible, :active) {
-  color: #f8fafc !important;
-  background-color: transparent !important;
-  background-image: linear-gradient(var(--dhq-program-highlight), var(--dhq-program-highlight)) !important;
-  background-repeat: no-repeat !important;
-  background-position: center calc(100% - 1px) !important;
-  background-size: 34px 3px !important;
+  color: var(--dhq-program-highlight) !important;
+  background: transparent !important;
+  background-image: none !important;
   box-shadow: none !important;
   text-shadow: none !important;
   transform: none !important;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* FINAL HEADER FIT + ACTIVE STATE                                             */
+/* The landscape/desktop-site Android viewport can land around 960–1250 CSS   */
+/* pixels. Fit every primary destination inside the real available lane rather */
+/* than clipping the final letters of Podcast. Active tabs use color only;     */
+/* there are no border/underline fragments from older theme layers.            */
+/* -------------------------------------------------------------------------- */
+
+.dhq-broadcast-header .dhq-primary-nav {
+  min-width: 0 !important;
+  margin-right: 0 !important;
+  justify-content: stretch !important;
+  gap: 0 !important;
+  overflow: visible !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  padding-inline: 6px !important;
+  overflow: visible !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item > span {
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item > span.absolute {
+  display: none !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item::before,
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item::after,
+.dhq-mobile-broadcast-nav button::before,
+.dhq-mobile-broadcast-nav button::after {
+  display: none !important;
+  content: none !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item[aria-current="page"],
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active,
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-career-active,
+.dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item.dhq-game-hub-active,
+.dhq-mobile-broadcast-nav button.is-active,
+.dhq-mobile-broadcast-nav button.dhq-nav-visual-active {
+  color: var(--dhq-program-highlight, #facc15) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+@media (min-width: 960px) and (max-width: 1199px) {
+  .dhq-broadcast-header__main {
+    padding-inline: 18px !important;
+  }
+
+  .dhq-broadcast-header-logo {
+    width: 148px !important;
+  }
+
+  .dhq-broadcast-header-logo > span {
+    font-size: 1.7rem !important;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav {
+    display: flex !important;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item {
+    padding-inline: 3px !important;
+    font-size: 9.5px !important;
+    letter-spacing: 0 !important;
+  }
+
+  .dhq-broadcast-header__actions {
+    width: 42px !important;
+    gap: 0 !important;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1450px) {
+  .dhq-broadcast-header__main {
+    padding-inline: 20px !important;
+  }
+
+  .dhq-broadcast-header-logo {
+    width: 170px !important;
+  }
+
+  .dhq-broadcast-header-logo > span {
+    font-size: 1.9rem !important;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav .dhq-primary-nav-item {
+    padding-inline: 4px !important;
+    font-size: 11px !important;
+    letter-spacing: 0 !important;
+  }
+
+  .dhq-broadcast-header__actions {
+    width: 132px !important;
+    gap: 8px !important;
+  }
 }

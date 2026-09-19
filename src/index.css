@@ -48,7 +48,7 @@ textarea {
 
 .dhq-broadcast-header-logo {
   position: relative;
-  width: 300px;
+  width: clamp(185px, 16vw, 250px);
   padding: 0 !important;
 }
 
@@ -65,11 +65,25 @@ textarea {
 .dhq-broadcast-header-logo .text-amber-400 { color: #ee1637 !important; }
 .dhq-broadcast-header-logo > span .text-amber-400 { margin-left: -0.08em; }
 .dhq-broadcast-header-logo > small { position: absolute; bottom: 9px; left: 2px; color: #9ca7b0; font-family: Arial, sans-serif; font-size: 0.48rem; font-style: normal; font-weight: 900; letter-spacing: 0.16em; }
-.dhq-broadcast-header .dhq-primary-nav { justify-content: center; gap: clamp(40px, 4vw, 77px); }
-.dhq-broadcast-header .dhq-primary-nav-item { order: initial !important; padding: 0; font-size: 1rem; letter-spacing: 0.01em; text-transform: none; }
-.dhq-broadcast-header .dhq-primary-nav-item > span:last-child { bottom: 4px; background: #ee1637; box-shadow: none; }
+.dhq-broadcast-header .dhq-primary-nav {
+  justify-content: center;
+  gap: clamp(18px, 2vw, 38px);
+}
+.dhq-broadcast-header .dhq-primary-nav-item {
+  order: initial !important;
+  min-width: 0;
+  padding: 0 2px;
+  font-size: clamp(.84rem, .88vw, 1rem);
+  letter-spacing: 0.005em;
+  text-transform: none;
+}
+.dhq-broadcast-header .dhq-primary-nav-item > span:last-child { bottom: 4px; background: transparent; box-shadow: none; }
 
-.dhq-broadcast-header__actions { width: 300px; justify-content: flex-end; gap: 15px; }
+.dhq-broadcast-header__actions {
+  width: clamp(160px, 14vw, 220px);
+  justify-content: flex-end;
+  gap: 13px;
+}
 .dhq-broadcast-header__icon,
 .dhq-broadcast-header__chevron { position: relative; display: grid; width: 35px; height: 40px; place-items: center; border: 0; background: transparent; color: #f3f4f5; }
 .dhq-broadcast-header__icon i { position: absolute; top: 7px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #ee1637; }
@@ -1098,5 +1112,34 @@ textarea {
     box-shadow: none !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+}
+
+
+@media (min-width: 1200px) and (max-width: 1450px) {
+  .dhq-broadcast-header__main {
+    padding-right: 28px !important;
+    padding-left: 28px !important;
+  }
+
+  .dhq-broadcast-header-logo {
+    width: 185px;
+  }
+
+  .dhq-broadcast-header-logo > span {
+    font-size: 2.05rem;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav {
+    gap: 16px;
+  }
+
+  .dhq-broadcast-header .dhq-primary-nav-item {
+    font-size: .84rem;
+  }
+
+  .dhq-broadcast-header__actions {
+    width: 160px;
+    gap: 10px;
   }
 }

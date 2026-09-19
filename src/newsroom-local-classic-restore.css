@@ -223,7 +223,7 @@
 
   .dhq-newsroom-reader-local .dhq-bearcats-identity {
     min-width: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .dhq-newsroom-reader-local .dhq-bearcats-mark {
@@ -242,7 +242,7 @@
     line-height: .96 !important;
     letter-spacing: -.015em !important;
     white-space: normal !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .dhq-newsroom-reader-local .dhq-bearcats-brand > span,
@@ -250,9 +250,9 @@
     display: block !important;
     min-width: 0 !important;
     max-width: 100% !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere !important;
   }
 
   .dhq-newsroom-reader-local .dhq-news-article[data-audience="local"] .dhq-news-masthead__strapline {

@@ -12,6 +12,7 @@ const careerViewportUrl = new URL('../components/career-overview-viewport.css', 
 const sessionImportStylesUrl = new URL('../components/session-import.css', import.meta.url);
 const podcastStylesUrl = new URL('../podcast-polish-v4.css', import.meta.url);
 const chronicleStylesUrl = new URL('../chronicle-polish-v4.css', import.meta.url);
+const articlePolishUrl = new URL('../newsroom-article-polish.css', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -111,4 +112,20 @@ test('mobile QA guardrails cover the primary DynastyHQ experiences without repla
   assert.match(sessionImport, /dhq-session-import__ready-summary \{ grid-template-columns: 1fr; \}/);
   assert.match(podcast, /section\.grid\.xl\\:grid-cols-[\s\S]*flex-direction: column !important/);
   assert.match(chronicle, /scroll-snap-type: x proximity/);
+});
+
+
+test('mobile Newsroom publication controls stay compact and article typography is phone-scaled', async () => {
+  const [readerStyles, articleStyles] = await Promise.all([
+    readFile(readerStylesUrl, 'utf8'),
+    readFile(articlePolishUrl, 'utf8'),
+  ]);
+
+  assert.match(readerStyles, /min-width: max-content/);
+  assert.doesNotMatch(readerStyles, /min-width: min\(72vw, 230px\)/);
+  assert.match(readerStyles, /min-height: 34px/);
+  assert.match(articleStyles, /Mobile publication density pass/);
+  assert.match(articleStyles, /font-size: clamp\(1\.4rem, 6\.3vw, 1\.85rem\)/);
+  assert.match(articleStyles, /height: min\(54vw, 270px\)/);
+  assert.match(articleStyles, /font-size: \.9rem !important/);
 });

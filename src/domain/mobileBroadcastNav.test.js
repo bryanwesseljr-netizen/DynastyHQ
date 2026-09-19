@@ -21,6 +21,7 @@ const activeThemeV3Url = new URL('../active-program-theme-v3.css', import.meta.u
 const activeThemeV4Url = new URL('../active-program-theme-v4.css', import.meta.url);
 const globalAccentUrl = new URL('../global-team-accent.css', import.meta.url);
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
+const desktopFinalizerUrl = new URL('../components/DesktopPrimaryNavFinalizer.jsx', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -207,4 +208,20 @@ test('route shell cannot become the horizontal page scroller', async () => {
   assert.match(navState, /max-width: 100vw !important/);
   assert.match(navState, /main\.dhq-page-main > :not\(\.pointer-events-none\) \{[\s\S]*max-width: 100% !important/);
   assert.match(navState, /\.dhq-team-newsroom[\s\S]*\.dhq-local-podcast-root[\s\S]*\.dhq-weekly-agenda-workspace/);
+});
+
+
+test('desktop nav runtime finalizer owns the real desktop header after legacy CSS loads', async () => {
+  const [finalizer, owner] = await Promise.all([
+    readFile(desktopFinalizerUrl, 'utf8'),
+    readFile(ownerUrl, 'utf8'),
+  ]);
+
+  assert.match(owner, /DesktopPrimaryNavFinalizer/);
+  assert.match(owner, /<DesktopPrimaryNavFinalizer \/>/);
+  assert.match(finalizer, /header\.dhq-broadcast-header nav\.dhq-primary-nav/);
+  assert.match(finalizer, /grid-template-columns/);
+  assert.match(finalizer, /border-bottom.*3px solid/);
+  assert.match(finalizer, /MutationObserver/);
+  assert.match(finalizer, /max-width.*100vw/);
 });

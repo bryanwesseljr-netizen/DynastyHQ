@@ -21,6 +21,7 @@ const DELIVERY_STYLES = [
 ];
 
 const MIN_COMPLETE_WORDS = 400;
+const MAX_EPISODE_GENERATION_ATTEMPTS = 3;
 const DEFAULT_TARGET_MIN_WORDS = 450;
 const DEFAULT_TARGET_MAX_WORDS = 700;
 const PODCAST_ELIGIBLE_TIERS = new Set(['standard', 'major', 'career-defining']);
@@ -210,7 +211,7 @@ const schemaFor = (payload) => ({
       },
     },
     segments: {
-      type: 'array', minItems: 10, maxItems: 16,
+      type: 'array', minItems: 12, maxItems: 16,
       items: {
         type: 'object', additionalProperties: false,
         required: ['id', 'hostId', 'chapterId', 'text', 'deliveryStyle', 'citedFactKeys'],
@@ -243,7 +244,7 @@ export const PODCAST_STATS_AS_EVIDENCE_POLICY = `STATS ARE EVIDENCE, NOT THE SCR
 
 export const PODCAST_CONVERSATION_REFERENCE_POLICY = `NATURAL TWO-HOST RHYTHM:
 - Write two people thinking through football together, not two analysts taking turns delivering mini-reports.
-- Most host turns should be one to three spoken sentences. A short reaction, question or follow-up is often better than another paragraph.
+- Most substantive host turns should be roughly 25 to 45 spoken words, usually two to four sentences. A few short reactions, questions or follow-ups are welcome, but do not make nearly every turn a one-line response.
 - Let the second host respond to the idea that was just raised before introducing another fact. Build, question, qualify, agree or gently disagree instead of resetting the conversation every turn.
 - Use contractions and normal spoken phrasing. Sentence fragments are fine when they sound natural.
 - Sparse conversational texture is welcome: an occasional "well," "I mean," brief self-correction, em dash or ellipsis can create the feeling of a person thinking in real time. Use these only when they fit; never sprinkle them into every turn.
@@ -304,7 +305,8 @@ COLLEGE GAME WEEK:
 ${PODCAST_CONVERSATION_REFERENCE_POLICY}
 
 CONVERSATION STYLE:
-- Produce 10 to 16 alternating host turns.
+- Produce 12 to 16 alternating host turns for a podcast-eligible week.
+- The published conversation body must contain at least ${MIN_COMPLETE_WORDS} spoken words. The coverage system already decided that this week has enough football substance for an episode, so reach the floor by developing distinct football ideas, reactions, comparisons and implications from the supplied facts—not by repeating facts or adding filler.
 - Let the coverage tier control scale: standard should feel like a normal weekly show; major can breathe longer; career-defining can be the fullest episode.
 - Do not pad with neutral facts, bookkeeping, repeated conclusions or suppressed player material just to hit a word target.
 - Mark and Sarah can disagree when the football point genuinely calls for it, but calm agreement is also normal.
@@ -383,48 +385,69 @@ export default async function handler(req, res) {
   }
 
   try {
-    let generation = await requestEpisode({ user, payload });
-    let episode = generation.data;
-    if (!episode) return json(res, 422, { error: 'The podcast script could not be generated safely.' });
+    let generation = null;
+    let episode = null;
+    let inspection = { segments: 0, words: 0, hosts: 0 };
+    let violation = '';
+    let previousEpisode = null;
+    const range = payload.coverageDecision?.podcastWordRange || { min: DEFAULT_TARGET_MIN_WORDS, max: DEFAULT_TARGET_MAX_WORDS };
 
-    let inspection = inspectEpisode(episode);
-    let violation = listenerFacingViolation(episode, payload);
-
-    if (inspection.words < MIN_COMPLETE_WORDS || inspection.segments < 10 || inspection.hosts < 2 || violation) {
-      const repairReasons = [
-        inspection.words < MIN_COMPLETE_WORDS ? `${inspection.words} spoken words` : '',
-        inspection.segments < 10 ? `${inspection.segments} turns` : '',
-        inspection.hosts < 2 ? 'only one host represented' : '',
+    for (let attempt = 0; attempt < MAX_EPISODE_GENERATION_ATTEMPTS; attempt += 1) {
+      const repairReasons = attempt === 0 ? '' : [
+        inspection.words < MIN_COMPLETE_WORDS ? `${inspection.words} spoken words; minimum is ${MIN_COMPLETE_WORDS}` : '',
+        inspection.segments < 12 ? `${inspection.segments} turns; use 12-16` : '',
+        inspection.hosts < 2 ? 'both hosts were not represented' : '',
         violation,
       ].filter(Boolean).join('; ');
-      const range = payload.coverageDecision?.podcastWordRange || { min: DEFAULT_TARGET_MIN_WORDS, max: DEFAULT_TARGET_MAX_WORDS };
 
-      const repairedGeneration = await requestEpisode({
-        user,
-        payload,
-        repairNote: `The previous draft failed editorial quality control (${repairReasons}). Write a complete replacement episode body. Keep both hosts and the same coverage tier. Aim for ${range.min}-${range.max} words when supported, with ${MIN_COMPLETE_WORDS} as the structural floor. Keep statistics synthesized into football takeaways rather than complete stat lines. Do not solve the problem with 0-0 discussion, bookkeeping, repeated conclusions, stale storyline repetition, editorial-process narration, game mechanics, invented facts, a suppressed tracked-player angle, or branded intro/sign-off language. Start directly on the football subject.`,
-      });
+      const repairNote = attempt === 0 ? '' : [
+        `The previous draft failed editorial quality control (${repairReasons}).`,
+        `Write a COMPLETE replacement, not a summary. Target ${range.min}-${range.max} spoken words and do not finish below ${MIN_COMPLETE_WORDS}.`,
+        'Use 12-16 alternating turns. Most substantive turns should be 25-45 words, with occasional shorter reactions so it still sounds conversational.',
+        'Deepen the football conversation with distinct supported implications, reactions, contrasts and follow-up questions. Do not repeat the same stat or conclusion merely to add length.',
+        'Keep statistics synthesized into football takeaways. Do not add bookkeeping, source-limitations talk, game mechanics, invented facts, suppressed-player material, or branded intro/sign-off language.',
+        previousEpisode ? `PREVIOUS DRAFT TO REPLACE:\n${JSON.stringify(previousEpisode)}` : '',
+      ].filter(Boolean).join('\n');
 
-      if (repairedGeneration.data) {
-        const repairedEpisode = repairedGeneration.data;
-        const repairedInspection = inspectEpisode(repairedEpisode);
-        const repairedViolation = listenerFacingViolation(repairedEpisode, payload);
-        const repairedValid = repairedInspection.words >= MIN_COMPLETE_WORDS
-          && repairedInspection.segments >= 10
-          && repairedInspection.hosts >= 2
-          && !repairedViolation;
-        if (repairedValid || (!violation && repairedInspection.words > inspection.words)) {
-          generation = repairedGeneration;
-          episode = repairedEpisode;
-          inspection = repairedInspection;
-          violation = repairedViolation;
-        }
-      }
+      const candidate = await requestEpisode({ user, payload, repairNote });
+      if (!candidate?.data) continue;
+
+      const candidateEpisode = candidate.data;
+      const candidateInspection = inspectEpisode(candidateEpisode);
+      const candidateViolation = listenerFacingViolation(candidateEpisode, payload);
+
+      generation = candidate;
+      episode = candidateEpisode;
+      inspection = candidateInspection;
+      violation = candidateViolation;
+      previousEpisode = candidateEpisode;
+
+      const complete = inspection.words >= MIN_COMPLETE_WORDS
+        && inspection.segments >= 12
+        && inspection.hosts >= 2
+        && !violation;
+      if (complete) break;
+    }
+
+    if (!episode) {
+      return json(res, 422, { error: 'The podcast script could not be generated safely.' });
     }
 
     if (violation) {
       return json(res, 422, {
         error: 'The draft still sounded like production notes or duplicated the show intro instead of a clean football conversation, so DynastyHQ rejected it rather than saving a bad transcript. Please try once more.',
+      });
+    }
+
+    if (inspection.words < MIN_COMPLETE_WORDS || inspection.segments < 12 || inspection.hosts < 2) {
+      const reasons = [
+        inspection.words < MIN_COMPLETE_WORDS ? `${inspection.words} words; at least ${MIN_COMPLETE_WORDS} required` : '',
+        inspection.segments < 12 ? `${inspection.segments} turns; at least 12 required` : '',
+        inspection.hosts < 2 ? 'both hosts were not present' : '',
+      ].filter(Boolean).join('; ');
+      return json(res, 422, {
+        error: `The podcast writer could not produce a complete episode after automatic repair (${reasons}). No transcript was saved. Please try once more.`,
+        code: 'PODCAST_SCRIPT_INCOMPLETE',
       });
     }
 
@@ -435,6 +458,7 @@ export default async function handler(req, res) {
       model: generation.model,
       provider: generation.provider,
       transcriptWords: completedInspection.words,
+      editorialQa: 'passed',
     });
   } catch (error) {
     console.error('Podcast generation failed', error);

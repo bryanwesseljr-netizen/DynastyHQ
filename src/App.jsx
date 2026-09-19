@@ -204,6 +204,7 @@ const App = () => {
   const [newsroomWritingBusyId, setNewsroomWritingBusyId] = useState('');
   const [profileHeadshotBusy, setProfileHeadshotBusy] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState({ state: 'idle', lastSavedAt: null, message: '' });
   const cloudRevisionRef = useRef(0);
   const cloudWriteQueueRef = useRef(Promise.resolve());
@@ -2102,6 +2103,88 @@ const handleSaveGameClick = () => {
       .slice(-4)
       .reverse();
 
+    const notificationState = appState.notificationCenter || {};
+    const notificationReadIds = new Set(Array.isArray(notificationState.readIds) ? notificationState.readIds : []);
+    const notificationDismissedIds = new Set(Array.isArray(notificationState.dismissedIds) ? notificationState.dismissedIds : []);
+    const notificationItems = [
+      ...(appState.newsroomIssues || []).slice(-8).map((issue, index) => {
+        const id = String(issue?.publicationId || issue?.id || `issue-${index}`);
+        const article = Array.isArray(issue?.articles) ? issue.articles.find((entry) => entry?.headline) : null;
+        return {
+          id: `newsroom:${id}`,
+          title: 'Newsroom published',
+          detail: String(article?.headline || issue?.headline || `Season ${issue?.season || 1}, Week ${issue?.week ?? 0} coverage is ready.`),
+          route: 'newsroom',
+          timestamp: issue?.publishedAt || issue?.createdAt || '',
+          order: Number(issue?.season || 1) * 100 + Number(issue?.week || 0),
+        };
+      }),
+      ...(appState.podcastEpisodes || []).slice(-8).filter((episode) => episode?.audioStatus === 'ready').map((episode, index) => ({
+        id: `podcast:${String(episode?.id || episode?.publicationId || index)}`,
+        title: 'Podcast episode ready',
+        detail: String(episode?.title || 'A new Gridiron Grind episode is ready to play.'),
+        route: 'podcast',
+        timestamp: episode?.publishedAt || episode?.updatedAt || episode?.createdAt || '',
+        order: 10000 + index,
+      })),
+      ...(appState.careerMilestones || []).slice(-8).map((milestone, index) => ({
+        id: `milestone:${String(milestone?.id || milestone?.key || index)}`,
+        title: String(milestone?.title || milestone?.label || 'Career milestone'),
+        detail: String(milestone?.summary || milestone?.description || 'A new career milestone was added.'),
+        route: 'chronicle',
+        timestamp: milestone?.createdAt || milestone?.date || '',
+        order: 20000 + index,
+      })),
+    ]
+      .filter((item) => !notificationDismissedIds.has(item.id))
+      .sort((left, right) => {
+        const leftTime = Date.parse(left.timestamp || '') || 0;
+        const rightTime = Date.parse(right.timestamp || '') || 0;
+        return (rightTime - leftTime) || (right.order - left.order);
+      })
+      .slice(0, 20);
+
+    const hasUnreadNotifications = notificationItems.some((item) => !notificationReadIds.has(item.id));
+
+    const updateNotificationCenter = (mutator) => {
+      setAppState((current) => {
+        const currentCenter = current.notificationCenter || {};
+        const next = mutator({
+          readIds: Array.isArray(currentCenter.readIds) ? currentCenter.readIds : [],
+          dismissedIds: Array.isArray(currentCenter.dismissedIds) ? currentCenter.dismissedIds : [],
+        });
+        return { ...current, notificationCenter: next };
+      });
+    };
+
+    const toggleNotifications = () => {
+      setNotificationsOpen((open) => {
+        const nextOpen = !open;
+        if (nextOpen && notificationItems.length) {
+          updateNotificationCenter((current) => ({
+            ...current,
+            readIds: [...new Set([...current.readIds, ...notificationItems.map((item) => item.id)])],
+          }));
+        }
+        return nextOpen;
+      });
+      setMobileNavOpen(false);
+    };
+
+    const deleteNotification = (notificationId) => {
+      updateNotificationCenter((current) => ({
+        readIds: current.readIds.filter((id) => id !== notificationId),
+        dismissedIds: [...new Set([...current.dismissedIds, notificationId])],
+      }));
+    };
+
+    const clearNotifications = () => {
+      updateNotificationCenter((current) => ({
+        readIds: current.readIds.filter((id) => !notificationItems.some((item) => item.id === id)),
+        dismissedIds: [...new Set([...current.dismissedIds, ...notificationItems.map((item) => item.id)])],
+      }));
+    };
+
     const resetPageScroll = () => {
       const reset = () => {
         window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -2163,7 +2246,60 @@ const handleSaveGameClick = () => {
           </nav>
 
           <div className="dhq-broadcast-header__actions ml-auto flex shrink-0 items-center">
-            <button type="button" onClick={() => openNavItem({ id: 'chronicle' })} className="dhq-broadcast-header__icon" aria-label="Open latest career updates"><Bell size={19} /><i /></button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={toggleNotifications}
+                className="dhq-broadcast-header__icon"
+                aria-label={hasUnreadNotifications ? 'Open unread notifications' : 'Open notifications'}
+                aria-expanded={notificationsOpen}
+              >
+                <Bell size={19} />
+                {hasUnreadNotifications ? <i /> : null}
+              </button>
+              {notificationsOpen ? (
+                <div className="absolute right-0 top-[52px] z-[190] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-xl border border-slate-700 bg-[#071019]/98 shadow-2xl backdrop-blur-xl">
+                  <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-300">Notifications</p>
+                      <p className="mt-1 text-[10px] text-slate-500">{notificationItems.length ? `${notificationItems.length} saved update${notificationItems.length === 1 ? '' : 's'}` : 'You are all caught up.'}</p>
+                    </div>
+                    {notificationItems.length ? <button type="button" onClick={clearNotifications} className="text-[8px] font-black uppercase tracking-wider text-slate-500 hover:text-red-300">Clear all</button> : null}
+                  </div>
+                  <div className="max-h-[min(420px,65dvh)] overflow-y-auto">
+                    {notificationItems.length ? notificationItems.map((item) => (
+                      <div key={item.id} className="group flex gap-2 border-b border-slate-800/80 px-3 py-3 last:border-b-0">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() => {
+                            setNotificationsOpen(false);
+                            openNavItem({ id: item.route });
+                          }}
+                        >
+                          <span className="block text-[10px] font-black uppercase tracking-wide text-slate-200">{item.title}</span>
+                          <span className="mt-1 block text-[10px] leading-5 text-slate-500">{item.detail}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteNotification(item.id)}
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-red-500/10 hover:text-red-300"
+                          aria-label={`Delete ${item.title}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )) : (
+                      <div className="px-5 py-8 text-center">
+                        <Bell className="mx-auto text-slate-700" size={24} />
+                        <p className="mt-3 text-xs font-black text-slate-300">No notifications</p>
+                        <p className="mt-1 text-[10px] text-slate-600">New published coverage, podcast episodes, and milestones will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
             <button type="button" onClick={() => openNavItem({ id: 'settings' })} className="dhq-broadcast-header__icon hidden min-[1200px]:grid" aria-label="Settings"><Settings size={20} /></button>
             <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="mobile-primary-navigation" className="dhq-broadcast-header__profile">{initials}</button>
             <button type="button" onClick={() => setMobileNavOpen((open) => !open)} className="dhq-broadcast-header__chevron hidden min-[1200px]:grid" aria-label="Open profile menu"><ChevronDown size={17} /></button>

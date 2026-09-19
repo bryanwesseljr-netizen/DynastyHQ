@@ -112,3 +112,18 @@ test('review flagged items focuses the form and the session owns the inbox mount
   assert.match(process, /#dhq-session-game-review-host \.dhq-postgame-review/);
   assert.match(process, /target\.focus/);
 });
+
+
+test('Session Import visibly confirms whether EA Sports Network coverage was detected', async () => {
+  const [portal, review] = await Promise.all([
+    readFile(portalSourceUrl, 'utf8'),
+    readFile(new URL('../components/WeeklyReviewPanel.jsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(portal, /dynastyhq:official-coverage-captured/);
+  assert.match(portal, /EA SPORTS NETWORK/);
+  assert.match(portal, /SCANNED/);
+  assert.match(review, /SCANNED & PRESERVED/);
+  assert.match(review, /No EA SPORTS Network article page was recognized/);
+  assert.match(review, /EA SPORTS NETWORK ARTICLE · DETECTED/);
+});

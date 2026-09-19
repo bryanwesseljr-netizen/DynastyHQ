@@ -8,6 +8,7 @@ import {
   Images,
   Loader2,
   Newspaper,
+  Radio,
   ScanLine,
   ShieldCheck,
   Sparkles,
@@ -80,6 +81,17 @@ const laneStepForPhase = (phase) => {
   return 1;
 };
 
+const officialCoverageFromSources = (sources = []) => {
+  const official = (Array.isArray(sources) ? sources : []).filter((source) => source?.officialCoverage?.detected);
+  if (!official.length) return null;
+  return {
+    detected: true,
+    pages: official.length,
+    headline: official.map((source) => clean(source.officialCoverage?.headline)).find(Boolean) || '',
+    bodyPages: official.filter((source) => source.officialCoverage?.bodyCaptured).length,
+  };
+};
+
 const SessionImportPortal = () => {
   const { career } = useOwnerCareer();
   const fileInputRef = useRef(null);
@@ -90,6 +102,7 @@ const SessionImportPortal = () => {
   const [dragging, setDragging] = useState(false);
   const [rtgSkipped, setRtgSkipped] = useState(false);
   const [coverageSkipped, setCoverageSkipped] = useState(false);
+  const [officialCoverageScan, setOfficialCoverageScan] = useState(null);
   const [error, setError] = useState('');
 
   const season = career?.currentSeason || 1;
@@ -117,6 +130,12 @@ const SessionImportPortal = () => {
     setError('');
     let appliedHint = false;
     try { appliedHint = window.sessionStorage?.getItem('dhq-session-applied-week') === publicationId; } catch { /* session hint only */ }
+    const appliedSnapshot = window.__dhqAppliedGameDataSnapshot;
+    setOfficialCoverageScan(
+      appliedSnapshot?.publicationId === publicationId
+        ? officialCoverageFromSources(appliedSnapshot.sources)
+        : null
+    );
     const pendingReview = document.querySelector(`.dhq-postgame-review[data-publication-id="${publicationId}"]`);
     setPhase(pendingReview ? 'review' : appliedHint ? 'rtg' : 'game');
   };
@@ -166,19 +185,36 @@ const SessionImportPortal = () => {
     const applied = (event) => {
       if (!open || event.detail?.publicationId !== publicationId) return;
       try { window.sessionStorage?.setItem('dhq-session-applied-week', publicationId); } catch { /* session hint only */ }
+      setOfficialCoverageScan(officialCoverageFromSources(event.detail?.sources));
       setPhase('rtg');
     };
-    const discarded = () => { if (open) setPhase('game'); };
+    const discarded = () => {
+      if (!open) return;
+      setOfficialCoverageScan(null);
+      setPhase('game');
+    };
     const review = () => {
       if (open && document.querySelector('.dhq-postgame-review')) setPhase('review');
+    };
+    const officialCaptured = (event) => {
+      if (!open) return;
+      const detail = event.detail || {};
+      setOfficialCoverageScan((current) => ({
+        detected: true,
+        pages: Number(current?.pages || 0) + 1,
+        headline: clean(detail.headline) || current?.headline || '',
+        bodyPages: Number(current?.bodyPages || 0) + (clean(detail.body) ? 1 : 0),
+      }));
     };
     window.addEventListener('dynastyhq:game-data-applied', applied);
     window.addEventListener('dynastyhq:game-data-discarded', discarded);
     window.addEventListener('dynastyhq:review-game-data', review);
+    window.addEventListener('dynastyhq:official-coverage-captured', officialCaptured);
     return () => {
       window.removeEventListener('dynastyhq:game-data-applied', applied);
       window.removeEventListener('dynastyhq:game-data-discarded', discarded);
       window.removeEventListener('dynastyhq:review-game-data', review);
+      window.removeEventListener('dynastyhq:official-coverage-captured', officialCaptured);
     };
   }, [open, publicationId]);
 
@@ -224,6 +260,7 @@ const SessionImportPortal = () => {
   const processGameData = async () => {
     if (!files.length) return;
     setError('');
+    setOfficialCoverageScan(null);
     setPhase('analyzing');
     try {
       await handoffGameFiles(files);
@@ -389,7 +426,13 @@ const SessionImportPortal = () => {
               <div className="is-done"><ScanLine size={16} /><span><small>GAME DATA</small><strong>VERIFIED</strong></span></div>
               <div className={rtgCurrent ? 'is-done' : 'is-skipped'}><Sparkles size={16} /><span><small>RTG STATUS</small><strong>{rtgCurrent ? 'UPDATED' : rtgSkipped ? 'NO CHANGES' : 'SKIPPED'}</strong></span></div>
               <div className={coverageSaved ? 'is-done' : 'is-skipped'}><Newspaper size={16} /><span><small>COVERAGE DATA</small><strong>{coverageSaved ? 'ADDED' : coverageSkipped ? 'OPTIONAL · SKIPPED' : 'NOT ADDED'}</strong></span></div>
+              <div className={officialCoverageScan?.detected ? 'is-official' : 'is-skipped'}><Radio size={16} /><span><small>EA SPORTS NETWORK</small><strong>{officialCoverageScan?.detected ? `SCANNED · ${officialCoverageScan.pages} PAGE${officialCoverageScan.pages === 1 ? '' : 'S'}` : 'NOT INCLUDED'}</strong></span></div>
             </div>
+            {officialCoverageScan?.detected ? (
+              <p className="dhq-session-import__official-confirmation">
+                <Radio size={13} /> <span><strong>Official Feed captured.</strong> {officialCoverageScan.headline || 'EA SPORTS Network article'}{officialCoverageScan.bodyPages ? ` · article text detected on ${officialCoverageScan.bodyPages} page${officialCoverageScan.bodyPages === 1 ? '' : 's'}` : ' · headline/brief preserved'}.</span>
+              </p>
+            ) : null}
             <div className="dhq-session-import__complete-actions">
               <button type="button" className="is-secondary" onClick={() => setPhase('coverage')}><ArrowLeft size={15} /> Coverage</button>
               <button type="button" className="is-primary" onClick={() => closeWorkspace({ focusApplied: true })}>OPEN PROCESS WEEK <ChevronRight size={16} /></button>

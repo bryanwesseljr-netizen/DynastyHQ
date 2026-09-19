@@ -68,3 +68,22 @@ test('current podcast surfaces do not inherit the old global cover across school
   assert.doesNotMatch(hydration, /artwork\.primary \|\| career\?\.outletImages\?\.podcast/);
   assert.match(localShow, /image\.style\.setProperty\('display', 'none'\)/);
 });
+
+
+test('Podcast defaults to a listener-first title and audio-player experience', async () => {
+  const [studio, localStyles, tools] = await Promise.all([
+    readFile(new URL('../components/PodcastStudio.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../podcast-local-show.css', import.meta.url), 'utf8'),
+    readFile(new URL('../components/PodcastHumanizedAudioPortal.jsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(studio, /dhq-podcast-listener-card/);
+  assert.match(studio, /dhq-podcast-listener-title/);
+  assert.match(studio, /dhq-podcast-listener-player/);
+  assert.match(localStyles, /Listener-first Podcast page/);
+  assert.match(localStyles, /dhq-podcast-listener-summary[\s\S]*display: none !important/);
+  assert.match(localStyles, /dhq-podcast-listener-secondary[\s\S]*display: none !important/);
+  assert.match(localStyles, /dhq-podcast-listener-transcript[\s\S]*display: none !important/);
+  assert.match(tools, /podcastProductionToolsRequested/);
+  assert.match(tools, /podcastStudioIsVisible\(\) && podcastProductionToolsRequested\(\)/);
+});

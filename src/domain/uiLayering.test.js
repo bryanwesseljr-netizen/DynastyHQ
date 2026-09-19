@@ -85,6 +85,9 @@ test('the app opens on the command-center homepage with one responsive top navig
   assert.doesNotMatch(appSource, /\{ id: 'commandCenter', icon: Activity/);
   assert.doesNotMatch(appSource, /const commandCenterLabel =/);
   assert.match(appSource, /item\.id === 'podcast' \? 'Podcast' : item\.label/);
+  assert.match(appSource, /item\.id === 'newsroom'\) displayLabel = 'Newsroom'/);
+  assert.match(appSource, /const desktopNavOrder = \['dashboard', 'dataEntry', 'newsroom', 'podcast', 'trophies', 'chronicle'\]/);
+  assert.match(appSource, /const mobilePrimaryOrder = \['dashboard', 'dataEntry', 'newsroom', 'podcast', 'trophies', 'chronicle'\]/);
   assert.match(appSource, /dhq-primary-nav hidden min-w-0 flex-1 items-stretch overflow-hidden/);
   assert.doesNotMatch(appSource, /gridTemplateColumns/);
   assert.match(appSource, /dhq-settings-share-button/);
@@ -99,8 +102,9 @@ test('the mobile menu keeps weekly agenda visible and reachable on short screens
   const appSource = await readFile(appSourceUrl, 'utf8');
 
   assert.match(appSource, /label: 'Weekly Agenda', mobileLabel: 'Log Weekly Agenda'/);
+  assert.match(appSource, /const mobilePrimaryOrder = \['dashboard', 'dataEntry', 'newsroom', 'podcast', 'trophies', 'chronicle'\]/);
   assert.match(appSource, /const mobileNavItems = \[/);
-  assert.match(appSource, /navItems\.filter\(\(item\) => item\.id === 'dataEntry'\)/);
+  assert.match(appSource, /mobilePrimaryOrder\.map\(\(id\) => navItems\.find/);
   assert.match(appSource, /max-h-\[calc\(100dvh-64px\)\] overflow-y-auto overscroll-contain/);
   assert.match(appSource, /mobileNavItems\.map\(\(item\) =>/);
   assert.match(appSource, /item\.mobileLabel \|\| item\.label/);

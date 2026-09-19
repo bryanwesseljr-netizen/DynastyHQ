@@ -55,7 +55,7 @@ test('mobile dashboard preserves the compact information grid and stacks immersi
   assert.match(styles, /\.dhq-broadcast-cards \{ grid-template-columns: repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.dhq-broadcast-lower-row \{ grid-template-columns: 1fr/);
   assert.match(immersionStyles, /@media \(max-width: 767px\)[\s\S]*?\.dhq-gameweek-immersion \{[\s\S]*?grid-template-columns: 1fr/);
-  assert.match(siteStyles, /\.dhq-broadcast-header \.dhq-primary-nav-item \{ order: initial !important/);
+  assert.match(siteStyles, /\.dhq-broadcast-header \.dhq-primary-nav-item \{[\s\S]*?order: initial !important/);
 });
 
 test('preview builds use an isolated Firebase namespace and seed only that copy', async () => {

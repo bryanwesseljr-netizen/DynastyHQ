@@ -123,4 +123,8 @@ export const DEFAULT_CAREER_STATE = {
   },
   retentionBoard: [],
   podcastEpisodes: [],
+  notificationCenter: {
+    readIds: [],
+    dismissedIds: [],
+  },
 };

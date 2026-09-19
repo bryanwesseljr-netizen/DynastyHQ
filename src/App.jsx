@@ -2102,14 +2102,15 @@ const handleSaveGameClick = () => {
       .reverse();
 
     const resetPageScroll = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      window.requestAnimationFrame(() => {
+      const reset = () => {
         window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
-      });
+        document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+      };
+      reset();
+      window.requestAnimationFrame(reset);
+      window.setTimeout(reset, 80);
     };
 
     const openNavItem = (item) => {

@@ -89,7 +89,8 @@ test('the app opens on the command-center homepage with one responsive top navig
   assert.doesNotMatch(appSource, /gridTemplateColumns/);
   assert.match(appSource, /dhq-settings-share-button/);
   assert.match(appSource, /getElementById\('recruit-command-center'\)/);
-  assert.match(appSource, /getElementById\('dynastyhq-command-center'\)/);
+  assert.match(appSource, /const resetPageScroll = \(\) =>/);
+  assert.match(appSource, /document\.querySelector\('main\.dhq-page-main'\)\?\.scrollTo/);
   assert.match(appSource, /if \(tab === 'commandCenter'\)/);
   assert.doesNotMatch(appSource, /fixed inset-y-0 left-0/);
 });

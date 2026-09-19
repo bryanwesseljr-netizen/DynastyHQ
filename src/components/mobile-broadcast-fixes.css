@@ -3,3 +3,43 @@
     position: relative !important;
   }
 }
+
+
+/* Site-wide mobile QA guardrails.
+   Keep page shells inside the visual viewport without interfering with deliberate
+   horizontal rails (Season Wire, Newsroom desks, Chronicle moments, etc.). */
+@media (max-width: 767px) {
+  main.dhq-page-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  main.dhq-page-main > div:not(.pointer-events-none),
+  .dhq-team-newsroom,
+  .dhq-session-import__main,
+  .dhq-newsroom-reader-mode {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .dhq-team-newsroom *,
+  .dhq-session-import *,
+  .dhq-newsroom-reader-mode * {
+    box-sizing: border-box;
+  }
+
+  .dhq-team-newsroom img,
+  .dhq-team-newsroom video,
+  .dhq-session-import img,
+  .dhq-newsroom-reader-mode img,
+  .dhq-newsroom-reader-mode video {
+    max-width: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+}

@@ -35,14 +35,18 @@ body[data-dhq-team-accent="true"] .dhq-mobile-more-sheet__head span {
   color: var(--dhq-program-highlight) !important;
 }
 
-body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item > span:last-child,
-body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child,
-body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
 body[data-dhq-team-accent="true"] .dhq-broadcast-header__icon i,
 body[data-dhq-team-accent="true"] .dhq-broadcast-header__profile::after,
 body[data-dhq-team-accent="true"] .dhq-score-ticker__live i {
   background: var(--dhq-program-highlight) !important;
   box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+}
+
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child,
+body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 body[data-dhq-team-accent="true"] .dhq-broadcast-header {
@@ -134,8 +138,10 @@ body[data-dhq-team-accent="true"] .dhq-career-overview {
 }
 
 body[data-dhq-team-accent="true"] .dhq-career-active::after {
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+  display: none !important;
+  content: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 body[data-dhq-team-accent="true"] .dhq-career-hero {

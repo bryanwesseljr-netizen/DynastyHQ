@@ -209,58 +209,56 @@
 }
 
 
-/* Mobile masthead hard-stop: long current-program outlet names must never
-   escape the publication card. Stack the local outlet's lead/accent lines so
-   names such as EUGENE SPORTS CHRONICLE remain fully visible at phone widths. */
+/* Mobile masthead: preserve the newspaper identity at a readable size.
+   The outlet is intentionally two clean lines instead of a squeezed desktop lockup. */
 @media (max-width: 680px) {
   .dhq-newsroom-reader-local .dhq-news-article[data-audience="local"] .dhq-bearcats-masthead {
-    grid-template-columns: 34px minmax(0, 1fr) !important;
-    gap: 9px !important;
-    min-height: 78px !important;
-    padding: 11px 12px !important;
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+    gap: 11px !important;
+    min-height: 96px !important;
+    padding: 13px 14px !important;
     overflow: hidden !important;
   }
 
   .dhq-newsroom-reader-local .dhq-bearcats-identity {
     min-width: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .dhq-newsroom-reader-local .dhq-bearcats-mark {
-    width: 34px !important;
-    height: 44px !important;
+    width: 42px !important;
+    height: 54px !important;
   }
 
   .dhq-newsroom-reader-local .dhq-bearcats-brand {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 1px !important;
+    display: flex !important;
     width: 100% !important;
-    max-width: 100% !important;
     min-width: 0 !important;
-    font-size: clamp(1.08rem, 5.1vw, 1.42rem) !important;
-    line-height: .96 !important;
-    letter-spacing: -.015em !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1px !important;
+    font-size: clamp(1.38rem, 6.8vw, 1.85rem) !important;
+    line-height: .92 !important;
+    letter-spacing: -.02em !important;
     white-space: normal !important;
-    overflow: visible !important;
   }
 
   .dhq-newsroom-reader-local .dhq-bearcats-brand > span,
   .dhq-newsroom-reader-local .dhq-bearcats-brand > strong {
     display: block !important;
+    width: 100% !important;
     min-width: 0 !important;
-    max-width: 100% !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    overflow-wrap: anywhere !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
   }
 
   .dhq-newsroom-reader-local .dhq-news-article[data-audience="local"] .dhq-news-masthead__strapline {
-    margin-top: 6px !important;
+    margin-top: 7px !important;
     max-width: 100% !important;
-    font-size: .44rem !important;
-    letter-spacing: .075em !important;
-    line-height: 1.22 !important;
+    font-size: .52rem !important;
+    letter-spacing: .07em !important;
+    line-height: 1.25 !important;
     white-space: normal !important;
   }
 }

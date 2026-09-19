@@ -5,6 +5,13 @@ import test from 'node:test';
 const portalUrl = new URL('../components/MobileBroadcastNavPortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../components/mobile-broadcast.css', import.meta.url);
+const readerStylesUrl = new URL('../newsroom-reader-shell-v2.css', import.meta.url);
+const fixesUrl = new URL('../components/mobile-broadcast-fixes.css', import.meta.url);
+const gameHubViewportUrl = new URL('../components/game-hub-viewport.css', import.meta.url);
+const careerViewportUrl = new URL('../components/career-overview-viewport.css', import.meta.url);
+const sessionImportStylesUrl = new URL('../components/session-import.css', import.meta.url);
+const podcastStylesUrl = new URL('../podcast-polish-v4.css', import.meta.url);
+const chronicleStylesUrl = new URL('../chronicle-polish-v4.css', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -75,4 +82,33 @@ test('mobile broadcast framing reserves room for header nav and ticker without c
   assert.match(styles, /\.dhq-broadcast-hero \{[\s\S]*height: 352px !important;/);
   assert.match(styles, /\.dhq-broadcast-cards \{[\s\S]*scroll-snap-type: x mandatory;/);
   assert.match(styles, /\.dhq-broadcast-card \{[\s\S]*flex: 0 0 min\(86vw, 340px\);/);
+});
+
+
+test('mobile Newsroom reader clears the full 150px broadcast shell before rendering controls and article', async () => {
+  const styles = await readFile(readerStylesUrl, 'utf8');
+
+  assert.match(styles, /@media \(max-width: 767px\)[\s\S]*main\[data-active-tab="newsroom"\]\.dhq-newsroom-article-main \{[\s\S]*padding-top: 158px !important;/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*padding-top: 158px !important;/);
+  assert.match(styles, /dhq-newsroom-reader-tabs[\s\S]*overflow-x: auto !important;/);
+  assert.match(styles, /scroll-snap-type: x proximity/);
+});
+
+test('mobile QA guardrails cover the primary DynastyHQ experiences without replacing deliberate horizontal rails', async () => {
+  const [fixes, gameHub, career, sessionImport, podcast, chronicle] = await Promise.all([
+    readFile(fixesUrl, 'utf8'),
+    readFile(gameHubViewportUrl, 'utf8'),
+    readFile(careerViewportUrl, 'utf8'),
+    readFile(sessionImportStylesUrl, 'utf8'),
+    readFile(podcastStylesUrl, 'utf8'),
+    readFile(chronicleStylesUrl, 'utf8'),
+  ]);
+
+  assert.match(fixes, /Site-wide mobile QA guardrails/);
+  assert.match(fixes, /main\.dhq-page-main[\s\S]*max-width: 100% !important/);
+  assert.match(gameHub, /--dhq-game-hub-header-height: 150px/);
+  assert.match(career, /--dhq-career-overview-header-height: 150px/);
+  assert.match(sessionImport, /dhq-session-import__ready-summary \{ grid-template-columns: 1fr; \}/);
+  assert.match(podcast, /section\.grid\.xl\\:grid-cols-[\s\S]*flex-direction: column !important/);
+  assert.match(chronicle, /scroll-snap-type: x proximity/);
 });

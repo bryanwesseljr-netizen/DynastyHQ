@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { buildMediaNetworkLayer, latestMeaningfulMediaContext } from './mediaNetworkLayer.js';
 
@@ -73,4 +74,16 @@ test('home and pregame surfaces keep the latest real media story even when the t
   const media = buildMediaNetworkLayer(state, context);
   assert.equal(media.dynasty.newsroomReady, true);
   assert.equal(media.dynasty.podcastReady, true);
+});
+
+test('Latest Network Wire is no longer rendered because Season Wire owns the site-wide ticker', async () => {
+  const source = await readFile(new URL('../components/MediaNetworkLayerPortal.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /<NetworkWire items=\{model\.ticker\}/);
+  assert.match(source, /Latest Network Wire retired: Season Wire is the single site-wide ticker/);
+});
+
+test('official coverage reader accepts open requests from Around the Program', async () => {
+  const source = await readFile(new URL('../components/OfficialCoverageReaderPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /dynastyhq:open-official-coverage/);
+  assert.match(source, /findArticleForRequest/);
 });

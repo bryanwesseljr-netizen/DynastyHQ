@@ -143,8 +143,8 @@ test('mobile Newsroom publication controls stay compact and article typography i
   assert.match(articleStyles, /font-size: \.9rem !important/);
   const localRestore = await readFile(localRestoreUrl, 'utf8');
   assert.match(localRestore, /Mobile masthead hard-stop/);
-  assert.match(localRestore, /grid-template-columns: 34px minmax\(0, 1fr\)/);
-  assert.match(localRestore, /font-size: clamp\(1\.08rem, 5\.1vw, 1\.42rem\)/);
+  assert.match(localRestore, /grid-template-columns: 42px minmax\(0, 1fr\)/);
+  assert.match(localRestore, /font-size: clamp\(1\.38rem, 6\.8vw, 1\.85rem\)/);
 });
 
 
@@ -220,8 +220,11 @@ test('desktop nav runtime finalizer owns the real desktop header after legacy CS
   assert.match(owner, /DesktopPrimaryNavFinalizer/);
   assert.match(owner, /<DesktopPrimaryNavFinalizer \/>/);
   assert.match(finalizer, /header\.dhq-broadcast-header nav\.dhq-primary-nav/);
+  assert.match(finalizer, /@media \(min-width: 960px\)/);
+  assert.match(finalizer, /matchMedia\('\(min-width: 960px\)'\)/);
   assert.match(finalizer, /grid-template-columns/);
   assert.match(finalizer, /border-bottom.*3px solid/);
   assert.match(finalizer, /MutationObserver/);
   assert.match(finalizer, /max-width.*100vw/);
+  assert.match(finalizer, /document\.documentElement\.scrollLeft = 0/);
 });

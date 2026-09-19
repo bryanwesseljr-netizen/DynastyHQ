@@ -2064,14 +2064,15 @@ const handleSaveGameClick = () => {
       ...(!isReadOnly ? [{ id: 'settings', icon: Settings, label: 'Settings' }] : []),
       ...(!isReadOnly ? [{ id: 'rules', icon: FileText, label: 'Career Handbook' }] : []),
     ];
-    const desktopNavOrder = ['dashboard', 'trophies', 'dataEntry', 'newsroom', 'chronicle', 'podcast'];
+    const desktopNavOrder = ['dashboard', 'dataEntry', 'newsroom', 'podcast', 'trophies', 'chronicle'];
     const desktopNavItems = desktopNavOrder
       .map((id) => navItems.find((item) => item.id === id))
       .filter(Boolean);
+    const mobilePrimaryOrder = ['dashboard', 'dataEntry', 'newsroom', 'podcast', 'trophies', 'chronicle'];
+    const mobilePrimaryIds = new Set(mobilePrimaryOrder);
     const mobileNavItems = [
-      ...navItems.filter((item) => item.id === 'dashboard'),
-      ...navItems.filter((item) => item.id === 'dataEntry'),
-      ...navItems.filter((item) => !['dashboard', 'dataEntry'].includes(item.id)),
+      ...mobilePrimaryOrder.map((id) => navItems.find((item) => item.id === id)).filter(Boolean),
+      ...navItems.filter((item) => !mobilePrimaryIds.has(item.id)),
     ];
     const saveLabel = saveStatus.state === 'saving'
       ? 'Saving…'
@@ -2144,6 +2145,7 @@ const handleSaveGameClick = () => {
               let displayLabel = item.id === 'podcast' ? 'Podcast' : item.label;
               if (item.id === 'dashboard') displayLabel = 'Home';
               if (item.id === 'dataEntry') displayLabel = 'Game Hub';
+              if (item.id === 'newsroom') displayLabel = 'Newsroom';
               if (item.id === 'trophies') displayLabel = 'Career';
               return (
                 <button

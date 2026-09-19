@@ -40,8 +40,7 @@ const cssText = `
     white-space: nowrap !important;
   }
 
-  html body header.dhq-broadcast-header nav.dhq-primary-nav > button.dhq-primary-nav-item[aria-current="page"] > .dhq-primary-nav-label,
-  html body header.dhq-broadcast-header nav.dhq-primary-nav > button.dhq-primary-nav-item.is-active > .dhq-primary-nav-label {
+  html body header.dhq-broadcast-header nav.dhq-primary-nav > button.dhq-primary-nav-item.dhq-nav-visual-active > .dhq-primary-nav-label {
     border-bottom-color: var(--dhq-program-highlight, #facc15) !important;
   }
 
@@ -151,7 +150,7 @@ const DesktopPrimaryNavFinalizer = () => {
             const label = button.querySelector('.dhq-primary-nav-label') || button.querySelector('span');
             if (label) {
               label.classList.add('dhq-primary-nav-label');
-              const active = button.getAttribute('aria-current') === 'page' || button.classList.contains('is-active');
+              const active = button.classList.contains('dhq-nav-visual-active');
               setImportant(label, 'display', 'inline-block');
               setImportant(label, 'position', 'static');
               setImportant(label, 'width', 'auto');

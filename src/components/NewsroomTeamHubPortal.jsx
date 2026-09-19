@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Archive, ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileImage, Flame, Globe2, Image as ImageIcon,
-  MapPin, Newspaper, Radio, Settings2, Sparkles,
+  LayoutGrid, MapPin, Newspaper, Radio, Settings2, Sparkles,
 } from 'lucide-react';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation';
@@ -226,7 +226,7 @@ const NewsroomTeamHubPortal = () => {
   const { career } = useOwnerCareer();
   const [mount, setMount] = useState(null);
   const [isHome, setIsHome] = useState(false);
-  const [activeDesk, setActiveDesk] = useState('team');
+  const [activeDesk, setActiveDesk] = useState('front');
   const [selectedOfficial, setSelectedOfficial] = useState(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -344,8 +344,46 @@ const NewsroomTeamHubPortal = () => {
   const featuredMedia = featured ? resolveCardMedia(career, featured.issue, featured.story) : null;
   const latestRegional = regionalEntries[0];
   const latestNational = nationalEntries[0];
-  const trending = teamEntries.slice(0, 3);
+  const latestOfficial = officialEntries[0] || null;
   const latestTeamStories = teamEntries.slice(1);
+  const trending = [
+    ...teamEntries.slice(0, 2).map((entry) => ({
+      id: `team-${entry.issue.id}-${entry.story.id}`,
+      source: 'DYNASTYHQ',
+      headline: entry.story.headline,
+      action: () => openSavedStory(entry.issue, entry.story),
+      season: Number(entry.issue.season || 1),
+      week: Number(entry.issue.week ?? 0),
+    })),
+    ...(latestOfficial ? [{
+      id: `official-${latestOfficial.publicationId || latestOfficial.id || latestOfficial.headline}`,
+      source: 'EA SPORTS',
+      headline: clean(latestOfficial.headline || latestOfficial.title),
+      action: () => { setSelectedOfficial(latestOfficial); setActiveDesk('official'); },
+      season: Number(latestOfficial.season || 1),
+      week: Number(latestOfficial.week ?? 0),
+    }] : []),
+    ...(latestRegional ? [{
+      id: `regional-${latestRegional.issue.id}-${latestRegional.story.id}`,
+      source: 'REGIONAL',
+      headline: latestRegional.story.headline,
+      action: () => openSavedStory(latestRegional.issue, latestRegional.story),
+      season: Number(latestRegional.issue.season || 1),
+      week: Number(latestRegional.issue.week ?? 0),
+    }] : []),
+    ...(latestNational ? [{
+      id: `national-${latestNational.issue.id}-${latestNational.story.id}`,
+      source: 'NATIONAL',
+      headline: latestNational.story.headline,
+      action: () => openSavedStory(latestNational.issue, latestNational.story),
+      season: Number(latestNational.issue.season || 1),
+      week: Number(latestNational.issue.week ?? 0),
+    }] : []),
+  ]
+    .filter((entry) => clean(entry.headline))
+    .sort((left, right) => (right.season - left.season) || (right.week - left.week))
+    .filter((entry, index, items) => items.findIndex((candidate) => candidate.headline === entry.headline) === index)
+    .slice(0, 4);
   const currentSeason = featured?.issue?.season || data.currentIssues[0]?.season || 1;
   const currentWeek = featured?.issue?.week ?? data.currentIssues[0]?.week ?? 0;
 
@@ -368,7 +406,7 @@ const NewsroomTeamHubPortal = () => {
         style={featuredMedia?.url ? { backgroundImage: `linear-gradient(90deg, rgba(2,5,9,.96) 0%, rgba(2,5,9,.78) 48%, rgba(2,5,9,.28) 100%), url(${featuredMedia.url})` } : undefined}
       >
         <div className="dhq-team-newsroom__masthead-copy">
-          <p className="dhq-team-newsroom__eyebrow">DynastyHQ Team Desk</p>
+          <p className="dhq-team-newsroom__eyebrow">DynastyHQ Newsroom</p>
           <h1>{profile.nickname}</h1>
           <h2>Football</h2>
           <p>{profile.teamNewsTagline}</p>
@@ -377,19 +415,25 @@ const NewsroomTeamHubPortal = () => {
       </header>
 
       <nav className="dhq-team-newsroom__desks" aria-label="Newsroom desks">
-        <button type="button" data-active={activeDesk === 'team'} onClick={() => { setSelectedOfficial(null); setActiveDesk('team'); }}><Newspaper size={15} /> Team News <span>{teamEntries.length}</span></button>
-        <button type="button" data-active={activeDesk === 'official'} onClick={() => { setSelectedOfficial(null); setActiveDesk('official'); }}><Radio size={15} /> Official Feed <span>{officialEntries.length}</span></button>
+        <button type="button" data-active={activeDesk === 'front'} onClick={() => { setSelectedOfficial(null); setActiveDesk('front'); }}><LayoutGrid size={15} /> Front Page</button>
+        <button type="button" data-active={activeDesk === 'team'} onClick={() => { setSelectedOfficial(null); setActiveDesk('team'); }}><Newspaper size={15} /> {profile.nickname} News <span>{teamEntries.length}</span></button>
         <button type="button" data-active={activeDesk === 'regional'} onClick={() => { setSelectedOfficial(null); setActiveDesk('regional'); }}><BookOpen size={15} /> Regional <span>{regionalEntries.length}</span></button>
         <button type="button" data-active={activeDesk === 'national'} onClick={() => { setSelectedOfficial(null); setActiveDesk('national'); }}><Globe2 size={15} /> National <span>{nationalEntries.length}</span></button>
+        <span className="dhq-team-newsroom__desk-divider" aria-hidden="true" />
+        <button type="button" className="is-official-desk" data-active={activeDesk === 'official'} onClick={() => { setSelectedOfficial(null); setActiveDesk('official'); }}><Radio size={15} /><span className="dhq-team-newsroom__official-tab-copy"><b>EA SPORTS NETWORK</b><small>Official Feed</small></span><span>{officialEntries.length}</span></button>
       </nav>
 
-      {activeDesk === 'team' && featured ? (
+      {activeDesk === 'front' && featured ? (
         <>
           <div className="dhq-team-newsroom__trending">
             <div className="dhq-team-newsroom__trending-label"><Flame size={14} /> Trending</div>
             <div className="dhq-team-newsroom__trending-track">
               {trending.map((entry, index) => (
-                <button key={`${entry.issue.id}-${entry.story.id}`} type="button" onClick={() => openSavedStory(entry.issue, entry.story)}><span>0{index + 1}</span>{entry.story.headline}</button>
+                <button key={entry.id} type="button" onClick={entry.action}>
+                  <span>0{index + 1}</span>
+                  <em>{entry.source}</em>
+                  <strong>{entry.headline}</strong>
+                </button>
               ))}
             </div>
           </div>
@@ -420,18 +464,30 @@ const NewsroomTeamHubPortal = () => {
               <small>Regional and national coverage appears when earned</small>
             </div>
             <div className="dhq-team-newsroom__outside-grid">
+              {latestOfficial ? <OfficialFeedCard article={latestOfficial} onOpen={(article) => { setSelectedOfficial(article); setActiveDesk('official'); }} /> : <div className="dhq-team-newsroom__outside-empty"><Radio size={22} /><strong>EA Sports Network</strong><span>Official in-game coverage appears here when captured.</span></div>}
               {latestRegional ? <StoryTile career={career} entry={latestRegional} eyebrow={profile.regionalOutletName} /> : <div className="dhq-team-newsroom__outside-empty"><BookOpen size={22} /><strong>Regional Desk</strong><span>No regional story has been called for yet.</span></div>}
               {latestNational ? <StoryTile career={career} entry={latestNational} eyebrow="National Spotlight" /> : <div className="dhq-team-newsroom__outside-empty"><Sparkles size={22} /><strong>National Spotlight</strong><span>National coverage appears when the career earns it.</span></div>}
             </div>
           </section>
         </>
+      ) : activeDesk === 'team' ? (
+        <section className="dhq-team-newsroom__latest dhq-team-newsroom__desk-page">
+          <div className="dhq-team-newsroom__section-heading">
+            <div><span>Team Coverage</span><h2>{profile.nickname} News</h2></div>
+            <small>{teamEntries.length} published team {teamEntries.length === 1 ? 'story' : 'stories'}</small>
+          </div>
+          <div className="dhq-team-newsroom__card-grid">
+            {teamEntries.map((entry) => <StoryTile key={`${entry.issue.id}-${entry.story.id}`} career={career} entry={entry} />)}
+            {!teamEntries.length && <p className="dhq-team-newsroom__empty">No team stories have been published yet.</p>}
+          </div>
+        </section>
       ) : activeDesk === 'official' ? (
         selectedOfficial ? (
           <OfficialFeedReader career={career} article={selectedOfficial} onBack={() => setSelectedOfficial(null)} />
         ) : (
           <section className="dhq-team-newsroom__latest dhq-team-newsroom__desk-page dhq-team-newsroom__official-desk">
             <div className="dhq-team-newsroom__section-heading">
-              <div><span>EA SPORTS NETWORK</span><h2>Official Feed</h2></div>
+              <div><span>Official game-world wire service</span><h2>EA Sports Network</h2></div>
               <small>{officialEntries.length} preserved official {officialEntries.length === 1 ? 'story' : 'stories'}</small>
             </div>
             <p className="dhq-team-newsroom__official-intro">The in-game media record from College Football 27. DynastyHQ preserves these stories as the official layer and keeps its own reporting separate.</p>

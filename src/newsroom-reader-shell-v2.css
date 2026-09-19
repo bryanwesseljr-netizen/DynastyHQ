@@ -151,45 +151,93 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
+  /* The mobile broadcast shell is 150px tall (brand row + nav + Season Wire).
+     Article Reader used to override the global mobile offset with ~68px, which
+     placed its controls and publication masthead underneath the fixed header. */
   main[data-active-tab="newsroom"].dhq-newsroom-article-main {
-    padding-top: 68px !important;
+    padding-top: 158px !important;
     padding-inline: 10px !important;
   }
 
   .dhq-newsroom-reader-mode {
-    grid-template-columns: 1fr;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-inline: auto !important;
+  }
+
+  .dhq-newsroom-reader-mode > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-news-article {
+    max-width: 100% !important;
+    overflow-x: clip;
+  }
+
+  .dhq-newsroom-reader-mode .dhq-news-article img,
+  .dhq-newsroom-reader-mode .dhq-news-article video {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  main[data-active-tab="newsroom"].dhq-newsroom-article-main {
+    padding-top: 158px !important;
+    padding-inline: 8px !important;
+  }
+
+  .dhq-newsroom-reader-mode {
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px !important;
   }
 
-  .dhq-newsroom-reader-mode > .dhq-newsroom-back-button,
-  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs,
-  .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount],
-  .dhq-newsroom-reader-mode > .dhq-news-article {
-    grid-column: 1;
-  }
-
   .dhq-newsroom-reader-mode > .dhq-newsroom-back-button {
+    grid-column: 1;
     grid-row: 1;
-    width: 100%;
-  }
-
-  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs {
-    grid-row: 2;
-    display: grid !important;
-    grid-template-columns: 1fr;
-    overflow-x: visible !important;
-  }
-
-  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs button {
-    width: 100%;
+    width: auto;
+    min-width: 0;
+    justify-self: stretch;
   }
 
   .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] {
-    grid-row: 3;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .dhq-newsroom-reader-mode > [data-newsroom-article-share-mount] button {
+    min-width: 44px;
+    padding-inline: 11px !important;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100%;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-reader-tabs button {
+    width: auto;
+    min-width: min(72vw, 230px);
+    flex: 0 0 auto;
+    scroll-snap-align: start;
   }
 
   .dhq-newsroom-reader-mode > .dhq-news-article {
-    grid-row: 4;
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 }

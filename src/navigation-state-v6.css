@@ -348,3 +348,154 @@ body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-pr
     letter-spacing: 0 !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* FINAL ACTIVE TAB INDICATOR                                                  */
+/* The selected tab gets ONE visual treatment only: a short yellow underline.  */
+/* No left/right/top border, focus ring, inset shadow, or highlighted box.      */
+/* -------------------------------------------------------------------------- */
+
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item:is(:hover, :focus, :focus-visible, :active),
+#dhq-player-offseason-desktop-nav,
+#dhq-player-offseason-desktop-nav:is(:hover, :focus, :focus-visible, :active) {
+  position: relative !important;
+  border: 0 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-offset: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item::before,
+#dhq-player-offseason-desktop-nav::before {
+  display: none !important;
+  content: none !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item::after,
+#dhq-player-offseason-desktop-nav::after {
+  display: none !important;
+  content: '' !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item[aria-current="page"],
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-nav-visual-active,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-career-active,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-game-hub-active,
+#dhq-player-offseason-desktop-nav.is-active,
+#dhq-player-offseason-desktop-nav[aria-current="page"] {
+  color: #f8fafc !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item[aria-current="page"]::after,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-nav-visual-active::after,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-career-active::after,
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-game-hub-active::after,
+#dhq-player-offseason-desktop-nav.is-active::after,
+#dhq-player-offseason-desktop-nav[aria-current="page"]::after {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  display: block !important;
+  width: 38px !important;
+  height: 3px !important;
+  content: '' !important;
+  border: 0 !important;
+  border-radius: 999px 999px 0 0 !important;
+  background: var(--dhq-program-highlight, #facc15) !important;
+  box-shadow: none !important;
+  transform: translateX(-50%) !important;
+  pointer-events: none !important;
+}
+
+/* Same single-underline language in the true mobile nav. */
+.dhq-mobile-broadcast-nav button,
+.dhq-mobile-broadcast-nav button:is(:hover, :focus, :focus-visible, :active) {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.dhq-mobile-broadcast-nav button::before {
+  display: none !important;
+  content: none !important;
+}
+
+.dhq-mobile-broadcast-nav button::after {
+  display: none !important;
+}
+
+.dhq-mobile-broadcast-nav button.is-active {
+  position: relative !important;
+  color: #f8fafc !important;
+}
+
+.dhq-mobile-broadcast-nav button.is-active::after {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  display: block !important;
+  width: 34px !important;
+  height: 3px !important;
+  content: '' !important;
+  border: 0 !important;
+  border-radius: 999px 999px 0 0 !important;
+  background: var(--dhq-program-highlight, #facc15) !important;
+  box-shadow: none !important;
+  transform: translateX(-50%) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* ROUTE WIDTH GUARDRAIL                                                       */
+/* The page shell itself must never become a horizontal scroller. Intentional   */
+/* rails (ticker, cards, tabs) own their own horizontal scrolling instead.      */
+/* -------------------------------------------------------------------------- */
+
+main.dhq-page-main {
+  width: 100% !important;
+  max-width: 100vw !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+  box-sizing: border-box !important;
+}
+
+main.dhq-page-main > :not(.pointer-events-none) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+main.dhq-page-main :where(
+  .dhq-broadcast-main,
+  .dhq-team-newsroom,
+  .dhq-newsroom-reader-mode,
+  .dhq-local-podcast-root,
+  #dhq-player-offseason-route-host,
+  .dhq-career-overview,
+  .dhq-game-hub,
+  .dhq-weekly-agenda-workspace
+) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+main.dhq-page-main :where(h1, h2, h3, h4, p, li, td, th, strong, span) {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}

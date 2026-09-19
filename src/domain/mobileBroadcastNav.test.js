@@ -165,10 +165,10 @@ test('desktop navigation keeps Podcast fully visible and uses one clean centered
   assert.match(navState, /flex: 1 1 0 !important/);
   assert.match(navState, /font-size: 9\.5px !important/);
   assert.match(navState, /FINAL ACTIVE TAB INDICATOR/);
-  assert.match(navState, /width: 38px !important/);
-  assert.match(navState, /height: 3px !important/);
-  assert.match(navState, /left: 50% !important/);
-  assert.match(navState, /background: var\(--dhq-program-highlight, #facc15\) !important/);
+  assert.match(navState, /The only desktop active indicator is the short line directly beneath the/);
+  assert.match(navState, /border-bottom: 3px solid transparent !important/);
+  assert.match(navState, /border-bottom-color: var\(--dhq-program-highlight, #facc15\) !important/);
+  assert.doesNotMatch(navState, /width: 38px !important/);
   assert.match(navState, /outline: 0 !important/);
   assert.match(navState, /border-left: 0 !important/);
   assert.match(navState, /border-right: 0 !important/);

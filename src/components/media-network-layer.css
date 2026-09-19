@@ -232,3 +232,18 @@
   .dhq-network-wire__desk { display: none; }
   .dhq-network-wire__track { animation-duration: 25s; }
 }
+
+
+.dhq-media-network__lane.is-official.is-clickable {
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.dhq-media-network__lane.is-official.is-clickable:hover,
+.dhq-media-network__lane.is-official.is-clickable:focus-visible {
+  border-color: rgba(96, 165, 250, .48);
+  background: rgba(37, 99, 235, .08);
+  outline: none;
+}
+.dhq-media-network__lane.is-official.is-clickable:active {
+  transform: translateY(1px);
+}

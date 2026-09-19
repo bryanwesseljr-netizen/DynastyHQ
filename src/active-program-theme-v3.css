@@ -68,8 +68,10 @@ body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dh
 body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"]::after,
 body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
 body[data-dhq-team-accent="true"] .dhq-career-active::after {
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 58%, transparent) !important;
+  display: none !important;
+  content: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-game-hub-active > span:last-child,
@@ -77,8 +79,13 @@ body[data-dhq-team-accent="true"] .dhq-primary-nav button.dhq-career-active > sp
 body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-game-hub-active > span:last-child,
 body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item.dhq-career-active > span:last-child,
 body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child {
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 56%, transparent) !important;
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 body[data-dhq-team-accent="true"] .dhq-score-ticker {

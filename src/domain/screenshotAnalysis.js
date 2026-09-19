@@ -12,6 +12,7 @@ const SCREEN_TYPE_LABELS = {
   recruiting_class: 'Recruiting Class',
   season_summary: 'Season Summary',
   depth_chart: 'Depth Chart',
+  ea_sports_network_article: 'EA SPORTS Network Article',
   unknown: 'Unclassified',
 };
 
@@ -579,6 +580,29 @@ export const normalizeScreenshotAnalysis = ({
     .map((type) => SCREEN_TYPE_LABELS[type])
     .filter(Boolean);
 
+  const rawOfficialArticle = scopedAnalysis?.officialArticle && typeof scopedAnalysis.officialArticle === 'object'
+    ? scopedAnalysis.officialArticle
+    : {};
+  const officialHeadline = cleanString(rawOfficialArticle.headline);
+  const officialDek = cleanString(rawOfficialArticle.dek);
+  const officialBody = cleanString(rawOfficialArticle.body);
+  const officialOutlet = cleanString(rawOfficialArticle.outlet);
+  const officialDetected = (scopedAnalysis?.screenTypes || []).includes('ea_sports_network_article')
+    || (
+      Boolean(officialHeadline || officialDek || officialBody)
+      && /ea\s*sports/i.test([officialOutlet, scopedAnalysis?.screenTitle, scopedAnalysis?.summary].filter(Boolean).join(' '))
+    );
+  const officialCoverage = officialDetected ? {
+    detected: true,
+    outlet: officialOutlet || 'EA SPORTS Network',
+    headline: officialHeadline,
+    dek: officialDek,
+    byline: cleanString(rawOfficialArticle.byline),
+    pageLabel: cleanString(rawOfficialArticle.pageLabel),
+    bodyCaptured: Boolean(officialBody),
+    bodyCharacters: officialBody.length,
+  } : null;
+
   return {
     source: {
       id: sourceId,
@@ -589,6 +613,7 @@ export const normalizeScreenshotAnalysis = ({
       summary: cleanString(scopedAnalysis?.summary),
       previewUrl,
       analyzer: 'Secure AI',
+      ...(officialCoverage ? { officialCoverage } : {}),
       ...(normalizedUploadContext ? { uploadContext: normalizedUploadContext } : {}),
     },
     facts,

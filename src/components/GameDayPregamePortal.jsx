@@ -122,9 +122,21 @@ const GameDayPregamePortal = () => {
   const locationLine = [live.venue, live.kickoff].filter(Boolean).join(' · ') || 'Game details from Week Setup';
   const mediaIcon = (target) => target === 'podcast' ? Headphones : target === 'newsroom' ? Newspaper : Radio;
 
-  const openMedia = (target) => {
+  const openMedia = (item) => {
+    const target = item?.target;
     if (target === 'newsroom') return openNav(['The Newsroom', 'Newsroom']);
     if (target === 'podcast') return openNav(['Podcast', 'The Huddle']);
+    if (target === 'official') {
+      window.dispatchEvent(new CustomEvent('dynastyhq:open-official-coverage', {
+        detail: {
+          headline: item?.headline || item?.title || '',
+          season: item?.season,
+          week: item?.week,
+          source: 'around-the-program',
+        },
+      }));
+      return;
+    }
     return openNav('Game Hub');
   };
 
@@ -222,7 +234,7 @@ const GameDayPregamePortal = () => {
             {live.media.items.length ? live.media.items.map((item) => {
               const Icon = mediaIcon(item.target);
               return (
-                <button type="button" key={item.id} onClick={() => openMedia(item.target)}>
+                <button type="button" key={item.id} onClick={() => openMedia(item)}>
                   <Icon size={15} />
                   <span><small>{item.label}</small><strong>{item.title}</strong><p>{item.detail}</p></span>
                   <ChevronRight size={14} />

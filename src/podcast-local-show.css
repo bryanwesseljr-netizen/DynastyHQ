@@ -666,3 +666,51 @@
     width: min(300px, calc(100vw - 24px));
   }
 }
+
+
+/* Listener-visible Podcast masthead: artwork only. Show identity is already
+   baked into the cover art; the page below owns the current headline/player. */
+.dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__hero {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  padding: 14px !important;
+}
+
+.dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__identity,
+.dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__alt-art,
+.dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__live {
+  display: none !important;
+}
+
+.dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__art {
+  width: min(220px, 48vw) !important;
+  max-width: 220px !important;
+  border-radius: 14px !important;
+}
+
+.dhq-local-podcast-root .dhq-podcast-listener-secondary,
+.dhq-local-podcast-root .dhq-podcast-listener-transcript,
+.dhq-local-podcast-root .dhq-podcast-legacy-archive {
+  display: none !important;
+}
+
+.dhq-local-podcast-root .dhq-podcast-listener-secondary[data-open="true"] {
+  display: grid !important;
+}
+
+.dhq-local-podcast-root .dhq-podcast-legacy-archive[data-open="true"] {
+  display: block !important;
+}
+
+@media (max-width: 700px) {
+  .dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__hero {
+    justify-content: center !important;
+    padding: 12px !important;
+  }
+
+  .dhq-local-podcast-root [data-local-podcast-masthead="true"] .dhq-local-podcast__art {
+    width: min(210px, 58vw) !important;
+    max-width: 210px !important;
+  }
+}

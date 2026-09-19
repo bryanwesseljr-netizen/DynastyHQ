@@ -466,9 +466,9 @@ const PodcastStudioContent = ({
         </section>
       ) : (
         <>
-          <section className={`overflow-hidden rounded-3xl border bg-slate-950/92 shadow-2xl backdrop-blur-md ${impact.shell}`} data-episode-importance={importance}>
+          <section className={`dhq-podcast-listener-card overflow-hidden rounded-3xl border bg-slate-950/92 shadow-2xl backdrop-blur-md ${impact.shell}`} data-episode-importance={importance}>
             <div className="grid lg:grid-cols-[330px_minmax(0,1fr)]">
-              <div className="relative overflow-hidden border-b border-slate-800 bg-gradient-to-br from-blue-950 via-slate-950 to-slate-900 lg:border-b-0 lg:border-r">
+              <div className="dhq-podcast-listener-cover-panel relative overflow-hidden border-b border-slate-800 bg-gradient-to-br from-blue-950 via-slate-950 to-slate-900 lg:border-b-0 lg:border-r">
                 <img src={showArtwork} onError={() => setCoverFailed(true)} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20 blur-md scale-110" aria-hidden="true" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-slate-950/15" />
                 <div className="relative flex min-h-[360px] flex-col p-6 lg:min-h-[470px] lg:p-7">
@@ -491,8 +491,8 @@ const PodcastStudioContent = ({
                 </div>
               </div>
 
-              <div className="p-6 md:p-8 lg:p-9">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="dhq-podcast-listener-main p-6 md:p-8 lg:p-9">
+                <div className="dhq-podcast-listener-meta flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-400">{noEpisodeWeek ? 'Editorial decision' : impact.eyebrow}</span>
                   {publishedDate && <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-600"><CalendarDays size={12} /> {publishedDate}</span>}
                 </div>
@@ -509,9 +509,9 @@ const PodcastStudioContent = ({
                   </>
                 ) : (
                   <>
-                    <h2 className="mt-3 max-w-4xl text-3xl font-black leading-[1.05] tracking-tight text-white md:text-5xl">{episode?.title || issueBrief.title}</h2>
-                    <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-400 md:text-[15px]">{episode?.summary || issueBrief.summary}</p>
-                    <div className="mt-5 flex flex-wrap gap-2">
+                    <h2 className="dhq-podcast-listener-title mt-3 max-w-4xl text-3xl font-black leading-[1.05] tracking-tight text-white md:text-5xl">{episode?.title || issueBrief.title}</h2>
+                    <p className="dhq-podcast-listener-summary mt-4 max-w-4xl text-sm leading-7 text-slate-400 md:text-[15px]">{episode?.summary || issueBrief.summary}</p>
+                    <div className="dhq-podcast-listener-badges mt-5 flex flex-wrap gap-2">
                       <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/8 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-300"><ShieldCheck size={12} /> {sourceCount} verified source{sourceCount === 1 ? '' : 's'}</span>
                       <span className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400"><Volume2 size={12} /> Mark + Sarah</span>
                       {coverageDecision?.tier && <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400">{coverageDecision.tier.replace('-', ' ')}</span>}
@@ -533,7 +533,7 @@ const PodcastStudioContent = ({
                 {error && <p className="mt-5 rounded-2xl border border-red-500/30 bg-red-950/30 p-4 text-sm font-semibold text-red-200">{error}</p>}
 
                 {episode && (
-                  <div className="mt-7 rounded-2xl border border-slate-700/80 bg-slate-900/75 p-4 shadow-inner md:p-5">
+                  <div className="dhq-podcast-listener-player mt-7 rounded-2xl border border-slate-700/80 bg-slate-900/75 p-4 shadow-inner md:p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                       <button type="button" disabled={!audioReady || isLoadingAudio} onClick={playPause} aria-label={isPlaying ? 'Pause episode' : 'Play episode'} className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-950/40 transition-transform hover:scale-[1.03] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:shadow-none">
                         {isLoadingAudio ? <Loader2 className="animate-spin" /> : isPlaying ? <Pause /> : <Play className="ml-1" />}
@@ -566,11 +566,11 @@ const PodcastStudioContent = ({
                         className="hidden"
                       />
                     )}
-                    {continuousAudio && audioReady && <p className="mt-3 text-[10px] leading-5 text-slate-500">Humanized v3 plays as one uninterrupted conversation. The transcript remains available below, but DynastyHQ no longer fakes exact turn timestamps.</p>}
+                    {continuousAudio && audioReady && <p className="dhq-podcast-listener-tech-note mt-3 text-[10px] leading-5 text-slate-500">Humanized v3 plays as one uninterrupted conversation. The transcript remains available below, but DynastyHQ no longer fakes exact turn timestamps.</p>}
                   </div>
                 )}
 
-                <div className="mt-5 flex flex-wrap gap-2.5">
+                <div className="dhq-podcast-listener-actions mt-5 flex flex-wrap gap-2.5">
                   {!readOnly && !isCollegeIssue && !noEpisodeWeek && (!episode || episode.audioStatus !== 'ready') && (
                     <button type="button" disabled={Boolean(generation) || sourceCount < 1} onClick={generateLegacy} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-[10px] font-black uppercase tracking-wider text-white shadow-lg shadow-blue-950/30 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:opacity-70">
                       <Sparkles size={15} /> {sourceCount < 1 ? 'Verified Sources Required' : (episode ? 'Generate Episode Audio' : 'Generate Full Episode')}
@@ -595,7 +595,7 @@ const PodcastStudioContent = ({
           </section>
 
           {episode ? (
-            <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <section className="dhq-podcast-listener-secondary grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
               <div className="rounded-3xl border border-slate-700/60 bg-slate-950/88 p-5 shadow-2xl md:p-7">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
@@ -650,7 +650,7 @@ const PodcastStudioContent = ({
           )}
 
           {episode && (
-            <section className="overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/88 shadow-2xl">
+            <section className="dhq-podcast-listener-transcript overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/88 shadow-2xl">
               <button type="button" onClick={() => setShowTranscript((value) => !value)} className="flex w-full items-center justify-between gap-4 p-5 text-left md:p-6">
                 <div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Full Episode Transcript</p><p className="mt-1 text-sm font-black text-white">Read or audit every host turn</p></div>
                 <ChevronDown className={`text-slate-500 transition-transform ${showTranscript ? 'rotate-180' : ''}`} size={20} />
@@ -675,7 +675,7 @@ const PodcastStudioContent = ({
             </section>
           )}
 
-          <section className="overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/88 shadow-2xl">
+          <section className="dhq-podcast-listener-archive overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/88 shadow-2xl">
             <div className="flex flex-col gap-3 border-b border-slate-800 p-5 md:flex-row md:items-end md:justify-between md:p-7">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">RTG → Coach Journey Archive</p>

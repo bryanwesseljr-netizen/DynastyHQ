@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck,
-  Eye, FileImage, ShieldCheck, Trash2, X,
+  Eye, FileImage, Radio, ShieldCheck, Trash2, X,
 } from 'lucide-react';
 import { getWeeklyCompleteness, validateScanFact, WEEK_TYPES } from '../domain/weeklyEngine';
 
@@ -144,6 +144,9 @@ const WeeklyReviewPanel = ({
   const completeness = getWeeklyCompleteness(draft);
   const isHighSchool = draft.careerPhase === 'Player' && !draft.isCommitted;
   const detectedTypes = [...new Set(draft.sources.flatMap((source) => source.detectedTypes))];
+  const officialSources = draft.sources.filter((source) => source.officialCoverage?.detected);
+  const officialHeadline = officialSources.map((source) => source.officialCoverage?.headline).find(Boolean) || '';
+  const officialBodyPages = officialSources.filter((source) => source.officialCoverage?.bodyCaptured).length;
 
   const factsWithState = draft.facts.map((entry) => {
     const validationError = validateScanFact(entry);
@@ -224,6 +227,33 @@ const WeeklyReviewPanel = ({
             {interceptions !== undefined && <span className="text-xs text-slate-300"><strong className="text-white">{String(interceptions)}</strong> INT</span>}
             {rushYds !== undefined && <span className="text-xs text-slate-300"><strong className="text-white">{String(rushYds)}</strong> rush yds</span>}
             {rushTD !== undefined && <span className="text-xs text-slate-300"><strong className="text-white">{String(rushTD)}</strong> rush TD</span>}
+          </div>
+        </div>
+      )}
+
+      {!isHighSchool && (
+        <div className="border-b border-slate-800 bg-slate-950/35 px-5 py-4 md:px-6">
+          <div className={`rounded-xl border p-4 ${officialSources.length ? 'border-blue-400/35 bg-blue-500/8' : 'border-slate-700/70 bg-slate-950/45'}`}>
+            <div className="flex items-start gap-3">
+              <Radio size={17} className={officialSources.length ? 'mt-0.5 shrink-0 text-blue-300' : 'mt-0.5 shrink-0 text-slate-600'} />
+              <div className="min-w-0">
+                <p className={`text-[9px] font-black uppercase tracking-[0.16em] ${officialSources.length ? 'text-blue-300' : 'text-slate-500'}`}>
+                  EA SPORTS NETWORK · {officialSources.length ? 'SCANNED & PRESERVED' : 'NOT DETECTED'}
+                </p>
+                {officialSources.length ? (
+                  <>
+                    <h4 className="mt-1 truncate text-sm font-black uppercase text-white">{officialHeadline || 'Official in-game article detected'}</h4>
+                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                      {officialSources.length} article page{officialSources.length === 1 ? '' : 's'} recognized
+                      {officialBodyPages ? ` · ${officialBodyPages} page${officialBodyPages === 1 ? '' : 's'} include article body text` : ' · headline/brief preserved'}
+                      . This will be attached to the week as the Official Feed.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500">No EA SPORTS Network article page was recognized in this Game Data batch. That is fine if you did not upload one.</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -376,6 +406,13 @@ const WeeklyReviewPanel = ({
                     <div className="p-3">
                       <p className="truncate text-xs font-bold text-white">{source.fileName}</p>
                       {source.uploadContext?.label && <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-amber-300">{source.uploadContext.label}</p>}
+                      {source.officialCoverage?.detected ? (
+                        <div className="mt-2 rounded-md border border-blue-400/25 bg-blue-500/8 px-2 py-2">
+                          <p className="text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">EA SPORTS NETWORK ARTICLE · DETECTED</p>
+                          {source.officialCoverage.headline ? <p className="mt-1 truncate text-[10px] font-bold text-slate-200">{source.officialCoverage.headline}</p> : null}
+                          <p className="mt-1 text-[9px] text-slate-500">{source.officialCoverage.bodyCaptured ? 'Article body text captured from this page.' : 'Headline/brief captured from this page.'}</p>
+                        </div>
+                      ) : null}
                       <p className={`mt-1 text-[10px] ${source.error ? 'text-red-300' : 'text-slate-500'}`}>{source.error || source.detectedTypes.join(', ') || 'No screen type detected'}</p>
                     </div>
                   </div>

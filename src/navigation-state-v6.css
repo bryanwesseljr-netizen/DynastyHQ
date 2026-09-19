@@ -427,12 +427,7 @@ body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav .dhq-pr
   box-shadow: none !important;
 }
 
-.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item[aria-current="page"] > .dhq-primary-nav-label,
-.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-nav-visual-active > .dhq-primary-nav-label,
-.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-career-active > .dhq-primary-nav-label,
-.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-game-hub-active > .dhq-primary-nav-label,
-#dhq-player-offseason-desktop-nav.is-active > .dhq-primary-nav-label,
-#dhq-player-offseason-desktop-nav[aria-current="page"] > .dhq-primary-nav-label {
+.dhq-broadcast-header .dhq-primary-nav > .dhq-primary-nav-item.dhq-nav-visual-active > .dhq-primary-nav-label {
   border-bottom-color: var(--dhq-program-highlight, #facc15) !important;
 }
 

@@ -278,3 +278,17 @@ test('header notifications only show the yellow dot for unread items and support
   assert.match(appSource, /Trash2 size=\{14\}/);
   assert.match(appSource, /readIds: \[\.\.\.new Set/);
 });
+
+
+test('mobile notification drawer is pinned inside the viewport', async () => {
+  const [appSource, siteStyles] = await Promise.all([
+    readFile(new URL('../App.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../index.css', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(appSource, /dhq-notifications-panel/);
+  assert.match(siteStyles, /Notification drawer must stay inside the phone viewport/);
+  assert.match(siteStyles, /width: min\(360px, calc\(100vw - 24px\)\) !important/);
+  assert.match(siteStyles, /right: 12px !important/);
+  assert.match(siteStyles, /position: fixed !important/);
+});

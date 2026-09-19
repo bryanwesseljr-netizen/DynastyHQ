@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Archive, ArrowRight, BookOpen, ChevronDown, Flame, Globe2, Image as ImageIcon,
-  MapPin, Newspaper, Settings2, Sparkles,
+  Archive, ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileImage, Flame, Globe2, Image as ImageIcon,
+  MapPin, Newspaper, Radio, Settings2, Sparkles,
 } from 'lucide-react';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation';
@@ -15,6 +15,50 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../team-newsroom-hub.css';
 
 const clean = (value) => String(value ?? '').trim();
+const list = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
+
+const officialPages = (article = {}) => list(article.pages)
+  .filter((page) => clean(page.sourceImageUrl) || clean(page.body) || clean(page.summary) || clean(page.headline));
+
+const officialRichness = (article = {}) => (
+  (clean(article.body).length * 3)
+  + officialPages(article).reduce((score, page) => score + clean(page.body).length + (clean(page.sourceImageUrl) ? 400 : 0), 0)
+  + clean(article.dek || article.summary).length
+);
+
+const officialArticlePool = (career = {}) => {
+  const merged = new Map();
+  [
+    ...list(career.eaSportsNetworkArticles),
+    ...list(career.eaSportsNetwork),
+    ...list(career.officialCoverage),
+  ].forEach((entry) => {
+    if (!entry) return;
+    const season = Number(entry.season || 1) || 1;
+    const week = Number(entry.week ?? 0) || 0;
+    const headline = clean(entry.headline || entry.title);
+    if (!headline && !clean(entry.body) && !clean(entry.summary || entry.dek)) return;
+    const key = clean(entry.publicationId || entry.id) || `season-${season}-week-${week}:${headline.toLowerCase()}`;
+    const current = merged.get(key);
+    if (!current || officialRichness(entry) >= officialRichness(current)) merged.set(key, { ...current, ...entry, season, week, headline: headline || clean(current?.headline) });
+  });
+  return [...merged.values()].sort((left, right) => {
+    const seasonDelta = (Number(right.season) || 0) - (Number(left.season) || 0);
+    return seasonDelta || ((Number(right.week) || 0) - (Number(left.week) || 0));
+  });
+};
+
+const findOfficialArticle = (articles = [], request = {}) => {
+  const headline = clean(request.headline).toLowerCase();
+  const season = Number(request.season);
+  const week = Number(request.week);
+  return articles.find((entry) => {
+    if (headline && clean(entry.headline || entry.title).toLowerCase() !== headline) return false;
+    if (Number.isFinite(season) && season > 0 && Number(entry.season || 1) !== season) return false;
+    if (Number.isFinite(week) && week >= 0 && Number(entry.week ?? 0) !== week) return false;
+    return true;
+  }) || null;
+};
 
 const audienceFor = (story) => resolveNewsroomPresentation(story || {}).audience;
 const isLocalStory = (story) => audienceFor(story) === 'local';
@@ -106,11 +150,84 @@ const StoryTile = ({ career, entry, size = 'standard', eyebrow = '' }) => {
   );
 };
 
+const OfficialFeedCard = ({ article, onOpen }) => {
+  const pages = officialPages(article);
+  const hasBody = Boolean(clean(article.body) || pages.some((page) => clean(page.body)));
+  const sourceImages = pages.filter((page) => clean(page.sourceImageUrl)).length;
+  return (
+    <button type="button" className="dhq-official-feed-card" onClick={() => onOpen(article)}>
+      <span className="dhq-official-feed-card__brand"><Radio size={15} /> EA SPORTS NETWORK <b>OFFICIAL FEED</b></span>
+      <span className="dhq-official-feed-card__week">SEASON {article.season || 1} · WEEK {article.week ?? 0}</span>
+      <strong>{clean(article.headline || article.title) || 'Official game coverage'}</strong>
+      {clean(article.dek || article.summary) ? <p>{clean(article.dek || article.summary)}</p> : null}
+      <span className="dhq-official-feed-card__footer">
+        <em><FileImage size={12} /> {pages.length || article.sourceFiles?.length || 1} PAGE{(pages.length || article.sourceFiles?.length || 1) === 1 ? '' : 'S'}</em>
+        <em>{sourceImages ? 'ORIGINAL CAPTURE' : hasBody ? 'FULL TEXT' : 'WIRE BRIEF'}</em>
+        <b>OPEN OFFICIAL FEED <ArrowRight size={13} /></b>
+      </span>
+    </button>
+  );
+};
+
+const OfficialFeedReader = ({ career, article, onBack }) => {
+  const pages = officialPages(article);
+  const paragraphs = clean(article.body).split(/\n{2,}/).map((value) => value.trim()).filter(Boolean);
+  const standfirst = clean(article.dek || article.summary);
+  const hasBody = paragraphs.length > 0 || pages.some((page) => clean(page.body));
+  const issue = list(career?.newsroomIssues).find((entry) => Number(entry.season || 1) === Number(article.season || 1) && Number(entry.week ?? 0) === Number(article.week ?? 0));
+  const relatedStory = issue ? storyForAudience(issue, 'team') : null;
+
+  return (
+    <section className="dhq-official-feed-reader" aria-label="EA Sports Network official feed story">
+      <button type="button" className="dhq-official-feed-reader__back" onClick={onBack}><ArrowLeft size={14} /> Official Feed</button>
+      <div className="dhq-official-feed-reader__brand"><Radio size={16} /><span>EA <b>SPORTS</b> NETWORK</span><em>OFFICIAL IN-GAME REPORT</em></div>
+      <p className="dhq-official-feed-reader__meta">SEASON {article.season || 1} · WEEK {article.week ?? 0} · COLLEGE FOOTBALL 27</p>
+      <h1>{clean(article.headline || article.title) || 'Official game coverage'}</h1>
+      {standfirst ? <p className="dhq-official-feed-reader__dek">{standfirst}</p> : null}
+      {clean(article.byline) ? <p className="dhq-official-feed-reader__byline">{clean(article.byline)}</p> : null}
+
+      {paragraphs.length ? (
+        <div className="dhq-official-feed-reader__body">
+          {paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 24)}`}>{paragraph}</p>)}
+        </div>
+      ) : !hasBody ? (
+        <div className="dhq-official-feed-reader__brief">
+          <span>OFFICIAL WIRE BRIEF</span>
+          <strong>Original headline and story brief preserved from this edition.</strong>
+          <p>No additional article copy was captured for this game, so the Official Feed stops here rather than inventing missing text.</p>
+        </div>
+      ) : null}
+
+      {pages.length ? (
+        <div className="dhq-official-feed-reader__pages">
+          <header><span>ORIGINAL CFB 27 COVERAGE</span><strong>{pages.length} captured page{pages.length === 1 ? '' : 's'}</strong></header>
+          {pages.map((page, index) => (
+            <figure key={`${page.sourceFileName || 'page'}-${index}`}>
+              <figcaption><span>{page.pageLabel || `PAGE ${index + 1}`}</span><small>{page.sourceFileName || 'EA SPORTS Network capture'}</small></figcaption>
+              {page.sourceImageUrl ? <img src={page.sourceImageUrl} alt={`EA SPORTS Network captured page ${index + 1}`} loading="lazy" /> : null}
+              {!page.sourceImageUrl && page.body ? <p>{page.body}</p> : null}
+            </figure>
+          ))}
+        </div>
+      ) : null}
+
+      {relatedStory ? (
+        <div className="dhq-official-feed-reader__related">
+          <span>RELATED DYNASTYHQ COVERAGE</span>
+          <strong>{relatedStory.headline}</strong>
+          <button type="button" onClick={() => openSavedStory(issue, relatedStory)}>READ DYNASTYHQ STORY <ArrowRight size={13} /></button>
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
 const NewsroomTeamHubPortal = () => {
   const { career } = useOwnerCareer();
   const [mount, setMount] = useState(null);
   const [isHome, setIsHome] = useState(false);
   const [activeDesk, setActiveDesk] = useState('team');
+  const [selectedOfficial, setSelectedOfficial] = useState(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
 
@@ -172,6 +289,18 @@ const NewsroomTeamHubPortal = () => {
     };
   }, [libraryOpen, toolsOpen]);
 
+  useEffect(() => {
+    if (!career) return undefined;
+    const focusOfficial = (event) => {
+      const articles = officialArticlePool(career);
+      const matched = findOfficialArticle(articles, event.detail || {});
+      setActiveDesk('official');
+      setSelectedOfficial(matched);
+    };
+    window.addEventListener('dynastyhq:newsroom-official-focus', focusOfficial);
+    return () => window.removeEventListener('dynastyhq:newsroom-official-focus', focusOfficial);
+  }, [career]);
+
   const data = useMemo(() => {
     if (!career) return null;
     const issues = Array.isArray(career.newsroomIssues) ? career.newsroomIssues : [];
@@ -202,13 +331,14 @@ const NewsroomTeamHubPortal = () => {
       teamEntries: storyEntries('team'),
       regionalEntries: storyEntries('regional'),
       nationalEntries: storyEntries('national'),
+      officialEntries: officialArticlePool(career),
       archiveGroups: [...allStops.entries()].reverse(),
     };
   }, [career]);
 
   if (!mount || !isHome || !career || !data || !data.currentIssues.length) return null;
 
-  const { currentProfile: profile, teamEntries, regionalEntries, nationalEntries, archiveGroups } = data;
+  const { currentProfile: profile, teamEntries, regionalEntries, nationalEntries, officialEntries, archiveGroups } = data;
   const deskEntries = activeDesk === 'regional' ? regionalEntries : activeDesk === 'national' ? nationalEntries : teamEntries;
   const featured = teamEntries[0];
   const featuredMedia = featured ? resolveCardMedia(career, featured.issue, featured.story) : null;
@@ -247,9 +377,10 @@ const NewsroomTeamHubPortal = () => {
       </header>
 
       <nav className="dhq-team-newsroom__desks" aria-label="Newsroom desks">
-        <button type="button" data-active={activeDesk === 'team'} onClick={() => setActiveDesk('team')}><Newspaper size={15} /> Team News <span>{teamEntries.length}</span></button>
-        <button type="button" data-active={activeDesk === 'regional'} onClick={() => setActiveDesk('regional')}><BookOpen size={15} /> Regional <span>{regionalEntries.length}</span></button>
-        <button type="button" data-active={activeDesk === 'national'} onClick={() => setActiveDesk('national')}><Globe2 size={15} /> National <span>{nationalEntries.length}</span></button>
+        <button type="button" data-active={activeDesk === 'team'} onClick={() => { setSelectedOfficial(null); setActiveDesk('team'); }}><Newspaper size={15} /> Team News <span>{teamEntries.length}</span></button>
+        <button type="button" data-active={activeDesk === 'official'} onClick={() => { setSelectedOfficial(null); setActiveDesk('official'); }}><Radio size={15} /> Official Feed <span>{officialEntries.length}</span></button>
+        <button type="button" data-active={activeDesk === 'regional'} onClick={() => { setSelectedOfficial(null); setActiveDesk('regional'); }}><BookOpen size={15} /> Regional <span>{regionalEntries.length}</span></button>
+        <button type="button" data-active={activeDesk === 'national'} onClick={() => { setSelectedOfficial(null); setActiveDesk('national'); }}><Globe2 size={15} /> National <span>{nationalEntries.length}</span></button>
       </nav>
 
       {activeDesk === 'team' && featured ? (
@@ -294,6 +425,22 @@ const NewsroomTeamHubPortal = () => {
             </div>
           </section>
         </>
+      ) : activeDesk === 'official' ? (
+        selectedOfficial ? (
+          <OfficialFeedReader career={career} article={selectedOfficial} onBack={() => setSelectedOfficial(null)} />
+        ) : (
+          <section className="dhq-team-newsroom__latest dhq-team-newsroom__desk-page dhq-team-newsroom__official-desk">
+            <div className="dhq-team-newsroom__section-heading">
+              <div><span>EA SPORTS NETWORK</span><h2>Official Feed</h2></div>
+              <small>{officialEntries.length} preserved official {officialEntries.length === 1 ? 'story' : 'stories'}</small>
+            </div>
+            <p className="dhq-team-newsroom__official-intro">The in-game media record from College Football 27. DynastyHQ preserves these stories as the official layer and keeps its own reporting separate.</p>
+            <div className="dhq-official-feed-grid">
+              {officialEntries.map((article) => <OfficialFeedCard key={clean(article.publicationId || article.id) || `${article.season}-${article.week}-${article.headline}`} article={article} onOpen={setSelectedOfficial} />)}
+              {!officialEntries.length && <p className="dhq-team-newsroom__empty">No EA SPORTS Network story has been captured yet. When one is included in Session Import, it will live here permanently.</p>}
+            </div>
+          </section>
+        )
       ) : (
         <section className="dhq-team-newsroom__latest dhq-team-newsroom__desk-page">
           <div className="dhq-team-newsroom__section-heading">

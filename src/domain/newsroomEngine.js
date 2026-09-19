@@ -525,6 +525,7 @@ export const createNewsroomIssue = ({
     careerPhase,
     publishedAt,
     status: 'published',
+    editorialStatus: 'scaffold',
     outletProfile: isCollegePlayer ? {
       school,
       localOutletName: primaryOutlet.name,

@@ -121,7 +121,7 @@ const NetworkBoard = ({ model, variant = 'home', onNewsroom, onPodcast }) => {
         <OfficialLane model={model} compact={compact} />
         <DynastyLane model={model} compact={compact} onNewsroom={onNewsroom} onPodcast={onPodcast} />
       </div>
-      <NetworkWire items={model.ticker} variant={variant} onNewsroom={onNewsroom} />
+      {/* Latest Network Wire retired: Season Wire is the single site-wide ticker. */}
     </section>
   );
 };

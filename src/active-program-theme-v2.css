@@ -64,8 +64,8 @@ html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadc
 
 html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.is-active::after,
 html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-broadcast-header .dhq-primary-nav-item[aria-current="page"] > span:last-child {
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--dhq-program-highlight) 55%, transparent) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 html:not([data-dhq-theme="light"]) body[data-dhq-team-accent="true"] .dhq-score-ticker {

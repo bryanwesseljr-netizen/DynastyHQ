@@ -16,6 +16,8 @@ const publicationIdFor = (entry) => String(entry?.publicationId || entry?.id || 
 const podcastStudioIsVisible = () => [...document.querySelectorAll('h1')]
   .some((heading) => String(heading.textContent || '').trim() === PODCAST_SHOW.name);
 
+const podcastProductionToolsRequested = () => Boolean(document.querySelector('.dhq-local-podcast__studio'));
+
 const weekLabel = (issue, episode = null) => {
   const season = Number(issue?.season || episode?.season) || 1;
   const week = Math.max(0, Number(issue?.week ?? episode?.week) || 0);
@@ -59,7 +61,7 @@ const PodcastHumanizedAudioPortal = () => {
 
   useEffect(() => {
     const check = () => {
-      const nextVisible = podcastStudioIsVisible();
+      const nextVisible = podcastStudioIsVisible() && podcastProductionToolsRequested();
       setVisible(nextVisible);
       if (!nextVisible) setExpanded(false);
     };

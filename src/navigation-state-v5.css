@@ -65,10 +65,12 @@ body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav
 }
 
 body[data-dhq-team-accent="true"] .dhq-primary-nav .dhq-primary-nav-item.dhq-nav-visual-active::after {
-  opacity: 1 !important;
-  transform: scaleX(1) !important;
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 11px color-mix(in srgb, var(--dhq-program-highlight) 54%, transparent) !important;
+  display: none !important;
+  content: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 /* Touch/desktop-mode Android keeps :hover after a tap. Never let hover/focus
@@ -115,8 +117,10 @@ body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visua
 }
 
 body[data-dhq-team-accent="true"] .dhq-mobile-broadcast-nav button.dhq-nav-visual-active::after {
-  opacity: 1 !important;
-  transform: scaleX(1) !important;
-  background: var(--dhq-program-highlight) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--dhq-program-highlight) 50%, transparent) !important;
+  display: none !important;
+  content: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }

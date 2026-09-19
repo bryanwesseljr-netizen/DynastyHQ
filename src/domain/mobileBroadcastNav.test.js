@@ -142,7 +142,7 @@ test('mobile Newsroom publication controls stay compact and article typography i
   assert.match(articleStyles, /height: min\(54vw, 270px\)/);
   assert.match(articleStyles, /font-size: \.9rem !important/);
   const localRestore = await readFile(localRestoreUrl, 'utf8');
-  assert.match(localRestore, /Mobile masthead hard-stop/);
+  assert.match(localRestore, /Mobile masthead: preserve the newspaper identity/);
   assert.match(localRestore, /grid-template-columns: 42px minmax\(0, 1fr\)/);
   assert.match(localRestore, /font-size: clamp\(1\.38rem, 6\.8vw, 1\.85rem\)/);
 });

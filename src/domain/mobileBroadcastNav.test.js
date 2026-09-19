@@ -19,6 +19,8 @@ const navStateUrl = new URL('../navigation-state-v6.css', import.meta.url);
 const offseasonNavStylesUrl = new URL('../components/player-offseason-navigation.css', import.meta.url);
 const activeThemeV3Url = new URL('../active-program-theme-v3.css', import.meta.url);
 const activeThemeV4Url = new URL('../active-program-theme-v4.css', import.meta.url);
+const globalAccentUrl = new URL('../global-team-accent.css', import.meta.url);
+const appSourceUrl = new URL('../App.jsx', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -165,4 +167,23 @@ test('desktop navigation keeps Podcast fully visible and uses a clean centered a
   assert.match(navState, /Higher-specificity hard stop/);
   assert.match(activeThemeV3, /display: none !important;[\s\S]*content: none !important;[\s\S]*background: transparent !important;/);
   assert.match(activeThemeV4, /dhq-career-active::after[\s\S]*display: none !important/);
+});
+
+
+test('primary navigation has equal-width columns, no yellow bar sources, and Home resets to the real page top', async () => {
+  const [navState, globalAccent, appSource] = await Promise.all([
+    readFile(navStateUrl, 'utf8'),
+    readFile(globalAccentUrl, 'utf8'),
+    readFile(appSourceUrl, 'utf8'),
+  ]);
+
+  assert.match(navState, /PRIMARY NAV FINAL GEOMETRY/);
+  assert.match(navState, /grid-auto-columns: minmax\(0, 1fr\) !important/);
+  assert.match(navState, /column-gap: 0 !important/);
+  assert.match(globalAccent, /body\[data-dhq-team-accent="true"\]::before \{[\s\S]*display: none !important/);
+  assert.match(globalAccent, /header \.dhq-primary-nav-item\[aria-current="page"\] > span:last-child[\s\S]*background: transparent !important/);
+  assert.doesNotMatch(globalAccent, /header \.dhq-primary-nav-item\[aria-current="page"\] > span:last-child \{[\s\S]{0,300}background: var\(--dhq-team-primary\)/);
+  assert.match(appSource, /const resetPageScroll = \(\) =>/);
+  assert.match(appSource, /main\.dhq-page-main/);
+  assert.doesNotMatch(appSource, /item\.id === 'dashboard'[\s\S]{0,300}dynastyhq-command-center.*scrollIntoView/);
 });

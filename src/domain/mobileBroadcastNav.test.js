@@ -30,9 +30,13 @@ test('mobile uses the same primary broadcast destinations as desktop', async () 
 
   assert.match(owner, /import MobileBroadcastNavPortal from '\.\/MobileBroadcastNavPortal\.jsx';/);
   assert.match(owner, /<MobileBroadcastNavPortal \/>/);
-  ['Home', 'Career', 'Game Hub', 'Newsroom', 'Chronicle', 'Podcast'].forEach((label) => {
+  ['Home', 'Game Hub', 'Newsroom', 'Podcast', 'Offseason', 'Career', 'Chronicle'].forEach((label) => {
     assert.match(portal, new RegExp(`label: '${label.replace(' ', '\\s*')}'`));
   });
+  assert.match(
+    portal,
+    /const primaryItems = \[[\s\S]*Home[\s\S]*Game Hub[\s\S]*Newsroom[\s\S]*Podcast[\s\S]*Offseason[\s\S]*Career[\s\S]*Chronicle[\s\S]*\];/,
+  );
   assert.match(portal, /dhq-mobile-broadcast-nav/);
 });
 

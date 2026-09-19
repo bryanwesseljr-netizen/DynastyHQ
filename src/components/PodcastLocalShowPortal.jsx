@@ -108,6 +108,7 @@ const PodcastLocalShowPortal = () => {
       const rundownSection = rundownHeading?.closest('section');
       if (rundownSection) {
         rundownSection.classList.add('dhq-podcast-rundown');
+        rundownSection.dataset.rundownOpen = rundownOpen ? 'true' : 'false';
         rundownSection.dataset.open = rundownOpen ? 'true' : 'false';
       }
 
@@ -115,7 +116,8 @@ const PodcastLocalShowPortal = () => {
       const notesSection = notesHeading?.closest('section');
       if (notesSection) {
         notesSection.classList.add('dhq-podcast-show-notes');
-        notesSection.dataset.open = notesOpen ? 'true' : 'false';
+        notesSection.dataset.notesOpen = notesOpen ? 'true' : 'false';
+        notesSection.dataset.open = (notesOpen || (notesSection === rundownSection && rundownOpen)) ? 'true' : 'false';
       }
 
       // The original episode player owns a second artwork slot. Keep it synchronized

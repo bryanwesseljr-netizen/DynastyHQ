@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './services/podcastBinaryTransport.js'
+import { startPreviewToProductionPromotion } from './services/previewPromotion.js'
 import AuthAwareApp from './components/AuthAwareApp.jsx'
 import OwnerEnhancements from './components/OwnerEnhancements.jsx'
 import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
@@ -31,6 +32,8 @@ import './active-program-theme-v3.css'
 import './active-program-theme-v4.css'
 import './navigation-state-v5.css'
 import './navigation-state-v6.css'
+
+startPreviewToProductionPromotion()
 
 const viewContext = resolveViewContext(window.location.search)
 const sharedArticleId = readSharedNewsroomArticleId(window.location.search)

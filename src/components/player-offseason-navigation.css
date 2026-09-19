@@ -62,12 +62,10 @@ body.dhq-player-offseason-open .dhq-career-overview {
 
 #dhq-player-offseason-desktop-nav.is-active,
 #dhq-player-offseason-desktop-nav[aria-current="page"] {
-  color: #f8fafc !important;
-  background-color: transparent !important;
-  background-image: linear-gradient(var(--dhq-program-highlight, #fbbf24), var(--dhq-program-highlight, #fbbf24)) !important;
-  background-repeat: no-repeat !important;
-  background-position: center calc(100% - 1px) !important;
-  background-size: 40px 3px !important;
+  color: var(--dhq-program-highlight, #fbbf24) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
   box-shadow: none !important;
 }
 

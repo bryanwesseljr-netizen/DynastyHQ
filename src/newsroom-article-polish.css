@@ -554,3 +554,181 @@
     margin-inline: 18px !important;
   }
 }
+
+
+/* Mobile publication density pass.
+   Headlines and mastheads should read like a phone edition, not a squeezed
+   desktop newspaper. The goal is less vertical travel with no clipped branding. */
+@media (max-width: 640px) {
+  .dhq-newsroom-reader-mode .dhq-news-article {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .dhq-newsroom-reader-mode .dhq-news-article h1,
+  .dhq-newsroom-reader-mode .dhq-news-article h2,
+  .dhq-newsroom-reader-mode .dhq-news-article h3 {
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-masthead {
+    grid-template-columns: 32px minmax(0,1fr) !important;
+    min-height: 64px !important;
+    gap: 8px !important;
+    padding: 9px 12px !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-mark {
+    width: 32px !important;
+    height: 40px !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-mark span {
+    font-size: 2rem !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-brand {
+    min-width: 0 !important;
+    font-size: clamp(1.25rem, 6.8vw, 1.75rem) !important;
+    line-height: .96 !important;
+    letter-spacing: -.02em !important;
+    white-space: normal !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-intro {
+    padding: 13px 14px 7px !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-intro h1,
+  .dhq-newsroom-reader-local .dhq-news-article[data-headline-size="medium"] .dhq-news-intro h1,
+  .dhq-newsroom-reader-local .dhq-news-article[data-headline-size="long"] .dhq-news-intro h1 {
+    font-size: clamp(1.4rem, 6.3vw, 1.85rem) !important;
+    line-height: 1.03 !important;
+    letter-spacing: -.03em !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-byline-row {
+    margin-top: 10px !important;
+    padding-bottom: 8px !important;
+    font-size: .72rem !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-hero {
+    margin: 9px 14px 0 !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-hero img {
+    height: min(54vw, 270px) !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-content-grid {
+    gap: 12px !important;
+    padding: 11px 14px 16px !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-copy {
+    font-size: .9rem !important;
+    line-height: 1.46 !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-copy h2 {
+    margin-top: .72em !important;
+    font-size: 1.03rem !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-footer {
+    margin-inline: 14px !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-masthead {
+    padding: 8px 13px 0 !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-name {
+    font-size: .78rem !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-sports {
+    padding: 4px 0 !important;
+    font-size: 2rem !important;
+    line-height: .95 !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-headline-block {
+    padding: 16px 14px 9px !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-headline-block h1,
+  .dhq-newsroom-reader-regional .dhq-news-article[data-headline-size="medium"] .dhq-enquirer-headline-block h1,
+  .dhq-newsroom-reader-regional .dhq-news-article[data-headline-size="long"] .dhq-enquirer-headline-block h1 {
+    font-size: clamp(1.5rem, 6.6vw, 2rem) !important;
+    line-height: 1.03 !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-headline-block p {
+    font-size: .88rem !important;
+    line-height: 1.38 !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-main-grid,
+  .dhq-newsroom-reader-regional .dhq-enquirer-lower-copy {
+    gap: 13px !important;
+    padding-inline: 14px !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-hero img {
+    height: min(54vw, 270px) !important;
+  }
+
+  .dhq-newsroom-reader-regional .dhq-enquirer-lead-copy,
+  .dhq-newsroom-reader-regional .dhq-enquirer-lower-copy {
+    font-size: .9rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-globalbar {
+    min-height: 40px !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-logo {
+    min-width: 82px !important;
+    padding-inline: 12px !important;
+    font-size: 1.55rem !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-collegebar {
+    min-height: 38px !important;
+    gap: 14px !important;
+    padding-inline: 13px !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-headline-block {
+    padding: 15px 14px 9px !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-headline-block h1,
+  .dhq-newsroom-reader-national .dhq-news-article[data-headline-size="medium"] .dhq-espn-headline-block h1,
+  .dhq-newsroom-reader-national .dhq-news-article[data-headline-size="long"] .dhq-espn-headline-block h1 {
+    font-size: clamp(1.5rem, 6.6vw, 2rem) !important;
+    line-height: 1.03 !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-hero {
+    margin-top: 8px !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-hero img {
+    height: min(54vw, 270px) !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-body-grid {
+    gap: 14px !important;
+    padding: 7px 14px 18px !important;
+  }
+
+  .dhq-newsroom-reader-national .dhq-espn-copy {
+    font-size: .9rem !important;
+    line-height: 1.5 !important;
+  }
+}

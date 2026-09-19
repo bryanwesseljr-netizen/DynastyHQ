@@ -61,6 +61,7 @@ import PublicMediaProfileSharePortal from './PublicMediaProfileSharePortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
 import DynamicMatchupHelmetPortal from './DynamicMatchupHelmetPortal.jsx';
 import PlayerOffseasonNavigationPortal from './PlayerOffseasonNavigationPortal.jsx';
+import DesktopPrimaryNavFinalizer from './DesktopPrimaryNavFinalizer.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
 
 const OwnerEnhancements = () => (

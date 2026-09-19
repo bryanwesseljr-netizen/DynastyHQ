@@ -126,6 +126,16 @@ const PodcastMasterAudioPortal = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
+  const selectPublication = (publicationId) => {
+    const next = String(publicationId || '').trim();
+    if (!next) return;
+    setSelectedPublicationId(next);
+    setMessage('');
+    window.dispatchEvent(new CustomEvent('dynastyhq:podcast-publication-selected', {
+      detail: { publicationId: next, source: 'master-audio-controls' },
+    }));
+  };
+
   const issues = useMemo(() => (career?.newsroomIssues || [])
     .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief), [career?.newsroomIssues]);
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
@@ -142,6 +152,17 @@ const PodcastMasterAudioPortal = () => {
       setSelectedPublicationId(publicationIdFor(eligibleIssues[eligibleIssues.length - 1]));
     }
   }, [eligibleIssues, selectedPublicationId]);
+
+  useEffect(() => {
+    const onSelected = (event) => {
+      const publicationId = String(event.detail?.publicationId || '').trim();
+      if (!publicationId || !eligibleIssues.some((issue) => publicationIdFor(issue) === publicationId)) return;
+      setSelectedPublicationId(publicationId);
+      setMessage('');
+    };
+    window.addEventListener('dynastyhq:podcast-publication-selected', onSelected);
+    return () => window.removeEventListener('dynastyhq:podcast-publication-selected', onSelected);
+  }, [eligibleIssues]);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -321,7 +342,7 @@ const PodcastMasterAudioPortal = () => {
           aria-label="Choose episode for NotebookLM master audio"
           value={selectedPublicationId}
           disabled={busy}
-          onChange={(event) => { setSelectedPublicationId(event.target.value); setMessage(''); }}
+          onChange={(event) => selectPublication(event.target.value)}
         >
           {[...eligibleIssues].reverse().map((issue) => {
             const id = publicationIdFor(issue);

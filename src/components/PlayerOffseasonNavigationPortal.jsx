@@ -94,7 +94,7 @@ const PlayerOffseasonNavigationPortal = () => {
       event?.preventDefault?.();
       event?.stopPropagation?.();
       setOpen(true);
-      document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, behavior: 'instant' });
+      document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, left: 0, behavior: 'instant' });
     };
 
     const ensureButtons = () => {
@@ -141,7 +141,7 @@ const PlayerOffseasonNavigationPortal = () => {
       main.appendChild(routeHost);
     }
     setHost(routeHost);
-    main.scrollTo({ top: 0, behavior: 'instant' });
+    main.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 
     const closeOnOtherNavigation = (event) => {
       const button = event.target?.closest?.('button');

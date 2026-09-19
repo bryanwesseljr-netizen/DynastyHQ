@@ -116,3 +116,32 @@ test('does not invent opponent scout content when setup only has matchup identit
   assert.equal(live.matchup.record, '');
   assert.equal(live.matchup.rank, '');
 });
+
+
+test('Around the Program marks captured EA Sports Network coverage for the official reader', () => {
+  const live = buildGameDayLiveV2({
+    ...state,
+    eaSportsNetworkArticles: [{
+      season: 2,
+      week: 3,
+      publicationId: 'season-2-week-3',
+      headline: 'BIGGEST BLOWOUT YET',
+      summary: 'Oregon controlled the game from start to finish.',
+      body: 'Official captured story body.',
+    }],
+    officialCoverage: [{
+      season: 2,
+      week: 3,
+      publicationId: 'season-2-week-3',
+      headline: 'BIGGEST BLOWOUT YET',
+      summary: 'Oregon controlled the game from start to finish.',
+    }],
+  });
+
+  const official = live.media.items.find((item) => item.id === 'official');
+  assert.ok(official);
+  assert.equal(official.target, 'official');
+  assert.equal(official.headline, 'BIGGEST BLOWOUT YET');
+  assert.equal(official.season, 2);
+  assert.equal(official.week, 3);
+});

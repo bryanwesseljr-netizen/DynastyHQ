@@ -147,7 +147,7 @@ test('mobile Newsroom publication controls stay compact and article typography i
 });
 
 
-test('desktop navigation keeps Podcast fully visible and uses a clean centered active underline', async () => {
+test('desktop navigation keeps Podcast fully visible and uses one clean centered yellow underline', async () => {
   const [indexStyles, navState, offseasonStyles, activeThemeV3, activeThemeV4] = await Promise.all([
     readFile(indexStylesUrl, 'utf8'),
     readFile(navStateUrl, 'utf8'),
@@ -163,8 +163,14 @@ test('desktop navigation keeps Podcast fully visible and uses a clean centered a
   assert.match(navState, /FINAL HEADER FIT \+ ACTIVE STATE/);
   assert.match(navState, /flex: 1 1 0 !important/);
   assert.match(navState, /font-size: 9\.5px !important/);
-  assert.match(navState, /background-image: none !important/);
-  assert.match(navState, /box-shadow: none !important/);
+  assert.match(navState, /FINAL ACTIVE TAB INDICATOR/);
+  assert.match(navState, /width: 38px !important/);
+  assert.match(navState, /height: 3px !important/);
+  assert.match(navState, /left: 50% !important/);
+  assert.match(navState, /background: var\(--dhq-program-highlight, #facc15\) !important/);
+  assert.match(navState, /outline: 0 !important/);
+  assert.match(navState, /border-left: 0 !important/);
+  assert.match(navState, /border-right: 0 !important/);
   assert.doesNotMatch(navState, /dhq-primary-nav[\s\S]{0,800}box-shadow: inset 0 -3px 0/);
   assert.match(offseasonStyles, /background-image: none !important/);
   assert.match(navState, /overflow-x: clip !important/);
@@ -174,7 +180,7 @@ test('desktop navigation keeps Podcast fully visible and uses a clean centered a
 });
 
 
-test('primary navigation has equal-width columns, no yellow bar sources, and Home resets to the real page top', async () => {
+test('primary navigation has equal-width columns, no box-border highlight, and Home resets to the real page top', async () => {
   const [navState, globalAccent, appSource] = await Promise.all([
     readFile(navStateUrl, 'utf8'),
     readFile(globalAccentUrl, 'utf8'),
@@ -190,4 +196,15 @@ test('primary navigation has equal-width columns, no yellow bar sources, and Hom
   assert.match(appSource, /const resetPageScroll = \(\) =>/);
   assert.match(appSource, /main\.dhq-page-main/);
   assert.doesNotMatch(appSource, /item\.id === 'dashboard'[\s\S]{0,300}dynastyhq-command-center.*scrollIntoView/);
+});
+
+
+test('route shell cannot become the horizontal page scroller', async () => {
+  const navState = await readFile(navStateUrl, 'utf8');
+
+  assert.match(navState, /ROUTE WIDTH GUARDRAIL/);
+  assert.match(navState, /main\.dhq-page-main \{[\s\S]*overflow-x: hidden !important/);
+  assert.match(navState, /max-width: 100vw !important/);
+  assert.match(navState, /main\.dhq-page-main > :not\(\.pointer-events-none\) \{[\s\S]*max-width: 100% !important/);
+  assert.match(navState, /\.dhq-team-newsroom/[\s\S]*\.dhq-local-podcast-root/[\s\S]*\.dhq-weekly-agenda-workspace/);
 });

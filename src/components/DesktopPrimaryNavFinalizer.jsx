@@ -8,6 +8,8 @@ const cssText = `
   html body header.dhq-broadcast-header nav.dhq-primary-nav > button.dhq-primary-nav-item::after {
     display: none !important;
     content: none !important;
+    width: 0 !important;
+    height: 0 !important;
     border: 0 !important;
     background: transparent !important;
     box-shadow: none !important;

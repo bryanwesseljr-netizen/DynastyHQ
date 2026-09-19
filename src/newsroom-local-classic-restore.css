@@ -207,3 +207,60 @@
   .dhq-newsroom-reader-local .dhq-news-copy { font-size: .98rem !important; line-height: 1.5 !important; }
   .dhq-newsroom-reader-local .dhq-bearcats-footer { margin: 0 17px !important; }
 }
+
+
+/* Mobile masthead hard-stop: long current-program outlet names must never
+   escape the publication card. Stack the local outlet's lead/accent lines so
+   names such as EUGENE SPORTS CHRONICLE remain fully visible at phone widths. */
+@media (max-width: 680px) {
+  .dhq-newsroom-reader-local .dhq-news-article[data-audience="local"] .dhq-bearcats-masthead {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    gap: 9px !important;
+    min-height: 78px !important;
+    padding: 11px 12px !important;
+    overflow: hidden !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-identity {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-mark {
+    width: 34px !important;
+    height: 44px !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-brand {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    font-size: clamp(1.08rem, 5.1vw, 1.42rem) !important;
+    line-height: .96 !important;
+    letter-spacing: -.015em !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-bearcats-brand > span,
+  .dhq-newsroom-reader-local .dhq-bearcats-brand > strong {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .dhq-newsroom-reader-local .dhq-news-article[data-audience="local"] .dhq-news-masthead__strapline {
+    margin-top: 6px !important;
+    max-width: 100% !important;
+    font-size: .44rem !important;
+    letter-spacing: .075em !important;
+    line-height: 1.22 !important;
+    white-space: normal !important;
+  }
+}

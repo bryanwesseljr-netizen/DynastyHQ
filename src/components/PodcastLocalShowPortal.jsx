@@ -102,23 +102,35 @@ const PodcastLocalShowPortal = () => {
       if (archiveSection) {
         archiveSection.classList.add('dhq-podcast-legacy-archive');
         archiveSection.dataset.open = archiveOpen ? 'true' : 'false';
+        archiveSection.style.setProperty('display', archiveOpen ? 'block' : 'none', 'important');
       }
 
       const rundownHeading = [...podcastRoot.querySelectorAll('h3')].find((node) => /show, chapter by chapter/i.test(node.textContent || ''));
-      const rundownSection = rundownHeading?.closest('section');
-      if (rundownSection) {
-        rundownSection.classList.add('dhq-podcast-rundown');
-        rundownSection.dataset.rundownOpen = rundownOpen ? 'true' : 'false';
-        rundownSection.dataset.open = rundownOpen ? 'true' : 'false';
+      const rundownContainer = rundownHeading?.closest('div.rounded-3xl');
+      const notesHeading = [...podcastRoot.querySelectorAll('h3')].find((node) => /grounded in the week/i.test(node.textContent || ''));
+      const notesContainer = notesHeading?.closest('aside');
+      const secondarySection = rundownHeading?.closest('section.dhq-podcast-listener-secondary')
+        || notesHeading?.closest('section.dhq-podcast-listener-secondary');
+
+      if (secondarySection) {
+        secondarySection.dataset.open = (rundownOpen || notesOpen) ? 'true' : 'false';
+        secondarySection.style.setProperty('display', (rundownOpen || notesOpen) ? 'grid' : 'none', 'important');
       }
 
-      const notesHeading = [...podcastRoot.querySelectorAll('h3')].find((node) => /grounded in the week/i.test(node.textContent || ''));
-      const notesSection = notesHeading?.closest('section');
-      if (notesSection) {
-        notesSection.classList.add('dhq-podcast-show-notes');
-        notesSection.dataset.notesOpen = notesOpen ? 'true' : 'false';
-        notesSection.dataset.open = (notesOpen || (notesSection === rundownSection && rundownOpen)) ? 'true' : 'false';
+      if (rundownContainer) {
+        rundownContainer.classList.add('dhq-podcast-rundown');
+        rundownContainer.dataset.open = rundownOpen ? 'true' : 'false';
+        rundownContainer.style.setProperty('display', rundownOpen ? 'block' : 'none', 'important');
       }
+
+      if (notesContainer) {
+        notesContainer.classList.add('dhq-podcast-show-notes');
+        notesContainer.dataset.open = notesOpen ? 'true' : 'false';
+        notesContainer.style.setProperty('display', notesOpen ? 'block' : 'none', 'important');
+      }
+
+      const transcriptSection = podcastRoot.querySelector('.dhq-podcast-listener-transcript');
+      if (transcriptSection) transcriptSection.style.setProperty('display', 'none', 'important');
 
       // The original episode player owns a second artwork slot. Keep it synchronized
       // with the program-specific cover, and hide any legacy cross-school image when

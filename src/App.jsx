@@ -2258,7 +2258,7 @@ const handleSaveGameClick = () => {
                 {hasUnreadNotifications ? <i /> : null}
               </button>
               {notificationsOpen ? (
-                <div className="absolute right-0 top-[52px] z-[190] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-xl border border-slate-700 bg-[#071019]/98 shadow-2xl backdrop-blur-xl">
+                <div className="dhq-notifications-panel absolute right-0 top-[52px] z-[190] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-xl border border-slate-700 bg-[#071019]/98 shadow-2xl backdrop-blur-xl">
                   <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
                     <div>
                       <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-300">Notifications</p>

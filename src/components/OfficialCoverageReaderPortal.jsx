@@ -33,6 +33,19 @@ const findArticleByHeadline = (career = {}, headline = '') => {
   return list(career.eaSportsNetworkArticles).find((entry) => clean(entry.headline).toLowerCase() === wanted) || null;
 };
 
+const findArticleForRequest = (career = {}, request = {}) => {
+  const headline = clean(request.headline);
+  const season = Number(request.season);
+  const week = Number(request.week);
+  const candidates = list(career.eaSportsNetworkArticles).filter((entry) => {
+    if (headline && clean(entry.headline).toLowerCase() !== headline.toLowerCase()) return false;
+    if (Number.isFinite(season) && season > 0 && Number(entry.season || 1) !== season) return false;
+    if (Number.isFinite(week) && week >= 0 && Number(entry.week ?? 0) !== week) return false;
+    return true;
+  });
+  return candidates[0] || (headline ? findArticleByHeadline(career, headline) : null);
+};
+
 const articleParagraphs = (article = {}) => clean(article.body)
   .split(/\n{2,}/)
   .map((paragraph) => paragraph.trim())
@@ -150,6 +163,16 @@ const OfficialCoverageReaderPortal = () => {
   }, [career, articles]);
 
   useEffect(() => {
+    if (!career) return undefined;
+    const onOpenOfficial = (event) => {
+      const matched = findArticleForRequest(career, event.detail || {});
+      if (matched && canRead(matched)) setArticle(matched);
+    };
+    window.addEventListener('dynastyhq:open-official-coverage', onOpenOfficial);
+    return () => window.removeEventListener('dynastyhq:open-official-coverage', onOpenOfficial);
+  }, [career, articles]);
+
+    useEffect(() => {
     if (!article) return undefined;
     const onKey = (event) => { if (event.key === 'Escape') setArticle(null); };
     window.addEventListener('keydown', onKey);

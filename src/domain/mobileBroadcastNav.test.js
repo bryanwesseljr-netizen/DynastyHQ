@@ -14,6 +14,9 @@ const podcastStylesUrl = new URL('../podcast-polish-v4.css', import.meta.url);
 const chronicleStylesUrl = new URL('../chronicle-polish-v4.css', import.meta.url);
 const articlePolishUrl = new URL('../newsroom-article-polish.css', import.meta.url);
 const localRestoreUrl = new URL('../newsroom-local-classic-restore.css', import.meta.url);
+const indexStylesUrl = new URL('../index.css', import.meta.url);
+const navStateUrl = new URL('../navigation-state-v6.css', import.meta.url);
+const offseasonNavStylesUrl = new URL('../components/player-offseason-navigation.css', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -133,4 +136,22 @@ test('mobile Newsroom publication controls stay compact and article typography i
   assert.match(localRestore, /Mobile masthead hard-stop/);
   assert.match(localRestore, /grid-template-columns: 34px minmax\(0, 1fr\)/);
   assert.match(localRestore, /font-size: clamp\(1\.08rem, 5\.1vw, 1\.42rem\)/);
+});
+
+
+test('desktop navigation keeps Podcast fully visible and uses a clean centered active underline', async () => {
+  const [indexStyles, navState, offseasonStyles] = await Promise.all([
+    readFile(indexStylesUrl, 'utf8'),
+    readFile(navStateUrl, 'utf8'),
+    readFile(offseasonNavStylesUrl, 'utf8'),
+  ]);
+
+  assert.match(indexStyles, /width: clamp\(185px, 16vw, 250px\)/);
+  assert.match(indexStyles, /gap: clamp\(18px, 2vw, 38px\)/);
+  assert.match(indexStyles, /font-size: clamp\(\.84rem, \.88vw, 1rem\)/);
+  assert.match(indexStyles, /@media \(min-width: 1200px\) and \(max-width: 1450px\)/);
+  assert.match(navState, /background-size: 40px 3px !important/);
+  assert.match(navState, /box-shadow: none !important/);
+  assert.doesNotMatch(navState, /dhq-primary-nav[\s\S]{0,800}box-shadow: inset 0 -3px 0/);
+  assert.match(offseasonStyles, /background-size: 40px 3px !important/);
 });

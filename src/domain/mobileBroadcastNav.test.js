@@ -13,6 +13,7 @@ const sessionImportStylesUrl = new URL('../components/session-import.css', impor
 const podcastStylesUrl = new URL('../podcast-polish-v4.css', import.meta.url);
 const chronicleStylesUrl = new URL('../chronicle-polish-v4.css', import.meta.url);
 const articlePolishUrl = new URL('../newsroom-article-polish.css', import.meta.url);
+const localRestoreUrl = new URL('../newsroom-local-classic-restore.css', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -128,4 +129,8 @@ test('mobile Newsroom publication controls stay compact and article typography i
   assert.match(articleStyles, /font-size: clamp\(1\.4rem, 6\.3vw, 1\.85rem\)/);
   assert.match(articleStyles, /height: min\(54vw, 270px\)/);
   assert.match(articleStyles, /font-size: \.9rem !important/);
+  const localRestore = await readFile(localRestoreUrl, 'utf8');
+  assert.match(localRestore, /Mobile masthead hard-stop/);
+  assert.match(localRestore, /grid-template-columns: 34px minmax\(0, 1fr\)/);
+  assert.match(localRestore, /font-size: clamp\(1\.08rem, 5\.1vw, 1\.42rem\)/);
 });

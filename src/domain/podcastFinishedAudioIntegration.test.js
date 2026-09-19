@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const masterUrl = new URL('../components/PodcastMasterAudioPortalV2.jsx', import.meta.url);
+const studioUrl = new URL('../components/PodcastStudio.jsx', import.meta.url);
 const integrationUrl = new URL('../components/PodcastFinishedAudioIntegrationPortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 
@@ -36,4 +37,18 @@ test('owner experience mounts finished podcast integration beside existing maste
   assert.match(owner, /PodcastMasterAudioPortalV2/);
   assert.match(owner, /PodcastFinishedAudioIntegrationPortal/);
   assert.match(owner, /<PodcastFinishedAudioIntegrationPortal \/>/);
+});
+
+
+test('master-audio episode dropdown changes the main podcast transcript and audio selection', async () => {
+  const [master, studio] = await Promise.all([
+    readFile(masterUrl, 'utf8'),
+    readFile(studioUrl, 'utf8'),
+  ]);
+
+  assert.match(master, /dynastyhq:podcast-publication-selected/);
+  assert.match(master, /onChange=\{\(event\) => selectPublication\(event\.target\.value\)\}/);
+  assert.match(studio, /window\.addEventListener\('dynastyhq:podcast-publication-selected'/);
+  assert.match(studio, /setAudioSegments\(null\)/);
+  assert.match(studio, /setSelectedPublicationId\(publicationId\)/);
 });

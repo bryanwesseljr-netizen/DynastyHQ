@@ -133,6 +133,16 @@ const PodcastMasterAudioPortalV2 = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
+  const selectPublication = (publicationId) => {
+    const next = String(publicationId || '').trim();
+    if (!next) return;
+    setSelectedPublicationId(next);
+    setMessage('');
+    window.dispatchEvent(new CustomEvent('dynastyhq:podcast-publication-selected', {
+      detail: { publicationId: next, source: 'master-audio-controls' },
+    }));
+  };
+
   // Master-audio availability is episode-first. A valid saved podcast episode is
   // enough to attach audio; a matching Newsroom issue is only required when the
   // user wants DynastyHQ to export a NotebookLM source pack.
@@ -153,6 +163,17 @@ const PodcastMasterAudioPortalV2 = () => {
       setSelectedPublicationId(publicationIdFor(episodes[episodes.length - 1]));
     }
   }, [episodes, selectedPublicationId]);
+
+  useEffect(() => {
+    const onSelected = (event) => {
+      const publicationId = String(event.detail?.publicationId || '').trim();
+      if (!publicationId || !episodes.some((episode) => publicationIdFor(episode) === publicationId)) return;
+      setSelectedPublicationId(publicationId);
+      setMessage('');
+    };
+    window.addEventListener('dynastyhq:podcast-publication-selected', onSelected);
+    return () => window.removeEventListener('dynastyhq:podcast-publication-selected', onSelected);
+  }, [episodes]);
 
   // The local Podcast hero is rendered through its own React portal. Observe the
   // document, not just #root, and attach to the explicit Studio Controls container
@@ -347,7 +368,7 @@ const PodcastMasterAudioPortalV2 = () => {
           aria-label="Choose episode for NotebookLM master audio"
           value={selectedPublicationId}
           disabled={busy}
-          onChange={(event) => { setSelectedPublicationId(event.target.value); setMessage(''); }}
+          onChange={(event) => selectPublication(event.target.value)}
         >
           {[...episodes].reverse().map((episode) => {
             const id = publicationIdFor(episode);

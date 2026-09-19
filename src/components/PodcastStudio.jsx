@@ -236,6 +236,7 @@ const PodcastStudioContent = ({
   const [showTranscript, setShowTranscript] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
   const [expandedJourneyKey, setExpandedJourneyKey] = useState('');
+  const [autoPlayPublicationId, setAutoPlayPublicationId] = useState('');
   const audioRef = useRef(null);
 
   const managedCover = resolvePodcastCoverUrl(state.outletImages?.podcast, defaultPodcastCover);
@@ -292,6 +293,25 @@ const PodcastStudioContent = ({
   const currentIdentity = identityForChapter(currentChapter, Math.max(0, episodeChapters.indexOf(currentChapter)), Math.max(1, episodeChapters.length));
   const archiveGroups = useMemo(() => buildJourneyArchive(issues, episodes), [issues, episodes]);
   const selectedJourneyKey = journey?.key || '';
+  const previousEpisodeItems = useMemo(() => {
+    const episodeByPublication = new Map((episodes || []).map((entry) => [entry.publicationId, entry]));
+    return [...(issues || [])]
+      .reverse()
+      .map((archiveIssue) => {
+        const id = archiveIssue?.publicationId || archiveIssue?.id || '';
+        return {
+          publicationId: id,
+          issue: archiveIssue,
+          episode: episodeByPublication.get(id) || null,
+        };
+      })
+      .filter((item) => (
+        item.publicationId
+        && item.publicationId !== publicationId
+        && item.episode
+        && item.episode.audioStatus === 'ready'
+      ));
+  }, [episodes, issues, publicationId]);
   const playbackPercent = continuousAudio
     ? (audioDuration > 0 ? Math.min(100, (audioCurrentTime / audioDuration) * 100) : 0)
     : (audioReady && episodeSegments.length ? ((segmentIndex + 1) / episodeSegments.length) * 100 : 0);
@@ -343,13 +363,14 @@ const PodcastStudioContent = ({
     return () => { cancelled = true; };
   }, [episodeAudioStatus, episodeId, onLoadAudio]);
 
-  const selectPublication = (nextPublicationId) => {
+  const selectPublication = (nextPublicationId, { autoPlay = false } = {}) => {
     setSegmentIndex(0);
     setAudioSegments(null);
     setIsPlaying(false);
     setAudioCurrentTime(0);
     setAudioDuration(0);
     setError('');
+    setAutoPlayPublicationId(autoPlay ? nextPublicationId : '');
     setSelectedPublicationId(nextPublicationId);
     setGeneration(null);
     setShowTranscript(false);
@@ -386,6 +407,17 @@ const PodcastStudioContent = ({
       setGeneration(null);
     }
   };
+
+  useEffect(() => {
+    if (!autoPlayPublicationId || autoPlayPublicationId !== publicationId || !audioReady || !audioRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      audioRef.current?.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
+      setAutoPlayPublicationId('');
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeAudioSegment, audioReady, autoPlayPublicationId, publicationId]);
 
   const playPause = () => {
     if (!audioRef.current || !audioReady) return;
@@ -593,6 +625,39 @@ const PodcastStudioContent = ({
               </div>
             </div>
           </section>
+
+
+          {previousEpisodeItems.length > 0 && (
+            <section className="dhq-podcast-listener-feed" aria-label="Previous podcast episodes">
+              <header>
+                <div>
+                  <p>Previous Episodes</p>
+                  <h3>More from {PODCAST_SHOW.name}</h3>
+                </div>
+                <span>{previousEpisodeItems.length} available</span>
+              </header>
+              <div className="dhq-podcast-listener-feed__list">
+                {previousEpisodeItems.map(({ publicationId: archivedPublicationId, issue: archivedIssue, episode: archivedEpisode }) => {
+                  const archivedDate = formatEpisodeDate(archivedEpisode, archivedIssue);
+                  return (
+                    <button
+                      key={archivedPublicationId}
+                      type="button"
+                      className="dhq-podcast-listener-feed__episode"
+                      onClick={() => selectPublication(archivedPublicationId, { autoPlay: true })}
+                    >
+                      <span className="dhq-podcast-listener-feed__play"><Play size={16} /></span>
+                      <span className="dhq-podcast-listener-feed__copy">
+                        <small>S{archivedIssue?.season || 1} · W{archivedIssue?.week ?? 0}{archivedDate ? ` · ${archivedDate}` : ''}</small>
+                        <strong>{archivedEpisode?.title || briefForIssue(archivedIssue).title}</strong>
+                      </span>
+                      <span className="dhq-podcast-listener-feed__duration">{archivedEpisode?.estimatedMinutes ? `~${archivedEpisode.estimatedMinutes} min` : 'Play'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           {episode ? (
             <section className="dhq-podcast-listener-secondary grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">

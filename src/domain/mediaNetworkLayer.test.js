@@ -115,3 +115,33 @@ test('legacy official article routes now send readers to the Newsroom instead of
   assert.match(source, /dynastyhq:newsroom-official-focus/);
   assert.match(source, /Only the original headline and story brief were preserved from this edition/);
 });
+
+
+test('Newsroom organizes editorial desks before the separated EA Sports Network wire service', async () => {
+  const source = await readFile(new URL('../components/NewsroomTeamHubPortal.jsx', import.meta.url), 'utf8');
+  const front = source.indexOf('Front Page');
+  const team = source.indexOf('{profile.nickname} News');
+  const regional = source.indexOf('Regional <span>');
+  const national = source.indexOf('National <span>');
+  const divider = source.indexOf('dhq-team-newsroom__desk-divider');
+  const official = source.indexOf('EA SPORTS NETWORK');
+
+  assert.ok(front >= 0);
+  assert.ok(team > front);
+  assert.ok(regional > team);
+  assert.ok(national > regional);
+  assert.ok(divider > national);
+  assert.ok(official > divider);
+  assert.match(source, /Official game-world wire service/);
+  assert.match(source, /latestOfficial/);
+  assert.match(source, /source: 'EA SPORTS'/);
+});
+
+test('Newsroom Front Page trending mixes sources instead of duplicating category navigation', async () => {
+  const source = await readFile(new URL('../components/NewsroomTeamHubPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /source: 'DYNASTYHQ'/);
+  assert.match(source, /source: 'REGIONAL'/);
+  assert.match(source, /source: 'NATIONAL'/);
+  assert.match(source, /entry\.source/);
+  assert.match(source, /entry\.headline/);
+});

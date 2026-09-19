@@ -333,11 +333,14 @@ const normalizeStoryFormat = (value) => {
 };
 
 const minimumArticleWords = (payload) => {
+  // The API already enforces the article JSON shape and performs an editorial QA/repair pass.
+  // Keep this as a corruption guard, not a second editorial gate that can discard a good dynamic
+  // edition and leave the deterministic scaffold visible.
   const tier = payload.coverageDecision?.tier;
-  if (tier === 'brief') return 160;
-  if (tier === 'major') return 240;
-  if (tier === 'career-defining') return 280;
-  return 220;
+  if (tier === 'brief') return 90;
+  if (tier === 'major') return 130;
+  if (tier === 'career-defining') return 150;
+  return 110;
 };
 
 export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = '', generatedAt = new Date().toISOString() }) => {

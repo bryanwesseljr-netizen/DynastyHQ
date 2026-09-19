@@ -27,23 +27,36 @@ const canRead = (article = {}) => Boolean(
   || articlePages(article).length,
 );
 
+const officialArticlePool = (career = {}) => [
+  ...list(career.eaSportsNetworkArticles),
+  ...list(career.eaSportsNetwork),
+  ...list(career.officialCoverage),
+];
+
 const findArticleByHeadline = (career = {}, headline = '') => {
   const wanted = clean(headline).toLowerCase();
   if (!wanted) return null;
-  return list(career.eaSportsNetworkArticles).find((entry) => clean(entry.headline).toLowerCase() === wanted) || null;
+  return officialArticlePool(career).find((entry) => clean(entry.headline || entry.title).toLowerCase() === wanted) || null;
 };
 
 const findArticleForRequest = (career = {}, request = {}) => {
   const headline = clean(request.headline);
   const season = Number(request.season);
   const week = Number(request.week);
-  const candidates = list(career.eaSportsNetworkArticles).filter((entry) => {
-    if (headline && clean(entry.headline).toLowerCase() !== headline.toLowerCase()) return false;
+  const candidates = officialArticlePool(career).filter((entry) => {
+    if (headline && clean(entry.headline || entry.title).toLowerCase() !== headline.toLowerCase()) return false;
     if (Number.isFinite(season) && season > 0 && Number(entry.season || 1) !== season) return false;
     if (Number.isFinite(week) && week >= 0 && Number(entry.week ?? 0) !== week) return false;
     return true;
   });
-  return candidates[0] || (headline ? findArticleByHeadline(career, headline) : null);
+  if (candidates[0]) return candidates[0];
+
+  if (Number.isFinite(season) && season > 0 && Number.isFinite(week) && week >= 0) {
+    const resolved = officialCoverageForWeek(career, season, week);
+    if (['official', 'source'].includes(resolved.kind) && resolved.entry) return resolved.entry;
+  }
+
+  return headline ? findArticleByHeadline(career, headline) : null;
 };
 
 const articleParagraphs = (article = {}) => clean(article.body)
@@ -115,7 +128,11 @@ const Reader = ({ article, onClose }) => {
 const OfficialCoverageReaderPortal = () => {
   const { career } = useOwnerCareer();
   const [article, setArticle] = useState(null);
-  const articles = useMemo(() => list(career?.eaSportsNetworkArticles), [career?.eaSportsNetworkArticles]);
+  const articles = useMemo(() => officialArticlePool(career || {}), [
+    career?.eaSportsNetworkArticles,
+    career?.eaSportsNetwork,
+    career?.officialCoverage,
+  ]);
 
   useEffect(() => {
     if (!career) return undefined;

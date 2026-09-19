@@ -301,6 +301,24 @@ const PodcastStudioContent = ({
   }, [initialPublicationId]);
 
   useEffect(() => {
+    const onPublicationSelected = (event) => {
+      const publicationId = String(event.detail?.publicationId || '').trim();
+      if (!publicationId || !issues.some((entry) => (entry.publicationId || entry.id) === publicationId)) return;
+      setSegmentIndex(0);
+      setAudioSegments(null);
+      setIsPlaying(false);
+      setAudioCurrentTime(0);
+      setAudioDuration(0);
+      setError('');
+      setSelectedPublicationId(publicationId);
+      setGeneration(null);
+      setShowTranscript(false);
+    };
+    window.addEventListener('dynastyhq:podcast-publication-selected', onPublicationSelected);
+    return () => window.removeEventListener('dynastyhq:podcast-publication-selected', onPublicationSelected);
+  }, [issues]);
+
+  useEffect(() => {
     let cancelled = false;
     setAudioSegments(null);
     setAudioCurrentTime(0);
@@ -335,6 +353,9 @@ const PodcastStudioContent = ({
     setSelectedPublicationId(nextPublicationId);
     setGeneration(null);
     setShowTranscript(false);
+    window.dispatchEvent(new CustomEvent('dynastyhq:podcast-publication-selected', {
+      detail: { publicationId: nextPublicationId, source: 'podcast-studio' },
+    }));
   };
 
   const handleCoverChange = async (event) => {

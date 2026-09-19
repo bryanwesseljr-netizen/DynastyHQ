@@ -87,3 +87,12 @@ test('official coverage reader accepts open requests from Around the Program', a
   assert.match(source, /dynastyhq:open-official-coverage/);
   assert.match(source, /findArticleForRequest/);
 });
+
+
+test('official reader resolves saved EA Sports stories from all supported coverage pools', async () => {
+  const source = await readFile(new URL('../components/OfficialCoverageReaderPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /career\.eaSportsNetworkArticles/);
+  assert.match(source, /career\.eaSportsNetwork/);
+  assert.match(source, /career\.officialCoverage/);
+  assert.match(source, /officialCoverageForWeek\(career, season, week\)/);
+});

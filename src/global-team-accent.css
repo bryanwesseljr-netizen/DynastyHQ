@@ -8,25 +8,20 @@
 }
 
 body[data-dhq-team-accent="true"] header {
-  border-bottom-color: color-mix(in srgb, var(--dhq-team-primary) 24%, #1e293b) !important;
+  border-bottom-color: rgba(71, 85, 105, .42) !important;
 }
 
 body[data-dhq-team-accent="true"] header .dhq-primary-nav-item[aria-current="page"] > span:last-child {
-  background: var(--dhq-team-primary) !important;
-  box-shadow: 0 0 13px color-mix(in srgb, var(--dhq-team-primary) 55%, transparent) !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 body[data-dhq-team-accent="true"]::before {
-  position: fixed;
-  z-index: 118;
-  top: 64px;
-  right: 0;
-  left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 2%, color-mix(in srgb, var(--dhq-team-primary) 74%, transparent) 50%, transparent 98%);
-  content: '';
-  opacity: .72;
-  pointer-events: none;
+  display: none !important;
+  content: none !important;
 }
 
 /* Give the working areas a faint program-colored edge without recoloring the
@@ -55,6 +50,6 @@ body[data-dhq-team-accent="true"] main[data-active-tab="trophies"] > div > div:f
 
 @media (max-width: 1199px) {
   body[data-dhq-team-accent="true"] header button[aria-current="page"] {
-    border-color: color-mix(in srgb, var(--dhq-team-primary) 58%, #475569) !important;
+    border-color: transparent !important;
   }
 }

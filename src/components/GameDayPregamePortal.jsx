@@ -127,15 +127,14 @@ const GameDayPregamePortal = () => {
     if (target === 'newsroom') return openNav(['The Newsroom', 'Newsroom']);
     if (target === 'podcast') return openNav(['Podcast', 'The Huddle']);
     if (target === 'official') {
-      window.dispatchEvent(new CustomEvent('dynastyhq:open-official-coverage', {
-        detail: {
-          headline: item?.headline || item?.title || '',
-          season: item?.season,
-          week: item?.week,
-          source: 'around-the-program',
-        },
-      }));
-      return;
+      const detail = {
+        headline: item?.headline || item?.title || '',
+        season: item?.season,
+        week: item?.week,
+        source: 'around-the-program',
+      };
+      window.dispatchEvent(new CustomEvent('dynastyhq:newsroom-official-focus', { detail }));
+      return openNav(['The Newsroom', 'Newsroom']);
     }
     return openNav('Game Hub');
   };

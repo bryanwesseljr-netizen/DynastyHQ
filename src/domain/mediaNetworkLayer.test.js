@@ -96,3 +96,22 @@ test('official reader resolves saved EA Sports stories from all supported covera
   assert.match(source, /career\.officialCoverage/);
   assert.match(source, /officialCoverageForWeek\(career, season, week\)/);
 });
+
+
+test('Newsroom exposes a dedicated EA Sports Network Official Feed with an inline reader', async () => {
+  const source = await readFile(new URL('../components/NewsroomTeamHubPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /Official Feed/);
+  assert.match(source, /officialArticlePool/);
+  assert.match(source, /OfficialFeedCard/);
+  assert.match(source, /OfficialFeedReader/);
+  assert.match(source, /OFFICIAL WIRE BRIEF/);
+  assert.match(source, /RELATED DYNASTYHQ COVERAGE/);
+  assert.match(source, /dynastyhq:newsroom-official-focus/);
+});
+
+test('legacy official article routes now send readers to the Newsroom instead of the detached modal', async () => {
+  const source = await readFile(new URL('../components/OfficialCoverageReaderPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /openOfficialInNewsroom/);
+  assert.match(source, /dynastyhq:newsroom-official-focus/);
+  assert.match(source, /Only the original headline and story brief were preserved from this edition/);
+});

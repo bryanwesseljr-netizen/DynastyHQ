@@ -76,8 +76,11 @@ const mediaSpotlights = (state = {}) => {
     id: 'official',
     label: `EA SPORTS NETWORK · W${media.week}`,
     title: clean(media.official.headline, 240),
+    headline: clean(media.official.headline, 240),
     detail: clean(media.official.summary, 420) || `Official in-game coverage from Week ${media.week}.`,
-    target: 'gameHub',
+    target: 'official',
+    season: media.season,
+    week: media.week,
   });
   return { context, items: items.slice(0, 3) };
 };

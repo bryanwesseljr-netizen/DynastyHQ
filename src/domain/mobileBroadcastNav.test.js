@@ -22,6 +22,7 @@ const activeThemeV4Url = new URL('../active-program-theme-v4.css', import.meta.u
 const globalAccentUrl = new URL('../global-team-accent.css', import.meta.url);
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const desktopFinalizerUrl = new URL('../components/DesktopPrimaryNavFinalizer.jsx', import.meta.url);
+const navigationStatePortalUrl = new URL('../components/NavigationStatePortal.jsx', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -227,4 +228,24 @@ test('desktop nav runtime finalizer owns the real desktop header after legacy CS
   assert.match(finalizer, /MutationObserver/);
   assert.match(finalizer, /max-width.*100vw/);
   assert.match(finalizer, /document\.documentElement\.scrollLeft = 0/);
+});
+
+
+test('desktop active navigation has exactly one short underline and no lingering Podcast state', async () => {
+  const [controller, finalizer, navState] = await Promise.all([
+    readFile(navigationStatePortalUrl, 'utf8'),
+    readFile(desktopFinalizerUrl, 'utf8'),
+    readFile(navStateUrl, 'utf8'),
+  ]);
+
+  assert.doesNotMatch(controller, /inset 0 -3px 0 var\(--dhq-program-highlight\)/);
+  assert.match(controller, /button\.style\.setProperty\('box-shadow', 'none', 'important'\)/);
+  assert.match(controller, /border-bottom', active \? '3px solid var\(--dhq-program-highlight\)' : '3px solid transparent'/);
+  assert.match(finalizer, /button\.classList\.contains\('dhq-nav-visual-active'\)/);
+  assert.doesNotMatch(finalizer, /getAttribute\('aria-current'\) === 'page' \|\| button\.classList\.contains\('is-active'\)/);
+  assert.match(navState, /\.dhq-primary-nav-item\.dhq-nav-visual-active > \.dhq-primary-nav-label/);
+  assert.doesNotMatch(
+    navState,
+    /\.dhq-primary-nav-item\[aria-current="page"\] > \.dhq-primary-nav-label,[\s\S]{0,500}border-bottom-color/,
+  );
 });

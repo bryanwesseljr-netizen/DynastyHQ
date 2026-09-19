@@ -97,4 +97,9 @@ test('Podcast defaults to a listener-first title and audio-player experience', a
   assert.match(localShow, /toolsOpen &&/);
   assert.match(localStyles, /Compact Podcast tools dropdown/);
   assert.match(localStyles, /dhq-local-podcast__tools-shell > \.dhq-local-podcast__utility/);
+  assert.match(localShow, /secondarySection\.style\.setProperty\('display', \(rundownOpen \|\| notesOpen\) \? 'grid' : 'none', 'important'\)/);
+  assert.match(localShow, /archiveSection\.style\.setProperty\('display', archiveOpen \? 'block' : 'none', 'important'\)/);
+  assert.match(localShow, /transcriptSection\.style\.setProperty\('display', 'none', 'important'\)/);
+  assert.match(localStyles, /Listener-visible Podcast masthead: artwork only/);
+  assert.match(localStyles, /\.dhq-local-podcast__identity,[\s\S]*display: none !important/);
 });

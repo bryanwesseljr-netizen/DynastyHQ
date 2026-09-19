@@ -101,15 +101,15 @@ const PlayerOffseasonNavigationPortal = () => {
       const desktopNav = document.querySelector('.dhq-primary-nav');
       if (desktopNav && !document.getElementById('dhq-player-offseason-desktop-nav')) {
         const button = makeDesktopButton(openOffseason);
-        const newsroom = [...desktopNav.querySelectorAll('button')].find((entry) => /newsroom/i.test(entry.textContent || ''));
-        desktopNav.insertBefore(button, newsroom || null);
+        const career = [...desktopNav.querySelectorAll('button')].find((entry) => /^career$/i.test(String(entry.textContent || '').trim()));
+        desktopNav.insertBefore(button, career || null);
       }
 
       const mobileNav = document.querySelector('#mobile-primary-navigation nav');
       if (mobileNav && !document.getElementById('dhq-player-offseason-mobile-nav')) {
         const button = makeMobileButton(openOffseason);
-        const recruiting = [...mobileNav.querySelectorAll('button')].find((entry) => /^recruiting board$/i.test(String(entry.textContent || '').trim()));
-        mobileNav.insertBefore(button, recruiting || null);
+        const career = [...mobileNav.querySelectorAll('button')].find((entry) => /^legacy$/i.test(String(entry.textContent || '').trim()));
+        mobileNav.insertBefore(button, career || null);
       }
     };
 

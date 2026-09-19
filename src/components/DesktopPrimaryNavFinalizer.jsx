@@ -176,12 +176,33 @@ const DesktopPrimaryNavFinalizer = () => {
         if (main) {
           setImportant(main, 'width', '100%');
           setImportant(main, 'min-width', '0');
+          main.scrollLeft = 0;
           [...main.children].forEach((child) => {
             setImportant(child, 'min-width', '0');
             setImportant(child, 'max-width', '100%');
             setImportant(child, 'box-sizing', 'border-box');
           });
+
+          main.querySelectorAll([
+            '.dhq-team-newsroom',
+            '.dhq-newsroom-reader-mode',
+            '.dhq-local-podcast-root',
+            '#dhq-player-offseason-route-host',
+            '.dhq-career-overview',
+            '.dhq-game-hub',
+            '.dhq-weekly-agenda-workspace',
+            '.dhq-broadcast-main',
+          ].join(',')).forEach((node) => {
+            setImportant(node, 'width', '100%');
+            setImportant(node, 'min-width', '0');
+            setImportant(node, 'max-width', '100%');
+            setImportant(node, 'overflow-x', 'hidden');
+            setImportant(node, 'box-sizing', 'border-box');
+          });
         }
+
+        document.documentElement.scrollLeft = 0;
+        document.body.scrollLeft = 0;
       });
     };
 

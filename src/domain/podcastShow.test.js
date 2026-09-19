@@ -86,4 +86,9 @@ test('Podcast defaults to a listener-first title and audio-player experience', a
   assert.match(localStyles, /dhq-podcast-listener-transcript[\s\S]*display: none !important/);
   assert.match(tools, /podcastProductionToolsRequested/);
   assert.match(tools, /podcastStudioIsVisible\(\) && podcastProductionToolsRequested\(\)/);
+  assert.match(studio, /dhq-podcast-listener-feed/);
+  assert.match(studio, /previousEpisodeItems/);
+  assert.match(studio, /autoPlayPublicationId/);
+  assert.match(localStyles, /grid-template-columns: 148px minmax\(0, 1fr\)/);
+  assert.match(localStyles, /dhq-podcast-listener-feed__episode/);
 });

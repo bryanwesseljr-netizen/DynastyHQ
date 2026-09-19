@@ -2147,7 +2147,6 @@ const handleSaveGameClick = () => {
                   className={`dhq-primary-nav-item relative flex shrink-0 items-center justify-center whitespace-nowrap font-black uppercase transition-colors ${selected ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                   <span>{displayLabel}</span>
-                  {selected ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" /> : null}
                 </button>
               );
             })}

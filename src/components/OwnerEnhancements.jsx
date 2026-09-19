@@ -71,6 +71,7 @@ const OwnerEnhancements = () => (
     <DynamicMatchupHelmetPortal />
     <MobileBroadcastNavPortal />
     <PlayerOffseasonNavigationPortal />
+    <DesktopPrimaryNavFinalizer />
     <FreshStartPortal />
     <ImmersionPortal />
     <StorylineContinuityPortal />

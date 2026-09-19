@@ -206,5 +206,5 @@ test('route shell cannot become the horizontal page scroller', async () => {
   assert.match(navState, /main\.dhq-page-main \{[\s\S]*overflow-x: hidden !important/);
   assert.match(navState, /max-width: 100vw !important/);
   assert.match(navState, /main\.dhq-page-main > :not\(\.pointer-events-none\) \{[\s\S]*max-width: 100% !important/);
-  assert.match(navState, /\.dhq-team-newsroom/[\s\S]*\.dhq-local-podcast-root/[\s\S]*\.dhq-weekly-agenda-workspace/);
+  assert.match(navState, /\.dhq-team-newsroom[\s\S]*\.dhq-local-podcast-root[\s\S]*\.dhq-weekly-agenda-workspace/);
 });

@@ -52,3 +52,39 @@ test('preview recovery can rebuild the intended next season from the live career
   assert.equal(decision.decision, 'stay');
   assert.equal(decision.from, 'Oregon');
 });
+
+
+test('recovery normalizes an already-advanced but untouched season back to Week 1', () => {
+  const alreadyAdvanced = {
+    ...career(),
+    currentSeason: 3,
+    currentWeek: 3,
+    playerRecruiting: {
+      transfer: {
+        status: 'inactive',
+        targets: [],
+        decisions: [{ season: 2, week: 15, decision: 'stay', from: 'Oregon', destination: '', targets: [] }],
+      },
+    },
+  };
+  const recovered = recoverProductionCareerForSeason(alreadyAdvanced, 3);
+  assert.equal(recovered.currentSeason, 3);
+  assert.equal(recovered.currentWeek, 1);
+  assert.equal(recovered.gameLogs.length, 1);
+  assert.equal(recovered.player.college, 'Oregon');
+});
+
+test('recovery never rewinds a target season that already has published activity', () => {
+  const progressed = {
+    ...career(),
+    currentSeason: 3,
+    currentWeek: 3,
+    gameLogs: [
+      ...career().gameLogs,
+      { season: 3, week: 1, opponent: 'Boise State', result: 'W' },
+    ],
+  };
+  const recovered = recoverProductionCareerForSeason(progressed, 3);
+  assert.equal(recovered.currentWeek, 3);
+  assert.equal(recovered.gameLogs.filter((game) => game.season === 3).length, 1);
+});

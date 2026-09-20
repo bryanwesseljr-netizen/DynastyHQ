@@ -32,6 +32,6 @@ test('preview promotion keeps preview career data but removes preview-only marke
 });
 
 test('preview promotion creates stable safe backup and podcast ids', () => {
-  assert.match(previewPromotionBackupId(), /^before_preview-to-live-2026-09-19$/);
+  assert.match(previewPromotionBackupId(), /^before_preview-to-live-2026-09-20-v2$/);
   assert.equal(safePreviewPodcastEpisodeId('week/2/recap'), 'week-2-recap');
 });

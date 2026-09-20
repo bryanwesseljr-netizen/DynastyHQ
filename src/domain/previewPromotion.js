@@ -1,5 +1,5 @@
 export const PREVIEW_DATA_APP_ID = 'dynasty-hq-preview';
-export const PREVIEW_PROMOTION_ID = 'preview-to-live-2026-09-19';
+export const PREVIEW_PROMOTION_ID = 'preview-to-live-2026-09-20-v2';
 
 export const previewPromotionBackupId = (promotionId = PREVIEW_PROMOTION_ID) => (
   `before_${String(promotionId || PREVIEW_PROMOTION_ID).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 120)}`

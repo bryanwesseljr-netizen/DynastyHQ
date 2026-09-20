@@ -157,15 +157,22 @@ const promotePreviewForOwner = async (user) => {
     }
   }
 
-  await copyPrivateAudio(user.uid, previewState);
-  await copyPublicSnapshots(user.uid, previewState);
-
   const promotedState = buildPromotedProductionState({
     previewState,
     productionState,
     now: new Date().toISOString(),
   });
+
+  // Promote the canonical career save first. Audio/public media are supplemental and
+  // must never block the owner from getting the approved preview career back on live.
   await setDoc(productionRef, promotedState);
+
+  try {
+    await copyPrivateAudio(user.uid, previewState);
+  } catch (error) {
+    console.warn('Preview private audio could not be fully promoted.', error);
+  }
+  await copyPublicSnapshots(user.uid, previewState);
   return true;
 };
 

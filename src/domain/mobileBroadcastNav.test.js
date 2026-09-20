@@ -263,12 +263,17 @@ test('pinch-zoomed desktop-site view restores two-axis page panning without remo
   assert.match(owner, /<ZoomPanPortal \/>/);
   assert.match(portal, /window\.visualViewport/);
   assert.match(portal, /scale > 1 \+ ZOOM_EPSILON/);
+  assert.match(portal, /visualWidth < layoutWidth - 2/);
+  assert.match(portal, /requestAnimationFrame/);
+  assert.match(portal, /setTimeout\(syncZoomState, 120\)/);
   assert.match(portal, /dhq-visual-zoomed/);
   assert.match(portal, /addEventListener\('resize', syncZoomState/);
   assert.match(portal, /addEventListener\('scroll', syncZoomState/);
   assert.match(navState, /html\.dhq-visual-zoomed \{/);
   assert.match(navState, /overflow-x: auto !important/);
   assert.match(navState, /body\.dhq-visual-zoomed main\.dhq-page-main \{[\s\S]*overflow-x: visible !important/);
+  assert.match(navState, /#root > div\.flex\.h-screen \{[\s\S]*height: auto !important[\s\S]*overflow: visible !important/);
+  assert.match(navState, /body\.dhq-visual-zoomed main\.dhq-page-main \{[\s\S]*overflow: visible !important/);
   assert.match(navState, /touch-action: pan-x pan-y pinch-zoom !important/);
   assert.match(navState, /main\.dhq-page-main \{[\s\S]*overflow-x: hidden !important/);
 });

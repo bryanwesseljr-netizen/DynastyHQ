@@ -20,10 +20,13 @@ import {
   Target,
   Trophy,
   TrendingUp,
+  UserX,
 } from 'lucide-react';
 import footballStadiumBg from '../assets/dynastyhq-football-stadium-bg.webp';
 import matchupHelmets from '../assets/matchup-helmets.webp';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
+import { teamRecordForSeason } from '../domain/seasonSchedule.js';
+import { conferenceAbbreviation, conferenceRecordForSeason } from '../domain/conferenceRecord.js';
 import './game-hub.css';
 
 const clean = (value) => String(value ?? '').trim();
@@ -102,7 +105,7 @@ const ChangeList = ({ changes = [], fallback }) => (
 const GameHubPortal = () => {
   const { career, ready } = useOwnerCareer();
   const [open, setOpen] = useState(false);
-  const [selection, setSelection] = useState('auto');
+  const [selection, setSelection] = useState('current');
   const openRef = useRef(open);
 
   useEffect(() => {
@@ -137,7 +140,7 @@ const GameHubPortal = () => {
         // Keep the legacy Game Hub route from receiving the click, but allow other
         // capture listeners on this same root (notably Career) to close themselves.
         event.stopPropagation();
-        setSelection('auto');
+        setSelection('current');
         setOpen(true);
         syncActive(true);
         return;
@@ -161,6 +164,16 @@ const GameHubPortal = () => {
     return () => document.body.classList.remove('dhq-game-hub-open');
   }, [open]);
 
+  useEffect(() => {
+    const openVerifiedTools = () => {
+      setOpen(false);
+      window.__dhqAllowLegacyGameHubOnce = true;
+      window.setTimeout(() => visibleNavButton('Game Hub')?.click(), 20);
+    };
+    window.addEventListener('dynastyhq:open-verified-data-tools', openVerifiedTools);
+    return () => window.removeEventListener('dynastyhq:open-verified-data-tools', openVerifiedTools);
+  }, []);
+
   const model = useMemo(() => {
     const state = career || {};
     const player = state.player || {};
@@ -171,19 +184,19 @@ const GameHubPortal = () => {
     const setup = state.currentWeekSetup || {};
 
     const games = arrayOf(state.gameLogs)
-      .filter((game) => game && game.didPlay !== false && game.stage !== 'high-school' && !game.evaluation && clean(game.opponent))
+      .filter((game) => game && game.stage !== 'high-school' && !game.evaluation && clean(game.opponent))
       .sort((left, right) => gameSortValue(right) - gameSortValue(left));
 
-    const currentSeasonGames = games.filter((game) => numberOf(game.season || 1) === currentSeason);
-    const seasonWins = currentSeasonGames.filter((game) => clean(game.result).toUpperCase() === 'W').length;
-    const seasonLosses = currentSeasonGames.filter((game) => clean(game.result).toUpperCase() === 'L').length;
+    const overallRecord = teamRecordForSeason(state, currentSeason);
+    const conferenceRecord = conferenceRecordForSeason(state, currentSeason);
+    const seasonWins = overallRecord.wins;
+    const seasonLosses = overallRecord.losses;
     const hasCurrentMatchup = setup.type !== 'bye' && Boolean(clean(setup.opponent));
-    const autoSelection = hasCurrentMatchup ? 'current' : (games[0] ? publicationIdFor(games[0].season, games[0].week) : 'current');
-    const resolvedSelection = selection === 'auto' ? autoSelection : selection;
+    const resolvedSelection = selection || 'current';
 
     const selectedGame = resolvedSelection === 'current'
       ? null
-      : games.find((game) => publicationIdFor(game.season, game.week) === resolvedSelection) || games[0] || null;
+      : games.find((game) => publicationIdFor(game.season, game.week) === resolvedSelection) || null;
 
     const season = selectedGame ? numberOf(selectedGame.season || 1) : currentSeason;
     const week = selectedGame ? numberOf(selectedGame.week) : currentWeek;
@@ -216,7 +229,8 @@ const GameHubPortal = () => {
       .slice(0, 6);
 
     const game = selectedGame;
-    const playerStats = game ? {
+    const didPlay = game ? game.didPlay !== false : null;
+    const playerStats = game && didPlay ? {
       passYds: numberOf(game.passYds),
       passTD: numberOf(game.passTD),
       rushYds: numberOf(game.rushYds),
@@ -234,8 +248,14 @@ const GameHubPortal = () => {
         : (hasCurrentMatchup ? `${school} prepares for ${clean(setup.opponent)}` : 'Current week awaiting matchup data'));
     const secondaryStory = milestones[0]?.title
       || rtgChanges[0]?.label
-      || (game && totalTD >= 3 ? `${totalTD}-touchdown performance` : 'Career progression remains tied to verified data');
-    const coverageLevel = game && (totalTD >= 3 || scoreMargin <= 7 || milestones.length) ? 'Feature package' : game ? 'Standard package' : 'Pregame watch';
+      || (game && didPlay === false
+        ? 'Tracked player did not appear'
+        : (game && totalTD >= 3 ? `${totalTD}-touchdown performance` : 'Career progression remains tied to verified data'));
+    const coverageLevel = game && didPlay === false
+      ? 'No player appearance'
+      : game && (totalTD >= 3 || scoreMargin <= 7 || milestones.length)
+        ? 'Feature package'
+        : game ? 'Standard package' : 'Pregame watch';
 
     const imported = Boolean(weeklyUpdate && numberOf(weeklyUpdate.sourceCount) > 0);
     const verified = Boolean(weeklyUpdate?.status === 'published' || chronicleEntry);
@@ -252,6 +272,10 @@ const GameHubPortal = () => {
       games,
       seasonWins,
       seasonLosses,
+      conferenceWins: conferenceRecord.wins,
+      conferenceLosses: conferenceRecord.losses,
+      conferenceName: conferenceRecord.conference,
+      conferenceAbbr: conferenceAbbreviation(conferenceRecord.conference),
       resolvedSelection,
       selectedGame,
       season,
@@ -267,6 +291,7 @@ const GameHubPortal = () => {
       chronicleEntry,
       media,
       playerStats,
+      didPlay,
       rtgChanges,
       primaryArticle,
       leadStory,
@@ -292,16 +317,21 @@ const GameHubPortal = () => {
     window.dispatchEvent(new CustomEvent('dynastyhq:open-session-import'));
   };
 
+  const openNoAppearanceImport = () => {
+    window.dispatchEvent(new CustomEvent('dynastyhq:open-session-import', {
+      detail: { noAppearance: true },
+    }));
+  };
+
   const openAdvanced = () => {
-    close();
-    window.__dhqAllowLegacyGameHubOnce = true;
-    window.setTimeout(() => visibleNavButton('Game Hub')?.click(), 20);
+    window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
   };
 
   const selectedGame = model.selectedGame;
   const isCompleted = Boolean(selectedGame);
   const opponent = isCompleted ? clean(selectedGame.opponent) : clean(model.setup.opponent) || 'OPPONENT TBD';
   const teamRecord = `${model.seasonWins}-${model.seasonLosses}`;
+  const conferenceRecord = `${model.conferenceWins}-${model.conferenceLosses}`;
   const teamScore = isCompleted ? selectedGame.homeScore : '—';
   const opponentScore = isCompleted ? selectedGame.awayScore : '—';
   const result = isCompleted ? clean(selectedGame.result).toUpperCase() : '';
@@ -342,7 +372,7 @@ const GameHubPortal = () => {
 
                 <div className="dhq-gh-team dhq-gh-team--left">
                   <strong>{shortName(model.school)}</strong>
-                  <span>{teamRecord}</span>
+                  <span>{teamRecord}{model.conferenceName ? ` · ${conferenceRecord} ${model.conferenceAbbr}` : ''}</span>
                   {isCompleted ? <b>{teamScore}</b> : <small>{model.player?.pos || 'PLAYER'} · #{model.player?.number || '—'}</small>}
                 </div>
                 <div className="dhq-gh-team dhq-gh-team--right">
@@ -358,7 +388,13 @@ const GameHubPortal = () => {
                 </div>
 
                 <div className="dhq-gh-hero__actions">
-                  {!isCompleted ? <button type="button" className="is-primary" onClick={openImport}><CloudUpload size={15} /> IMPORT SESSION</button> : null}
+                  {!isCompleted ? (
+                    <>
+                      <button type="button" className="is-primary" onClick={openImport}><CloudUpload size={15} /> IMPORT SESSION</button>
+                      <button type="button" className="is-secondary" onClick={openNoAppearanceImport}><UserX size={15} /> I DID NOT PLAY</button>
+                      <button type="button" className="is-secondary" onClick={openAdvanced}><FileText size={14} /> VERIFIED DATA TOOLS</button>
+                    </>
+                  ) : null}
                   <button type="button" className={isCompleted ? 'is-primary' : 'is-secondary'} onClick={() => goToNav(isCompleted && model.issue ? 'Newsroom' : 'Chronicle')}>
                     {isCompleted ? 'OPEN COVERAGE' : 'VIEW CAREER CONTEXT'} <ChevronRight size={15} />
                   </button>
@@ -418,13 +454,17 @@ const GameHubPortal = () => {
                     <article className="dhq-gh-card dhq-gh-performance-card">
                       <div className="dhq-gh-card__heading"><span><TrendingUp size={15} /> PLAYER PERFORMANCE</span></div>
                       <strong className="dhq-gh-player-name">{clean(model.player?.name) || 'Tracked Player'}</strong>
-                      <div className="dhq-gh-stat-line">
-                        <div><b>{formatNumber(model.playerStats?.passYds)}</b><span>PASS YDS</span></div>
-                        <div><b>{formatNumber(model.playerStats?.passTD)}</b><span>PASS TD</span></div>
-                        <div><b>{formatNumber(model.playerStats?.rushYds)}</b><span>RUSH YDS</span></div>
-                        <div><b>{formatNumber(model.playerStats?.rushTD)}</b><span>RUSH TD</span></div>
-                        <div><b>{formatNumber(model.playerStats?.interceptions)}</b><span>INT</span></div>
-                      </div>
+                      {model.didPlay === false ? (
+                        <p className="dhq-gh-empty-copy">Team result recorded · the tracked player did not appear.</p>
+                      ) : (
+                        <div className="dhq-gh-stat-line">
+                          <div><b>{formatNumber(model.playerStats?.passYds)}</b><span>PASS YDS</span></div>
+                          <div><b>{formatNumber(model.playerStats?.passTD)}</b><span>PASS TD</span></div>
+                          <div><b>{formatNumber(model.playerStats?.rushYds)}</b><span>RUSH YDS</span></div>
+                          <div><b>{formatNumber(model.playerStats?.rushTD)}</b><span>RUSH TD</span></div>
+                          <div><b>{formatNumber(model.playerStats?.interceptions)}</b><span>INT</span></div>
+                        </div>
+                      )}
                     </article>
 
                     <article className="dhq-gh-card">
@@ -471,6 +511,8 @@ const GameHubPortal = () => {
                           <p>{model.primaryArticle.dek || arrayOf(model.primaryArticle.paragraphs)[0] || 'Verified editorial coverage is attached to this game.'}</p>
                           <button type="button" onClick={() => goToNav('Newsroom')}>OPEN NEWSROOM <ChevronRight size={14} /></button>
                         </>
+                      ) : model.didPlay === false ? (
+                        <><h2>No article by design.</h2><p>This is a team game with no tracked-player appearance. The result stays in the season timeline without creating filler Newsroom coverage.</p></>
                       ) : (
                         <><h2>No DynastyHQ article is attached yet.</h2><p>The game result is preserved, but this week does not currently have a generated Newsroom edition.</p></>
                       )}

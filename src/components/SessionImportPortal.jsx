@@ -5,6 +5,7 @@ import {
   ChevronRight,
   CloudUpload,
   FileImage,
+  FileText,
   Images,
   Loader2,
   Newspaper,
@@ -102,6 +103,7 @@ const SessionImportPortal = () => {
   const [dragging, setDragging] = useState(false);
   const [rtgSkipped, setRtgSkipped] = useState(false);
   const [coverageSkipped, setCoverageSkipped] = useState(false);
+  const [noAppearanceMode, setNoAppearanceMode] = useState(false);
   const [officialCoverageScan, setOfficialCoverageScan] = useState(null);
   const [error, setError] = useState('');
 
@@ -140,8 +142,10 @@ const SessionImportPortal = () => {
     setPhase(pendingReview ? 'review' : appliedHint ? 'rtg' : 'game');
   };
 
-  const openWorkspace = () => {
+  const openWorkspace = ({ noAppearance = false } = {}) => {
     reset();
+    setNoAppearanceMode(Boolean(noAppearance));
+    if (noAppearance) setCoverageSkipped(true);
     document.body.classList.add('dhq-session-import-mode');
     setOpen(true);
   };
@@ -176,7 +180,7 @@ const SessionImportPortal = () => {
   }, [publicationId]);
 
   useEffect(() => {
-    const openFromGameHub = () => openWorkspace();
+    const openFromGameHub = (event) => openWorkspace({ noAppearance: Boolean(event?.detail?.noAppearance) });
     window.addEventListener('dynastyhq:open-session-import', openFromGameHub);
     return () => window.removeEventListener('dynastyhq:open-session-import', openFromGameHub);
   }, [publicationId]);
@@ -186,6 +190,7 @@ const SessionImportPortal = () => {
       if (!open || event.detail?.publicationId !== publicationId) return;
       try { window.sessionStorage?.setItem('dhq-session-applied-week', publicationId); } catch { /* session hint only */ }
       setOfficialCoverageScan(officialCoverageFromSources(event.detail?.sources));
+      if (noAppearanceMode) setCoverageSkipped(true);
       setPhase('rtg');
     };
     const discarded = () => {
@@ -216,7 +221,24 @@ const SessionImportPortal = () => {
       window.removeEventListener('dynastyhq:review-game-data', review);
       window.removeEventListener('dynastyhq:official-coverage-captured', officialCaptured);
     };
-  }, [open, publicationId]);
+  }, [open, publicationId, noAppearanceMode]);
+
+  useEffect(() => {
+    if (!open || !noAppearanceMode || phase !== 'review') return undefined;
+    const applyNoAppearanceType = () => {
+      const select = document.querySelector('.dhq-postgame-review select[aria-label="Weekly update type"]');
+      if (!select || select.value === 'no-appearance') return Boolean(select);
+      select.value = 'no-appearance';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    };
+    if (applyNoAppearanceType()) return undefined;
+    const observer = new MutationObserver(() => {
+      if (applyNoAppearanceType()) observer.disconnect();
+    });
+    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [open, noAppearanceMode, phase]);
 
   useEffect(() => {
     if (!open || !['analyzing', 'review'].includes(phase)) return undefined;
@@ -306,8 +328,10 @@ const SessionImportPortal = () => {
           <section className="dhq-session-import__card dhq-session-import__upload-card">
             <div className="dhq-session-import__headline">
               <span><ScanLine size={17} /> 1 · GAME DATA</span>
-              <h1 id="dhq-session-import-title">Start with what happened on the field.</h1>
-              <p>Upload only the screens that establish the game: final score, your player line, useful game/team stats, and any EA SPORTS Network article pages you captured. RTG menu screens and optional media context get their own lanes next.</p>
+              <h1 id="dhq-session-import-title">{noAppearanceMode ? 'Record the team result without creating a player appearance.' : 'Start with what happened on the field.'}</h1>
+              <p>{noAppearanceMode
+                ? 'Upload the final-score / Team Stats screen that establishes the result. Player-stat screens and optional coverage are not needed because you did not play.'
+                : 'Upload only the screens that establish the game: final score, your player line, useful game/team stats, and any EA SPORTS Network article pages you captured. RTG menu screens and optional media context get their own lanes next.'}</p>
             </div>
 
             <div className="dhq-session-import__meta-row">
@@ -319,7 +343,7 @@ const SessionImportPortal = () => {
             <div className="dhq-session-import__lane-guide">
               <div className="is-active"><ScanLine size={15} /><span><strong>GAME DATA</strong><small>Score · your stats · game facts · EA SPORTS Network</small></span></div>
               <div><Sparkles size={15} /><span><strong>RTG STATUS</strong><small>OVR · role · Coach Trust · GPA · health · brand</small></span></div>
-              <div><Newspaper size={15} /><span><strong>COVERAGE DATA</strong><small>Optional teammate · opponent · scoring context</small></span></div>
+              <div className={noAppearanceMode ? 'is-skipped' : ''}><Newspaper size={15} /><span><strong>COVERAGE DATA</strong><small>{noAppearanceMode ? 'Not needed for a no-appearance week' : 'Optional teammate · opponent · scoring context'}</small></span></div>
             </div>
 
             <button
@@ -393,13 +417,24 @@ const SessionImportPortal = () => {
             </div>
             <div id="dhq-weekly-rtg-data-host" data-session-import-host="rtg" className="dhq-session-import__embedded-scanner" />
             <div className="dhq-session-import__actions">
-              {!rtgCurrent ? <button type="button" className="is-secondary" onClick={() => { setRtgSkipped(true); setPhase('coverage'); }}>SKIP — NOTHING CHANGED</button> : null}
-              <button type="button" className="is-primary" disabled={!rtgCurrent} onClick={() => setPhase('coverage')}>CONTINUE TO COVERAGE <ChevronRight size={16} /></button>
+              {!rtgCurrent ? <button type="button" className="is-secondary" onClick={() => {
+                setRtgSkipped(true);
+                if (noAppearanceMode) {
+                  setCoverageSkipped(true);
+                  setPhase('ready');
+                } else setPhase('coverage');
+              }}>SKIP — NOTHING CHANGED</button> : null}
+              <button type="button" className="is-primary" disabled={!rtgCurrent} onClick={() => {
+                if (noAppearanceMode) {
+                  setCoverageSkipped(true);
+                  setPhase('ready');
+                } else setPhase('coverage');
+              }}>{noAppearanceMode ? 'CONTINUE TO PROCESS WEEK' : 'CONTINUE TO COVERAGE'} <ChevronRight size={16} /></button>
             </div>
           </section>
         ) : null}
 
-        {phase === 'coverage' ? (
+        {phase === 'coverage' && !noAppearanceMode ? (
           <section className="dhq-session-import__card dhq-session-import__lane-card">
             <div className="dhq-session-import__lane-header">
               <span><Newspaper size={17} /> 3 · COVERAGE DATA</span>
@@ -420,12 +455,14 @@ const SessionImportPortal = () => {
           <section className="dhq-session-import__card dhq-session-import__complete-card dhq-session-import__ready-card">
             <div className="dhq-session-import__complete-icon"><CheckCircle2 size={38} /></div>
             <span>4 · PROCESS WEEK</span>
-            <h1 id="dhq-session-import-title">The week is cleanly separated and ready.</h1>
-            <p>Game Data is verified. RTG Status and Coverage Data were either updated in their own lanes or deliberately skipped. Process Week can now build the Week {week} story without mixing data sources.</p>
+            <h1 id="dhq-session-import-title">{noAppearanceMode ? 'No-appearance week is ready to process.' : 'The week is cleanly separated and ready.'}</h1>
+            <p>{noAppearanceMode
+              ? `The team result is verified for Week ${week}. RTG Status was updated or intentionally carried forward, and optional Coverage Data was bypassed so DynastyHQ will not manufacture a player story.`
+              : `Game Data is verified. RTG Status and Coverage Data were either updated in their own lanes or deliberately skipped. Process Week can now build the Week ${week} story without mixing data sources.`}</p>
             <div className="dhq-session-import__ready-summary">
               <div className="is-done"><ScanLine size={16} /><span><small>GAME DATA</small><strong>VERIFIED</strong></span></div>
               <div className={rtgCurrent ? 'is-done' : 'is-skipped'}><Sparkles size={16} /><span><small>RTG STATUS</small><strong>{rtgCurrent ? 'UPDATED' : rtgSkipped ? 'NO CHANGES' : 'SKIPPED'}</strong></span></div>
-              <div className={coverageSaved ? 'is-done' : 'is-skipped'}><Newspaper size={16} /><span><small>COVERAGE DATA</small><strong>{coverageSaved ? 'ADDED' : coverageSkipped ? 'OPTIONAL · SKIPPED' : 'NOT ADDED'}</strong></span></div>
+              <div className={coverageSaved ? 'is-done' : 'is-skipped'}><Newspaper size={16} /><span><small>COVERAGE DATA</small><strong>{noAppearanceMode ? 'NOT NEEDED' : coverageSaved ? 'ADDED' : coverageSkipped ? 'OPTIONAL · SKIPPED' : 'NOT ADDED'}</strong></span></div>
               <div className={officialCoverageScan?.detected ? 'is-official' : 'is-skipped'}><Radio size={16} /><span><small>EA SPORTS NETWORK</small><strong>{officialCoverageScan?.detected ? `SCANNED · ${officialCoverageScan.pages} PAGE${officialCoverageScan.pages === 1 ? '' : 'S'}` : 'NOT INCLUDED'}</strong></span></div>
             </div>
             {officialCoverageScan?.detected ? (
@@ -434,7 +471,12 @@ const SessionImportPortal = () => {
               </p>
             ) : null}
             <div className="dhq-session-import__complete-actions">
-              <button type="button" className="is-secondary" onClick={() => setPhase('coverage')}><ArrowLeft size={15} /> Coverage</button>
+              <button type="button" className="is-secondary" onClick={() => setPhase(noAppearanceMode ? 'rtg' : 'coverage')}><ArrowLeft size={15} /> {noAppearanceMode ? 'RTG Status' : 'Coverage'}</button>
+              <button type="button" className="is-secondary" onClick={() => {
+                setOpen(false);
+                document.body.classList.remove('dhq-session-import-mode', 'dhq-session-import-review');
+                window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
+              }}><FileText size={15} /> VERIFIED DATA TOOLS</button>
               <button type="button" className="is-primary" onClick={() => closeWorkspace({ focusApplied: true })}>OPEN PROCESS WEEK <ChevronRight size={16} /></button>
             </div>
             <div className="dhq-session-import__safety"><ShieldCheck size={14} /><span><strong>Nothing publishes from this screen.</strong> Process Week still gives you the final verification and publishing decision.</span></div>

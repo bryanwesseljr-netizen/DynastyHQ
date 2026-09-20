@@ -6,12 +6,14 @@ import {
   CalendarDays,
   ChevronRight,
   CloudUpload,
+  FileText,
   Headphones,
   MapPin,
   Newspaper,
   Radio,
   Sparkles,
   Trophy,
+  UserX,
 } from 'lucide-react';
 import { buildGameDayLiveV2 } from '../domain/gameDayLiveV2.js';
 import { fallbackTeamBrand, resolveTeamBrand } from '../domain/teamBrandResolver.js';
@@ -117,6 +119,10 @@ const GameDayPregamePortal = () => {
   if (!mount || !career) return null;
 
   const openImport = () => window.dispatchEvent(new CustomEvent('dynastyhq:open-session-import'));
+  const openNoAppearanceImport = () => window.dispatchEvent(new CustomEvent('dynastyhq:open-session-import', {
+    detail: { noAppearance: true },
+  }));
+  const openVerifiedTools = () => window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
   const totalTD = live.player.seasonTotals.passTD + live.player.seasonTotals.rushTD;
   const opponentRecord = clean(live.matchup?.record) || '—';
   const locationLine = [live.venue, live.kickoff].filter(Boolean).join(' · ') || 'Game details from Week Setup';
@@ -154,7 +160,11 @@ const GameDayPregamePortal = () => {
           <p>{locationLine}</p>
         </div>
         <div className="dhq-live__teams">
-          <TeamMark brand={brands.school} name={live.school} record={live.record} />
+          <TeamMark
+            brand={brands.school}
+            name={live.school}
+            record={[live.record, live.conferenceRecord].filter(Boolean).join(' · ')}
+          />
           <div className="dhq-live__vs">
             <small>WEEK {live.week}</small>
             <strong>VS</strong>
@@ -165,7 +175,7 @@ const GameDayPregamePortal = () => {
         <div className="dhq-live__matchup-footer">
           <span><MapPin size={12} /> {live.venue || 'Venue not saved'}</span>
           <span><CalendarDays size={12} /> {live.kickoff || `Week ${live.week}`}</span>
-          <span><Trophy size={12} /> {live.school} {live.record}</span>
+          <span><Trophy size={12} /> {live.school} {[live.record, live.conferenceRecord].filter(Boolean).join(' · ')}</span>
         </div>
       </section>
 
@@ -256,6 +266,8 @@ const GameDayPregamePortal = () => {
         </div>
         <div className="dhq-live__handoff-actions">
           <button type="button" className="is-primary" onClick={openImport} disabled={!live.ready}><CloudUpload size={14} /> IMPORT AFTER GAME</button>
+          <button type="button" onClick={openNoAppearanceImport} disabled={!live.ready}><UserX size={14} /> I DID NOT PLAY</button>
+          <button type="button" onClick={openVerifiedTools}><FileText size={14} /> VERIFIED DATA TOOLS</button>
           <button type="button" onClick={() => openNav('Career')}>CAREER CONTEXT <ChevronRight size={13} /></button>
         </div>
       </section>

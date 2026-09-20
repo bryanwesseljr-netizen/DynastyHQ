@@ -65,7 +65,7 @@ test('coverage references stay editorial-only and never overwrite structured car
   assert.equal(next.podcastEpisodes[0].audioStatus, 'stale');
 });
 
-test('published college games without a player appearance are eligible for newsroom repair', () => {
+test('published college games without a player appearance are intentionally excluded from newsroom repair', () => {
   const missing = missingCollegeGameCoverageUpdates({
     careerPhase: 'Player',
     player: { isCommitted: true, college: 'Cincinnati' },
@@ -79,8 +79,7 @@ test('published college games without a player appearance are eligible for newsr
     }],
     newsroomIssues: [],
   });
-  assert.equal(missing.length, 1);
-  assert.equal(missing[0].publicationId, 'season-2-week-1');
+  assert.equal(missing.length, 0);
 });
 
 test('weekly agenda guided actions cannot reclassify themselves as legacy action containers', async () => {

@@ -54,3 +54,20 @@ test('Game Hub matches the broadcast homepage framing and remains responsive', a
   assert.match(styles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 640px\)/);
 });
+
+
+test('Game Hub opens on the current week and exposes the no-appearance and verified-data shortcuts', async () => {
+  const [gameHub, sessionImport] = await Promise.all([
+    readFile(gameHubUrl, 'utf8'),
+    readFile(sessionImportUrl, 'utf8'),
+  ]);
+
+  assert.match(gameHub, /useState\('current'\)/);
+  assert.match(gameHub, /setSelection\('current'\)/);
+  assert.match(gameHub, /I DID NOT PLAY/);
+  assert.match(gameHub, /VERIFIED DATA TOOLS/);
+  assert.match(gameHub, /detail: \{ noAppearance: true \}/);
+  assert.match(sessionImport, /noAppearanceMode/);
+  assert.match(sessionImport, /value = 'no-appearance'/);
+  assert.match(sessionImport, /NOT NEEDED/);
+});

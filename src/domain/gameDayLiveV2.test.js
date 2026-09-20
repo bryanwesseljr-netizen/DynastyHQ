@@ -41,6 +41,7 @@ test('builds a grounded pregame broadcast model from saved career context', () =
   assert.equal(live.ready, true);
   assert.equal(live.opponent, 'Michigan State');
   assert.equal(live.record, '2-1');
+  assert.equal(live.conferenceRecord, '0-0 B1G');
   assert.equal(live.venue, 'Autzen Stadium');
   assert.equal(live.recentForm.at(-1).opponent, 'Oregon State');
   assert.equal(live.roadAhead[0].opponent, 'Washington');
@@ -61,6 +62,7 @@ test('falls forward to the next scheduled game when player-week state is behind 
   assert.equal(live.opponent, 'Michigan State');
   assert.equal(live.activationSource, 'season-schedule');
   assert.equal(live.record, '2-1');
+  assert.equal(live.conferenceRecord, '0-0 B1G');
   assert.equal(live.recentForm.at(-1).opponent, 'Oregon State');
 });
 
@@ -144,4 +146,37 @@ test('Around the Program marks captured EA Sports Network coverage for the offic
   assert.equal(official.headline, 'BIGGEST BLOWOUT YET');
   assert.equal(official.season, 2);
   assert.equal(official.week, 3);
+});
+
+
+test('current-week Game Day Live uses the complete saved team record and conference record, not the last three results', () => {
+  const extended = {
+    ...state,
+    currentWeek: 15,
+    currentWeekSetup: { week: 15, type: 'game', opponent: 'Michigan' },
+    seasonSchedules: [{
+      season: 2,
+      school: 'Oregon',
+      entries: [
+        { week: 1, opponent: 'North Dakota State', status: 'completed', result: 'W', teamScore: 42, opponentScore: 24 },
+        { week: 2, opponent: 'Baylor', status: 'completed', result: 'L', teamScore: 21, opponentScore: 45 },
+        { week: 3, opponent: 'Oregon State', status: 'completed', result: 'W', teamScore: 33, opponentScore: 15 },
+        { week: 5, opponent: 'Michigan State', status: 'completed', result: 'W', teamScore: 31, opponentScore: 10 },
+        { week: 6, opponent: 'Wisconsin', status: 'completed', result: 'L', teamScore: 14, opponentScore: 21 },
+        { week: 7, opponent: 'Penn State', status: 'completed', result: 'L', teamScore: 34, opponentScore: 38 },
+        { week: 8, opponent: 'Minnesota', status: 'completed', result: 'W', teamScore: 38, opponentScore: 28 },
+        { week: 9, opponent: 'USC', status: 'completed', result: 'W', teamScore: 23, opponentScore: 17 },
+        { week: 10, opponent: 'Washington', status: 'completed', result: 'L', teamScore: 35, opponentScore: 49 },
+        { week: 11, opponent: 'Indiana', status: 'completed', result: 'L', teamScore: 24, opponentScore: 31 },
+        { week: 12, opponent: 'Illinois', status: 'completed', result: 'W', teamScore: 45, opponentScore: 21 },
+        { week: 13, opponent: 'Rutgers', status: 'completed', result: 'W', teamScore: 35, opponentScore: 13 },
+        { week: 14, opponent: 'BYE', isBye: true, status: 'bye' },
+        { week: 15, opponent: 'Michigan', status: 'upcoming', homeAway: 'home' },
+      ],
+    }],
+  };
+  const live = buildGameDayLiveV2(extended);
+  assert.equal(live.record, '7-5');
+  assert.equal(live.conferenceRecord, '5-4 B1G');
+  assert.match(live.stakes.find((item) => item.label === 'TEAM MOMENTUM')?.detail || '', /enters Week 15 at 7-5/);
 });

@@ -1307,6 +1307,12 @@ export const createPublishedWeek = ({
       ? { stage: 'high-school', evaluation, didPlay: true }
       : {
           ...game,
+          isConferenceGame: typeof game?.isConferenceGame === 'boolean'
+            ? game.isConferenceGame
+            : Boolean(state.currentWeekSetup?.isConferenceGame),
+          conferenceGameSource: game?.conferenceGameSource
+            || state.currentWeekSetup?.conferenceGameSource
+            || 'auto',
           ...(isNoAppearance ? { passYds: '', passTD: '', rushYds: '', rushTD: '', int: '', didPlay: false } : {}),
         }),
     week: targetWeek,
@@ -1406,6 +1412,7 @@ export const createPublishedWeek = ({
     sourceCount: sources.length,
     factCount: finalLedgerFacts.length,
     game: gameRecord,
+    isConferenceGame: Boolean(gameRecord?.isConferenceGame),
     highSchoolEvaluation: evaluation,
     rtgSnapshot,
     rtgChanges,

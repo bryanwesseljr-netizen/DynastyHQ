@@ -322,7 +322,10 @@ body.dhq-game-hub-open {
   bottom: 21px;
   left: 50%;
   display: flex;
+  width: min(92%, 860px);
   transform: translateX(-50%);
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -836,7 +839,7 @@ body.dhq-game-hub-open {
   .dhq-game-hub__frame { width:calc(100% - 14px); }
   .dhq-game-hub__toolbar-actions { align-items:stretch; flex-direction:column; }
   .dhq-game-hub__toolbar-actions > button { width:100%; }
-  .dhq-gh-hero { min-height:395px; }
+  .dhq-gh-hero { min-height:500px; }
   .dhq-gh-hero__kicker { top:18px; }
   .dhq-gh-hero h1 { top:35px; width:94%; font-size:25px; }
   .dhq-gh-hero > img { top:83px; width:270px; }

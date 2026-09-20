@@ -137,6 +137,7 @@ import {
   buildNewsroomGenerationPayload,
   normalizeGeneratedNewsroomEdition,
 } from './domain/newsroomGeneration';
+import { noAppearanceCoverageIssueIds } from './domain/collegeGameCoverageRepair';
 import {
   buildPostgameFrontPage,
   updatePostgameFrontPage,
@@ -3016,11 +3017,18 @@ const handleSaveGameClick = () => {
   };
 
   const renderNewsroom = () => {
-    if (appState.newsroomIssues?.length) {
+    const noAppearanceIssueIds = noAppearanceCoverageIssueIds(appState);
+    const visibleNewsroomIssues = (appState.newsroomIssues || []).filter((issue) => {
+      const publicationId = issue?.publicationId || issue?.weekKey || issue?.id
+        || `season-${Number(issue?.season || 1) || 1}-week-${Math.max(0, Number(issue?.week || 0) || 0)}`;
+      return !noAppearanceIssueIds.has(publicationId);
+    });
+
+    if (visibleNewsroomIssues.length) {
       return (
         <GroundedNewsroom
           key={newsroomFocusId || 'latest-newsroom'}
-          issues={appState.newsroomIssues}
+          issues={visibleNewsroomIssues}
           initialIssueId={newsroomFocusId}
           newsTheme={newsTheme}
           setNewsTheme={setNewsTheme}

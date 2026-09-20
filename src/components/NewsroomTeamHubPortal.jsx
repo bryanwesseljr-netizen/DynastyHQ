@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation';
+import { noAppearanceCoverageIssueIds } from '../domain/collegeGameCoverageRepair.js';
 import {
   resolveCareerTeamMediaProfile,
   resolveIssueTeamMediaProfile,
@@ -303,7 +304,12 @@ const NewsroomTeamHubPortal = () => {
 
   const data = useMemo(() => {
     if (!career) return null;
-    const issues = Array.isArray(career.newsroomIssues) ? career.newsroomIssues : [];
+    const blockedIssueIds = noAppearanceCoverageIssueIds(career);
+    const issues = (Array.isArray(career.newsroomIssues) ? career.newsroomIssues : []).filter((issue) => {
+      const publicationId = issue?.publicationId || issue?.weekKey || issue?.id
+        || `season-${Number(issue?.season || 1) || 1}-week-${Math.max(0, Number(issue?.week || 0) || 0)}`;
+      return !blockedIssueIds.has(publicationId);
+    });
     const currentProfile = resolveCareerTeamMediaProfile(career);
     const currentIssues = issues
       .filter((issue) => sameProgram(issue?.outletProfile?.school, currentProfile.school))

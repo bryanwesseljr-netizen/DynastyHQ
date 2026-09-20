@@ -10,6 +10,7 @@ import {
   TRANSFER_STATUSES,
 } from '../domain/playerRecruiting';
 import { suggestCollegeOutlets } from '../domain/collegeNewsroom';
+import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
 
 const PlayerRecruitingWorkspace = ({
   state,
@@ -47,6 +48,8 @@ const PlayerRecruitingWorkspace = ({
   const committed = Boolean(state.player?.isCommitted);
   const transfer = playerRecruiting.transfer;
   const collegeCareerStarted = careerStage === 'College';
+  const offseason = buildPlayerOffseasonMode(state);
+  const canRecordReturn = collegeCareerStarted && offseason.seasonComplete && !offseason.decision.complete;
   const topSchools = schools.slice(0, 3);
 
   const addSchool = (event) => {
@@ -92,13 +95,22 @@ const PlayerRecruitingWorkspace = ({
                 <div>
                   <p className="text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">Transfer status</p>
                   <h2 className="mt-1 text-sm font-black text-white">No active portal decision</h2>
-                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Nothing needs attention here week to week. Open the portal only when CFB 27 actually presents a transfer decision.</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{canRecordReturn
+                    ? `Season ${offseason.season} is complete. Record your return to ${state.player.college}, or open the portal only if CFB 27 actually presents transfer options.`
+                    : 'Nothing needs attention here week to week. Open the portal only when CFB 27 actually presents a transfer decision.'}</p>
                 </div>
               </div>
               {!readOnly ? (
-                <button type="button" disabled={!collegeCareerStarted} onClick={onOpenTransfer} className="min-h-9 shrink-0 rounded-lg border border-blue-400/25 bg-blue-500/[0.07] px-3 text-[8px] font-black uppercase tracking-wider text-blue-200 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-700">
-                  {collegeCareerStarted ? 'Explore transfer options' : 'Unlocks in college'}
-                </button>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {canRecordReturn ? (
+                    <button type="button" onClick={onStay} className="min-h-9 rounded-lg border border-emerald-400/25 bg-emerald-500/[0.08] px-3 text-[8px] font-black uppercase tracking-wider text-emerald-300">
+                      Return to {state.player.college}
+                    </button>
+                  ) : null}
+                  <button type="button" disabled={!collegeCareerStarted} onClick={onOpenTransfer} className="min-h-9 rounded-lg border border-blue-400/25 bg-blue-500/[0.07] px-3 text-[8px] font-black uppercase tracking-wider text-blue-200 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-700">
+                    {collegeCareerStarted ? 'Explore transfer options' : 'Unlocks in college'}
+                  </button>
+                </div>
               ) : null}
             </div>
           </section>

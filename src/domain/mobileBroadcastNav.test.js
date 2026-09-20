@@ -271,7 +271,7 @@ test('pinch-zoomed desktop-site view restores two-axis page panning without remo
   assert.match(portal, /addEventListener\('scroll', scheduleSync/);
   assert.match(navState, /html\.dhq-visual-zoomed \{/);
   assert.match(navState, /overflow-x: auto !important/);
-  assert.match(navState, /body\.dhq-visual-zoomed main\.dhq-page-main \{[\s\S]*overflow-x: visible !important/);
+  assert.match(navState, /body\.dhq-visual-zoomed:not\(\.dhq-game-hub-open\) main\.dhq-page-main \{[\s\S]*overflow-x: visible !important/);
   assert.match(navState, /body\.dhq-visual-zoomed:not\(\.dhq-game-hub-open\) #root > div\.flex\.h-screen \{[\s\S]*height: auto !important[\s\S]*overflow: visible !important/);
   assert.match(navState, /body\.dhq-visual-zoomed:not\(\.dhq-game-hub-open\) main\.dhq-page-main \{[\s\S]*overflow: visible !important/);
   assert.doesNotMatch(navState, /body\.dhq-visual-zoomed #root > div\.flex\.h-screen/);

@@ -17,6 +17,7 @@ import StandbyStatusUpdatePortal from './StandbyStatusUpdatePortal.jsx';
 import CareerEditorialEventPortal from './CareerEditorialEventPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
 import GameDayPregamePortal from './GameDayPregamePortal.jsx';
+import BackupSeasonPortal from './BackupSeasonPortal.jsx';
 import GameDayActivationPortal from './GameDayActivationPortal.jsx';
 import GameHubIntegrationPortal from './GameHubIntegrationPortal.jsx';
 import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
@@ -98,6 +99,7 @@ const OwnerEnhancements = () => (
     <GameHubPortal />
     <GameDayActivationPortal />
     <GameDayPregamePortal />
+    <BackupSeasonPortal />
     <GameHubIntegrationPortal />
     <CareerOverviewPortal />
     <CareerOverviewViewportPortal />

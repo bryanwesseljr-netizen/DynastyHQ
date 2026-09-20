@@ -14,9 +14,11 @@ import {
   Sparkles,
   Trophy,
   UserX,
+  FastForward,
 } from 'lucide-react';
 import { buildGameDayLiveV2 } from '../domain/gameDayLiveV2.js';
 import { fallbackTeamBrand, resolveTeamBrand } from '../domain/teamBrandResolver.js';
+import { isBackupRole } from '../domain/backupSeasonMode.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './game-day-live-v2.css';
 
@@ -123,6 +125,7 @@ const GameDayPregamePortal = () => {
     detail: { noAppearance: true },
   }));
   const openVerifiedTools = () => window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
+  const openBackupMode = () => window.dispatchEvent(new CustomEvent('dynastyhq:open-backup-season-mode'));
   const totalTD = live.player.seasonTotals.passTD + live.player.seasonTotals.rushTD;
   const opponentRecord = clean(live.matchup?.record) || '—';
   const locationLine = [live.venue, live.kickoff].filter(Boolean).join(' · ') || 'Game details from Week Setup';
@@ -267,6 +270,7 @@ const GameDayPregamePortal = () => {
         <div className="dhq-live__handoff-actions">
           <button type="button" className="is-primary" onClick={openImport} disabled={!live.ready}><CloudUpload size={14} /> IMPORT AFTER GAME</button>
           <button type="button" onClick={openNoAppearanceImport} disabled={!live.ready}><UserX size={14} /> I DID NOT PLAY</button>
+          {isBackupRole(live.player?.role) ? <button type="button" onClick={openBackupMode}><FastForward size={14} /> FAST-FORWARD BACKUP WEEKS</button> : null}
           <button type="button" onClick={openVerifiedTools}><FileText size={14} /> VERIFIED DATA TOOLS</button>
           <button type="button" onClick={() => openNav('Career')}>CAREER CONTEXT <ChevronRight size={13} /></button>
         </div>

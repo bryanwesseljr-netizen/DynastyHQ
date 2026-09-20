@@ -2,6 +2,7 @@ import {
   getCollegeFootballTeamIdentity,
   normalizeCollegeFootballConference,
 } from './collegeFootballTeamIdentity.js';
+import { seasonScheduleFor, syncScheduleWithCareer } from './seasonSchedule.js';
 
 const clean = (value) => String(value ?? '').trim();
 const arrayOf = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
@@ -45,6 +46,20 @@ const seasonTeamGames = (state = {}, season = state.currentSeason || 1) => {
   const targetSeason = Math.max(1, Number(season) || 1);
   const byWeek = new Map();
 
+  const schedule = seasonScheduleFor(state, targetSeason);
+  if (schedule?.entries?.length) {
+    syncScheduleWithCareer(state, schedule).entries
+      .filter((entry) => !entry.isBye)
+      .forEach((entry) => byWeek.set(Number(entry.week), {
+        season: targetSeason,
+        week: Number(entry.week),
+        opponent: entry.opponent,
+        result: entry.result,
+        completed: entry.completed,
+        isConferenceGame: typeof entry.isConferenceGame === 'boolean' ? entry.isConferenceGame : undefined,
+      }));
+  }
+
   arrayOf(state.weeklyUpdates)
     .filter((entry) => Number(entry?.season || 1) === targetSeason)
     .filter((entry) => entry?.game && entry.game.stage !== 'high-school' && !entry.game.evaluation)
@@ -65,8 +80,14 @@ const seasonTeamGames = (state = {}, season = state.currentSeason || 1) => {
   return [...byWeek.values()].sort((left, right) => Number(left.week || 0) - Number(right.week || 0));
 };
 
-export const conferenceRecordForSeason = (state = {}, season = state.currentSeason || 1) => {
+export const conferenceRecordThroughWeek = (
+  state = {},
+  season = state.currentSeason || 1,
+  throughWeek = Number.MAX_SAFE_INTEGER,
+) => {
+  const limit = Number.isFinite(Number(throughWeek)) ? Number(throughWeek) : Number.MAX_SAFE_INTEGER;
   const games = seasonTeamGames(state, season)
+    .filter((game) => Number(game?.week || 0) <= limit)
     .filter((game) => ['W', 'L'].includes(clean(game?.result).toUpperCase()))
     .filter((game) => resolveConferenceGame(state, game));
   const wins = games.filter((game) => clean(game.result).toUpperCase() === 'W').length;
@@ -74,6 +95,10 @@ export const conferenceRecordForSeason = (state = {}, season = state.currentSeas
   const conference = conferenceForTeam(state, state?.player?.college || state?.player?.school);
   return { wins, losses, games: games.length, conference };
 };
+
+export const conferenceRecordForSeason = (state = {}, season = state.currentSeason || 1) => (
+  conferenceRecordThroughWeek(state, season)
+);
 
 export const conferenceAbbreviation = (conference = '') => ({
   ACC: 'ACC',

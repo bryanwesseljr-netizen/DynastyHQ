@@ -17,12 +17,14 @@ import StandbyStatusUpdatePortal from './StandbyStatusUpdatePortal.jsx';
 import CareerEditorialEventPortal from './CareerEditorialEventPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
 import GameDayPregamePortal from './GameDayPregamePortal.jsx';
+import BackupSeasonPortal from './BackupSeasonPortal.jsx';
 import GameDayActivationPortal from './GameDayActivationPortal.jsx';
 import GameHubIntegrationPortal from './GameHubIntegrationPortal.jsx';
 import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
 import WeekHubRoutingPortal from './WeekHubRoutingPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
 import NavigationStatePortal from './NavigationStatePortal.jsx';
+import ZoomPanPortal from './ZoomPanPortal.jsx';
 import FreshStartPortal from './FreshStartPortal.jsx';
 import ImmersionPortal from './ImmersionPortal.jsx';
 import StorylineContinuityPortal from './StorylineContinuityPortal.jsx';
@@ -68,6 +70,7 @@ const OwnerEnhancements = () => (
   <OwnerCareerProvider>
     <TeamAccentPortal />
     <NavigationStatePortal />
+    <ZoomPanPortal />
     <DynamicMatchupHelmetPortal />
     <MobileBroadcastNavPortal />
     <PlayerOffseasonNavigationPortal />
@@ -96,6 +99,7 @@ const OwnerEnhancements = () => (
     <GameHubPortal />
     <GameDayActivationPortal />
     <GameDayPregamePortal />
+    <BackupSeasonPortal />
     <GameHubIntegrationPortal />
     <CareerOverviewPortal />
     <CareerOverviewViewportPortal />

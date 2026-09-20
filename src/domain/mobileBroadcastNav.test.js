@@ -23,6 +23,7 @@ const globalAccentUrl = new URL('../global-team-accent.css', import.meta.url);
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
 const desktopFinalizerUrl = new URL('../components/DesktopPrimaryNavFinalizer.jsx', import.meta.url);
 const navigationStatePortalUrl = new URL('../components/NavigationStatePortal.jsx', import.meta.url);
+const zoomPanPortalUrl = new URL('../components/ZoomPanPortal.jsx', import.meta.url);
 
 test('mobile uses the same primary broadcast destinations as desktop', async () => {
   const [portal, owner] = await Promise.all([
@@ -248,4 +249,32 @@ test('desktop active navigation has exactly one short underline and no lingering
     navState,
     /\.dhq-primary-nav-item\[aria-current="page"\] > \.dhq-primary-nav-label,[\s\S]{0,500}border-bottom-color/,
   );
+});
+
+
+test('pinch-zoomed desktop-site view restores two-axis page panning without removing normal nav guardrails', async () => {
+  const [portal, owner, navState] = await Promise.all([
+    readFile(zoomPanPortalUrl, 'utf8'),
+    readFile(ownerUrl, 'utf8'),
+    readFile(navStateUrl, 'utf8'),
+  ]);
+
+  assert.match(owner, /import ZoomPanPortal from '\.\/ZoomPanPortal\.jsx';/);
+  assert.match(owner, /<ZoomPanPortal \/>/);
+  assert.match(portal, /window\.visualViewport/);
+  assert.match(portal, /scale > 1 \+ ZOOM_EPSILON/);
+  assert.match(portal, /visualWidth < layoutWidth - 2/);
+  assert.match(portal, /requestAnimationFrame/);
+  assert.match(portal, /setTimeout\(syncZoomState, 120\)/);
+  assert.match(portal, /dhq-visual-zoomed/);
+  assert.match(portal, /addEventListener\('resize', scheduleSync/);
+  assert.match(portal, /addEventListener\('scroll', scheduleSync/);
+  assert.match(navState, /html\.dhq-visual-zoomed \{/);
+  assert.match(navState, /overflow-x: auto !important/);
+  assert.match(navState, /body\.dhq-visual-zoomed:not\(\.dhq-game-hub-open\) main\.dhq-page-main \{[\s\S]*overflow-x: visible !important/);
+  assert.match(navState, /body\.dhq-visual-zoomed:not\(\.dhq-game-hub-open\) #root > div\.flex\.h-screen \{[\s\S]*height: auto !important[\s\S]*overflow: visible !important/);
+  assert.match(navState, /body\.dhq-visual-zoomed:not\(\.dhq-game-hub-open\) main\.dhq-page-main \{[\s\S]*overflow: visible !important/);
+  assert.doesNotMatch(navState, /body\.dhq-visual-zoomed #root > div\.flex\.h-screen/);
+  assert.match(navState, /touch-action: pan-x pan-y pinch-zoom !important/);
+  assert.match(navState, /main\.dhq-page-main \{[\s\S]*overflow-x: hidden !important/);
 });

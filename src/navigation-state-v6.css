@@ -510,3 +510,75 @@ main.dhq-page-main :where(h1, h2, h3, h4, p, li, td, th, strong, span) {
   max-width: 100%;
   overflow-wrap: break-word;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* VISUAL ZOOM PAN RESTORE                                                     */
+/* Android/Chrome desktop-site pinch zoom uses the visual viewport. The normal  */
+/* route guardrails intentionally clip layout overflow, but that also prevents  */
+/* the user from panning a zoomed-in page. ZoomPanPortal only adds this class    */
+/* while visualViewport.scale is above 1, so the zero-zoom nav guardrail stays  */
+/* intact and the zoomed page can move naturally in both directions.            */
+/* -------------------------------------------------------------------------- */
+
+html.dhq-visual-zoomed {
+  overflow-x: auto !important;
+  overscroll-behavior-x: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+html.dhq-visual-zoomed body:not(.dhq-game-hub-open),
+body.dhq-visual-zoomed:not(.dhq-game-hub-open) #root {
+  max-width: none !important;
+  overflow-x: visible !important;
+  overscroll-behavior-x: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+body.dhq-visual-zoomed:not(.dhq-game-hub-open) main.dhq-page-main {
+  max-width: none !important;
+  overflow-x: visible !important;
+  overscroll-behavior: auto !important;
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
+
+/* The legacy Verified Data Tools route lives inside the original h-screen app
+   shell and scrolls main.dhq-page-main internally. During visual zoom that
+   creates two competing scroll surfaces (visual viewport + inner main), which
+   can make panning appear to randomly lock at different zoom factors. When
+   zoomed, hand scrolling back to the document for every normal app route. */
+html.dhq-visual-zoomed {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow: auto !important;
+  overscroll-behavior: auto !important;
+}
+
+html.dhq-visual-zoomed body:not(.dhq-game-hub-open) {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow: auto !important;
+  overscroll-behavior: auto !important;
+}
+
+body.dhq-visual-zoomed:not(.dhq-game-hub-open) #root {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+body.dhq-visual-zoomed:not(.dhq-game-hub-open) #root > div.flex.h-screen {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+body.dhq-visual-zoomed:not(.dhq-game-hub-open) main.dhq-page-main {
+  height: auto !important;
+  min-height: 100vh !important;
+  flex: 1 0 auto !important;
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  -webkit-overflow-scrolling: touch;
+}

@@ -21,12 +21,14 @@ import {
   Trophy,
   TrendingUp,
   UserX,
+  FastForward,
 } from 'lucide-react';
 import footballStadiumBg from '../assets/dynastyhq-football-stadium-bg.webp';
 import matchupHelmets from '../assets/matchup-helmets.webp';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import { teamRecordForSeason } from '../domain/seasonSchedule.js';
 import { conferenceAbbreviation, conferenceRecordForSeason } from '../domain/conferenceRecord.js';
+import { isBackupRole } from '../domain/backupSeasonMode.js';
 import './game-hub.css';
 
 const clean = (value) => String(value ?? '').trim();
@@ -327,6 +329,10 @@ const GameHubPortal = () => {
     window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
   };
 
+  const openBackupMode = () => {
+    window.dispatchEvent(new CustomEvent('dynastyhq:open-backup-season-mode'));
+  };
+
   const selectedGame = model.selectedGame;
   const isCompleted = Boolean(selectedGame);
   const opponent = isCompleted ? clean(selectedGame.opponent) : clean(model.setup.opponent) || 'OPPONENT TBD';
@@ -392,6 +398,7 @@ const GameHubPortal = () => {
                     <>
                       <button type="button" className="is-primary" onClick={openImport}><CloudUpload size={15} /> IMPORT SESSION</button>
                       <button type="button" className="is-secondary" onClick={openNoAppearanceImport}><UserX size={15} /> I DID NOT PLAY</button>
+                      {isBackupRole(model.rtg?.rank) ? <button type="button" className="is-secondary" onClick={openBackupMode}><FastForward size={15} /> FAST-FORWARD BACKUP WEEKS</button> : null}
                       <button type="button" className="is-secondary" onClick={openAdvanced}><FileText size={14} /> VERIFIED DATA TOOLS</button>
                     </>
                   ) : null}

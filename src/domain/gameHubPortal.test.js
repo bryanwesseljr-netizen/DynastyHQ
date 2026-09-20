@@ -71,3 +71,21 @@ test('Game Hub opens on the current week and exposes the no-appearance and verif
   assert.match(sessionImport, /value = 'no-appearance'/);
   assert.match(sessionImport, /NOT NEEDED/);
 });
+
+
+test('backup season mode is exposed from Game Hub only for saved backup roles', async () => {
+  const [gameHub, gameDay, owner, backupPortal] = await Promise.all([
+    readFile(gameHubUrl, 'utf8'),
+    readFile(new URL('../components/GameDayPregamePortal.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../components/OwnerEnhancements.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../components/BackupSeasonPortal.jsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(gameHub, /FAST-FORWARD BACKUP WEEKS/);
+  assert.match(gameHub, /isBackupRole\(model\.rtg\?\.rank\)/);
+  assert.match(gameDay, /isBackupRole\(live\.player\?\.role\)/);
+  assert.match(owner, /<BackupSeasonPortal \/>/);
+  assert.match(backupPortal, /dynastyhq:open-backup-season-mode/);
+  assert.match(backupPortal, /Skip the weekly homework/);
+  assert.match(backupPortal, /Record several games now — or do them later/);
+});

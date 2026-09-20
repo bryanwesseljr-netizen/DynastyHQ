@@ -475,8 +475,7 @@ const SessionImportPortal = () => {
               <button type="button" className="is-secondary" onClick={() => {
                 setOpen(false);
                 document.body.classList.remove('dhq-session-import-mode', 'dhq-session-import-review');
-                window.__dhqAllowLegacyGameHubOnce = true;
-                window.setTimeout(() => findButton(/^game hub$/i)?.click(), 30);
+                window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
               }}><FileText size={15} /> VERIFIED DATA TOOLS</button>
               <button type="button" className="is-primary" onClick={() => closeWorkspace({ focusApplied: true })}>OPEN PROCESS WEEK <ChevronRight size={16} /></button>
             </div>

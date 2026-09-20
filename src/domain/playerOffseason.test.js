@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { buildPlayerOffseasonMode } from './playerOffseason.js';
 
 const schedule = (complete = true) => ({
@@ -88,4 +89,13 @@ test('return decision keeps the current program as the next chapter', () => {
   assert.equal(model.decision.headline, 'Returning to Oregon');
   assert.equal(model.decision.destination, 'Oregon');
   assert.equal(model.nextSeasonReady, true);
+});
+
+
+test('college recruiting decision desk offers a direct return path without opening the transfer portal', async () => {
+  const source = await readFile(new URL('../components/PlayerRecruitingWorkspace.jsx', import.meta.url), 'utf8');
+  assert.match(source, /const canRecordReturn = collegeCareerStarted && offseason\.seasonComplete && !offseason\.decision\.complete/);
+  assert.match(source, /Return to \{state\.player\.college\}/);
+  assert.match(source, /onClick=\{onStay\}/);
+  assert.match(source, /open the portal only if CFB 27 actually presents transfer options/i);
 });

@@ -29,6 +29,7 @@ const emptyForm = {
   opponentRecord: '',
   kickoff: '',
   venue: '',
+  conferenceGameOverride: '',
   note: '',
   overall: '',
   rank: '',
@@ -72,6 +73,7 @@ const formFromCareer = (career = {}) => {
     opponentRecord: saved.opponentRecord || '',
     kickoff: saved.kickoff || '',
     venue: saved.venue || '',
+    conferenceGameOverride: saved.conferenceGameOverride || '',
     note: saved.note || '',
     overall: career.player?.overall ?? '',
     rank: career.rtg?.rank ?? '',
@@ -199,6 +201,11 @@ const WeekSetupPanel = () => {
         opponentRecord: setup.opponentRecord,
         kickoff: setup.kickoff,
         venue: setup.venue,
+        conferenceGameOverride: setup.conferenceGameOverride,
+        isConferenceGame: setup.isConferenceGame,
+        conferenceGameSource: setup.conferenceGameSource,
+        conferenceName: setup.conferenceName,
+        opponentConference: setup.opponentConference,
         note: setup.note,
       },
     };
@@ -273,6 +280,16 @@ const WeekSetupPanel = () => {
             </Field>
             <Field label="Opponent Record">
               <input className={inputClass} type="text" value={form.opponentRecord} onChange={(event) => updateForm({ opponentRecord: event.target.value })} placeholder="Example: 5-3 (3-2)" />
+            </Field>
+            <Field
+              label="Conference Game"
+              hint={`Auto: ${normalized.isConferenceGame ? 'Conference' : 'Non-conference'}${normalized.opponentConference ? ` · ${normalized.opponentConference}` : ''}. Override only if your dynasty realignment differs.`}
+            >
+              <select className={inputClass} value={form.conferenceGameOverride} onChange={(event) => updateForm({ conferenceGameOverride: event.target.value })}>
+                <option value="">Auto detect</option>
+                <option value="conference">Conference game</option>
+                <option value="non-conference">Non-conference</option>
+              </select>
             </Field>
             <Field label="Kickoff">
               <input className={inputClass} type="text" value={form.kickoff} onChange={(event) => updateForm({ kickoff: event.target.value })} placeholder="Example: Saturday, 7:30 PM" />

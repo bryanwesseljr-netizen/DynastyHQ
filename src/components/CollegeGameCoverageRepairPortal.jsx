@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
-import { addMissingCollegeGameCoverageIssues, missingCollegeGameCoverageUpdates } from '../domain/collegeGameCoverageRepair.js';
+import {
+  addMissingCollegeGameCoverageIssues,
+  hasCollegeGameCoverageRepairWork,
+  removeNoAppearanceCoverageIssues,
+} from '../domain/collegeGameCoverageRepair.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'college-game-coverage-repair-v1';
@@ -12,7 +16,7 @@ const CollegeGameCoverageRepairPortal = () => {
 
   useEffect(() => {
     if (!user || !db || !career || busyRef.current) return undefined;
-    if (!missingCollegeGameCoverageUpdates(career).length) return undefined;
+    if (!hasCollegeGameCoverageRepairWork(career)) return undefined;
 
     let cancelled = false;
     busyRef.current = true;
@@ -23,8 +27,9 @@ const CollegeGameCoverageRepairPortal = () => {
           const snapshot = await transaction.get(ref);
           if (!snapshot.exists()) return;
           const remote = snapshot.data();
-          if (!missingCollegeGameCoverageUpdates(remote).length) return;
-          const repaired = addMissingCollegeGameCoverageIssues(remote);
+          if (!hasCollegeGameCoverageRepairWork(remote)) return;
+          const cleaned = removeNoAppearanceCoverageIssues(remote);
+          const repaired = addMissingCollegeGameCoverageIssues(cleaned);
           transaction.set(ref, {
             ...repaired,
             _sync: {

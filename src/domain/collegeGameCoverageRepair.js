@@ -18,12 +18,18 @@ const isCollegePlayerCareer = (state = {}) => {
     && Boolean(state.player?.isCommitted || state.player?.college);
 };
 
+const isNoAppearanceUpdate = (entry = {}) => (
+  String(entry?.weekType || '').toLowerCase() === 'no-appearance'
+  || entry?.game?.didPlay === false
+);
+
 const isCollegeGameUpdate = (entry = {}) => Boolean(
   entry?.status === 'published'
   && entry?.game
   && entry.game.stage !== 'high-school'
   && !entry.game.evaluation
   && String(entry.weekType || '').toLowerCase() !== 'bye'
+  && !isNoAppearanceUpdate(entry)
 );
 
 export const missingCollegeGameCoverageUpdates = (state = {}) => {
@@ -85,4 +91,28 @@ export const addMissingCollegeGameCoverageIssues = (state = {}) => {
     nextIssues.push(buildCollegeGameCoverageIssue({ ...state, newsroomIssues: nextIssues }, update));
   });
   return { ...state, newsroomIssues: nextIssues };
+};
+
+
+export const noAppearanceCoverageIssueIds = (state = {}) => {
+  const ids = new Set(
+    (state.weeklyUpdates || [])
+      .filter(isNoAppearanceUpdate)
+      .map((entry) => publicationIdFor(entry)),
+  );
+  return ids;
+};
+
+export const removeNoAppearanceCoverageIssues = (state = {}) => {
+  const blocked = noAppearanceCoverageIssueIds(state);
+  if (!blocked.size) return state;
+  const current = state.newsroomIssues || [];
+  const newsroomIssues = current.filter((issue) => !blocked.has(publicationIdFor(issue)));
+  return newsroomIssues.length === current.length ? state : { ...state, newsroomIssues };
+};
+
+export const hasCollegeGameCoverageRepairWork = (state = {}) => {
+  if (missingCollegeGameCoverageUpdates(state).length) return true;
+  const blocked = noAppearanceCoverageIssueIds(state);
+  return (state.newsroomIssues || []).some((issue) => blocked.has(publicationIdFor(issue)));
 };

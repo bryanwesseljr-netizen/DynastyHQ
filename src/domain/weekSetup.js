@@ -1,4 +1,5 @@
 import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot, RTG_FIELDS } from './rtgProgress.js';
+import { conferenceForTeam, inferConferenceGame } from './conferenceRecord.js';
 
 export const WEEK_SETUP_TYPES = Object.freeze({
   GAME: 'game',
@@ -43,16 +44,39 @@ export const normalizeWeekSetup = (setup = {}, state = {}) => {
   const type = Object.values(WEEK_SETUP_TYPES).includes(setup.type) ? setup.type : WEEK_SETUP_TYPES.GAME;
   const customLabel = String(setup.label || '').trim();
   const matchupText = (value) => (type === WEEK_SETUP_TYPES.GAME ? String(value || '').trim() : '');
+  const opponent = matchupText(setup.opponent);
+  const conferenceGameOverride = ['conference', 'non-conference'].includes(setup.conferenceGameOverride)
+    ? setup.conferenceGameOverride
+    : '';
+  const inferredConferenceGame = type === WEEK_SETUP_TYPES.GAME ? inferConferenceGame(state, opponent) : false;
+  const isConferenceGame = type === WEEK_SETUP_TYPES.GAME
+    ? (conferenceGameOverride
+      ? conferenceGameOverride === 'conference'
+      : (setup.conferenceGameSource === 'manual' && typeof setup.isConferenceGame === 'boolean'
+        ? setup.isConferenceGame
+        : inferredConferenceGame))
+    : false;
+  const conferenceName = type === WEEK_SETUP_TYPES.GAME
+    ? conferenceForTeam(state, state?.player?.college || state?.player?.school)
+    : '';
+  const opponentConference = type === WEEK_SETUP_TYPES.GAME
+    ? conferenceForTeam(state, opponent)
+    : '';
   return {
     week,
     type,
     phase,
     label: customLabel || defaultWeekLabel({ week, type, phase }),
     customLabel,
-    opponent: matchupText(setup.opponent),
+    opponent,
     opponentRecord: matchupText(setup.opponentRecord),
     kickoff: matchupText(setup.kickoff),
     venue: matchupText(setup.venue),
+    conferenceGameOverride,
+    isConferenceGame,
+    conferenceGameSource: conferenceGameOverride ? 'manual' : 'auto',
+    conferenceName,
+    opponentConference,
     note: String(setup.note || '').trim(),
   };
 };
@@ -305,6 +329,11 @@ export const createByeWeekPublication = ({ state = {}, setup: rawSetup = {}, rtg
       opponentRecord: '',
       kickoff: '',
       venue: '',
+      conferenceGameOverride: '',
+      isConferenceGame: false,
+      conferenceGameSource: 'auto',
+      conferenceName: '',
+      opponentConference: '',
       note: '',
     },
     weeklyUpdates: [...(state.weeklyUpdates || []), weeklyUpdate],

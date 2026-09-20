@@ -1,6 +1,7 @@
 import { buildGameDayBrief } from './gameDayBriefV2.js';
 import { buildMediaNetworkLayer, latestMeaningfulMediaContext } from './mediaNetworkLayer.js';
-import { nextScheduledGame, seasonScheduleFor, syncScheduleWithCareer } from './seasonSchedule.js';
+import { nextScheduledGame, seasonScheduleFor, syncScheduleWithCareer, teamRecordThroughWeek } from './seasonSchedule.js';
+import { conferenceAbbreviation, conferenceRecordThroughWeek } from './conferenceRecord.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const list = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
@@ -134,7 +135,7 @@ const stakesFor = ({ brief, latestGame, setup = {}, schedule = {} }) => {
   const role = clean(brief.player?.role).toUpperCase();
   const playerName = clean(brief.player?.name) || 'The quarterback';
   const coachTrust = brief.player?.coachTrust;
-  const enteringRecord = recordFromEntries(schedule.recent) || clean(brief.record);
+  const enteringRecord = clean(brief.record) || recordFromEntries(schedule.recent);
 
   if (playerName) {
     const lastLine = playerLineSentence(latestGame);
@@ -234,8 +235,20 @@ export const buildGameDayLiveV2 = (state = {}) => {
   const venue = clean(brief.matchup?.venue)
     || (schedule.current?.homeAway === 'home' ? 'Home' : schedule.current?.homeAway === 'away' ? 'Away' : schedule.current?.homeAway === 'neutral' ? 'Neutral site' : '');
   const kickoff = clean(brief.matchup?.kickoff || schedule.current?.date);
-  const enteringRecord = recordFromEntries(schedule.recent) || brief.record;
-  const enrichedBrief = { ...brief, record: enteringRecord, venue, kickoff };
+  const teamRecord = teamRecordThroughWeek(workingState, brief.season, Math.max(0, Number(brief.week) - 1));
+  const conferenceRecord = conferenceRecordThroughWeek(workingState, brief.season, Math.max(0, Number(brief.week) - 1));
+  const enteringRecord = teamRecord.games ? `${teamRecord.wins}-${teamRecord.losses}` : (recordFromEntries(schedule.recent) || brief.record);
+  const conferenceRecordText = conferenceRecord.games
+    ? `${conferenceRecord.wins}-${conferenceRecord.losses} ${conferenceAbbreviation(conferenceRecord.conference)}`
+    : '';
+  const enrichedBrief = {
+    ...brief,
+    record: enteringRecord,
+    conferenceRecord: conferenceRecordText,
+    conferenceName: conferenceRecord.conference,
+    venue,
+    kickoff,
+  };
 
   return {
     ...enrichedBrief,

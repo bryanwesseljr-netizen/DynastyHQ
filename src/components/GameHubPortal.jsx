@@ -164,6 +164,16 @@ const GameHubPortal = () => {
     return () => document.body.classList.remove('dhq-game-hub-open');
   }, [open]);
 
+  useEffect(() => {
+    const openVerifiedTools = () => {
+      setOpen(false);
+      window.__dhqAllowLegacyGameHubOnce = true;
+      window.setTimeout(() => visibleNavButton('Game Hub')?.click(), 20);
+    };
+    window.addEventListener('dynastyhq:open-verified-data-tools', openVerifiedTools);
+    return () => window.removeEventListener('dynastyhq:open-verified-data-tools', openVerifiedTools);
+  }, []);
+
   const model = useMemo(() => {
     const state = career || {};
     const player = state.player || {};
@@ -314,9 +324,7 @@ const GameHubPortal = () => {
   };
 
   const openAdvanced = () => {
-    close();
-    window.__dhqAllowLegacyGameHubOnce = true;
-    window.setTimeout(() => visibleNavButton('Game Hub')?.click(), 20);
+    window.dispatchEvent(new CustomEvent('dynastyhq:open-verified-data-tools'));
   };
 
   const selectedGame = model.selectedGame;

@@ -139,6 +139,10 @@ import {
 } from './domain/newsroomGeneration';
 import { noAppearanceCoverageIssueIds } from './domain/collegeGameCoverageRepair';
 import {
+  advanceCareerSeason,
+  recoverProductionCareerForSeason,
+} from './domain/seasonTransition.js';
+import {
   buildPostgameFrontPage,
   updatePostgameFrontPage,
   upsertPostgameFrontPage,
@@ -170,6 +174,7 @@ const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const viewId = urlParams.get('view');
   const frontPageParam = urlParams.get('frontPage') || '';
+  const previewRecoveryTarget = Math.max(0, Number(urlParams.get('recoverPreviewSeason')) || 0);
   const isReadOnly = !!viewId;
 
   const [activeTab, setActiveTab] = useState(frontPageParam ? 'newsroom' : 'dashboard');
@@ -180,6 +185,8 @@ const App = () => {
   const [isHouseRulesModalOpen, setIsHouseRulesModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [advanceConfirmModal, setAdvanceConfirmModal] = useState(false);
+  const [isRecoveringPreviewCareer, setIsRecoveringPreviewCareer] = useState(false);
+  const [previewRecoveryError, setPreviewRecoveryError] = useState('');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
@@ -1176,14 +1183,86 @@ const handleSaveGameClick = () => {
   };
 
   const requestAdvanceSeason = () => setAdvanceConfirmModal(true);
-  const confirmAdvanceSeason = () => {
-    updateAppState(prev => ({
-      ...prev,
-      currentSeason: (prev.currentSeason || 1) + 1,
-      currentWeek: 1,
-      coach: { ...prev.coach, contractYear: (prev.coach?.contractYear || 1) + 1 }
-    }), `Welcome to Season ${(appState.currentSeason || 1) + 1}!`);
-    setAdvanceConfirmModal(false);
+  const confirmAdvanceSeason = async () => {
+    if (!userState || !db) return;
+    const nextSeason = (Number(appState.currentSeason) || 1) + 1;
+    try {
+      const sourceRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const sourceSnapshot = await getDoc(sourceRef);
+      if (!sourceSnapshot.exists()) throw new Error('The current master save could not be found, so DynastyHQ blocked the season advance.');
+
+      const sourceState = migrateCareerState(sourceSnapshot.data(), defaultState);
+      const protectedNext = advanceCareerSeason(sourceState, { nextSeason });
+      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-season-${nextSeason}-${Date.now()}`);
+      await setDoc(backupRef, {
+        ...sourceSnapshot.data(),
+        _seasonAdvanceBackup: {
+          fromSeason: Number(sourceState.currentSeason) || 1,
+          toSeason: nextSeason,
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      await persistCloudState(protectedNext, `Welcome to Season ${nextSeason}!`);
+      setAppState(protectedNext);
+      setRtgUpdate(protectedNext.rtg || defaultState.rtg);
+      setCoachUpdate(protectedNext.coach || defaultState.coach);
+      setAdvanceConfirmModal(false);
+    } catch (error) {
+      setMessageModal({
+        isOpen: true,
+        text: error?.message || 'Season advance was blocked to protect your career history.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRecoverPreviewCareer = async () => {
+    if (!isPreviewDeployment || !previewRecoveryTarget || !userState || !db || isRecoveringPreviewCareer) return;
+    setIsRecoveringPreviewCareer(true);
+    setPreviewRecoveryError('');
+    try {
+      const previewRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const productionRef = doc(db, 'artifacts', productionAppId, 'users', userState.uid, 'hq_data', 'main');
+      const [previewSnapshot, productionSnapshot] = await Promise.all([
+        getDoc(previewRef),
+        getDoc(productionRef),
+      ]);
+      if (!productionSnapshot.exists()) {
+        throw new Error('The live production career could not be found for this signed-in account. No recovery changes were made.');
+      }
+
+      if (previewSnapshot.exists()) {
+        const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-preview-recovery-${Date.now()}`);
+        await setDoc(backupRef, {
+          ...previewSnapshot.data(),
+          _previewRecoveryBackup: { createdAt: new Date().toISOString() },
+        });
+      }
+
+      const productionState = migrateCareerState(productionSnapshot.data(), defaultState);
+      const recovered = {
+        ...recoverProductionCareerForSeason(productionState, previewRecoveryTarget),
+        _preview: {
+          isolated: true,
+          recoveredFromProduction: true,
+          recoveredAt: new Date().toISOString(),
+          targetSeason: previewRecoveryTarget,
+        },
+      };
+
+      await setDoc(previewRef, recovered);
+      setAppState(recovered);
+      setRtgUpdate(recovered.rtg || defaultState.rtg);
+      setCoachUpdate(recovered.coach || defaultState.coach);
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('recoverPreviewSeason');
+      window.location.replace(cleanUrl.toString());
+    } catch (error) {
+      setPreviewRecoveryError(error?.message || 'Preview recovery failed. The live production save was not changed.');
+      setIsRecoveringPreviewCareer(false);
+    }
   };
 
   const handleCommitment = (school) => {
@@ -4316,6 +4395,32 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
+       {isPreviewDeployment && previewRecoveryTarget > 0 && (
+           <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+             <div className="w-full max-w-lg rounded-2xl border border-emerald-500/35 bg-slate-950 p-7 text-center shadow-2xl">
+               <ShieldCheck size={44} className="mx-auto text-emerald-400" />
+               <h2 className="mt-4 text-2xl font-black uppercase text-white">Recover Safe Preview</h2>
+               <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                 This recovery reads your live production career as the source of truth, backs up the current preview state, restores the full career history into SAFE PREVIEW, records your return to the current school if needed, and opens Season {previewRecoveryTarget} at Week 1.
+               </p>
+               <p className="mt-3 text-xs font-bold text-emerald-300">Your live production save is read-only during this recovery and will not be overwritten.</p>
+               {previewRecoveryError ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 p-3 text-xs font-bold text-red-300">{previewRecoveryError}</p> : null}
+               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                 <button type="button" disabled={isRecoveringPreviewCareer} onClick={handleRecoverPreviewCareer} className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50">
+                   {isRecoveringPreviewCareer ? 'Recovering…' : `Recover Career + Open Season ${previewRecoveryTarget}`}
+                 </button>
+                 <button type="button" disabled={isRecoveringPreviewCareer} onClick={() => {
+                   const cleanUrl = new URL(window.location.href);
+                   cleanUrl.searchParams.delete('recoverPreviewSeason');
+                   window.location.replace(cleanUrl.toString());
+                 }} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300">
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+       )}
+
        {advanceConfirmModal && (
            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in p-4">
                <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6">

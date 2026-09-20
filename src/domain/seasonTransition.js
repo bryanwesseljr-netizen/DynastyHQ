@@ -58,6 +58,14 @@ export const advanceCareerSeason = (state = {}, options = {}) => {
   };
 };
 
+const hasPublishedSeasonActivity = (state = {}, season) => (
+  list(state.gameLogs).some((game) => Number(game?.season || 1) === Number(season))
+  || list(state.weeklyUpdates).some((entry) => (
+    Number(entry?.season || 1) === Number(season)
+    && entry?.status === 'published'
+  ))
+);
+
 export const recoverProductionCareerForSeason = (productionState = {}, targetSeason) => {
   if (!hasMeaningfulCareerHistory(productionState)) {
     const error = new Error('The live production save does not contain enough verified career history to use as a recovery source.');
@@ -67,7 +75,22 @@ export const recoverProductionCareerForSeason = (productionState = {}, targetSea
   const currentSeason = Math.max(1, numberOf(productionState.currentSeason, 1));
   const desiredSeason = Math.max(1, numberOf(targetSeason, currentSeason));
 
-  if (desiredSeason === currentSeason) return productionState;
+  if (desiredSeason === currentSeason) {
+    // A previously attempted transition may already have changed only the season/week
+    // pointer while leaving the career intact. If the target season has no published
+    // activity yet, normalize the pointer back to its true opening state instead of
+    // inheriting an accidental Week 2/3 value.
+    if (!hasPublishedSeasonActivity(productionState, desiredSeason)) {
+      return {
+        ...productionState,
+        currentSeason: desiredSeason,
+        currentWeek: 1,
+        currentWeekSetup: null,
+        weeklyAgendaDraft: null,
+      };
+    }
+    return productionState;
+  }
   if (desiredSeason !== currentSeason + 1) {
     const error = new Error(`Recovery can only restore the live season or advance exactly one season. Live is Season ${currentSeason}; requested Season ${desiredSeason}.`);
     error.code = 'RECOVERY_SEASON_MISMATCH';

@@ -238,7 +238,7 @@ export const buildGameDayLiveV2 = (state = {}) => {
   const teamRecord = teamRecordThroughWeek(workingState, brief.season, Math.max(0, Number(brief.week) - 1));
   const conferenceRecord = conferenceRecordThroughWeek(workingState, brief.season, Math.max(0, Number(brief.week) - 1));
   const enteringRecord = teamRecord.games ? `${teamRecord.wins}-${teamRecord.losses}` : (recordFromEntries(schedule.recent) || brief.record);
-  const conferenceRecordText = conferenceRecord.games
+  const conferenceRecordText = conferenceRecord.conference && conferenceRecord.conference !== 'Independent'
     ? `${conferenceRecord.wins}-${conferenceRecord.losses} ${conferenceAbbreviation(conferenceRecord.conference)}`
     : '';
   const enrichedBrief = {

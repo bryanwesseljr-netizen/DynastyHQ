@@ -288,3 +288,15 @@ test('homepage setup-week action routes into the real Game Hub agenda instead of
   assert.match(appSource, /\[data-week-setup-panel\], #dhq-gameweek-flow-agenda, \.dhq-weekly-agenda-workspace/);
   assert.doesNotMatch(appSource, /setActiveTab\('agenda'\)/);
 });
+
+
+test('Newsroom first entry always resolves to the Newsroom home even after refresh or sign-in hydration', async () => {
+  const source = await readFile(new URL('../components/NewsroomArticleExperiencePortal.jsx', import.meta.url), 'utf8');
+
+  assert.match(source, /button\.dataset\?\.dhqNavTarget === 'newsroom'/);
+  assert.match(source, /\/\^\(the \)\?newsroom\$\/i/);
+  assert.match(source, /const newsroomActive = Boolean\(main\) \|\| newsroomNavButton\?\.getAttribute\('aria-current'\) === 'page';/);
+  assert.match(source, /if \(newsroomActive && !wasNewsroomActive\) forceNewsroomHome\(\);/);
+  assert.match(source, /const delays = \[0, 40, 120, 240, 450, 750, 1100, 1600, 2200, 3000\]/);
+  assert.match(source, /const isNewsroomTopNavEvent = \(event\) =>/);
+});

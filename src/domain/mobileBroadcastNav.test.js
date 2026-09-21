@@ -278,3 +278,13 @@ test('pinch-zoomed desktop-site view restores two-axis page panning without remo
   assert.match(navState, /touch-action: pan-x pan-y pinch-zoom !important/);
   assert.match(navState, /main\.dhq-page-main \{[\s\S]*overflow-x: hidden !important/);
 });
+
+
+test('homepage setup-week action routes into the real Game Hub agenda instead of a blank agenda route', async () => {
+  const appSource = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(appSource, /if \(tab === 'agenda' \|\| tab === 'importSession' \|\| tab === 'gameHub'\) \{/);
+  assert.match(appSource, /setActiveTab\('dataEntry'\)/);
+  assert.match(appSource, /\[data-week-setup-panel\], #dhq-gameweek-flow-agenda, \.dhq-weekly-agenda-workspace/);
+  assert.doesNotMatch(appSource, /setActiveTab\('agenda'\)/);
+});

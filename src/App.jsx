@@ -2432,7 +2432,7 @@ const handleSaveGameClick = () => {
           readOnly={isReadOnly}
           onNavigate={(tab) => {
             if (tab === 'newsroom') setNewsroomFocusId('');
-            if (tab === 'importSession' || tab === 'gameHub') {
+            if (tab === 'agenda' || tab === 'importSession' || tab === 'gameHub') {
               setActiveTab('dataEntry');
               window.setTimeout(() => {
                 const target = tab === 'importSession'

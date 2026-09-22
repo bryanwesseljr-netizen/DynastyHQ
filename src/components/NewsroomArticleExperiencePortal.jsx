@@ -49,6 +49,14 @@ const findBackButton = (root) => [...root.querySelectorAll('button')]
 const findTeamNewsButton = (root) => [...root.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
   .find((button) => /team news/i.test(clean(button.textContent)));
 
+const isNewsroomTopNavButton = (button) => Boolean(
+  button
+  && (
+    button.dataset?.dhqNavTarget === 'newsroom'
+    || /^(the )?newsroom$/i.test(clean(button.textContent))
+  )
+);
+
 const NewsroomArticleExperiencePortal = () => {
   const { career } = useOwnerCareer();
   const careerRef = useRef(career);
@@ -104,14 +112,13 @@ const NewsroomArticleExperiencePortal = () => {
 
     const sync = () => {
       scheduled = false;
+      const main = root.querySelector('main[data-active-tab="newsroom"]');
       const newsroomNavButton = [...root.querySelectorAll('header button')]
-        .find((button) => /^the newsroom$/i.test(clean(button.textContent)));
-      const newsroomActive = newsroomNavButton?.getAttribute('aria-current') === 'page';
+        .find((button) => isNewsroomTopNavButton(button));
+      const newsroomActive = Boolean(main) || newsroomNavButton?.getAttribute('aria-current') === 'page';
 
       if (newsroomActive && !wasNewsroomActive) forceNewsroomHome();
       wasNewsroomActive = newsroomActive;
-
-      const main = root.querySelector('main[data-active-tab="newsroom"]');
       const issueSelect = root.querySelector('select[aria-label="Choose weekly newsroom edition"]');
       const newsroomRoot = issueSelect?.closest('.max-w-6xl');
 
@@ -185,9 +192,9 @@ const NewsroomArticleExperiencePortal = () => {
       window.requestAnimationFrame(sync);
     };
 
-    const isNewsroomTopNavButton = (event) => {
+    const isNewsroomTopNavEvent = (event) => {
       const button = event.target instanceof Element ? event.target.closest('header button') : null;
-      return Boolean(button && /^the newsroom$/i.test(clean(button.textContent)));
+      return isNewsroomTopNavButton(button);
     };
 
     const isNewsroomDeskButton = (event) => {
@@ -202,7 +209,7 @@ const NewsroomArticleExperiencePortal = () => {
         cancelHomeReset();
         return;
       }
-      if (!isNewsroomTopNavButton(event)) return;
+      if (!isNewsroomTopNavEvent(event)) return;
       forceNewsroomHome();
     };
 
@@ -211,7 +218,7 @@ const NewsroomArticleExperiencePortal = () => {
         cancelHomeReset();
         return;
       }
-      if (!isNewsroomTopNavButton(event)) return;
+      if (!isNewsroomTopNavEvent(event)) return;
       forceNewsroomHome();
     };
 

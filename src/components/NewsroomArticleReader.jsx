@@ -8,8 +8,6 @@ import '../newsroom-local-bearcats.css';
 import '../newsroom-regional-enquirer.css';
 import '../newsroom-national-espn.css';
 
-const NATIONAL_OUTLET = 'ESPN';
-
 const dateFrom = (value) => {
   if (!value) return null;
   const date = new Date(value);
@@ -71,10 +69,10 @@ const brandParts = (name = '') => {
 
 const markFor = (profile = {}) => String(profile.nickname || profile.school || 'C').trim().charAt(0).toUpperCase() || 'C';
 
-const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => {
+const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia, career = null }) => {
   const presentation = resolveNewsroomPresentation(story);
   const extras = buildEditorialExtras({ story, issue });
-  const team = resolveIssueTeamMediaProfile(issue);
+  const team = resolveIssueTeamMediaProfile(issue, career);
   const isLocal = extras.audience === 'local';
   const isRegional = extras.audience === 'regional';
   const isNational = extras.audience === 'national' || extras.audience === 'national-lead';
@@ -83,8 +81,10 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia }) => 
     : isRegional
       ? team.regionalOutletName
       : isNational
-        ? NATIONAL_OUTLET
-        : story.outletName;
+        ? team.nationalOutletName
+        : extras.audience === 'analysis'
+          ? 'The Film Room'
+          : story.outletName;
   const localBrand = brandParts(team.localOutletName);
   const teamMark = markFor(team);
   const schoolLabel = String(team.school || issue?.outletProfile?.school || 'College').toUpperCase();

@@ -1754,11 +1754,12 @@ const handleSaveGameClick = () => {
   const handleFrontPageNotice = (text, type = 'success') => setMessageModal({ isOpen: true, text, type });
 
   const handleGenerateNewsroomEdition = useCallback(async (publicationId, { automatic = false, force = false } = {}) => {
-    if (!userState || isReadOnly || !publicationId) return false;
+    if (!userState || isReadOnly || !publicationId || !db) return false;
     const attemptKey = `${userState.uid}:${publicationId}`;
     if (!force && newsroomWritingAttemptsRef.current.has(attemptKey)) return false;
     newsroomWritingAttemptsRef.current.add(attemptKey);
     setNewsroomWritingBusyId(publicationId);
+
     try {
       const idToken = await userState.getIdToken();
       const payload = buildNewsroomGenerationPayload(appState, publicationId);
@@ -1768,37 +1769,83 @@ const handleSaveGameClick = () => {
         payload,
         model: generated.model,
       });
-      updateAppState(
-        (prev) => {
-          const generatedState = applyGeneratedNewsroomEdition(prev, publicationId, edition);
-          if (prev.newsroomMediaSettings?.autoAssignLibrary === false) return generatedState;
-          return {
-            ...generatedState,
+
+      // Save the generated edition against the latest cloud document, not a potentially stale
+      // React snapshot. This prevents a successful 200 response from being visually applied and
+      // then immediately replaced by the older scaffold during Firestore synchronization.
+      const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      let committedState = null;
+      let committedRevision = cloudRevisionRef.current;
+
+      await runTransaction(db, async (transaction) => {
+        const remoteSnapshot = await transaction.get(docRef);
+        if (!remoteSnapshot.exists()) throw new Error('The DynastyHQ master save could not be found.');
+
+        const remoteState = migrateCareerState(remoteSnapshot.data(), defaultState);
+        let nextState = applyGeneratedNewsroomEdition(remoteState, publicationId, edition);
+        if (remoteState.newsroomMediaSettings?.autoAssignLibrary !== false) {
+          nextState = {
+            ...nextState,
             newsroomIssues: assignLibraryPhotosToEdition({
-              issues: generatedState.newsroomIssues,
+              issues: nextState.newsroomIssues,
               publicationId,
-              mediaLibrary: generatedState.newsroomMediaLibrary || [],
+              mediaLibrary: nextState.newsroomMediaLibrary || [],
             }),
           };
-        },
-        automatic ? null : 'A fresh immersive newsroom edition is ready!',
-      );
-      return true;
-    } catch (error) {
+        }
+
+        const savedIssue = (nextState.newsroomIssues || []).find((issue) => (
+          issue?.publicationId === publicationId || issue?.id === publicationId || issue?.weekKey === publicationId
+        ));
+        if (savedIssue?.editorialStatus !== 'generated' || !savedIssue?.articles?.length) {
+          throw new Error('The generated Newsroom edition could not be attached to the selected archive.');
+        }
+
+        const remoteRevision = Number(remoteSnapshot.data()?._sync?.revision) || 0;
+        committedRevision = Math.max(remoteRevision, cloudRevisionRef.current) + 1;
+        committedState = {
+          ...nextState,
+          _sync: {
+            revision: committedRevision,
+            deviceId: SAVE_DEVICE_ID,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        transaction.set(docRef, committedState);
+      });
+
+      if (!committedState) throw new Error('The generated Newsroom edition was not saved.');
+      cloudRevisionRef.current = committedRevision;
+      pendingCloudStateRef.current = null;
+      setAppState(committedState);
+      setSaveStatus({ state: 'saved', lastSavedAt: new Date().toISOString(), message: '' });
+
       if (!automatic) {
+        const savedIssue = (committedState.newsroomIssues || []).find((issue) => (
+          issue?.publicationId === publicationId || issue?.id === publicationId || issue?.weekKey === publicationId
+        ));
+        const headline = savedIssue?.articles?.[0]?.headline || '';
         setMessageModal({
           isOpen: true,
-          text: error?.message || 'The newsroom edition could not be written. The existing version was preserved.',
-          type: 'error',
+          text: headline
+            ? `Newsroom edition saved: “${headline}”`
+            : 'A fresh immersive newsroom edition is ready!',
+          type: 'success',
         });
-      } else {
-        console.error('Automatic newsroom writing failed', error);
+        window.setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3500);
       }
+      return true;
+    } catch (error) {
+      setMessageModal({
+        isOpen: true,
+        text: error?.message || 'The newsroom edition could not be written. The existing version was preserved.',
+        type: 'error',
+      });
       return false;
     } finally {
       setNewsroomWritingBusyId((current) => current === publicationId ? '' : current);
     }
-  }, [appState, isReadOnly, updateAppState, userState]);
+  }, [appState, defaultState, isReadOnly, userState]);
 
   const handleAssignNewsroomMedia = ({ issue, article, asset }) => {
     updateAppState((prev) => ({

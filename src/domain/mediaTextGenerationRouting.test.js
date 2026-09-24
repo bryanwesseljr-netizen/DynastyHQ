@@ -47,3 +47,12 @@ test('newsroom API salvages valid QB1 assignments instead of rejecting the whole
   assert.match(source, /articleBriefs = articleBriefs\.slice\(0, coverageDecision\.articleCount\)/);
   assert.match(source, /The newsroom edition packet could not be validated/);
 });
+
+
+test('newsroom API does not reject valid assignments just because an older edition lacks outletName metadata', async () => {
+  const source = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(source, /\? 'Campus Beat'/);
+  assert.match(source, /\? 'Regional College Football'/);
+  assert.match(source, /\? 'Football Film Room'/);
+  assert.match(source, /\.filter\(\(brief\) => brief\.outletId && brief\.focusFactIds\.length\)/);
+});

@@ -10,7 +10,7 @@ const modelList = (value = '') => String(value)
   .filter(Boolean);
 
 export const GEMINI_TEXT_FALLBACK_MODELS = modelList(
-  process.env.GEMINI_TEXT_FALLBACK_MODELS || 'gemini-3.5-flash-lite,gemini-2.5-flash-lite,gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash',
+  process.env.GEMINI_TEXT_FALLBACK_MODELS || 'gemini-3.5-flash-lite,gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash',
 );
 export const GEMINI_TEXT_MODELS = [...new Set([GEMINI_TEXT_MODEL, ...GEMINI_TEXT_FALLBACK_MODELS])];
 
@@ -173,20 +173,28 @@ const retryableGeminiStatus = (status) => {
 const callGeminiTextFreeChain = async (options) => {
   const attempts = [];
   for (const model of GEMINI_TEXT_MODELS) {
-    try {
-      return await callGeminiText({ ...options, model });
-    } catch (error) {
-      const attempt = {
-        model,
-        status: Number(error?.status) || 0,
-        code: error?.code || '',
-        message: error?.message || 'Gemini request failed.',
-      };
-      attempts.push(attempt);
-      console.warn('Gemini text model attempt failed', attempt);
-      if (!retryableGeminiStatus(error?.status)) {
-        error.geminiAttempts = attempts;
-        throw error;
+    const maxAttempts = 2;
+    for (let attemptNumber = 1; attemptNumber <= maxAttempts; attemptNumber += 1) {
+      try {
+        return await callGeminiText({ ...options, model });
+      } catch (error) {
+        const invalidJson = Number(error?.status) === 502 && /invalid JSON/i.test(String(error?.message || ''));
+        const attempt = {
+          model,
+          attempt: attemptNumber,
+          status: Number(error?.status) || 0,
+          code: error?.code || '',
+          message: error?.message || 'Gemini request failed.',
+        };
+        attempts.push(attempt);
+        console.warn('Gemini text model attempt failed', attempt);
+        if (!retryableGeminiStatus(error?.status)) {
+          error.geminiAttempts = attempts;
+          throw error;
+        }
+        // A valid model can occasionally return truncated/invalid structured JSON on a large
+        // response. Give that same free model one clean retry before falling through.
+        if (!invalidJson || attemptNumber >= maxAttempts) break;
       }
     }
   }

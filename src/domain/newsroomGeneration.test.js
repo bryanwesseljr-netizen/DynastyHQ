@@ -188,3 +188,56 @@ test('Newsroom generation commits the generated edition atomically against the l
   assert.match(handler, /Newsroom edition saved:/);
   assert.doesNotMatch(handler, /updateAppState\(/);
 });
+
+
+test('normalized generated newsroom articles never introduce undefined Firestore fields', () => {
+  const payload = buildNewsroomGenerationPayload(state, publicationId);
+  payload.articleBriefs[0] = {
+    ...payload.articleBriefs[0],
+    outletName: '',
+    desk: undefined,
+    theme: undefined,
+    storyType: undefined,
+    audience: undefined,
+    audienceReach: undefined,
+    subjectPriority: undefined,
+    playerMentionPolicy: undefined,
+    coverageTier: undefined,
+  };
+  const generated = {
+    articles: [{
+      outletId: 'recruiting',
+      storyImportance: 'notable',
+      storyFormat: 'news',
+      kicker: '',
+      headline: 'A verified development changes the week',
+      dek: 'The published facts support a fresh story.',
+      dateline: '',
+      paragraphs: [paragraph, paragraph, paragraph, paragraph],
+      sectionHeadings: ['Why it matters'],
+      pullQuote: '',
+      sidebars: [{ title: 'At a glance', items: ['Verified context'] }],
+      citedFactIds: payload.articleBriefs[0].focusFactIds,
+    }],
+  };
+  const edition = normalizeGeneratedNewsroomEdition({ generated, payload, model: 'gemini-test' });
+  const findUndefined = (value) => {
+    if (Array.isArray(value)) return value.some(findUndefined);
+    if (value && typeof value === 'object') {
+      return Object.values(value).some((entry) => entry === undefined || findUndefined(entry));
+    }
+    return false;
+  };
+  assert.equal(findUndefined(edition.articles[0]), false);
+  assert.equal(edition.articles[0].outletName, 'DynastyHQ Sports');
+});
+
+test('atomic newsroom save strips undefined values before Transaction.set', async () => {
+  const source = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+  assert.match(source, /const stripUndefinedDeep = \(value\) =>/);
+  const handlerStart = source.indexOf('const handleGenerateNewsroomEdition = useCallback');
+  const handlerEnd = source.indexOf('const handleAssignNewsroomMedia', handlerStart);
+  const handler = source.slice(handlerStart, handlerEnd);
+  assert.match(handler, /committedState = stripUndefinedDeep\(/);
+  assert.match(handler, /transaction\.set\(docRef, committedState\)/);
+});

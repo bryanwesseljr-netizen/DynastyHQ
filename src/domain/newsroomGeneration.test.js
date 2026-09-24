@@ -179,7 +179,7 @@ test('Newsroom generation commits the generated edition atomically against the l
   const handlerStart = source.indexOf('const handleGenerateNewsroomEdition = useCallback');
   const handlerEnd = source.indexOf('const handleAssignNewsroomMedia', handlerStart);
   const handler = source.slice(handlerStart, handlerEnd);
-  assert.match(handler, /await runTransaction\(db/);
+  assert.match(handler, /persistGeneratedEdition = async \(\) => runTransaction\(db/);
   assert.match(handler, /const remoteState = migrateCareerState\(remoteSnapshot\.data\(\), defaultState\)/);
   assert.match(handler, /applyGeneratedNewsroomEdition\(remoteState, publicationId, edition\)/);
   assert.match(handler, /savedIssue\?\.editorialStatus !== 'generated'/);

@@ -145,3 +145,30 @@ test('deterministic weekly newsroom copy is explicitly marked as scaffold', asyn
   const source = await readFile(new URL('./newsroomEngine.js', import.meta.url), 'utf8');
   assert.match(source, /editorialStatus: 'scaffold'/);
 });
+
+
+test('accepts a server-QA-passed concise edition instead of silently keeping the scaffold', () => {
+  const payload = buildNewsroomGenerationPayload(state, publicationId);
+  const shortParagraph = 'The verified development changes the immediate football picture.';
+  const generated = {
+    articles: [{
+      outletId: 'recruiting',
+      storyImportance: 'notable',
+      storyFormat: 'news',
+      kicker: 'Recruiting Notebook',
+      headline: 'Verified development reshapes the week',
+      dek: 'A concise update built from the published facts.',
+      dateline: '',
+      paragraphs: [shortParagraph, shortParagraph, shortParagraph, shortParagraph],
+      sectionHeadings: [],
+      pullQuote: '',
+      sidebars: [],
+      citedFactIds: [],
+    }],
+  };
+  const edition = normalizeGeneratedNewsroomEdition({ generated, payload, model: 'gemini-test' });
+  assert.equal(edition.articles.length, 1);
+  assert.equal(edition.articles[0].sectionHeadings[0], 'Why it matters');
+  assert.equal(edition.articles[0].sidebars[0].title, 'At a glance');
+  assert.ok(edition.articles[0].citedFactKeys.length > 0);
+});

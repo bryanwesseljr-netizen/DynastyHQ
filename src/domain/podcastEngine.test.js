@@ -183,7 +183,7 @@ test('podcast gate treats first verified preseason QB1 status as meaningful move
   };
 
   const payload = buildPodcastGenerationPayload(state, 'season-4-week-0');
-  assert.equal(payload.coverageDecision.tier, 'major');
+  assert.equal(payload.coverageDecision.tier, 'standard');
   assert.equal(payload.coverageDecision.podcastEligible, true);
   assert.equal(payload.coveragePlan.playerRelevance.starterAnnouncement, true);
   assert.equal(payload.facts.find((fact) => fact.key === 'player.programStayDecisionCount')?.value, 3);

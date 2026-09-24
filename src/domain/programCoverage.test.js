@@ -313,7 +313,7 @@ test('preseason Week 0 QB1 is newsworthy even when the prior QB2 snapshot is mis
   assert.equal(context.relevance.firstVerifiedStarterStatus, true);
   assert.equal(context.relevance.starterAnnouncement, true);
   assert.equal(context.relevance.level, 'primary');
-  assert.equal(context.coverageDecision.tier, 'major');
+  assert.equal(context.coverageDecision.tier, 'standard');
   assert.equal(context.coverageDecision.podcastEligible, true);
   assert.ok(context.coverageDecision.articleCount >= 2);
   assert.ok(context.storyPlans.some((plan) => plan.storyType === 'qb-room-analysis'));

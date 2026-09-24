@@ -63,11 +63,16 @@ const validatePayload = (body = {}) => {
   })).filter((fact) => fact.id && fact.key && fact.label) : [];
   const factIds = new Set(facts.map((fact) => fact.id));
 
-  const articleBriefs = Array.isArray(body.articleBriefs) ? body.articleBriefs.slice(0, 5).map((brief) => {
+  const usableFactIds = facts
+    .filter((fact) => fact.editorialUse !== 'background-only')
+    .map((fact) => fact.id);
+
+  let articleBriefs = Array.isArray(body.articleBriefs) ? body.articleBriefs.slice(0, 5).map((brief) => {
     const requestedRange = brief.targetWordRange || coverageDecision.newsroomWordRange || {};
     const min = Math.max(120, Math.min(700, Number(requestedRange.min) || 300));
     const max = Math.max(min, Math.min(800, Number(requestedRange.max) || 500));
     const audience = ['local', 'regional', 'national', 'national-lead', 'analysis'].includes(brief.audience) ? brief.audience : '';
+    const requestedFactIds = [...new Set((brief.focusFactIds || []).map((id) => text(id, 260)).filter((id) => factIds.has(id)))];
     return {
       outletId: text(brief.outletId, 80),
       outletName: text(brief.outletName, 120),
@@ -86,16 +91,29 @@ const validatePayload = (body = {}) => {
         ? brief.nationalAttentionReasons.slice(0, 8).map((entry) => text(entry, 220)).filter(Boolean)
         : [],
       targetWordRange: { min, max },
-      focusFactIds: [...new Set((brief.focusFactIds || []).map((id) => text(id, 260)).filter((id) => factIds.has(id)))],
+      focusFactIds: (requestedFactIds.length ? requestedFactIds : usableFactIds).slice(0, 24),
     };
   }).filter((brief) => brief.outletId && brief.outletName && brief.focusFactIds.length) : [];
 
-  if (!facts.length || !articleBriefs.length || new Set(articleBriefs.map((brief) => brief.outletId)).size !== articleBriefs.length) return null;
-  if (coverageStage === 'college-player' && coverageDecision.articleCount > 0 && articleBriefs.length > coverageDecision.articleCount) return null;
-  if (coverageStage === 'college-player') {
-    const nationalAssigned = articleBriefs.some((brief) => brief.audience === 'national' || brief.audience === 'national-lead' || brief.outletId === 'national');
-    if (nationalAssigned && !coverageDecision.audienceReach.nationalEligible) return null;
+  if (!facts.length || !articleBriefs.length) return null;
+
+  const byOutlet = new Map();
+  articleBriefs.forEach((brief) => {
+    if (!byOutlet.has(brief.outletId)) byOutlet.set(brief.outletId, brief);
+  });
+  articleBriefs = [...byOutlet.values()];
+
+  if (coverageStage === 'college-player' && !coverageDecision.audienceReach.nationalEligible) {
+    articleBriefs = articleBriefs.filter((brief) => (
+      brief.audience !== 'national'
+      && brief.audience !== 'national-lead'
+      && brief.outletId !== 'national'
+    ));
   }
+  if (coverageStage === 'college-player' && coverageDecision.articleCount > 0) {
+    articleBriefs = articleBriefs.slice(0, coverageDecision.articleCount);
+  }
+  if (!articleBriefs.length) return null;
 
   const relevance = body.coveragePlan?.playerRelevance || {};
   const program = body.coveragePlan?.program || {};
@@ -402,7 +420,7 @@ export default async function handler(req, res) {
       })) : [],
     });
     return json(res, 422, {
-      error: 'No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.',
+      error: req.body?.coverageDecision?.tier === 'no-coverage' ? 'No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.' : 'The newsroom edition packet could not be validated. Your verified career data and existing articles were preserved.',
       code: 'NO_NEWSWORTHY_NEWSROOM',
     });
   }

@@ -394,6 +394,12 @@ export default async function handler(req, res) {
       previousRole: text(req.body?.coveragePlan?.playerRelevance?.previousRole, 40),
       starter: Boolean(req.body?.coveragePlan?.playerRelevance?.starter),
       starterAnnouncement: Boolean(req.body?.coveragePlan?.playerRelevance?.starterAnnouncement),
+      audienceReach: req.body?.coverageDecision?.audienceReach || null,
+      briefs: Array.isArray(req.body?.articleBriefs) ? req.body.articleBriefs.map((brief) => ({
+        outletId: text(brief?.outletId, 80),
+        audience: text(brief?.audience, 40),
+        focusCount: Array.isArray(brief?.focusFactIds) ? brief.focusFactIds.length : 0,
+      })) : [],
     });
     return json(res, 422, {
       error: 'No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.',

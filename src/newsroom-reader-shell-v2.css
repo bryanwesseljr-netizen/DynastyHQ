@@ -104,8 +104,23 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
 
 .dhq-newsroom-reader-mode > .dhq-newsroom-media-tools,
 .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount],
+.dhq-newsroom-reader-mode > [data-editorial-photo-director-mount],
 .dhq-newsroom-reader-mode > [data-editorial-photo-director] {
   grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dhq-newsroom-reader-mode > [data-editorial-photo-director-mount] > [data-editorial-photo-director] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.dhq-newsroom-reader-mode > [data-editorial-photo-director-mount] > [data-editorial-photo-director] * {
+  min-width: 0;
 }
 
 /* The production toggle should sit directly below the finished story, not create
@@ -175,6 +190,16 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   .dhq-newsroom-reader-mode > .dhq-news-article {
     max-width: 100% !important;
     overflow-x: clip;
+  }
+
+  .dhq-newsroom-reader-mode > [data-editorial-photo-director-mount],
+  .dhq-newsroom-reader-mode > .dhq-newsroom-media-tools,
+  .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount] {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible;
   }
 
   .dhq-newsroom-reader-mode .dhq-news-article img,

@@ -172,3 +172,19 @@ test('accepts a server-QA-passed concise edition instead of silently keeping the
   assert.equal(edition.articles[0].sidebars[0].title, 'At a glance');
   assert.ok(edition.articles[0].citedFactKeys.length > 0);
 });
+
+
+test('Newsroom generation commits the generated edition atomically against the latest cloud save', async () => {
+  const source = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+  const handlerStart = source.indexOf('const handleGenerateNewsroomEdition = useCallback');
+  const handlerEnd = source.indexOf('const handleAssignNewsroomMedia', handlerStart);
+  const handler = source.slice(handlerStart, handlerEnd);
+  assert.match(handler, /await runTransaction\(db/);
+  assert.match(handler, /const remoteState = migrateCareerState\(remoteSnapshot\.data\(\), defaultState\)/);
+  assert.match(handler, /applyGeneratedNewsroomEdition\(remoteState, publicationId, edition\)/);
+  assert.match(handler, /savedIssue\?\.editorialStatus !== 'generated'/);
+  assert.match(handler, /transaction\.set\(docRef, committedState\)/);
+  assert.match(handler, /setAppState\(committedState\)/);
+  assert.match(handler, /Newsroom edition saved:/);
+  assert.doesNotMatch(handler, /updateAppState\(/);
+});

@@ -10,7 +10,7 @@ const modelList = (value = '') => String(value)
   .filter(Boolean);
 
 export const GEMINI_TEXT_FALLBACK_MODELS = modelList(
-  process.env.GEMINI_TEXT_FALLBACK_MODELS || 'gemini-3.5-flash,gemini-3.6-flash',
+  process.env.GEMINI_TEXT_FALLBACK_MODELS || 'gemini-flash-lite-latest,gemini-3.5-flash-lite,gemini-2.5-flash-lite,gemini-3.5-flash,gemini-3.6-flash',
 );
 export const GEMINI_TEXT_MODELS = [...new Set([GEMINI_TEXT_MODEL, ...GEMINI_TEXT_FALLBACK_MODELS])];
 

@@ -12,7 +12,7 @@ test('text generation is Gemini-first and keeps paid OpenAI fallback opt-in', as
   assert.match(source, /process\.env\.GEMINI_API_KEY/);
   assert.match(source, /responseMimeType: 'application\/json'/);
   assert.match(source, /GEMINI_TEXT_FALLBACK_MODELS/);
-  assert.match(source, /gemini-3\.5-flash,gemini-3\.6-flash/);
+  assert.match(source, /gemini-flash-lite-latest,gemini-3\.5-flash-lite,gemini-2\.5-flash-lite,gemini-3\.5-flash,gemini-3\.6-flash/);
   assert.match(source, /return await callGeminiTextFreeChain/);
   assert.match(source, /for \(const model of GEMINI_TEXT_MODELS\)/);
   assert.match(source, /retryableGeminiStatus/);
@@ -57,4 +57,17 @@ test('text router exhausts free Gemini model failover before considering paid Op
   assert.ok(freeChain >= 0);
   assert.ok(paidGate > freeChain);
   assert.match(source, /All configured free-tier Gemini text models are temporarily unavailable/);
+});
+
+
+test('free Gemini failover prefers high-volume Flash-Lite models before standard Flash', async () => {
+  const source = await readFile(routerUrl, 'utf8');
+  const latestLite = source.indexOf('gemini-flash-lite-latest');
+  const flashLite35 = source.indexOf('gemini-3.5-flash-lite');
+  const flashLite25 = source.indexOf('gemini-2.5-flash-lite');
+  const flash35 = source.indexOf('gemini-3.5-flash');
+  assert.ok(latestLite >= 0);
+  assert.ok(flashLite35 > latestLite);
+  assert.ok(flashLite25 > flashLite35);
+  assert.ok(flash35 > flashLite25);
 });

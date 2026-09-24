@@ -455,16 +455,8 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
   }),
   postgameFrontPages: (state.postgameFrontPages || []).map((page) => (
     page.publicationId === publicationId ? { ...page, needsRegeneration: true, staleAt: edition.generatedAt } : page
-  )),
-  podcastEpisodes: (state.podcastEpisodes || []).map((episode) => (
-    episode.publicationId === publicationId ? {
-      ...episode,
-      status: 'needs-regeneration',
-      audioStatus: 'stale',
-      staleAt: edition.generatedAt,
-      chapters: [],
-      segments: [],
-      citedFactKeys: [],
-    } : episode
-  )),
+  ))
+  // Newsroom copy and Podcast production are independent products built from the same
+  // verified week. Rewriting an article must never delete, stale, or clear a saved
+  // podcast transcript/audio episode.
 });

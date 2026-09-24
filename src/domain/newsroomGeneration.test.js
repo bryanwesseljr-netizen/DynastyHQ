@@ -386,3 +386,13 @@ test('generated college articles use canonical outlet names instead of reused pl
   assert.match(source, /assignedOutlet\?\.name \|\| entry\.outletName/);
   assert.match(source, /outletName: generated\.outletName \|\| prior\.outletName/);
 });
+
+
+test('mobile article Photo Director mount spans the full Newsroom reader grid', async () => {
+  const source = await readFile(new URL('../newsroom-reader-shell-v2.css', import.meta.url), 'utf8');
+  assert.match(source, /\[data-editorial-photo-director-mount\]/);
+  assert.match(source, /grid-column:\s*1 \/ -1/);
+  assert.match(source, /\[data-editorial-photo-director-mount\] > \[data-editorial-photo-director\]/);
+  assert.match(source, /max-width:\s*100%/);
+  assert.match(source, /min-width:\s*0/);
+});

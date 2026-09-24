@@ -283,3 +283,24 @@ test('free text router removes retired Gemini fallback and retries invalid struc
   assert.match(source, /invalid JSON/i);
   assert.match(source, /attempt: attemptNumber/);
 });
+
+
+test('Newsroom generation is serialized with normal cloud saves so stale queued state cannot restore scaffold copy', async () => {
+  const source = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+  const handlerStart = source.indexOf('const handleGenerateNewsroomEdition = useCallback');
+  const handlerEnd = source.indexOf('const handleAssignNewsroomMedia', handlerStart);
+  const handler = source.slice(handlerStart, handlerEnd);
+  assert.match(handler, /const persistGeneratedEdition = async \(\) => runTransaction/);
+  assert.match(handler, /cloudWriteQueueRef\.current = cloudWriteQueueRef\.current\.then/);
+  assert.match(handler, /await cloudWriteQueueRef\.current/);
+  assert.match(handler, /savedIssue\?\.editorialGeneratedAt !== edition\.generatedAt/);
+  assert.match(handler, /savedHeadline !== generatedHeadline/);
+  assert.match(handler, /setNewsroomFocusId\(publicationId\)/);
+});
+
+test('Newsroom API logs the generated headlines so background generation can be distinguished from display/save problems', async () => {
+  const source = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(source, /Newsroom edition generated/);
+  assert.match(source, /headlines:/);
+  assert.match(source, /publicationId: payload\.publicationId/);
+});

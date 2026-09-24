@@ -101,6 +101,35 @@ const compareIssuesNewestFirst = (left = {}, right = {}) => {
   return rightTime - leftTime;
 };
 
+const publicationIdForIssue = (issue = {}) => (
+  clean(issue.publicationId || issue.weekKey || issue.id)
+  || `season-${Math.max(1, Number(issue.season) || 1)}-week-${Math.max(0, Number(issue.week) || 0)}`
+);
+
+const issueProgramSchool = (issue = {}, career = {}, fallbackSchool = '') => {
+  const direct = clean(issue?.outletProfile?.school);
+  if (direct) return direct;
+  const publicationId = publicationIdForIssue(issue);
+  const facts = list(career?.factLedger).filter((fact) => (
+    clean(fact?.publicationId || fact?.sourceId) === publicationId
+  ));
+  const collegeFact = facts.find((fact) => fact?.key === 'profile.player.college' && clean(fact?.value));
+  if (collegeFact) return clean(collegeFact.value);
+  const schoolFact = facts.find((fact) => fact?.key === 'profile.player.school' && clean(fact?.value));
+  if (schoolFact) return clean(schoolFact.value);
+  if (Number(issue?.season || 0) === Number(career?.currentSeason || 0)) return clean(fallbackSchool);
+  return '';
+};
+
+const profileForIssue = (issue = {}, career = {}, fallbackSchool = '') => {
+  const school = issueProgramSchool(issue, career, fallbackSchool);
+  if (!school) return resolveIssueTeamMediaProfile(issue, career);
+  return resolveIssueTeamMediaProfile({
+    ...issue,
+    outletProfile: { ...(issue.outletProfile || {}), school },
+  }, career);
+};
+
 const resolveCardMedia = (career, issue, story) => {
   if (!story) return null;
   const theme = story.theme || story.outletId || '';
@@ -329,21 +358,29 @@ const NewsroomTeamHubPortal = () => {
     });
     const currentProfile = resolveCareerTeamMediaProfile(career);
     const currentIssues = issues
-      .filter((issue) => sameProgram(issue?.outletProfile?.school, currentProfile.school))
+      .filter((issue) => sameProgram(issueProgramSchool(issue, career, currentProfile.school), currentProfile.school))
       .sort(compareIssuesNewestFirst);
 
     const storyEntries = (audience) => currentIssues
-      .map((issue) => ({ issue, story: storyForAudience(issue, audience), profile: resolveIssueTeamMediaProfile(issue, career) }))
+      .map((issue) => ({
+        issue,
+        story: storyForAudience(issue, audience),
+        profile: profileForIssue(issue, career, currentProfile.school),
+      }))
       .filter((entry) => entry.story)
       .sort((left, right) => compareIssuesNewestFirst(left.issue, right.issue));
 
     const allStops = new Map();
     issues.forEach((issue) => {
-      const school = clean(issue?.outletProfile?.school);
+      const school = issueProgramSchool(issue, career, currentProfile.school);
       const story = storyForAudience(issue, 'team');
       if (!school || !story) return;
       if (!allStops.has(school)) allStops.set(school, []);
-      allStops.get(school).push({ issue, story, profile: resolveIssueTeamMediaProfile(issue, career) });
+      allStops.get(school).push({
+        issue,
+        story,
+        profile: profileForIssue(issue, career, currentProfile.school),
+      });
     });
 
     return {

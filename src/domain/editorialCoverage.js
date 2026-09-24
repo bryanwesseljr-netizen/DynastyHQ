@@ -236,9 +236,9 @@ const storylineThreadsFor = ({ issue, program, relevance, eventFacts, recentKeys
       key: `player-role:${clean(relevance.currentRole, 40).toUpperCase()}`,
       label: 'Quarterback role',
       value: clean(relevance.currentRole, 40),
-      changedThisWeek: Boolean(relevance.roleChanged),
-      status: relevance.roleChanged ? 'new-development' : 'established',
-      editorialUse: relevance.roleChanged ? 'primary' : 'background-only',
+      changedThisWeek: Boolean(relevance.roleChanged || relevance.starterAnnouncement),
+      status: relevance.roleChanged || relevance.starterAnnouncement ? 'new-development' : 'established',
+      editorialUse: relevance.roleChanged || relevance.starterAnnouncement ? 'primary' : 'background-only',
     });
   }
 
@@ -291,6 +291,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
   const recentKeys = recentCoverageKeys(state, publicationId);
   const resultKnown = ['W', 'L'].includes(clean(program?.currentGame?.result, 10));
   const roleEvent = Boolean(relevance.roleChanged);
+  const starterAnnouncement = Boolean(relevance.starterAnnouncement && relevance.starter);
   const appearanceEvent = Boolean(relevance.didPlay || relevance.firstAppearance);
   const playerPerformanceEvent = relevance.totalYards !== null && relevance.totalYards !== undefined
     ? Number(relevance.totalYards) >= 200 || Number(relevance.totalTouchdowns || 0) >= 2 || Number(relevance.interceptions || 0) >= 3
@@ -304,6 +305,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
   if (resultKnown) { score += 3; reasons.push('completed game result'); }
   if (roleEvent) { score += 3; reasons.push(relevance.promoted ? 'depth-chart promotion' : relevance.demoted ? 'depth-chart demotion' : 'depth-chart change'); }
   if (roleEvent && relevance.promoted && relevance.starter) { score += 2; reasons.push('promotion to starting quarterback'); }
+  if (starterAnnouncement && !roleEvent) { score += 5; reasons.push('verified preseason QB1 announcement'); }
   if (relevance.firstAppearance) { score += 3; reasons.push('first college appearance'); }
   else if (appearanceEvent) { score += 1; reasons.push('game appearance'); }
   if (relevance.starter && relevance.didPlay) { score += 1; reasons.push('starting-quarterback role'); }
@@ -314,7 +316,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
   if (strongEvent) { score += 2; reasons.push('major transfer/portal/coaching event'); }
   if (weeklyNote) { score += 1; reasons.push('meaningful weekly football note'); }
 
-  const hasAnyStory = resultKnown || roleEvent || appearanceEvent || postseason || eventFacts.length > 0 || Boolean(weeklyNote) || streakThreshold;
+  const hasAnyStory = resultKnown || roleEvent || starterAnnouncement || appearanceEvent || postseason || eventFacts.length > 0 || Boolean(weeklyNote) || streakThreshold;
   const careerDefining = strongEvent && (postseason || relevance.level === 'primary' || eventFacts.length > 1);
   const tier = tierForScore({ score, careerDefining, hasAnyStory });
   const config = TIER_CONFIG[tier];

@@ -58,6 +58,39 @@ const priorRtgSnapshot = (state, issue, publicationId) => {
 const currentUpdateFor = (state, issue, publicationId) => (state.weeklyUpdates || [])
   .find((entry) => publicationMatches(entry, publicationId)) || null;
 
+const earlierThanIssue = (entry = {}, issue = {}) => {
+  const entrySeason = Number(entry?.season || 1);
+  const entryWeek = Number(entry?.week ?? 0);
+  const issueSeason = Number(issue?.season || 1);
+  const issueWeek = Number(issue?.week ?? 0);
+  return entrySeason < issueSeason || (entrySeason === issueSeason && entryWeek < issueWeek);
+};
+
+const priorVerifiedStarterStatus = (state = {}, issue = {}, publicationId = '') => {
+  const updateStarter = (state.weeklyUpdates || []).some((entry) => (
+    !publicationMatches(entry, publicationId)
+    && earlierThanIssue(entry, issue)
+    && roleNumber(entry?.rtgSnapshot?.rank) === 1
+  ));
+  if (updateStarter) return true;
+
+  return (state.factLedger || []).some((fact) => (
+    fact?.verified
+    && fact?.key === 'rtg.rank'
+    && !publicationMatches(fact, publicationId)
+    && String(fact?.value || '').trim().toUpperCase() === 'QB1'
+  ));
+};
+
+const starterAnnouncementFromFacts = (state = {}, issue = {}, publicationId = '') => {
+  const note = (state.factLedger || []).find((fact) => (
+    fact?.verified
+    && fact?.key === 'weekly.note'
+    && publicationMatches(fact, publicationId)
+  ))?.value;
+  return /\b(QB1|starting quarterback|starting QB|named (?:the )?starter|enters .* as .*starter)\b/i.test(String(note || ''));
+};
+
 const playerRelevanceFor = ({ state, issue, publicationId }) => {
   const currentUpdate = currentUpdateFor(state, issue, publicationId);
   const game = currentUpdate?.game || null;
@@ -70,6 +103,10 @@ const playerRelevanceFor = ({ state, issue, publicationId }) => {
   const roleChanged = Boolean(currentRole && previousRole && currentRole !== previousRole);
   const promoted = roleChanged && currentRoleNumber !== null && previousRoleNumber !== null && currentRoleNumber < previousRoleNumber;
   const demoted = roleChanged && currentRoleNumber !== null && previousRoleNumber !== null && currentRoleNumber > previousRoleNumber;
+  const firstVerifiedStarterStatus = currentRoleNumber === 1
+    && !priorVerifiedStarterStatus(state, issue, publicationId);
+  const starterAnnouncement = currentRoleNumber === 1
+    && (firstVerifiedStarterStatus || starterAnnouncementFromFacts(state, issue, publicationId));
   const didPlay = Boolean(game && appearanceIsVerified(game));
   const priorAppearances = (state.gameLogs || []).filter((entry) => (
     Number(entry.season || 1) === Number(issue.season || 1)
@@ -89,6 +126,10 @@ const playerRelevanceFor = ({ state, issue, publicationId }) => {
     score += 4;
     reasons.push('starting quarterback');
   }
+  if (starterAnnouncement) {
+    score += 3;
+    reasons.push(firstVerifiedStarterStatus ? 'first verified QB1 status' : 'verified starter announcement');
+  }
   if (didPlay) {
     score += 2;
     reasons.push(firstAppearance ? 'first college appearance' : 'game appearance');
@@ -104,7 +145,7 @@ const playerRelevanceFor = ({ state, issue, publicationId }) => {
   if (interceptions !== null && interceptions >= 3) score += 1;
 
   let level = 'low';
-  if (score >= 7 || (starter && didPlay)) level = 'primary';
+  if (score >= 7 || starterAnnouncement || (starter && didPlay)) level = 'primary';
   else if (score >= 4 || didPlay) level = 'high';
   else if (score >= 2 || roleChanged) level = 'developing';
 
@@ -116,6 +157,8 @@ const playerRelevanceFor = ({ state, issue, publicationId }) => {
     roleChanged,
     promoted,
     demoted,
+    firstVerifiedStarterStatus,
+    starterAnnouncement,
     didPlay,
     firstAppearance,
     starter,
@@ -137,6 +180,7 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
   const reach = coverageDecision.audienceReach || {};
   const school = program.school || 'the program';
   const starterPromotion = Boolean(relevance.roleChanged && relevance.promoted && relevance.starter);
+  const starterAnnouncement = Boolean(relevance.starterAnnouncement && relevance.starter);
   const plans = [];
 
   plans.push({
@@ -147,7 +191,9 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
       ? preseasonWithoutGames
         ? starterPromotion
           ? `Lead with the verified promotion from ${relevance.previousRole} to ${relevance.currentRole} as the defining ${school} preseason development. Explain the opportunity and the patience behind it. If the supplied facts include prior decisions to remain with the program rather than transfer, use that verified history as career context. Do not invent practice results, coach quotes, competition details, or promised snaps.`
-          : `Cover only the strongest verified ${school} football development that actually created coverage this week. Write with the familiarity of a local beat reporter, but do not default to quarterback hierarchy, backup-player development, 0-0, or the absence of a game.`
+          : starterAnnouncement
+            ? `Lead with the verified fact that the quarterback enters the season as QB1. Treat earning the starting role as the defining ${school} preseason development. If supplied facts document prior decisions to remain with the program, use that history to frame the patience behind the opportunity. Do not claim a specific prior depth-chart slot unless it is supplied.`
+            : `Cover only the strongest verified ${school} football development that actually created coverage this week. Write with the familiarity of a local beat reporter, but do not default to quarterback hierarchy, backup-player development, 0-0, or the absence of a game.`
         : 'Cover the strongest verified program development or established season pressure point. The local audience already follows the team closely, so lead with what actually changed instead of re-explaining the program.'
       : `Lead with the ${school} game: result, opponent, score, defining verified statistical contrasts, and what the result changes. Write like a reporter who covers this team every day. The tracked player is central only when his football relevance warrants it.`,
     playerMentionPolicy: playerPolicy,
@@ -193,6 +239,15 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
       audience: 'analysis',
       storyType: 'qb-room-analysis',
       angle: `Use the verified depth-chart ${relevance.promoted ? 'promotion' : relevance.demoted ? 'demotion' : 'change'} (${relevance.previousRole} to ${relevance.currentRole}) as the player event. Explain what changed about role and opportunity without inventing practice performance, coach quotes, or promised snaps. If verified stay/transfer-decision history is supplied, use it only as career context for the opportunity.${program.currentGame ? ' Keep the team result visible as context.' : ''}`,
+      playerMentionPolicy: 'focal',
+      subjectPriority: 'player-event',
+    });
+  } else if (starterAnnouncement) {
+    plans.push({
+      outletId: 'filmroom',
+      audience: 'analysis',
+      storyType: 'qb-room-analysis',
+      angle: 'Use the verified QB1/starter status as the player event. Explain the significance of entering the season with the starting job and, when verified stay decisions are supplied, the patience behind earning the opportunity. Do not invent a prior depth-chart rank, practice performance, coach quotes, or promised snaps.',
       playerMentionPolicy: 'focal',
       subjectPriority: 'player-event',
     });
@@ -316,7 +371,16 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
       editorialUse: 'primary',
     }));
   }
-  if (relevance.roleChanged && relevance.promoted && relevance.starter) {
+  if (relevance.starterAnnouncement) {
+    facts.push(derivedFact({
+      publicationId,
+      key: 'player.starterStatus',
+      label: 'Starting quarterback status',
+      value: relevance.firstVerifiedStarterStatus ? 'First verified QB1 status in career history' : 'Verified QB1 starter status for this preseason',
+      editorialUse: 'primary',
+    }));
+  }
+  if ((relevance.roleChanged && relevance.promoted && relevance.starter) || relevance.starterAnnouncement) {
     const stayDecisions = stayDecisionsForProgram(state, issue, program.school);
     if (stayDecisions.length) {
       const seasons = stayDecisions.map((entry) => Number(entry.season)).filter(Number.isFinite);

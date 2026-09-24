@@ -269,3 +269,54 @@ test('new-season Week 0 QB2 to QB1 promotion carries the prior-season role and e
   assert.match(context.facts.find((fact) => fact.key === 'player.programStayHistory')?.value || '', /Seasons 1, 2, 3/);
   assert.equal(context.facts.find((fact) => fact.key === 'player.programStayDecisionCount')?.value, 3);
 });
+
+
+test('preseason Week 0 QB1 is newsworthy even when the prior QB2 snapshot is missing from weeklyUpdates', () => {
+  const state = {
+    player: { name: 'Bryan Wessel', school: 'Oregon', college: 'Oregon', isCommitted: true },
+    rtg: { rank: 'QB1' },
+    weeklyUpdates: [{
+      id: 'season-4-week-0',
+      weekKey: 'season-4-week-0',
+      season: 4,
+      week: 0,
+      careerPhase: 'Player',
+      weekType: 'bye',
+      weekPhase: 'preseason',
+      game: null,
+      rtgSnapshot: { rank: 'QB1' },
+    }],
+    gameLogs: [],
+    factLedger: [
+      { id: 'rank', publicationId: 'season-4-week-0', key: 'rtg.rank', label: 'Depth Chart Rank', value: 'QB1', verified: true },
+      { id: 'note', publicationId: 'season-4-week-0', key: 'weekly.note', label: 'Week note', value: 'Bryan Wessel enters the season as Oregon QB1 after waiting for his opportunity.', verified: true },
+    ],
+    playerRecruiting: { transfer: { decisions: [
+      { season: 1, decision: 'stay', from: 'Oregon' },
+      { season: 2, decision: 'stay', from: 'Oregon' },
+      { season: 3, decision: 'stay', from: 'Oregon' },
+    ] } },
+  };
+  const preseasonIssue = {
+    id: 'season-4-week-0',
+    publicationId: 'season-4-week-0',
+    season: 4,
+    week: 0,
+    weekType: 'bye',
+    weekPhase: 'preseason',
+    careerPhase: 'Player',
+  };
+  const context = buildProgramCoverageContext(state, preseasonIssue);
+
+  assert.equal(context.relevance.currentRole, 'QB1');
+  assert.equal(context.relevance.previousRole, '');
+  assert.equal(context.relevance.firstVerifiedStarterStatus, true);
+  assert.equal(context.relevance.starterAnnouncement, true);
+  assert.equal(context.relevance.level, 'primary');
+  assert.equal(context.coverageDecision.tier, 'major');
+  assert.equal(context.coverageDecision.podcastEligible, true);
+  assert.ok(context.coverageDecision.articleCount >= 2);
+  assert.ok(context.storyPlans.some((plan) => plan.storyType === 'qb-room-analysis'));
+  assert.equal(context.facts.find((fact) => fact.key === 'player.starterStatus')?.editorialUse, 'primary');
+  assert.equal(context.facts.find((fact) => fact.key === 'player.programStayDecisionCount')?.value, 3);
+});

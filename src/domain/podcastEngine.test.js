@@ -150,3 +150,41 @@ test('Season 4 Week 0 QB1 promotion can generate a podcast using prior-season QB
   assert.match(payload.facts.find((fact) => fact.key === 'player.programStayHistory')?.value || '', /Seasons 1, 2, 3/);
   assert.equal(payload.facts.find((fact) => fact.key === 'player.roleChange')?.value, 'QB2 → QB1');
 });
+
+
+test('podcast gate treats first verified preseason QB1 status as meaningful movement even without a stored prior rank', () => {
+  const state = {
+    careerPhase: 'Player',
+    currentSeason: 4,
+    currentWeek: 1,
+    player: { name: 'Bryan Wessel', school: 'Oregon', college: 'Oregon', isCommitted: true },
+    rtg: { rank: 'QB1' },
+    weeklyUpdates: [{
+      id: 'season-4-week-0', weekKey: 'season-4-week-0', season: 4, week: 0,
+      weekType: 'bye', weekPhase: 'preseason', rtgSnapshot: { rank: 'QB1' }, game: null,
+    }],
+    gameLogs: [],
+    seasonSchedules: [],
+    factLedger: [
+      { id: 'rank', publicationId: 'season-4-week-0', key: 'rtg.rank', label: 'Depth Chart Rank', value: 'QB1', verified: true },
+      { id: 'note', publicationId: 'season-4-week-0', key: 'weekly.note', label: 'Week note', value: 'Wessel enters the season as Oregon QB1 after waiting for his opportunity.', verified: true },
+    ],
+    playerRecruiting: { transfer: { decisions: [
+      { season: 1, decision: 'stay', from: 'Oregon' },
+      { season: 2, decision: 'stay', from: 'Oregon' },
+      { season: 3, decision: 'stay', from: 'Oregon' },
+    ] } },
+    newsroomIssues: [{
+      id: 'season-4-week-0', publicationId: 'season-4-week-0', season: 4, week: 0,
+      weekType: 'bye', weekPhase: 'preseason', careerPhase: 'Player',
+      podcastBrief: { title: 'Preseason briefing', summary: 'QB1 opportunity.', citedFactKeys: ['rtg.rank', 'weekly.note'] },
+    }],
+    podcastEpisodes: [],
+  };
+
+  const payload = buildPodcastGenerationPayload(state, 'season-4-week-0');
+  assert.equal(payload.coverageDecision.tier, 'major');
+  assert.equal(payload.coverageDecision.podcastEligible, true);
+  assert.equal(payload.coveragePlan.playerRelevance.starterAnnouncement, true);
+  assert.equal(payload.facts.find((fact) => fact.key === 'player.programStayDecisionCount')?.value, 3);
+});

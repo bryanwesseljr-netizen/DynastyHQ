@@ -381,6 +381,20 @@ export default async function handler(req, res) {
 
   const payload = validatePayload(req.body);
   if (!payload) {
+    console.warn('Newsroom payload rejected by editorial gate', {
+      publicationId: text(req.body?.publicationId, 140),
+      season: Number(req.body?.season) || 0,
+      week: Number(req.body?.week) || 0,
+      coverageStage: text(req.body?.coverageStage, 60),
+      tier: text(req.body?.coverageDecision?.tier, 40),
+      articleCount: Number(req.body?.coverageDecision?.articleCount) || 0,
+      factCount: Array.isArray(req.body?.facts) ? req.body.facts.length : 0,
+      briefCount: Array.isArray(req.body?.articleBriefs) ? req.body.articleBriefs.length : 0,
+      currentRole: text(req.body?.coveragePlan?.playerRelevance?.currentRole, 40),
+      previousRole: text(req.body?.coveragePlan?.playerRelevance?.previousRole, 40),
+      starter: Boolean(req.body?.coveragePlan?.playerRelevance?.starter),
+      starterAnnouncement: Boolean(req.body?.coveragePlan?.playerRelevance?.starterAnnouncement),
+    });
     return json(res, 422, {
       error: 'No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.',
       code: 'NO_NEWSWORTHY_NEWSROOM',

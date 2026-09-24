@@ -1793,7 +1793,7 @@ const handleSaveGameClick = () => {
       let committedState = null;
       let committedRevision = cloudRevisionRef.current;
 
-      await runTransaction(db, async (transaction) => {
+      const persistGeneratedEdition = async () => runTransaction(db, async (transaction) => {
         const remoteSnapshot = await transaction.get(docRef);
         if (!remoteSnapshot.exists()) throw new Error('The DynastyHQ master save could not be found.');
 
@@ -1813,7 +1813,14 @@ const handleSaveGameClick = () => {
         const savedIssue = (nextState.newsroomIssues || []).find((issue) => (
           issue?.publicationId === publicationId || issue?.id === publicationId || issue?.weekKey === publicationId
         ));
-        if (savedIssue?.editorialStatus !== 'generated' || !savedIssue?.articles?.length) {
+        const generatedHeadline = edition.articles?.[0]?.headline || '';
+        const savedHeadline = savedIssue?.articles?.[0]?.headline || '';
+        if (
+          savedIssue?.editorialStatus !== 'generated'
+          || savedIssue?.editorialGeneratedAt !== edition.generatedAt
+          || !savedIssue?.articles?.length
+          || (generatedHeadline && savedHeadline !== generatedHeadline)
+        ) {
           throw new Error('The generated Newsroom edition could not be attached to the selected archive.');
         }
 
@@ -1830,10 +1837,19 @@ const handleSaveGameClick = () => {
         transaction.set(docRef, committedState);
       });
 
+      // Join the same serialized cloud-write queue used by the rest of DynastyHQ.
+      // Otherwise an older queued save can land after this successful generation and
+      // silently put the scaffold articles back on screen.
+      cloudWriteQueueRef.current = cloudWriteQueueRef.current.then(
+        persistGeneratedEdition,
+        persistGeneratedEdition,
+      );
+      await cloudWriteQueueRef.current;
+
       if (!committedState) throw new Error('The generated Newsroom edition was not saved.');
       cloudRevisionRef.current = committedRevision;
-      pendingCloudStateRef.current = null;
       setAppState(committedState);
+      setNewsroomFocusId(publicationId);
       setSaveStatus({ state: 'saved', lastSavedAt: new Date().toISOString(), message: '' });
 
       if (!automatic) {

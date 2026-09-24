@@ -8,6 +8,8 @@ import '../newsroom-local-bearcats.css';
 import '../newsroom-regional-enquirer.css';
 import '../newsroom-national-espn.css';
 
+const NATIONAL_OUTLET = 'ESPN';
+
 const dateFrom = (value) => {
   if (!value) return null;
   const date = new Date(value);
@@ -81,7 +83,7 @@ const NewsroomArticleReader = ({ issue, story, featureImage, currentMedia, caree
     : isRegional
       ? team.regionalOutletName
       : isNational
-        ? team.nationalOutletName
+        ? NATIONAL_OUTLET
         : extras.audience === 'analysis'
           ? 'The Film Room'
           : story.outletName;

@@ -27,6 +27,15 @@ const publicationLabelForStory = (story = {}, issue = {}) => {
   return story.outletName;
 };
 
+const editionLabelForIssue = (issue = {}) => {
+  const season = Math.max(1, Number(issue.season) || 1);
+  const week = Math.max(0, Number(issue.week) || 0);
+  const phase = String(issue.weekPhase || '').trim().toLowerCase();
+  const timeline = phase === 'preseason' || week === 0 ? `Season ${season} · Preseason` : `Season ${season} · Week ${week}`;
+  const custom = String(issue.label || issue.weekLabel || '').trim();
+  return custom ? `${timeline} · ${custom}` : timeline;
+};
+
 const tabsForIssue = (issue) => (issue?.articles || []).map((story) => ({
   theme: story.theme || story.outletId,
   outletId: story.outletId,
@@ -191,7 +200,7 @@ const GroundedNewsroom = ({
                 aria-label="Choose weekly newsroom edition"
               >
                 {[...issues].reverse().map((issue) => (
-                  <option key={issue.id} value={issue.id}>{issue.label || `Season ${issue.season} · Week ${issue.week}`}</option>
+                  <option key={issue.id} value={issue.id}>{editionLabelForIssue(issue)}</option>
                 ))}
               </select>
               {!readOnly && (
@@ -250,7 +259,7 @@ const GroundedNewsroom = ({
       {!isReaderOpen && !isFrontPageOpen && (
         <section className="rounded-2xl border border-slate-700/70 bg-slate-950/90 p-5 shadow-2xl md:p-7" aria-labelledby="weekly-coverage-title">
           <div className="mb-5">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{selectedIssue.label || `Season ${selectedIssue.season} · Week ${selectedIssue.week}`}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{editionLabelForIssue(selectedIssue)}</p>
             <h2 id="weekly-coverage-title" className="mt-1 text-2xl font-black uppercase text-white md:text-3xl">This Week&rsquo;s Coverage</h2>
             <p className="mt-2 text-sm text-slate-400">Choose any newsroom below to open its complete article.</p>
           </div>

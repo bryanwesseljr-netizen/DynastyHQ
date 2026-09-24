@@ -493,6 +493,17 @@ export default async function handler(req, res) {
       return json(res, 422, { error: 'The newsroom edition could not be written safely.' });
     }
 
+    console.info('Newsroom edition generated', {
+      publicationId: payload.publicationId,
+      season: payload.season,
+      week: payload.week,
+      outlets: (generated.data?.articles || []).map((article) => article?.outletId || ''),
+      headlines: (generated.data?.articles || []).map((article) => text(article?.headline, 120)),
+      model: generated.model,
+      provider: generated.provider,
+      editorialQa: qualityIssues.length ? 'accepted-after-repair' : 'passed',
+    });
+
     return json(res, 200, {
       edition: generated.data,
       model: generated.model,

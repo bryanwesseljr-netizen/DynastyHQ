@@ -36,3 +36,14 @@ test('media endpoints keep quota and provider failures out of reader-facing erro
   assert.doesNotMatch(publicNewsroomFailure, /429|quota|credit|OpenAI|Gemini/i);
   assert.doesNotMatch(publicPodcastFailure, /429|quota|credit|OpenAI|Gemini/i);
 });
+
+
+test('newsroom API salvages valid QB1 assignments instead of rejecting the whole packet', async () => {
+  const source = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(source, /const usableFactIds = facts/);
+  assert.match(source, /requestedFactIds\.length \? requestedFactIds : usableFactIds/);
+  assert.match(source, /articleBriefs = \[\.\.\.byOutlet\.values\(\)\]/);
+  assert.match(source, /articleBriefs = articleBriefs\.filter/);
+  assert.match(source, /articleBriefs = articleBriefs\.slice\(0, coverageDecision\.articleCount\)/);
+  assert.match(source, /The newsroom edition packet could not be validated/);
+});

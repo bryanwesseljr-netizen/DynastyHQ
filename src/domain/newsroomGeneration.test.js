@@ -363,11 +363,11 @@ test('routine legacy bye scaffold stories are hidden from both Newsroom surfaces
 test('Oregon article reader uses real publication brands instead of generic College labels', async () => {
   const grounded = await readFile(new URL('../components/GroundedNewsroom.jsx', import.meta.url), 'utf8');
   assert.match(grounded, /resolveIssueTeamMediaProfile\(issue, career\)/);
-  assert.match(grounded, /team\.nationalOutletName/);
+  assert.match(grounded, /return 'ESPN'/);
   assert.match(grounded, /'The Film Room'/);
   const reader = await readFile(new URL('../components/NewsroomArticleReader.jsx', import.meta.url), 'utf8');
   assert.match(reader, /resolveIssueTeamMediaProfile\(issue, career\)/);
-  assert.match(reader, /team\.nationalOutletName/);
+  assert.match(reader, /const NATIONAL_OUTLET = 'ESPN'/);
   assert.match(reader, /'The Film Room'/);
 });
 

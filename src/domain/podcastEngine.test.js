@@ -103,3 +103,50 @@ test('creates a labeled two-host transcript', () => {
   assert.match(transcript, /Mark Thompson: Opening thought/);
   assert.match(transcript, /Sarah Chen: Counterpoint/);
 });
+
+
+test('Season 4 Week 0 QB1 promotion can generate a podcast using prior-season QB2 and verified stay decisions', () => {
+  const promotionState = {
+    careerPhase: 'Player',
+    currentSeason: 4,
+    currentWeek: 1,
+    player: { name: 'Bryan Wessel', school: 'Oregon', college: 'Oregon', isCommitted: true },
+    rtg: { rank: 'QB1' },
+    weeklyUpdates: [
+      { id: 'season-3-week-15', weekKey: 'season-3-week-15', season: 3, week: 15, rtgSnapshot: { rank: 'QB2' }, game: null },
+      { id: 'season-4-week-0', weekKey: 'season-4-week-0', season: 4, week: 0, weekType: 'bye', weekPhase: 'preseason', rtgSnapshot: { rank: 'QB1' }, game: null },
+    ],
+    gameLogs: [],
+    seasonSchedules: [],
+    factLedger: [
+      { publicationId: 'season-4-week-0', key: 'weekly.note', label: 'Week note', value: 'Named Oregon QB1 after waiting for the opportunity.', verified: true },
+      { publicationId: 'season-4-week-0', key: 'rtg.rank', label: 'Depth Chart Rank', value: 'QB1', verified: true },
+    ],
+    playerRecruiting: {
+      transfer: {
+        decisions: [
+          { season: 1, week: 15, decision: 'stay', from: 'Oregon', destination: '' },
+          { season: 2, week: 15, decision: 'stay', from: 'Oregon', destination: '' },
+          { season: 3, week: 15, decision: 'stay', from: 'Oregon', destination: '' },
+        ],
+      },
+    },
+    newsroomIssues: [{
+      id: 'season-4-week-0',
+      publicationId: 'season-4-week-0',
+      season: 4,
+      week: 0,
+      weekType: 'bye',
+      weekPhase: 'preseason',
+      careerPhase: 'Player',
+      podcastBrief: { title: 'Preseason briefing', summary: 'Quarterback role change.', citedFactKeys: ['weekly.note', 'rtg.rank'] },
+    }],
+    podcastEpisodes: [],
+  };
+
+  const payload = buildPodcastGenerationPayload(promotionState, 'season-4-week-0');
+  assert.equal(payload.coverageDecision.podcastEligible, true);
+  assert.equal(payload.coverageDecision.tier, 'major');
+  assert.match(payload.facts.find((fact) => fact.key === 'player.programStayHistory')?.value || '', /Seasons 1, 2, 3/);
+  assert.equal(payload.facts.find((fact) => fact.key === 'player.roleChange')?.value, 'QB2 → QB1');
+});

@@ -196,3 +196,76 @@ test('three-game team streak becomes a major regional program storyline when thr
   assert.equal(context.coverageDecision.audienceReach.nationalEligible, false);
   assert.equal(context.storyPlans.some((plan) => plan.outletId === 'national'), false);
 });
+
+
+test('new-season Week 0 QB2 to QB1 promotion carries the prior-season role and earns a podcast-worthy major story', () => {
+  const state = {
+    player: { name: 'Bryan Wessel', school: 'Oregon', college: 'Oregon', isCommitted: true },
+    rtg: { rank: 'QB1' },
+    weeklyUpdates: [
+      {
+        id: 'season-3-week-15',
+        weekKey: 'season-3-week-15',
+        season: 3,
+        week: 15,
+        careerPhase: 'Player',
+        weekType: 'bye',
+        game: null,
+        rtgSnapshot: { rank: 'QB2' },
+      },
+      {
+        id: 'season-4-week-0',
+        weekKey: 'season-4-week-0',
+        season: 4,
+        week: 0,
+        careerPhase: 'Player',
+        weekType: 'bye',
+        weekPhase: 'preseason',
+        game: null,
+        rtgSnapshot: { rank: 'QB1' },
+      },
+    ],
+    gameLogs: [],
+    factLedger: [
+      {
+        id: 'season-4-week-0:weekly.note',
+        publicationId: 'season-4-week-0',
+        key: 'weekly.note',
+        label: 'Week note',
+        value: 'Wessel enters the season as Oregon QB1 after waiting for his opportunity.',
+        verified: true,
+      },
+    ],
+    playerRecruiting: {
+      transfer: {
+        decisions: [
+          { season: 1, week: 15, decision: 'stay', from: 'Oregon', destination: '' },
+          { season: 2, week: 15, decision: 'stay', from: 'Oregon', destination: '' },
+          { season: 3, week: 15, decision: 'stay', from: 'Oregon', destination: '' },
+        ],
+      },
+    },
+  };
+  const preseasonIssue = {
+    id: 'season-4-week-0',
+    publicationId: 'season-4-week-0',
+    season: 4,
+    week: 0,
+    weekType: 'bye',
+    weekPhase: 'preseason',
+    careerPhase: 'Player',
+  };
+  const context = buildProgramCoverageContext(state, preseasonIssue);
+
+  assert.equal(context.relevance.previousRole, 'QB2');
+  assert.equal(context.relevance.currentRole, 'QB1');
+  assert.equal(context.relevance.roleChanged, true);
+  assert.equal(context.relevance.promoted, true);
+  assert.equal(context.relevance.starter, true);
+  assert.equal(context.relevance.level, 'primary');
+  assert.equal(context.coverageDecision.tier, 'major');
+  assert.equal(context.coverageDecision.podcastEligible, true);
+  assert.equal(context.storyPlans.some((plan) => plan.storyType === 'qb-room-analysis'), true);
+  assert.match(context.facts.find((fact) => fact.key === 'player.programStayHistory')?.value || '', /Seasons 1, 2, 3/);
+  assert.equal(context.facts.find((fact) => fact.key === 'player.programStayDecisionCount')?.value, 3);
+});

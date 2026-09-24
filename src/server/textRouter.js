@@ -3,6 +3,17 @@ import OpenAI from 'openai';
 export const GEMINI_TEXT_MODEL = process.env.GEMINI_TEXT_MODEL
   || process.env.GEMINI_VISION_MODEL
   || 'gemini-3.1-flash-lite';
+
+const modelList = (value = '') => String(value)
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
+export const GEMINI_TEXT_FALLBACK_MODELS = modelList(
+  process.env.GEMINI_TEXT_FALLBACK_MODELS || 'gemini-3.5-flash,gemini-3.6-flash',
+);
+export const GEMINI_TEXT_MODELS = [...new Set([GEMINI_TEXT_MODEL, ...GEMINI_TEXT_FALLBACK_MODELS])];
+
 export const OPENAI_TEXT_FALLBACK_MODEL = process.env.OPENAI_TEXT_FALLBACK_MODEL || 'gpt-5.6-terra';
 
 const GEMINI_GENERATE_URL = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -107,6 +118,7 @@ const callGeminiText = async ({
   schemaName,
   maxOutputTokens,
   temperature,
+  model = GEMINI_TEXT_MODEL,
 }) => {
   if (!process.env.GEMINI_API_KEY) {
     const error = new Error('Gemini text generation is not configured.');
@@ -116,7 +128,7 @@ const callGeminiText = async ({
     throw error;
   }
 
-  const response = await fetch(GEMINI_GENERATE_URL(GEMINI_TEXT_MODEL), {
+  const response = await fetch(GEMINI_GENERATE_URL(model), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -149,8 +161,41 @@ const callGeminiText = async ({
   return {
     data: parseJson(extractGeminiText(body), 'Gemini'),
     provider: 'gemini',
-    model: GEMINI_TEXT_MODEL,
+    model,
   };
+};
+
+const retryableGeminiStatus = (status) => {
+  const code = Number(status) || 0;
+  return code === 404 || code === 408 || code === 425 || code === 429 || code >= 500;
+};
+
+const callGeminiTextFreeChain = async (options) => {
+  const attempts = [];
+  for (const model of GEMINI_TEXT_MODELS) {
+    try {
+      return await callGeminiText({ ...options, model });
+    } catch (error) {
+      attempts.push({
+        model,
+        status: Number(error?.status) || 0,
+        code: error?.code || '',
+        message: error?.message || 'Gemini request failed.',
+      });
+      if (!retryableGeminiStatus(error?.status)) {
+        error.geminiAttempts = attempts;
+        throw error;
+      }
+    }
+  }
+
+  const last = attempts.at(-1) || {};
+  const error = new Error('All configured free-tier Gemini text models are temporarily unavailable.');
+  error.provider = 'gemini';
+  error.code = 'GEMINI_FREE_MODELS_UNAVAILABLE';
+  error.status = last.status || 503;
+  error.geminiAttempts = attempts;
+  throw error;
 };
 
 const callOpenAiText = async ({
@@ -208,7 +253,7 @@ export const generateTextFreeFirst = async ({
 }) => {
   let geminiError = null;
   try {
-    return await callGeminiText({
+    return await callGeminiTextFreeChain({
       instructions,
       input,
       schema,
@@ -241,7 +286,7 @@ export const generateTextFreeFirst = async ({
     }
   }
 
-  const error = new Error('Gemini text generation is temporarily unavailable and paid fallback is disabled.');
+  const error = new Error('All configured free-tier Gemini text models are temporarily unavailable and paid fallback is disabled.');
   error.code = 'TEXT_GENERATION_UNAVAILABLE';
   error.status = geminiError?.status || 502;
   error.primaryError = geminiError;

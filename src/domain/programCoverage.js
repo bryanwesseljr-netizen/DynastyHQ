@@ -38,12 +38,22 @@ const totalIfComplete = (a, b) => {
   return first === null || second === null ? null : first + second;
 };
 
-const priorRtgSnapshot = (state, issue, publicationId) => [...(state.weeklyUpdates || [])]
-  .filter((entry) => !publicationMatches(entry, publicationId))
-  .filter((entry) => Number(entry.season || 1) === Number(issue.season || 1))
-  .filter((entry) => Number(entry.week ?? 0) < Number(issue.week ?? 0))
-  .reverse()
-  .find((entry) => entry?.rtgSnapshot && Object.keys(entry.rtgSnapshot).length)?.rtgSnapshot || {};
+const priorRtgSnapshot = (state, issue, publicationId) => {
+  const issueSeason = Number(issue.season || 1);
+  const issueWeek = Number(issue.week ?? 0);
+  return [...(state.weeklyUpdates || [])]
+    .filter((entry) => !publicationMatches(entry, publicationId))
+    .filter((entry) => {
+      const season = Number(entry.season || 1);
+      const week = Number(entry.week ?? 0);
+      return season < issueSeason || (season === issueSeason && week < issueWeek);
+    })
+    .sort((left, right) => (
+      Number(right.season || 1) - Number(left.season || 1)
+      || Number(right.week ?? 0) - Number(left.week ?? 0)
+    ))
+    .find((entry) => entry?.rtgSnapshot && Object.keys(entry.rtgSnapshot).length)?.rtgSnapshot || {};
+};
 
 const currentUpdateFor = (state, issue, publicationId) => (state.weeklyUpdates || [])
   .find((entry) => publicationMatches(entry, publicationId)) || null;
@@ -126,6 +136,7 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
   const playerPolicy = coverageDecision.playerMentionPolicy;
   const reach = coverageDecision.audienceReach || {};
   const school = program.school || 'the program';
+  const starterPromotion = Boolean(relevance.roleChanged && relevance.promoted && relevance.starter);
   const plans = [];
 
   plans.push({
@@ -134,7 +145,9 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
     storyType: isBye ? (preseasonWithoutGames ? 'program-brief' : 'program-update') : 'game-recap',
     angle: isBye
       ? preseasonWithoutGames
-        ? `Cover only the strongest verified ${school} football development that actually created coverage this week. Write with the familiarity of a local beat reporter, but do not default to quarterback hierarchy, backup-player development, 0-0, or the absence of a game.`
+        ? starterPromotion
+          ? `Lead with the verified promotion from ${relevance.previousRole} to ${relevance.currentRole} as the defining ${school} preseason development. Explain the opportunity and the patience behind it. If the supplied facts include prior decisions to remain with the program rather than transfer, use that verified history as career context. Do not invent practice results, coach quotes, competition details, or promised snaps.`
+          : `Cover only the strongest verified ${school} football development that actually created coverage this week. Write with the familiarity of a local beat reporter, but do not default to quarterback hierarchy, backup-player development, 0-0, or the absence of a game.`
         : 'Cover the strongest verified program development or established season pressure point. The local audience already follows the team closely, so lead with what actually changed instead of re-explaining the program.'
       : `Lead with the ${school} game: result, opponent, score, defining verified statistical contrasts, and what the result changes. Write like a reporter who covers this team every day. The tracked player is central only when his football relevance warrants it.`,
     playerMentionPolicy: playerPolicy,
@@ -179,7 +192,7 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
       outletId: 'filmroom',
       audience: 'analysis',
       storyType: 'qb-room-analysis',
-      angle: `Use the verified depth-chart ${relevance.promoted ? 'promotion' : relevance.demoted ? 'demotion' : 'change'} (${relevance.previousRole} to ${relevance.currentRole}) as the player event. Explain what changed about role and opportunity without inventing practice performance, coach quotes, or promised snaps.${program.currentGame ? ' Keep the team result visible as context.' : ''}`,
+      angle: `Use the verified depth-chart ${relevance.promoted ? 'promotion' : relevance.demoted ? 'demotion' : 'change'} (${relevance.previousRole} to ${relevance.currentRole}) as the player event. Explain what changed about role and opportunity without inventing practice performance, coach quotes, or promised snaps. If verified stay/transfer-decision history is supplied, use it only as career context for the opportunity.${program.currentGame ? ' Keep the team result visible as context.' : ''}`,
       playerMentionPolicy: 'focal',
       subjectPriority: 'player-event',
     });
@@ -197,6 +210,16 @@ const storyPlansFor = ({ issue, relevance, program, coverageDecision }) => {
   }
 
   return plans.slice(0, coverageDecision.articleCount);
+};
+
+const stayDecisionsForProgram = (state = {}, issue = {}, school = '') => {
+  const issueSeason = Number(issue.season || state.currentSeason || 1);
+  const schoolKey = clean(school, 160).toLowerCase();
+  return (state.playerRecruiting?.transfer?.decisions || [])
+    .filter((entry) => clean(entry?.decision, 40).toLowerCase() === 'stay')
+    .filter((entry) => Number(entry?.season || 0) < issueSeason)
+    .filter((entry) => !schoolKey || clean(entry?.from, 160).toLowerCase() === schoolKey)
+    .sort((left, right) => Number(left?.season || 0) - Number(right?.season || 0));
 };
 
 const derivedFact = ({ publicationId, key, label, value, editorialUse = 'context' }) => ({
@@ -292,6 +315,28 @@ export const buildProgramCoverageContext = (state = {}, issue = {}) => {
       value: `${relevance.previousRole} → ${relevance.currentRole}`,
       editorialUse: 'primary',
     }));
+  }
+  if (relevance.roleChanged && relevance.promoted && relevance.starter) {
+    const stayDecisions = stayDecisionsForProgram(state, issue, program.school);
+    if (stayDecisions.length) {
+      const seasons = stayDecisions.map((entry) => Number(entry.season)).filter(Number.isFinite);
+      facts.push(derivedFact({
+        publicationId,
+        key: 'player.programStayHistory',
+        label: 'Verified decisions to remain with program',
+        value: seasons.length
+          ? `Stayed at ${program.school} after Season${seasons.length === 1 ? '' : 's'} ${seasons.join(', ')}`
+          : `Stayed at ${program.school} rather than transfer`,
+        editorialUse: 'context',
+      }));
+      facts.push(derivedFact({
+        publicationId,
+        key: 'player.programStayDecisionCount',
+        label: 'Verified stay decisions before earning QB1',
+        value: stayDecisions.length,
+        editorialUse: 'context',
+      }));
+    }
   }
   facts.push(derivedFact({ publicationId, key: 'player.coverageRelevance', label: 'Editorial player relevance', value: relevance.level, editorialUse: 'background-only' }));
 

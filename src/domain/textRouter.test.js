@@ -11,7 +11,11 @@ test('text generation is Gemini-first and keeps paid OpenAI fallback opt-in', as
   assert.match(source, /GEMINI_TEXT_MODEL/);
   assert.match(source, /process\.env\.GEMINI_API_KEY/);
   assert.match(source, /responseMimeType: 'application\/json'/);
-  assert.match(source, /return await callGeminiText/);
+  assert.match(source, /GEMINI_TEXT_FALLBACK_MODELS/);
+  assert.match(source, /gemini-3\.5-flash,gemini-3\.6-flash/);
+  assert.match(source, /return await callGeminiTextFreeChain/);
+  assert.match(source, /for \(const model of GEMINI_TEXT_MODELS\)/);
+  assert.match(source, /retryableGeminiStatus/);
   assert.match(source, /allowPaidFallback = process\.env\.ALLOW_PAID_TEXT_FALLBACK === 'true'/);
   assert.match(source, /if \(allowPaidFallback\)/);
   assert.match(source, /return await callOpenAiText/);
@@ -43,4 +47,14 @@ test('JSON recovery respects braces inside quoted strings', () => {
     summary: 'Oregon {still} has work to do',
     ok: true,
   });
+});
+
+
+test('text router exhausts free Gemini model failover before considering paid OpenAI fallback', async () => {
+  const source = await readFile(routerUrl, 'utf8');
+  const freeChain = source.indexOf('callGeminiTextFreeChain');
+  const paidGate = source.indexOf('if (allowPaidFallback)');
+  assert.ok(freeChain >= 0);
+  assert.ok(paidGate > freeChain);
+  assert.match(source, /All configured free-tier Gemini text models are temporarily unavailable/);
 });

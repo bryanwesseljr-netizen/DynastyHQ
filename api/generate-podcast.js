@@ -462,8 +462,11 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Podcast generation failed', error);
-    return json(res, 502, {
-      error: 'The episode could not be generated. No career data was changed.',
+    const providersBusy = error?.code === 'TEXT_GENERATION_UNAVAILABLE';
+    return json(res, providersBusy ? 503 : 502, {
+      error: providersBusy
+        ? 'Gemini is temporarily busy across DynastyHQ’s free text models. No paid fallback was used, and no podcast data was changed. Try again shortly.'
+        : 'The episode could not be generated. No career data was changed.',
       code: error?.code || 'PODCAST_GENERATION_FAILED',
     });
   }

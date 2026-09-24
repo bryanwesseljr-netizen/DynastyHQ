@@ -82,7 +82,24 @@ const publicationLabel = (story, profile) => {
   return story?.outletName || 'Newsroom';
 };
 
-const issueLabel = (issue) => clean(issue?.label) || `Season ${issue?.season || 1} · Week ${issue?.week ?? 0}`;
+const issueLabel = (issue) => {
+  const season = Math.max(1, Number(issue?.season) || 1);
+  const week = Math.max(0, Number(issue?.week) || 0);
+  const phase = clean(issue?.weekPhase).toLowerCase();
+  const timeline = phase === 'preseason' || week === 0 ? `Season ${season} · Preseason` : `Season ${season} · Week ${week}`;
+  const custom = clean(issue?.label || issue?.weekLabel);
+  return custom ? `${timeline} · ${custom}` : timeline;
+};
+
+const compareIssuesNewestFirst = (left = {}, right = {}) => {
+  const seasonDelta = (Number(right.season) || 0) - (Number(left.season) || 0);
+  if (seasonDelta) return seasonDelta;
+  const weekDelta = (Number(right.week) || 0) - (Number(left.week) || 0);
+  if (weekDelta) return weekDelta;
+  const rightTime = Date.parse(clean(right.editorialGeneratedAt || right.publishedAt || right.createdAt)) || 0;
+  const leftTime = Date.parse(clean(left.editorialGeneratedAt || left.publishedAt || left.createdAt)) || 0;
+  return rightTime - leftTime;
+};
 
 const resolveCardMedia = (career, issue, story) => {
   if (!story) return null;
@@ -313,14 +330,12 @@ const NewsroomTeamHubPortal = () => {
     const currentProfile = resolveCareerTeamMediaProfile(career);
     const currentIssues = issues
       .filter((issue) => sameProgram(issue?.outletProfile?.school, currentProfile.school))
-      .sort((left, right) => {
-        const seasonDelta = (Number(right.season) || 0) - (Number(left.season) || 0);
-        return seasonDelta || ((Number(right.week) || 0) - (Number(left.week) || 0));
-      });
+      .sort(compareIssuesNewestFirst);
 
     const storyEntries = (audience) => currentIssues
       .map((issue) => ({ issue, story: storyForAudience(issue, audience), profile: resolveIssueTeamMediaProfile(issue, career) }))
-      .filter((entry) => entry.story);
+      .filter((entry) => entry.story)
+      .sort((left, right) => compareIssuesNewestFirst(left.issue, right.issue));
 
     const allStops = new Map();
     issues.forEach((issue) => {

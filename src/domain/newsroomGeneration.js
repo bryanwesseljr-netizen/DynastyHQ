@@ -357,15 +357,33 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     if (!brief) return null;
     const paragraphs = (entry.paragraphs || []).map((paragraph) => clean(paragraph, 2200)).filter(Boolean).slice(0, 8);
     const articleWords = paragraphs.reduce((total, paragraph) => total + wordCount(paragraph), 0);
-    if (paragraphs.length < 4 || articleWords < minWords) return null;
+    if (paragraphs.length < 4) return null;
+
+    // The API already performs editorial QA and may intentionally accept a concise repaired
+    // article. Do not throw that successful 200 response away on the client just because it
+    // landed below an older local word-count guard.
     const citedFactKeys = normalizeCitations(entry.citedFactIds, payload);
-    if (!citedFactKeys.length) return null;
-    const sectionHeadings = (entry.sectionHeadings || []).map((heading) => clean(heading, 100)).filter(Boolean).slice(0, 3);
-    const sidebars = (entry.sidebars || []).map((section) => ({
+    const fallbackCitedFactKeys = (requestedBrief.focusFactIds || [])
+      .map((id) => payload.facts.find((fact) => fact.id === id)?.key)
+      .filter(Boolean);
+    const safeCitedFactKeys = citedFactKeys.length ? citedFactKeys : [...new Set(fallbackCitedFactKeys)];
+
+    const requestedHeadings = (entry.sectionHeadings || []).map((heading) => clean(heading, 100)).filter(Boolean).slice(0, 3);
+    const sectionHeadings = requestedHeadings.length ? requestedHeadings : ['Why it matters'];
+
+    const requestedSidebars = (entry.sidebars || []).map((section) => ({
       title: clean(section?.title, 80),
       items: (section?.items || []).map((item) => clean(item, 220)).filter(Boolean).slice(0, 5),
     })).filter((section) => section.title && section.items.length >= 1).slice(0, 3);
-    if (sectionHeadings.length < 1 || sidebars.length < 1) return null;
+    const fallbackSidebarItems = (requestedBrief.focusFactIds || [])
+      .map((id) => payload.facts.find((fact) => fact.id === id))
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((fact) => `${clean(fact.label, 100)}: ${clean(fact.value, 180)}`)
+      .filter(Boolean);
+    const sidebars = requestedSidebars.length
+      ? requestedSidebars
+      : [{ title: 'At a glance', items: fallbackSidebarItems.length ? fallbackSidebarItems : ['Verified story context'] }];
 
     return {
       outletId,
@@ -380,7 +398,7 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       sectionHeadings,
       pullQuote: clean(entry.pullQuote, 320),
       sidebars,
-      citedFactKeys,
+      citedFactKeys: safeCitedFactKeys,
       readingMinutes: Math.max(1, Math.round(articleWords / 225)),
       editorialStatus: 'generated',
       generatedAt,

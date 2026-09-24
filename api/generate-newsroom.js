@@ -454,11 +454,8 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Newsroom generation failed', error);
-    const providersBusy = error?.code === 'TEXT_GENERATION_UNAVAILABLE';
-    return json(res, providersBusy ? 503 : 502, {
-      error: providersBusy
-        ? 'Gemini is temporarily busy across DynastyHQ’s free text models. No paid fallback was used, and your existing articles were preserved. Try again shortly.'
-        : 'The newsroom edition could not be completed. Your existing articles were preserved.',
+    return json(res, error?.code === 'TEXT_GENERATION_UNAVAILABLE' ? 503 : 502, {
+      error: 'The newsroom edition could not be completed. Your existing articles were preserved.',
       code: error?.code || 'NEWSROOM_GENERATION_FAILED',
     });
   }

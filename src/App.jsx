@@ -170,6 +170,22 @@ const SAVE_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'dynastyhq-device';
 const createMediaAssetId = () => globalThis.crypto?.randomUUID?.()
   || `news-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+const stripUndefinedDeep = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((entry) => entry !== undefined)
+      .map((entry) => stripUndefinedDeep(entry));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, stripUndefinedDeep(entry)]),
+    );
+  }
+  return value;
+};
+
 const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const viewId = urlParams.get('view');
@@ -1803,14 +1819,14 @@ const handleSaveGameClick = () => {
 
         const remoteRevision = Number(remoteSnapshot.data()?._sync?.revision) || 0;
         committedRevision = Math.max(remoteRevision, cloudRevisionRef.current) + 1;
-        committedState = {
+        committedState = stripUndefinedDeep({
           ...nextState,
           _sync: {
             revision: committedRevision,
             deviceId: SAVE_DEVICE_ID,
             updatedAt: new Date().toISOString(),
           },
-        };
+        });
         transaction.set(docRef, committedState);
       });
 

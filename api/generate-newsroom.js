@@ -75,7 +75,16 @@ const validatePayload = (body = {}) => {
     const requestedFactIds = [...new Set((brief.focusFactIds || []).map((id) => text(id, 260)).filter((id) => factIds.has(id)))];
     return {
       outletId: text(brief.outletId, 80),
-      outletName: text(brief.outletName, 120),
+      outletName: text(brief.outletName, 120)
+        || (text(brief.outletId, 80) === 'college-local'
+          ? 'Campus Beat'
+          : text(brief.outletId, 80) === 'college-regional'
+            ? 'Regional College Football'
+            : text(brief.outletId, 80) === 'filmroom'
+              ? 'Football Film Room'
+              : text(brief.outletId, 80) === 'national'
+                ? 'National College Football'
+                : 'DynastyHQ Sports'),
       desk: text(brief.desk, 100),
       theme: text(brief.theme, 60),
       audience,
@@ -93,7 +102,7 @@ const validatePayload = (body = {}) => {
       targetWordRange: { min, max },
       focusFactIds: (requestedFactIds.length ? requestedFactIds : usableFactIds).slice(0, 24),
     };
-  }).filter((brief) => brief.outletId && brief.outletName && brief.focusFactIds.length) : [];
+  }).filter((brief) => brief.outletId && brief.focusFactIds.length) : [];
 
   if (!facts.length || !articleBriefs.length) return null;
 

@@ -175,6 +175,7 @@ const App = () => {
   const viewId = urlParams.get('view');
   const frontPageParam = urlParams.get('frontPage') || '';
   const previewRecoveryTarget = Math.max(0, Number(urlParams.get('recoverPreviewSeason')) || 0);
+  const syncPreviewFromLive = urlParams.get('syncPreviewFromLive') === '1';
   const isReadOnly = !!viewId;
 
   const [activeTab, setActiveTab] = useState(frontPageParam ? 'newsroom' : 'dashboard');
@@ -187,6 +188,8 @@ const App = () => {
   const [advanceConfirmModal, setAdvanceConfirmModal] = useState(false);
   const [isRecoveringPreviewCareer, setIsRecoveringPreviewCareer] = useState(false);
   const [previewRecoveryError, setPreviewRecoveryError] = useState('');
+  const [isSyncingPreviewFromLive, setIsSyncingPreviewFromLive] = useState(false);
+  const [previewSyncError, setPreviewSyncError] = useState('');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
@@ -1262,6 +1265,69 @@ const handleSaveGameClick = () => {
     } catch (error) {
       setPreviewRecoveryError(error?.message || 'Preview recovery failed. The live production save was not changed.');
       setIsRecoveringPreviewCareer(false);
+    }
+  };
+
+  const handleSyncPreviewFromLive = async () => {
+    if (!isPreviewDeployment || !syncPreviewFromLive || !userState || !db || isSyncingPreviewFromLive) return;
+    setIsSyncingPreviewFromLive(true);
+    setPreviewSyncError('');
+    try {
+      const previewRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const productionRef = doc(db, 'artifacts', productionAppId, 'users', userState.uid, 'hq_data', 'main');
+      const [previewSnapshot, productionSnapshot] = await Promise.all([
+        getDoc(previewRef),
+        getDoc(productionRef),
+      ]);
+
+      if (!productionSnapshot.exists()) {
+        throw new Error('The live DynastyHQ save could not be found for this signed-in account. Nothing was copied.');
+      }
+
+      const copiedAt = new Date().toISOString();
+      if (previewSnapshot.exists()) {
+        const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-live-preview-sync-${Date.now()}`);
+        await setDoc(backupRef, {
+          ...previewSnapshot.data(),
+          _previewLiveSyncBackup: { createdAt: copiedAt },
+        });
+      }
+
+      const liveState = migrateCareerState(productionSnapshot.data(), defaultState);
+      const previewRevision = Math.max(
+        Number(previewSnapshot.data()?._sync?.revision) || 0,
+        Number(liveState?._sync?.revision) || 0,
+      ) + 1;
+      const syncedState = {
+        ...liveState,
+        _preview: {
+          isolated: true,
+          syncedFromProduction: true,
+          syncedAt: copiedAt,
+          sourceSeason: Number(liveState.currentSeason) || 1,
+          sourceWeek: Number(liveState.currentWeek) || 1,
+        },
+        _sync: {
+          revision: previewRevision,
+          deviceId: SAVE_DEVICE_ID,
+          updatedAt: copiedAt,
+        },
+      };
+
+      await setDoc(previewRef, syncedState);
+      clearWeeklyDraftRecord(userState.uid);
+      draftRecoveryOwnerRef.current = userState.uid;
+      cloudRevisionRef.current = previewRevision;
+      setAppState(syncedState);
+      setRtgUpdate(syncedState.rtg || defaultState.rtg);
+      setCoachUpdate(syncedState.coach || defaultState.coach);
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('syncPreviewFromLive');
+      window.location.replace(cleanUrl.toString());
+    } catch (error) {
+      setPreviewSyncError(error?.message || 'The live save could not be copied into SAFE PREVIEW. Your live site was not changed.');
+      setIsSyncingPreviewFromLive(false);
     }
   };
 
@@ -4395,6 +4461,32 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
+       {isPreviewDeployment && syncPreviewFromLive && (
+           <div className="fixed inset-0 z-[265] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+             <div className="w-full max-w-lg rounded-2xl border border-cyan-500/35 bg-slate-950 p-7 text-center shadow-2xl">
+               <Copy size={42} className="mx-auto text-cyan-300" />
+               <h2 className="mt-4 text-2xl font-black uppercase text-white">Refresh Preview From Live</h2>
+               <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                 Copy the current live DynastyHQ career into SAFE PREVIEW exactly where you left it — including the published preseason/bye-week entry, verified facts, Chronicle, Newsroom issue, RTG status, schedule, and season/week position.
+               </p>
+               <p className="mt-3 text-xs font-bold text-cyan-300">The current preview is backed up first. Live production is read-only and will not be changed.</p>
+               {previewSyncError ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 p-3 text-xs font-bold text-red-300">{previewSyncError}</p> : null}
+               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                 <button type="button" disabled={isSyncingPreviewFromLive} onClick={handleSyncPreviewFromLive} className="flex-1 rounded-xl bg-cyan-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50">
+                   {isSyncingPreviewFromLive ? 'Copying Live Save…' : 'Copy Live Save Into Preview'}
+                 </button>
+                 <button type="button" disabled={isSyncingPreviewFromLive} onClick={() => {
+                   const cleanUrl = new URL(window.location.href);
+                   cleanUrl.searchParams.delete('syncPreviewFromLive');
+                   window.location.replace(cleanUrl.toString());
+                 }} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300">
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+       )}
+
        {isPreviewDeployment && previewRecoveryTarget > 0 && (
            <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
              <div className="w-full max-w-lg rounded-2xl border border-emerald-500/35 bg-slate-950 p-7 text-center shadow-2xl">

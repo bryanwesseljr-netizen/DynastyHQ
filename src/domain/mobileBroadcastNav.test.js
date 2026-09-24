@@ -300,3 +300,17 @@ test('Newsroom first entry always resolves to the Newsroom home even after refre
   assert.match(source, /const delays = \[0, 40, 120, 240, 450, 750, 1100, 1600, 2200, 3000\]/);
   assert.match(source, /const isNewsroomTopNavEvent = \(event\) =>/);
 });
+
+
+test('SAFE PREVIEW can clone the current live career without mutating production', async () => {
+  const source = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(source, /urlParams\.get\('syncPreviewFromLive'\) === '1'/);
+  assert.match(source, /const handleSyncPreviewFromLive = async \(\) =>/);
+  assert.match(source, /doc\(db, 'artifacts', productionAppId, 'users', userState\.uid, 'hq_data', 'main'\)/);
+  assert.match(source, /before-live-preview-sync-/);
+  assert.match(source, /syncedFromProduction: true/);
+  assert.match(source, /clearWeeklyDraftRecord\(userState\.uid\)/);
+  assert.match(source, /Copy Live Save Into Preview/);
+  assert.match(source, /Live production is read-only and will not be changed/);
+});

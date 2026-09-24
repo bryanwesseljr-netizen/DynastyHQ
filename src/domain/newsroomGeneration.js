@@ -1,5 +1,6 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
 import { buildStorylineEngine } from './storylineEngine.js';
+import { createCollegeOutletSet } from './collegeNewsroom.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const wordCount = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
@@ -230,6 +231,18 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const facts = sourceFactsFor(state, issue, coverageContext);
   if (!facts.length) throw new Error('This edition has no published football facts available for writing.');
 
+  const programSchool = clean(
+    coverageContext?.program?.school
+    || issue?.outletProfile?.school
+    || state.player?.college
+    || state.player?.school,
+    160,
+  );
+  const canonicalOutlets = new Map(
+    createCollegeOutletSet(state.collegeNewsroom || {}, programSchool)
+      .map((outlet) => [outlet.id, outlet]),
+  );
+
   const currentFactIdsByKey = new Map();
   facts.forEach((fact) => {
     if (fact.period !== 'current edition') return;
@@ -256,11 +269,12 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
         .filter((fact) => fact && fact.editorialUse !== 'background-only');
       focusFacts = requestedFocus.length ? requestedFocus : fallback;
     }
+    const assignedOutlet = canonicalOutlets.get(coverageOutletId || entry.outletId || entry.id);
     return {
       outletId: clean(coverageOutletId || entry.outletId || entry.id, 80),
-      outletName: clean(entry.outletName, 120),
-      desk: clean(entry.desk, 100),
-      theme: clean(entry.theme, 60),
+      outletName: clean(assignedOutlet?.name || entry.outletName, 120),
+      desk: clean(assignedOutlet?.desk || entry.desk, 100),
+      theme: clean(assignedOutlet?.theme || entry.theme, 60),
       audience: clean(plan?.audience, 40),
       byline: profile.byline,
       purpose: profile.purpose,
@@ -437,9 +451,9 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
         ...generated,
         id: prior.id || generated.outletId,
         outletId: generated.outletId,
-        outletName: prior.outletName || generated.outletName,
-        desk: prior.desk || generated.desk,
-        theme: prior.theme || generated.theme,
+        outletName: generated.outletName || prior.outletName,
+        desk: generated.desk || prior.desk,
+        theme: generated.theme || prior.theme,
       };
     });
     return {

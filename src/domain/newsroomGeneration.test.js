@@ -348,3 +348,41 @@ test('new bye and preseason newsroom issues persist their program identity for t
   assert.match(section, /localOutletName: outlets\.local/);
   assert.match(section, /regionalOutletName: outlets\.regional/);
 });
+
+
+test('routine legacy bye scaffold stories are hidden from both Newsroom surfaces', async () => {
+  const visibility = await readFile(new URL('./newsroomVisibility.js', import.meta.url), 'utf8');
+  assert.match(visibility, /development work on the record/);
+  assert.match(visibility, /verified season timeline/);
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+  assert.match(app, /newsroomIssueIsVisible\(issue\)/);
+  const hub = await readFile(new URL('../components/NewsroomTeamHubPortal.jsx', import.meta.url), 'utf8');
+  assert.match(hub, /newsroomIssueIsVisible\(issue\)/);
+});
+
+test('Oregon article reader uses real publication brands instead of generic College labels', async () => {
+  const grounded = await readFile(new URL('../components/GroundedNewsroom.jsx', import.meta.url), 'utf8');
+  assert.match(grounded, /resolveIssueTeamMediaProfile\(issue, career\)/);
+  assert.match(grounded, /team\.nationalOutletName/);
+  assert.match(grounded, /'The Film Room'/);
+  const reader = await readFile(new URL('../components/NewsroomArticleReader.jsx', import.meta.url), 'utf8');
+  assert.match(reader, /resolveIssueTeamMediaProfile\(issue, career\)/);
+  assert.match(reader, /team\.nationalOutletName/);
+  assert.match(reader, /'The Film Room'/);
+});
+
+test('future routine regular-season byes do not create placeholder Newsroom archives', async () => {
+  const source = await readFile(new URL('./weekSetup.js', import.meta.url), 'utf8');
+  assert.match(source, /const shouldCreateNewsroomIssue = setup\.phase !== WEEK_PHASES\.REGULAR/);
+  assert.match(source, /hasDepthChartMovement/);
+  assert.match(source, /hasExplicitFootballEvent/);
+  assert.match(source, /newsroomIssues: newsroomIssue \?/);
+});
+
+test('generated college articles use canonical outlet names instead of reused placeholder slot names', async () => {
+  const source = await readFile(new URL('./newsroomGeneration.js', import.meta.url), 'utf8');
+  assert.match(source, /createCollegeOutletSet/);
+  assert.match(source, /canonicalOutlets/);
+  assert.match(source, /assignedOutlet\?\.name \|\| entry\.outletName/);
+  assert.match(source, /outletName: generated\.outletName \|\| prior\.outletName/);
+});

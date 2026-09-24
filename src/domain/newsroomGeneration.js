@@ -387,12 +387,15 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
 
     return {
       outletId,
+      outletName: clean(brief.outletName, 120) || 'DynastyHQ Sports',
+      desk: clean(brief.desk, 100),
+      theme: clean(brief.theme, 60),
       storyImportance: normalizeImportance(entry.storyImportance),
       storyFormat: normalizeStoryFormat(entry.storyFormat),
       kicker: clean(entry.kicker, 80),
       headline: clean(entry.headline, 260),
       dek: clean(entry.dek, 500),
-      byline: brief.byline,
+      byline: clean(brief.byline, 160),
       dateline: clean(entry.dateline, 100),
       paragraphs,
       sectionHeadings,
@@ -403,12 +406,12 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       editorialStatus: 'generated',
       generatedAt,
       articleModel: clean(model, 100),
-      storyType: brief.storyType,
-      audience: brief.audience,
-      audienceReach: brief.audienceReach,
-      subjectPriority: brief.subjectPriority,
-      playerMentionPolicy: brief.playerMentionPolicy,
-      coverageTier: brief.coverageTier,
+      storyType: clean(brief.storyType, 80),
+      audience: clean(brief.audience, 40),
+      audienceReach: clean(brief.audienceReach, 40),
+      subjectPriority: clean(brief.subjectPriority, 80),
+      playerMentionPolicy: clean(brief.playerMentionPolicy, 80),
+      coverageTier: clean(brief.coverageTier, 40),
     };
   }).filter(Boolean);
 

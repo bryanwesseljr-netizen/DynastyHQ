@@ -12,7 +12,7 @@ test('text generation is Gemini-first and keeps paid OpenAI fallback opt-in', as
   assert.match(source, /process\.env\.GEMINI_API_KEY/);
   assert.match(source, /responseMimeType: 'application\/json'/);
   assert.match(source, /GEMINI_TEXT_FALLBACK_MODELS/);
-  assert.match(source, /gemini-3\.5-flash-lite,gemini-2\.5-flash-lite,gemini-3\.8-flash,gemini-3\.7-flash,gemini-3\.6-flash,gemini-3\.5-flash/);
+  assert.match(source, /gemini-3\.5-flash-lite,gemini-3\.8-flash,gemini-3\.7-flash,gemini-3\.6-flash,gemini-3\.5-flash/);
   assert.match(source, /return await callGeminiTextFreeChain/);
   assert.match(source, /for \(const model of GEMINI_TEXT_MODELS\)/);
   assert.match(source, /retryableGeminiStatus/);
@@ -64,7 +64,8 @@ test('free Gemini failover prefers Flash-Lite before standard Flash models', asy
   const source = await readFile(routerUrl, 'utf8');
   const configured = source.match(/process\.env\.GEMINI_TEXT_FALLBACK_MODELS \|\| '([^']+)'/)?.[1] || '';
   const models = configured.split(',');
-  assert.deepEqual(models.slice(0, 2), ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite']);
+  assert.equal(models[0], 'gemini-3.5-flash-lite');
+  assert.doesNotMatch(configured, /gemini-2\.5-flash-lite/);
   assert.ok(models.includes('gemini-3.8-flash'));
   assert.ok(models.includes('gemini-3.7-flash'));
   assert.ok(models.includes('gemini-3.6-flash'));

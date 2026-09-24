@@ -308,7 +308,12 @@ export const createByeWeekPublication = ({ state = {}, setup: rawSetup = {}, rtg
     recruitingChanges: [],
     playerRecruitingSnapshot: state.playerRecruiting?.highSchool || {},
   };
-  const newsroomIssue = createByeNewsroomIssue({
+  const hasDepthChartMovement = rtgChanges.some((change) => change?.key === 'rank');
+  const hasExplicitFootballEvent = /\b(QB1|starter|starting quarterback|promotion|promoted|demotion|demoted|transfer|injury|award|milestone)\b/i.test(setup.note || '');
+  const shouldCreateNewsroomIssue = setup.phase !== WEEK_PHASES.REGULAR
+    || hasDepthChartMovement
+    || hasExplicitFootballEvent;
+  const newsroomIssue = shouldCreateNewsroomIssue ? createByeNewsroomIssue({
     state: { ...state, player: nextPlayer },
     setup,
     rtgSnapshot,
@@ -316,7 +321,7 @@ export const createByeWeekPublication = ({ state = {}, setup: rawSetup = {}, rtg
     facts,
     publishedAt,
     publicationId,
-  });
+  }) : null;
   const nextPhase = setup.phase === WEEK_PHASES.PRESEASON && setup.week === 0
     ? WEEK_PHASES.REGULAR
     : setup.phase;
@@ -359,6 +364,6 @@ export const createByeWeekPublication = ({ state = {}, setup: rawSetup = {}, rtg
       summary: chronicleSummary,
       factKeys: facts.map((entry) => entry.key),
     }],
-    newsroomIssues: [...(state.newsroomIssues || []), newsroomIssue],
+    newsroomIssues: newsroomIssue ? [...(state.newsroomIssues || []), newsroomIssue] : [...(state.newsroomIssues || [])],
   };
 };

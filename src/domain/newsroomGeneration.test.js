@@ -327,3 +327,24 @@ test('newsroom writer cannot invent a college class year', async () => {
   assert.match(source, /academic class year/);
   assert.match(source, /freshman\/sophomore\/junior\/senior/);
 });
+
+
+test('Newsroom team hub includes legacy current-season preseason issues that lack outletProfile', async () => {
+  const source = await readFile(new URL('../components/NewsroomTeamHubPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /const issueProgramSchool =/);
+  assert.match(source, /profile\.player\.college/);
+  assert.match(source, /Number\(issue\?\.season \|\| 0\) === Number\(career\?\.currentSeason \|\| 0\)/);
+  assert.match(source, /sameProgram\(issueProgramSchool\(issue, career, currentProfile\.school\), currentProfile\.school\)/);
+  assert.match(source, /profileForIssue\(issue, career, currentProfile\.school\)/);
+});
+
+test('new bye and preseason newsroom issues persist their program identity for the team hub', async () => {
+  const source = await readFile(new URL('./weekSetup.js', import.meta.url), 'utf8');
+  const start = source.indexOf('export const createByeNewsroomIssue');
+  const end = source.indexOf('export const createByeWeekPublication', start);
+  const section = source.slice(start, end);
+  assert.match(section, /outletProfile:\s*\{/);
+  assert.match(section, /school,/);
+  assert.match(section, /localOutletName: outlets\.local/);
+  assert.match(section, /regionalOutletName: outlets\.regional/);
+});

@@ -147,7 +147,7 @@ const PodcastMasterAudioPortalV2 = () => {
   // enough to attach audio; a matching Newsroom issue is only required when the
   // user wants DynastyHQ to export a NotebookLM source pack.
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
-    .filter((episode) => publicationIdFor(episode) && Array.isArray(episode?.segments) && episode.segments.length)
+    .filter((episode) => publicationIdFor(episode))
     .sort((a, b) => episodeTimestamp(a) - episodeTimestamp(b)), [career?.podcastEpisodes]);
 
   const issues = useMemo(() => (career?.newsroomIssues || [])
@@ -225,6 +225,7 @@ const PodcastMasterAudioPortalV2 = () => {
 
   const selectedEpisode = episodes.find((episode) => publicationIdFor(episode) === selectedPublicationId) || null;
   const selectedIssue = issueByPublication.get(selectedPublicationId) || null;
+  const selectedHasTranscript = Boolean(Array.isArray(selectedEpisode?.segments) && selectedEpisode.segments.length);
   const isNotebookMaster = selectedEpisode?.audioEngine === 'notebooklm-master-upload';
   const busy = Boolean(operation);
 
@@ -388,9 +389,9 @@ const PodcastMasterAudioPortalV2 = () => {
         <button
           type="button"
           onClick={exportSourcePack}
-          disabled={busy || !selectedIssue}
+          disabled={busy || !selectedIssue || !selectedHasTranscript}
           className="dhq-podcast-master__source"
-          title={selectedIssue ? 'Download a verified source pack for NotebookLM' : 'Matching Newsroom week is unavailable'}
+          title={!selectedHasTranscript ? 'Regenerate the episode transcript first' : (selectedIssue ? 'Download a verified source pack for NotebookLM' : 'Matching Newsroom week is unavailable')}
         >
           <Download size={13} /> NotebookLM Source Pack
         </button>
@@ -398,7 +399,7 @@ const PodcastMasterAudioPortalV2 = () => {
           <input
             type="file"
             accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,audio/aac,audio/ogg,.mp3,.m4a,.wav,.aac,.ogg"
-            disabled={busy}
+            disabled={busy || !selectedHasTranscript}
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = '';
@@ -406,10 +407,13 @@ const PodcastMasterAudioPortalV2 = () => {
             }}
           />
           {operation === 'upload' ? <Loader2 className="animate-spin" size={13} /> : <UploadCloud size={13} />}
-          {operation === 'upload' ? 'Attaching…' : (isNotebookMaster ? 'Replace Master' : 'Attach Master Audio')}
+          {operation === 'upload' ? 'Attaching…' : (!selectedHasTranscript ? 'Regenerate Transcript First' : (isNotebookMaster ? 'Replace Master' : 'Attach Master Audio'))}
         </label>
       </div>
 
+      {!selectedHasTranscript && (
+        <p className="dhq-podcast-master__message" data-type="error">This episode shell was preserved, but its transcript needs to be regenerated before master audio can be attached. Open Podcast v3 and regenerate the transcript; the audio upload tools will stay here.</p>
+      )}
       {isNotebookMaster && selectedEpisode?.masterAudioFileName && (
         <p className="dhq-podcast-master__file">Now playing: {selectedEpisode.masterAudioFileName}</p>
       )}

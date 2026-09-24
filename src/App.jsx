@@ -138,6 +138,7 @@ import {
   normalizeGeneratedNewsroomEdition,
 } from './domain/newsroomGeneration';
 import { noAppearanceCoverageIssueIds } from './domain/collegeGameCoverageRepair';
+import { newsroomIssueIsVisible } from './domain/newsroomVisibility';
 import {
   advanceCareerSeason,
   recoverProductionCareerForSeason,
@@ -3245,7 +3246,7 @@ const handleSaveGameClick = () => {
     const visibleNewsroomIssues = (appState.newsroomIssues || []).filter((issue) => {
       const publicationId = issue?.publicationId || issue?.weekKey || issue?.id
         || `season-${Number(issue?.season || 1) || 1}-week-${Math.max(0, Number(issue?.week || 0) || 0)}`;
-      return !noAppearanceIssueIds.has(publicationId);
+      return !noAppearanceIssueIds.has(publicationId) && newsroomIssueIsVisible(issue);
     });
 
     if (visibleNewsroomIssues.length) {
@@ -3253,6 +3254,7 @@ const handleSaveGameClick = () => {
         <GroundedNewsroom
           key={newsroomFocusId || 'latest-newsroom'}
           issues={visibleNewsroomIssues}
+          career={appState}
           initialIssueId={newsroomFocusId}
           newsTheme={newsTheme}
           setNewsTheme={setNewsTheme}

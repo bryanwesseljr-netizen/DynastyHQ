@@ -23,7 +23,7 @@ const publicationLabelForStory = (story = {}, issue = {}, career = null) => {
   const team = resolveIssueTeamMediaProfile(issue, career);
   if (presentation.audience === 'local') return team.localOutletName;
   if (presentation.audience === 'regional') return team.regionalOutletName;
-  if (presentation.audience === 'national' || presentation.audience === 'national-lead') return team.nationalOutletName;
+  if (presentation.audience === 'national' || presentation.audience === 'national-lead') return 'ESPN';
   if (presentation.audience === 'analysis') return 'The Film Room';
   return story.outletName;
 };

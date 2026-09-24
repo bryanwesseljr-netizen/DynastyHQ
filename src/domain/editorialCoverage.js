@@ -305,7 +305,7 @@ export const buildEditorialCoverageDecision = ({ state = {}, issue = {}, publica
   if (resultKnown) { score += 3; reasons.push('completed game result'); }
   if (roleEvent) { score += 3; reasons.push(relevance.promoted ? 'depth-chart promotion' : relevance.demoted ? 'depth-chart demotion' : 'depth-chart change'); }
   if (roleEvent && relevance.promoted && relevance.starter) { score += 2; reasons.push('promotion to starting quarterback'); }
-  if (starterAnnouncement && !roleEvent) { score += 3; reasons.push('verified preseason QB1 announcement'); }
+  if (starterAnnouncement && !roleEvent && !eventFacts.length) { score += 3; reasons.push('verified preseason QB1 announcement'); }
   if (relevance.firstAppearance) { score += 3; reasons.push('first college appearance'); }
   else if (appearanceEvent) { score += 1; reasons.push('game appearance'); }
   if (relevance.starter && relevance.didPlay) { score += 1; reasons.push('starting-quarterback role'); }

@@ -7,6 +7,7 @@ import {
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation';
 import { noAppearanceCoverageIssueIds } from '../domain/collegeGameCoverageRepair.js';
+import { newsroomIssueIsVisible } from '../domain/newsroomVisibility.js';
 import {
   resolveCareerTeamMediaProfile,
   resolveIssueTeamMediaProfile,
@@ -354,7 +355,7 @@ const NewsroomTeamHubPortal = () => {
     const issues = (Array.isArray(career.newsroomIssues) ? career.newsroomIssues : []).filter((issue) => {
       const publicationId = issue?.publicationId || issue?.weekKey || issue?.id
         || `season-${Number(issue?.season || 1) || 1}-week-${Math.max(0, Number(issue?.week || 0) || 0)}`;
-      return !blockedIssueIds.has(publicationId);
+      return !blockedIssueIds.has(publicationId) && newsroomIssueIsVisible(issue);
     });
     const currentProfile = resolveCareerTeamMediaProfile(career);
     const currentIssues = issues

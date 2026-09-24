@@ -304,3 +304,26 @@ test('Newsroom API logs the generated headlines so background generation can be 
   assert.match(source, /headlines:/);
   assert.match(source, /publicationId: payload\.publicationId/);
 });
+
+
+test('Newsroom team hub labels preseason coverage as the correct season and sorts newest issues first', async () => {
+  const source = await readFile(new URL('../components/NewsroomTeamHubPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /Season \${season} · Preseason/);
+  assert.match(source, /const compareIssuesNewestFirst/);
+  assert.match(source, /\.sort\(compareIssuesNewestFirst\)/);
+  assert.match(source, /\.sort\(\(left, right\) => compareIssuesNewestFirst\(left\.issue, right\.issue\)\)/);
+});
+
+test('weekly Newsroom selector always shows season chronology even when an edition has a custom label', async () => {
+  const source = await readFile(new URL('../components/GroundedNewsroom.jsx', import.meta.url), 'utf8');
+  assert.match(source, /const editionLabelForIssue/);
+  assert.match(source, /Season \${season} · Preseason/);
+  assert.match(source, /editionLabelForIssue\(issue\)/);
+  assert.match(source, /editionLabelForIssue\(selectedIssue\)/);
+});
+
+test('newsroom writer cannot invent a college class year', async () => {
+  const source = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(source, /academic class year/);
+  assert.match(source, /freshman\/sophomore\/junior\/senior/);
+});

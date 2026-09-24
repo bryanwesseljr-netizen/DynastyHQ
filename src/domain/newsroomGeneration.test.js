@@ -241,3 +241,45 @@ test('atomic newsroom save strips undefined values before Transaction.set', asyn
   assert.match(handler, /committedState = stripUndefinedDeep\(/);
   assert.match(handler, /transaction\.set\(docRef, committedState\)/);
 });
+
+
+test('rewriting a newsroom edition never clears an existing podcast transcript or audio state', () => {
+  const payload = buildNewsroomGenerationPayload(state, publicationId);
+  const generated = {
+    articles: [{
+      outletId: 'recruiting',
+      storyImportance: 'notable',
+      storyFormat: 'recruiting-intel',
+      kicker: 'Recruiting Notebook',
+      headline: 'Fresh newsroom copy',
+      dek: 'The article is rewritten without touching the podcast.',
+      dateline: '',
+      paragraphs: [paragraph, paragraph, paragraph, paragraph],
+      sectionHeadings: ['Why it matters'],
+      pullQuote: '',
+      sidebars: [{ title: 'At a glance', items: ['Verified context'] }],
+      citedFactIds: payload.articleBriefs[0].focusFactIds,
+    }],
+  };
+  const edition = normalizeGeneratedNewsroomEdition({ generated, payload, model: 'test-model' });
+  const podcastEpisode = {
+    id: `podcast-${publicationId}`,
+    publicationId,
+    status: 'published',
+    audioStatus: 'ready',
+    segments: Array.from({ length: 8 }, (_, index) => ({ hostId: index % 2 ? 'sarah' : 'mark', text: `Segment ${index}` })),
+    chapters: [{ title: 'Opening', startSegment: 0 }],
+    citedFactKeys: ['profile.player.name'],
+  };
+  const withPodcast = { ...state, podcastEpisodes: [podcastEpisode] };
+  const next = applyGeneratedNewsroomEdition(withPodcast, publicationId, edition);
+  assert.deepEqual(next.podcastEpisodes, [podcastEpisode]);
+});
+
+test('free text router removes retired Gemini fallback and retries invalid structured JSON', async () => {
+  const source = await readFile(new URL('../server/textRouter.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /gemini-2\.5-flash-lite/);
+  assert.match(source, /const maxAttempts = 2/);
+  assert.match(source, /invalid JSON/i);
+  assert.match(source, /attempt: attemptNumber/);
+});

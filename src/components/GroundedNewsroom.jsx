@@ -18,12 +18,13 @@ const iconForOutlet = (outletId) => ({
   national: BookOpen,
 }[outletId] || Newspaper);
 
-const publicationLabelForStory = (story = {}, issue = {}) => {
+const publicationLabelForStory = (story = {}, issue = {}, career = null) => {
   const presentation = resolveNewsroomPresentation(story);
-  const team = resolveIssueTeamMediaProfile(issue);
+  const team = resolveIssueTeamMediaProfile(issue, career);
   if (presentation.audience === 'local') return team.localOutletName;
   if (presentation.audience === 'regional') return team.regionalOutletName;
-  if (presentation.audience === 'national' || presentation.audience === 'national-lead') return 'ESPN';
+  if (presentation.audience === 'national' || presentation.audience === 'national-lead') return team.nationalOutletName;
+  if (presentation.audience === 'analysis') return 'The Film Room';
   return story.outletName;
 };
 
@@ -36,15 +37,16 @@ const editionLabelForIssue = (issue = {}) => {
   return custom ? `${timeline} · ${custom}` : timeline;
 };
 
-const tabsForIssue = (issue) => (issue?.articles || []).map((story) => ({
+const tabsForIssue = (issue, career = null) => (issue?.articles || []).map((story) => ({
   theme: story.theme || story.outletId,
   outletId: story.outletId,
-  label: publicationLabelForStory(story, issue),
+  label: publicationLabelForStory(story, issue, career),
   icon: iconForOutlet(story.outletId),
 }));
 
 const GroundedNewsroom = ({
   issues,
+  career = null,
   initialIssueId,
   newsTheme,
   setNewsTheme,
@@ -85,7 +87,7 @@ const GroundedNewsroom = ({
     () => issues.find((issue) => issue.id === selectedIssueId) || latestIssue,
     [issues, latestIssue, selectedIssueId],
   );
-  const tabs = useMemo(() => tabsForIssue(selectedIssue), [selectedIssue]);
+  const tabs = useMemo(() => tabsForIssue(selectedIssue, career), [career, selectedIssue]);
   const activeTheme = tabs.some((tab) => tab.theme === newsTheme) ? newsTheme : tabs[0]?.theme;
   const selectedTab = tabs.find((tab) => tab.outletId === selectedOutletId)
     || tabs.find((tab) => tab.theme === activeTheme)
@@ -347,6 +349,7 @@ const GroundedNewsroom = ({
             story={story}
             featureImage={featureImage}
             currentMedia={currentMedia}
+            career={career}
           />
           {!readOnly && (
             <details className="dhq-newsroom-media-tools overflow-hidden rounded-xl border border-slate-700 bg-slate-950/90 shadow-xl">

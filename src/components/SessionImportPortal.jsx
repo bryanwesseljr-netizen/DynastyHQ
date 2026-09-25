@@ -16,21 +16,13 @@ import {
   X,
 } from 'lucide-react';
 import { coverageReferenceFor } from '../domain/coverageReferences.js';
+import { requestNavigation } from '../domain/navigationBus.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './session-import.css';
 
 const MAX_SCREENSHOTS = 30;
 
 const clean = (value) => String(value || '').trim();
-
-const visible = (element) => Boolean(element && element.offsetParent !== null);
-
-const findButton = (matcher, root = document) => {
-  const buttons = [...root.querySelectorAll('button')];
-  return buttons.find((button) => visible(button) && matcher.test(clean(button.textContent)))
-    || buttons.find((button) => matcher.test(clean(button.textContent)))
-    || null;
-};
 
 const findScannerInput = () => {
   const labels = [...document.querySelectorAll('.dhq-weekly-agenda-workspace label')];
@@ -56,10 +48,7 @@ const waitForScannerInput = (timeoutMs = 8000) => new Promise((resolve, reject) 
 });
 
 const handoffGameFiles = async (files) => {
-  const gameHubButton = findButton(/^game hub$/i);
-  if (!gameHubButton) throw new Error('Game Hub is not available from this screen.');
-  window.__dhqAllowLegacyGameHubOnce = true;
-  gameHubButton.click();
+  requestNavigation('importSession');
   const input = await waitForScannerInput();
   if (typeof DataTransfer === 'undefined') {
     throw new Error('This browser cannot hand the screenshots to the verified scanner automatically.');
@@ -154,12 +143,9 @@ const SessionImportPortal = () => {
     setOpen(false);
     document.body.classList.remove('dhq-session-import-mode', 'dhq-session-import-review');
     if (home) {
-      window.setTimeout(() => findButton(/^home$/i)?.click(), 30);
+      window.setTimeout(() => requestNavigation('dashboard'), 30);
     } else if (focusApplied) {
-      window.setTimeout(() => {
-        window.__dhqAllowLegacyGameHubOnce = true;
-        findButton(/^game hub$/i)?.click();
-      }, 50);
+      window.setTimeout(() => requestNavigation('importSession'), 50);
     }
   };
 

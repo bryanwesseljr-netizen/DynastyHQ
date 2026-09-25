@@ -130,10 +130,10 @@ test('college fallback ignores older high-school games and evaluation entries', 
   assert.equal(model.centerLine, '21-45');
 });
 
-test('no-game preseason wrap-up uses current season status instead of an older matchup', () => {
+test('no-game current-season wrap-up never pulls a prior-season opponent into Home', () => {
   const state = {
     currentSeason: 4,
-    currentWeek: 0,
+    currentWeek: 1,
     player: { college: 'Oregon', role: 'QB1' },
     rtg: { rank: 'QB1' },
     gameLogs: [
@@ -142,7 +142,7 @@ test('no-game preseason wrap-up uses current season status instead of an older m
   };
   const flow = {
     mode: 'wrap-up',
-    activeWeek: { configured: false, season: 4, week: 0, type: 'game', phase: 'preseason' },
+    activeWeek: { configured: false, season: 4, week: 1, type: 'game', phase: 'regular' },
     wrapUp: {
       season: 4,
       week: 0,
@@ -151,13 +151,48 @@ test('no-game preseason wrap-up uses current season status instead of an older m
     nextAction: { label: 'Finalize Week', target: 'finalize', detail: 'Preseason checkpoint is ready to close.' },
     steps: [],
   };
-  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 0 }, flow);
+  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 1 }, flow);
 
   assert.equal(model.mode, 'season');
-  assert.equal(model.kicker, 'SEASON 4 · WEEK 0');
-  assert.equal(model.headline, 'OREGON · QB1');
-  assert.equal(model.center, 'QB1');
-  assert.equal(model.centerLine, 'WEEK 0');
-  assert.doesNotMatch(model.headline, /13|Rutgers/i);
-  assert.equal(model.scout.team, 'Oregon');
+  assert.equal(model.kicker, 'SEASON 4');
+  assert.equal(model.headline, 'SEASON 4 · NO FINAL YET');
+  assert.equal(model.center, '—');
+  assert.equal(model.centerLine, 'WEEK 1');
+  assert.equal(model.opponent, 'NO RESULT YET');
+  assert.equal(model.latestGame, null);
+  assert.equal(model.hasCurrentSeasonGame, false);
+  assert.equal(model.historicalLatestGame.opponent, 'Rutgers');
+  assert.doesNotMatch(`${model.headline} ${model.opponent}`, /13|Rutgers/i);
+});
+
+test('Home latest-result presentation only uses a completed game from the current season', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 5,
+    player: { college: 'Oregon' },
+    gameLogs: [
+      { season: 3, week: 13, stage: 'college', opponent: 'Rutgers', homeScore: 35, awayScore: 13, result: 'W' },
+      { season: 4, week: 4, stage: 'college', opponent: 'Michigan', homeScore: 28, awayScore: 24, result: 'W' },
+    ],
+  };
+  const flow = {
+    mode: 'wrap-up',
+    activeWeek: { configured: false, season: 4, week: 5, type: 'game', phase: 'regular' },
+    wrapUp: {
+      season: 4,
+      week: 5,
+      entry: { season: 4, week: 5, weekPhase: 'regular', weekType: 'bye' },
+    },
+    nextAction: { label: 'Finalize Week', target: 'finalize' },
+    steps: [],
+  };
+  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 5 }, flow);
+
+  assert.equal(model.mode, 'season');
+  assert.equal(model.hasCurrentSeasonGame, true);
+  assert.equal(model.latestGame.opponent, 'Michigan');
+  assert.equal(model.opponent, 'Michigan');
+  assert.equal(model.center, 'FINAL');
+  assert.equal(model.centerLine, '28-24');
+  assert.doesNotMatch(`${model.headline} ${model.opponent}`, /Rutgers/i);
 });

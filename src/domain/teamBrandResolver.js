@@ -2,7 +2,7 @@ import { resolveTeamMediaProfile } from './teamMediaProfile.js';
 
 const ESPN_TEAMS_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=500';
 const TEAM_DIRECTORY_URL = '/api/analyze-rtg-status?resource=team-directory';
-const CACHE_KEY = 'dynastyhq-college-team-brands-v3';
+const CACHE_KEY = 'dynastyhq-college-team-brands-v2';
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 let brandIndexPromise = null;
@@ -108,7 +108,12 @@ const readCache = () => {
     const cached = JSON.parse(window.localStorage.getItem(CACHE_KEY) || 'null');
     if (!cached?.savedAt || !Array.isArray(cached?.teams)) return null;
     if (Date.now() - cached.savedAt > CACHE_MAX_AGE) return null;
-    return cached.teams;
+    return cached.teams.map((team) => ({
+      ...team,
+      directLogo: team.directLogo || (team.id
+        ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${encodeURIComponent(team.id)}.png`
+        : ''),
+    }));
   } catch {
     return null;
   }

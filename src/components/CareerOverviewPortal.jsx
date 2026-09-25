@@ -14,6 +14,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
+import { DYNASTYHQ_NAVIGATE_EVENT, requestNavigation } from '../domain/navigationBus.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './career-overview.css';
 
@@ -91,6 +92,20 @@ const CareerOverviewPortal = () => {
       root.removeEventListener('click', onClickCapture, true);
       syncActiveButton(false);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleNavigation = (event) => {
+      const target = String(event?.detail?.target || '').trim();
+      if (!target) return;
+      if (target === 'career') {
+        setOpen(true);
+        return;
+      }
+      if (openRef.current) setOpen(false);
+    };
+    window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
+    return () => window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
   }, []);
 
   useEffect(() => {
@@ -173,9 +188,7 @@ const CareerOverviewPortal = () => {
 
   const goHome = () => {
     setOpen(false);
-    const homeButton = [...document.querySelectorAll('.dhq-primary-nav button')]
-      .find((button) => String(button.textContent || '').trim().toUpperCase() === 'HOME');
-    homeButton?.click();
+    requestNavigation('dashboard');
   };
 
   return createPortal(

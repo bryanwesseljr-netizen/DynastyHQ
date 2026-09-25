@@ -4,7 +4,6 @@ import test from 'node:test';
 
 const portalUrl = new URL('../components/MobileBroadcastNavPortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
-const ambientOwnerUrl = new URL('../components/OwnerAmbientEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../components/mobile-broadcast.css', import.meta.url);
 const readerStylesUrl = new URL('../newsroom-reader-shell-v2.css', import.meta.url);
 const fixesUrl = new URL('../components/mobile-broadcast-fixes.css', import.meta.url);
@@ -260,7 +259,7 @@ test('desktop active navigation has exactly one short underline and no lingering
 test('pinch-zoomed desktop-site view restores two-axis page panning without removing normal nav guardrails', async () => {
   const [portal, owner, navState] = await Promise.all([
     readFile(zoomPanPortalUrl, 'utf8'),
-    readFile(ambientOwnerUrl, 'utf8'),
+    readFile(ownerUrl, 'utf8'),
     readFile(navStateUrl, 'utf8'),
   ]);
 

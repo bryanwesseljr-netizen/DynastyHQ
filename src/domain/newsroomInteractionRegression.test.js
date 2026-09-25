@@ -86,3 +86,11 @@ test('Article Media stays visually attached to the full-width Newsroom media car
   assert.match(portal, /directorMount\.dataset\.open = open \? 'true' : 'false'/);
   assert.match(portal, /directorMount\.dataset\.open = isOpen \? 'true' : 'false'/);
 });
+
+test('opening a Newsroom story cancels delayed home-reset retries before the article can be closed again', async () => {
+  const source = await readFile(new URL('../components/NewsroomArticleExperiencePortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /const isNewsroomStoryOpenEvent = \(event\) =>/);
+  assert.match(source, /\.dhq-team-story-tile/);
+  assert.match(source, /\.dhq-newsroom-story-card/);
+  assert.match(source, /handleNewsroomPointerDown[\s\S]*?isNewsroomStoryOpenEvent\(event\)[\s\S]*?cancelHomeReset\(\)/);
+});

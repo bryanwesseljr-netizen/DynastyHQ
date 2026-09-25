@@ -166,6 +166,8 @@ test('no-game current-season wrap-up never pulls a prior-season opponent into Ho
   assert.equal(model.headline, 'SEASON 4 · NO FINAL YET');
   assert.equal(model.center, '—');
   assert.equal(model.centerLine, 'WEEK 1');
+  assert.equal(model.primaryLabel, 'FINALIZE WEEK');
+  assert.equal(model.primaryTarget, 'importSession');
   assert.equal(model.opponent, 'Vanderbilt');
   assert.equal(model.upcomingGame.opponent, 'Vanderbilt');
   assert.equal(model.latestGame, null);
@@ -204,5 +206,7 @@ test('Home latest-result presentation only uses a completed game from the curren
   assert.equal(model.opponent, 'Michigan');
   assert.equal(model.center, 'FINAL');
   assert.equal(model.centerLine, '28-24');
+  assert.equal(model.primaryLabel, 'FINALIZE WEEK');
+  assert.equal(model.primaryTarget, 'importSession');
   assert.doesNotMatch(`${model.headline} ${model.opponent}`, /Rutgers/i);
 });

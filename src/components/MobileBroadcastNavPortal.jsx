@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import './mobile-broadcast.css';
 import './mobile-broadcast-fixes.css';
+import { requestNavigation } from '../domain/navigationBus.js';
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
@@ -187,11 +188,9 @@ const MobileBroadcastNavPortal = () => {
   );
 
   const navigate = (item) => {
-    const button = findNavigationButton(item.matcher);
-    if (!button) return;
     legacyMenuOpenedByPortalRef.current = false;
     setMoreOpen(false);
-    button.click();
+    requestNavigation(item.id);
     window.setTimeout(() => setActive(currentActive()), 40);
   };
 

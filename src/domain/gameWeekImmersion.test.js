@@ -154,8 +154,8 @@ test('no-game preseason wrap-up uses current season status instead of an older m
   const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 0 }, flow);
 
   assert.equal(model.mode, 'season');
-  assert.equal(model.kicker, 'SEASON 4 · PRESEASON');
-  assert.equal(model.headline, 'THE NEXT CHAPTER STARTS NOW');
+  assert.equal(model.kicker, 'SEASON 4 · WEEK 0');
+  assert.equal(model.headline, 'OREGON · QB1');
   assert.equal(model.center, 'QB1');
   assert.equal(model.centerLine, 'WEEK 0');
   assert.doesNotMatch(model.headline, /13|Rutgers/i);

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const routingUrl = new URL('../components/WeekHubRoutingPortal.jsx', import.meta.url);
-const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const ownerUrl = new URL('../components/OwnerGameHubEnhancements.jsx', import.meta.url);
 const dashboardUrl = new URL('../components/BroadcastDashboard.jsx', import.meta.url);
 
 test('homepage View Week Hub is bridged to the new Game Hub instead of legacy Weekly Agenda', async () => {

@@ -9,6 +9,49 @@
   color: #f4d45e;
 }
 
+.dhq-broadcast-season-center {
+  position: absolute;
+  z-index: 4;
+  top: 109px;
+  left: 50%;
+  display: grid;
+  width: 165px;
+  justify-items: center;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.dhq-broadcast-season-center b,
+.dhq-broadcast-season-center span,
+.dhq-broadcast-season-center small {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.dhq-broadcast-season-center b {
+  font-family: Impact, Haettenschweiler, sans-serif;
+  font-size: 3rem;
+  font-style: italic;
+  line-height: 1;
+  text-shadow: 0 4px 0 #050a0f;
+}
+
+.dhq-broadcast-season-center span {
+  margin-top: 17px;
+  color: #f7f7f8;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.dhq-broadcast-season-center small {
+  margin-top: 3px;
+  color: #9aa2aa;
+  font-size: 0.54rem;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+}
+
 .dhq-broadcast-season-status {
   position: absolute;
   z-index: 4;
@@ -427,26 +470,27 @@
     font-size: 0.5rem;
   }
 
-  /* In the matchup-style Home hero, keep the center status copy anchored to
-     the full card instead of the narrow center column. This prevents WEEK /
-     result-detail text from drifting into the Oregon column on phones. */
-  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-versus {
-    left: 0;
-    width: 100%;
-    transform: none;
-    text-align: center;
+  .dhq-broadcast-season-center {
+    top: 180px;
+    left: 50%;
+    width: min(220px, calc(100% - 140px));
+    transform: translateX(-50%);
   }
 
-  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-versus span,
-  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-versus small {
-    right: 0;
-    left: 0;
-    width: 100%;
-    max-width: none;
-    margin-right: 0;
-    margin-left: 0;
-    transform: none;
-    text-align: center;
+  .dhq-broadcast-season-center b {
+    font-size: 2.4rem;
+  }
+
+  .dhq-broadcast-season-center span {
+    margin-top: 12px;
+    font-size: 0.66rem;
+    white-space: nowrap;
+  }
+
+  .dhq-broadcast-season-center small {
+    margin-top: 4px;
+    font-size: 0.6rem;
+    white-space: nowrap;
   }
 
   .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-team small {

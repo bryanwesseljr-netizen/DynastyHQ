@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const main = readFileSync(new URL('../main.jsx', import.meta.url), 'utf8');
-const ownerEnhancements = readFileSync(new URL('../components/OwnerEnhancements.jsx', import.meta.url), 'utf8');
+const ownerEnhancements = readFileSync(new URL('../components/OwnerWeeklyEnhancements.jsx', import.meta.url), 'utf8');
 const portal = readFileSync(new URL('../components/WeeklyAgendaV2Portal.jsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../weekly-agenda-v2.css', import.meta.url), 'utf8');
 

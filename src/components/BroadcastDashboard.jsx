@@ -143,7 +143,7 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
               <div className="dhq-broadcast-season-status__role">
                 <span>CURRENT ROLE</span>
                 <strong>{immersion.center}</strong>
-                <small>{model.stage === 'HighSchool' ? 'HIGH SCHOOL' : 'STARTING QUARTERBACK'}</small>
+                <small>{stageLabel === 'QB' ? 'STARTING QUARTERBACK' : stageLabel}</small>
               </div>
               <div className="dhq-broadcast-season-status__record">
                 <span>TEAM RECORD</span>

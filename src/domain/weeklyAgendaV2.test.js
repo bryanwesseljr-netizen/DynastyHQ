@@ -86,3 +86,12 @@ test('weekly agenda keeps publish reachable and scanner review visible when it e
   assert.match(styles, /\.dhq-weekly-agenda-v2 \.dhq-agenda-v2-actions \{[\s\S]*?position: sticky;[\s\S]*?bottom: 8px;/);
   assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?grid-template-columns: 1fr !important;/);
 });
+
+test('weekly agenda mobile workflow uses roomy two-column steps and lets setup copy wrap', async () => {
+  const styles = await readFile(stylesUrl, 'utf8');
+
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.dhq-agenda-v3-steps \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.dhq-agenda-v3-step strong \{[\s\S]*?white-space: normal/);
+  assert.match(styles, /@media \(max-width: 480px\)[\s\S]*?\.dhq-agenda-v3-control-card \{[\s\S]*?grid-template-columns: auto minmax\(0, 1fr\)/);
+  assert.match(styles, /@media \(max-width: 480px\)[\s\S]*?\.dhq-agenda-v3-control-card strong \{[\s\S]*?white-space: normal/);
+});

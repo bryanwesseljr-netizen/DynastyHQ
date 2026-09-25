@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const mainUrl = new URL('../main.jsx', import.meta.url);
-const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const ownerEnhancementsUrl = new URL('../components/OwnerWeeklyEnhancements.jsx', import.meta.url);
 const portalUrl = new URL('../components/WeeklyAgendaV2Portal.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-agenda-v2.css', import.meta.url);
 const appUrl = new URL('../App.jsx', import.meta.url);

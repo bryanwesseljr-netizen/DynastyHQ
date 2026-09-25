@@ -160,7 +160,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const opponent = mode === 'pregame'
     ? (activeOpponent || clean(latestGame?.opponent) || 'NEXT OPPONENT')
     : mode === 'season'
-      ? 'NO RESULT YET'
+      ? (clean(archivedLatestGame?.opponent) || 'NO RESULT YET')
       : (clean(latestGame?.opponent) || activeOpponent || 'NEXT OPPONENT');
   const score = scoreFor(latestGame || {});
   const result = clean(latestGame?.result).toUpperCase();
@@ -221,12 +221,12 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
         : mode === 'season'
           ? {
               kicker: `SEASON ${currentSeason}`,
-              headline: archivedLatestGame ? `LATEST SEASON ${currentSeason} RESULT` : `SEASON ${currentSeason} · NO GAME RESULT YET`,
-              center: archivedLatestGame ? 'FINAL' : '0-0',
+              headline: archivedLatestGame ? `LATEST SEASON ${currentSeason} RESULT` : `SEASON ${currentSeason} · NO FINAL YET`,
+              center: archivedLatestGame ? 'FINAL' : '—',
               centerLine: archivedLatestGame ? (score || 'RESULT PUBLISHED') : `WEEK ${week}`,
               centerDetail: archivedLatestGame
                 ? (result ? `${result} · WEEK ${archivedLatestGame.week ?? week}` : `WEEK ${archivedLatestGame.week ?? week}`)
-                : (currentPhase === 'preseason' ? 'PRESEASON / FIRST RESULT PENDING' : 'FIRST RESULT PENDING'),
+                : 'FIRST RESULT PENDING',
               primaryLabel: clean(flow.nextAction?.label).toUpperCase() || 'OPEN WEEK HUB',
               primaryTarget: nextTarget(flow),
               secondaryLabel: 'OPEN GAME HUB',

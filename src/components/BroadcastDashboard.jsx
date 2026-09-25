@@ -99,7 +99,9 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const player = state.player || {};
   const school = immersion.school;
   const opponent = immersion.opponent;
-  const latestGame = immersion.latestGame || sortedByWeek(state.gameLogs || []).at(-1) || null;
+  const latestGame = immersion.mode === 'season'
+    ? (immersion.latestGame || null)
+    : (immersion.latestGame || sortedByWeek(state.gameLogs || []).at(-1) || null);
   const newsItems = latestNewsItems(state);
   const chronicle = [...(state.careerChronicle || [])].filter(Boolean).reverse().slice(0, 4);
   const latestPodcast = [...(state.podcastEpisodes || [])].filter(Boolean).reverse().at(0) || null;

@@ -6,6 +6,7 @@ import {
   Play,
 } from 'lucide-react';
 import footballStadiumBg from '../assets/dynastyhq-football-stadium-bg.webp';
+import matchupHelmets from '../assets/matchup-helmets.webp';
 import { buildDashboardV2 } from '../domain/dashboardV2';
 import { buildGameweekFlow } from '../domain/gameweekFlow';
 import { buildGameWeekImmersion } from '../domain/gameWeekImmersion.js';

@@ -275,6 +275,7 @@ const App = () => {
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
         document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+        document.querySelector('.dhq-score-ticker')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
       };
 
       if (target === 'rules') {
@@ -2480,6 +2481,7 @@ const handleSaveGameClick = () => {
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
         document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+        document.querySelector('.dhq-score-ticker')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
       };
       reset();
       window.requestAnimationFrame(reset);

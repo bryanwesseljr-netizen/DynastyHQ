@@ -26,9 +26,12 @@ test('pregame mode uses configured active opponent and carries last result into 
   assert.equal(model.mode, 'pregame');
   assert.equal(model.opponent, 'UCLA');
   assert.equal(model.center, 'VS');
-  assert.equal(model.centerLine, '7:30 PM');
-  assert.equal(model.keysTitle, '3 KEYS TO THE GAME');
-  assert.equal(model.primaryLabel, 'OPEN GAME DAY');
+  assert.equal(model.kicker, 'UP NEXT · WEEK 3');
+  assert.equal(model.headline, 'OREGON VS UCLA');
+  assert.equal(model.centerLine, 'WEEK 3');
+  assert.equal(model.centerDetail, '7:30 PM');
+  assert.equal(model.keysTitle, 'UPCOMING GAME');
+  assert.equal(model.primaryLabel, 'OPEN GAME HUB');
   assert.equal(model.primaryTarget, 'gameHub');
   assert.equal(model.secondaryLabel, 'IMPORT AFTER GAME');
   assert.equal(model.secondaryTarget, 'importSession');
@@ -104,7 +107,7 @@ test('between weeks mode holds the latest result until the new week is configure
 
   assert.equal(model.mode, 'between');
   assert.equal(model.opponent, 'Baylor');
-  assert.equal(model.headline, 'THE NEXT CHAPTER AWAITS');
+  assert.equal(model.headline, 'WEEK 2 FINAL');
   assert.equal(model.center, 'FINAL');
   assert.equal(model.primaryLabel, 'SET UP WEEK 3');
   assert.equal(model.primaryTarget, 'agenda');
@@ -161,13 +164,14 @@ test('no-game current-season wrap-up never pulls a prior-season opponent into Ho
   };
   const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 1 }, flow);
 
-  assert.equal(model.mode, 'season');
-  assert.equal(model.kicker, 'SEASON 4');
-  assert.equal(model.headline, 'SEASON 4 · NO FINAL YET');
-  assert.equal(model.center, '—');
+  assert.equal(model.mode, 'pregame');
+  assert.equal(model.kicker, 'UP NEXT · WEEK 1');
+  assert.equal(model.headline, 'OREGON VS VANDERBILT');
+  assert.equal(model.center, 'VS');
   assert.equal(model.centerLine, 'WEEK 1');
   assert.equal(model.primaryLabel, 'FINALIZE WEEK');
   assert.equal(model.primaryTarget, 'importSession');
+  assert.equal(model.secondaryLabel, 'OPEN GAME HUB');
   assert.equal(model.opponent, 'Vanderbilt');
   assert.equal(model.upcomingGame.opponent, 'Vanderbilt');
   assert.equal(model.latestGame, null);
@@ -188,25 +192,108 @@ test('Home latest-result presentation only uses a completed game from the curren
     ],
   };
   const flow = {
-    mode: 'wrap-up',
+    mode: 'active-week',
     activeWeek: { configured: false, season: 4, week: 5, type: 'game', phase: 'regular' },
-    wrapUp: {
-      season: 4,
-      week: 5,
-      entry: { season: 4, week: 5, weekPhase: 'regular', weekType: 'bye' },
-    },
-    nextAction: { label: 'Finalize Week', target: 'finalize' },
+    wrapUp: null,
+    nextAction: { label: 'Set Up Week', target: 'agenda' },
     steps: [],
   };
   const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 5 }, flow);
 
-  assert.equal(model.mode, 'season');
+  assert.equal(model.mode, 'between');
   assert.equal(model.hasCurrentSeasonGame, true);
   assert.equal(model.latestGame.opponent, 'Michigan');
   assert.equal(model.opponent, 'Michigan');
   assert.equal(model.center, 'FINAL');
   assert.equal(model.centerLine, '28-24');
+  assert.equal(model.primaryLabel, 'SET UP WEEK 5');
+  assert.equal(model.primaryTarget, 'agenda');
+  assert.doesNotMatch(`${model.headline} ${model.opponent}`, /Rutgers/i);
+});
+
+test('preseason Home state never borrows an opponent from a future regular-season game', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 0,
+    player: { college: 'Oregon', role: 'QB1' },
+    rtg: { rank: 'QB1' },
+    seasonSchedules: [{
+      season: 4,
+      school: 'Oregon',
+      entries: [{ week: 1, opponent: 'Vanderbilt', homeAway: 'home', status: 'upcoming' }],
+    }],
+  };
+  const flow = {
+    mode: 'active-week',
+    activeWeek: { configured: false, season: 4, week: 0, type: 'game', phase: 'preseason' },
+    nextAction: { label: 'Set Up Week', target: 'agenda' },
+    steps: [],
+  };
+  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 0 }, flow);
+
+  assert.equal(model.mode, 'preseason');
+  assert.equal(model.headline, 'OREGON PRESEASON');
+  assert.equal(model.heroOpponent, '');
+  assert.equal(model.rightTeamName, 'PRESEASON');
+  assert.equal(model.center, 'PRE');
+  assert.doesNotMatch(`${model.headline} ${model.rightTeamName}`, /Vanderbilt/i);
+});
+
+test('bye week gets a dedicated Home state and keeps Finalize Week routed to verification', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 4,
+    player: { college: 'Oregon', role: 'QB1' },
+    rtg: { rank: 'QB1' },
+    currentWeekSetup: { season: 4, week: 4, type: 'bye', phase: 'regular', label: 'Bye Week' },
+  };
+  const flow = {
+    mode: 'wrap-up',
+    activeWeek: { configured: true, season: 4, week: 4, type: 'bye', phase: 'regular' },
+    wrapUp: { season: 4, week: 4, entry: { season: 4, week: 4, weekType: 'bye', weekPhase: 'regular' } },
+    nextAction: { label: 'Finalize Week', target: 'finalize' },
+    steps: [],
+  };
+  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 4 }, flow);
+
+  assert.equal(model.mode, 'bye');
+  assert.equal(model.headline, 'OREGON · DEVELOPMENT WEEK');
+  assert.equal(model.center, 'BYE');
+  assert.equal(model.heroOpponent, '');
   assert.equal(model.primaryLabel, 'FINALIZE WEEK');
   assert.equal(model.primaryTarget, 'importSession');
-  assert.doesNotMatch(`${model.headline} ${model.opponent}`, /Rutgers/i);
+  assert.equal(model.secondaryTarget, 'gameHub');
+});
+
+test('completed college season switches Home into offseason mode after wrap-up is finished', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 15,
+    player: { college: 'Oregon', role: 'QB1' },
+    rtg: { rank: 'QB1' },
+    gameLogs: [
+      { season: 4, week: 1, stage: 'college', opponent: 'Vanderbilt', homeScore: 35, awayScore: 17, result: 'W' },
+    ],
+    seasonSchedules: [{
+      season: 4,
+      school: 'Oregon',
+      entries: [{ week: 1, opponent: 'Vanderbilt', homeAway: 'home', completed: true, result: 'W', teamScore: 35, opponentScore: 17 }],
+    }],
+  };
+  const flow = {
+    mode: 'active-week',
+    activeWeek: { configured: false, season: 4, week: 15, type: 'game', phase: 'regular' },
+    wrapUp: null,
+    nextAction: { label: 'Set Up Week', target: 'agenda' },
+    steps: [],
+  };
+  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 15 }, flow);
+
+  assert.equal(model.mode, 'offseason');
+  assert.equal(model.headline, 'OREGON OFFSEASON');
+  assert.equal(model.center, 'OFF');
+  assert.equal(model.centerLine, 'SEASON COMPLETE');
+  assert.equal(model.heroOpponent, '');
+  assert.equal(model.primaryLabel, 'OPEN OFFSEASON');
+  assert.equal(model.primaryTarget, 'offseason');
 });

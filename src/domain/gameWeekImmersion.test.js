@@ -279,6 +279,9 @@ test('completed college season switches Home into offseason mode after wrap-up i
       school: 'Oregon',
       entries: [{ week: 1, opponent: 'Vanderbilt', homeAway: 'home', completed: true, result: 'W', teamScore: 35, opponentScore: 17 }],
     }],
+    careerTransitions: {
+      graduationChecklist: { finalSeasonComplete: true },
+    },
   };
   const flow = {
     mode: 'active-week',

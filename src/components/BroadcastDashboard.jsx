@@ -12,6 +12,7 @@ import './dynamic-matchup-helmets.css';
 import { buildDashboardV2 } from '../domain/dashboardV2';
 import { buildGameweekFlow } from '../domain/gameweekFlow';
 import { buildGameWeekImmersion } from '../domain/gameWeekImmersion.js';
+import { requestNavigation } from '../domain/navigationBus.js';
 import './broadcast-dashboard.css';
 import './broadcast-reference.css';
 import './game-week-immersion.css';
@@ -113,15 +114,7 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const gameDate = formatDate(latestGame?.publishedAt || latestGame?.date || latestGame?.occurredAt);
   const stageLabel = model.stage === 'OC' ? 'OFFENSIVE COORDINATOR' : model.stage === 'HC' ? 'HEAD COACH' : model.stage === 'Retired' ? 'LEGACY' : display(player.pos, 'PLAYER');
   const open = (target) => {
-    if (target === 'gameHub' && typeof document !== 'undefined') {
-      const buttons = [...document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button')];
-      const gameHubButton = buttons.find((button) => clean(button.textContent).toUpperCase() === 'GAME HUB' && button.offsetParent !== null)
-        || buttons.find((button) => clean(button.textContent).toUpperCase() === 'GAME HUB');
-      if (gameHubButton) {
-        gameHubButton.click();
-        return;
-      }
-    }
+    if (requestNavigation(target)) return;
     onNavigate?.(target);
   };
   const upcomingSiteLabel = immersion.upcomingGame?.homeAway === 'home'

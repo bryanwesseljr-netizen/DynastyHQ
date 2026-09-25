@@ -49,3 +49,11 @@ test('Game Hub uses normal document flow at every viewport for native browser zo
   assert.match(viewportStyles, /touch-action: pan-x pan-y pinch-zoom !important;/);
   assert.match(viewportStyles, /@media \(max-width: 767px\) \{[\s\S]*--dhq-game-hub-header-height: 150px;/);
 });
+
+test('Game Hub mobile text and controls stay inside narrow phone cards', async () => {
+  const styles = await readFile(stylesUrl, 'utf8');
+
+  assert.match(styles, /\.dhq-game-hub__toolbar-actions select \{[\s\S]*?max-width: 100% !important;/);
+  assert.match(styles, /\.dhq-gh-hero h1 \{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?text-wrap: balance;/);
+  assert.match(styles, /\.dhq-game-hub :where\(\.dhq-gh-card, \.dhq-gh-wide-card, \.dhq-gh-story-grid, \.dhq-gh-summary-grid\) \{[\s\S]*?max-width: 100% !important;/);
+});

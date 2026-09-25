@@ -133,24 +133,46 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
           <div className="dhq-broadcast-hero__angles" aria-hidden="true" />
           <span className="dhq-broadcast-hero__kicker">{immersion.kicker}</span>
           <h1 id="broadcast-week-title">{immersion.headline}</h1>
-          <img className="dhq-broadcast-helmets" src={matchupHelmets} alt="Matchup presentation" />
+          {immersion.mode === 'season' ? (
+            <div className="dhq-broadcast-season-status" aria-label="Current career status">
+              <div className="dhq-broadcast-season-status__program">
+                <span>PROGRAM</span>
+                <strong>{shortName(school)}</strong>
+                <small>SEASON {immersion.currentSeason}</small>
+              </div>
+              <div className="dhq-broadcast-season-status__role">
+                <span>CURRENT ROLE</span>
+                <strong>{immersion.center}</strong>
+                <small>{model.stage === 'HighSchool' ? 'HIGH SCHOOL' : 'STARTING QUARTERBACK'}</small>
+              </div>
+              <div className="dhq-broadcast-season-status__record">
+                <span>TEAM RECORD</span>
+                <strong>{record}</strong>
+                <small>{immersion.currentPhase === 'preseason' ? 'PRESEASON' : `WEEK ${immersion.week}`}</small>
+              </div>
+            </div>
+          ) : (
+            <>
+              <img className="dhq-broadcast-helmets" src={matchupHelmets} alt="Matchup presentation" />
 
-          <div className="dhq-broadcast-team dhq-broadcast-team--left">
-            <strong>{shortName(school)}</strong>
-            <span>{record}</span>
-            <small>{model.stage === 'HighSchool' ? 'HIGH SCHOOL' : 'CONFERENCE'}</small>
-          </div>
-          <div className="dhq-broadcast-team dhq-broadcast-team--right">
-            <strong>{shortName(opponent, 'OPPONENT')}</strong>
-            <span>{rightTeamMeta}</span>
-            <small>{opponent === 'NEXT OPPONENT' ? 'ADD IN GAME HUB' : rightTeamLabel}</small>
-          </div>
+              <div className="dhq-broadcast-team dhq-broadcast-team--left">
+                <strong>{shortName(school)}</strong>
+                <span>{record}</span>
+                <small>{model.stage === 'HighSchool' ? 'HIGH SCHOOL' : 'CONFERENCE'}</small>
+              </div>
+              <div className="dhq-broadcast-team dhq-broadcast-team--right">
+                <strong>{shortName(opponent, 'OPPONENT')}</strong>
+                <span>{rightTeamMeta}</span>
+                <small>{opponent === 'NEXT OPPONENT' ? 'ADD IN GAME HUB' : rightTeamLabel}</small>
+              </div>
 
-          <div className="dhq-broadcast-versus">
-            <b>{immersion.center}</b>
-            <span>{immersion.centerLine}</span>
-            <small>{immersion.centerDetail}</small>
-          </div>
+              <div className="dhq-broadcast-versus">
+                <b>{immersion.center}</b>
+                <span>{immersion.centerLine}</span>
+                <small>{immersion.centerDetail}</small>
+              </div>
+            </>
+          )}
 
           {!readOnly ? (
             <div className="dhq-broadcast-hero__buttons">

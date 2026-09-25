@@ -139,6 +139,14 @@ test('no-game current-season wrap-up never pulls a prior-season opponent into Ho
     gameLogs: [
       { season: 3, week: 13, stage: 'college', opponent: 'Rutgers', homeScore: 35, awayScore: 13, result: 'W' },
     ],
+    seasonSchedules: [{
+      season: 4,
+      school: 'Oregon',
+      entries: [
+        { week: 1, opponent: 'Vanderbilt', homeAway: 'home', status: 'upcoming' },
+        { week: 2, opponent: 'Florida', homeAway: 'home', status: 'upcoming' },
+      ],
+    }],
   };
   const flow = {
     mode: 'wrap-up',
@@ -158,11 +166,13 @@ test('no-game current-season wrap-up never pulls a prior-season opponent into Ho
   assert.equal(model.headline, 'SEASON 4 · NO FINAL YET');
   assert.equal(model.center, '—');
   assert.equal(model.centerLine, 'WEEK 1');
-  assert.equal(model.opponent, 'NO RESULT YET');
+  assert.equal(model.opponent, 'Vanderbilt');
+  assert.equal(model.upcomingGame.opponent, 'Vanderbilt');
   assert.equal(model.latestGame, null);
   assert.equal(model.hasCurrentSeasonGame, false);
   assert.equal(model.historicalLatestGame.opponent, 'Rutgers');
   assert.doesNotMatch(`${model.headline} ${model.opponent}`, /13|Rutgers/i);
+  assert.match(model.opponent, /Vanderbilt/i);
 });
 
 test('Home latest-result presentation only uses a completed game from the current season', () => {

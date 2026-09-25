@@ -41,6 +41,7 @@ test('postgame mode turns the hero into a final and points to wrap-up work', () 
   const flow = {
     mode: 'wrap-up',
     activeWeek: { configured: false, week: 3, type: 'game' },
+    wrapUp: { season: 2, week: 2, entry: { season: 2, week: 2, game: { result: 'L', opponent: 'Baylor' } } },
     nextAction: { label: 'Open Podcast', target: 'podcast' },
     steps: [
       { label: 'Newsroom', state: 'complete' },
@@ -84,6 +85,7 @@ test('postgame hero never mixes the active next opponent into the previous final
   const flow = {
     mode: 'wrap-up',
     activeWeek: { configured: true, week: 3, type: 'game' },
+    wrapUp: { season: 2, week: 2, entry: { season: 2, week: 2, game: { result: 'L', opponent: 'Baylor' } } },
     nextAction: { target: 'gameHub' },
     steps: [],
   };
@@ -126,4 +128,36 @@ test('college fallback ignores older high-school games and evaluation entries', 
   assert.equal(model.latestGame.opponent, 'Baylor');
   assert.equal(model.opponent, 'Baylor');
   assert.equal(model.centerLine, '21-45');
+});
+
+test('no-game preseason wrap-up uses current season status instead of an older matchup', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 0,
+    player: { college: 'Oregon', role: 'QB1' },
+    rtg: { rank: 'QB1' },
+    gameLogs: [
+      { season: 3, week: 13, stage: 'college', opponent: 'Rutgers', homeScore: 35, awayScore: 13, result: 'W' },
+    ],
+  };
+  const flow = {
+    mode: 'wrap-up',
+    activeWeek: { configured: false, season: 4, week: 0, type: 'game', phase: 'preseason' },
+    wrapUp: {
+      season: 4,
+      week: 0,
+      entry: { season: 4, week: 0, weekPhase: 'preseason', weekType: 'bye' },
+    },
+    nextAction: { label: 'Finalize Week', target: 'finalize', detail: 'Preseason checkpoint is ready to close.' },
+    steps: [],
+  };
+  const model = buildGameWeekImmersion(state, { institution: 'Oregon', season: 4, week: 0 }, flow);
+
+  assert.equal(model.mode, 'season');
+  assert.equal(model.kicker, 'SEASON 4 · PRESEASON');
+  assert.equal(model.headline, 'THE NEXT CHAPTER STARTS NOW');
+  assert.equal(model.center, 'QB1');
+  assert.equal(model.centerLine, 'WEEK 0');
+  assert.doesNotMatch(model.headline, /13|Rutgers/i);
+  assert.equal(model.scout.team, 'Oregon');
 });

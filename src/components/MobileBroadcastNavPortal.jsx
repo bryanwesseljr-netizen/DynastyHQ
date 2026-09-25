@@ -173,6 +173,13 @@ const MobileBroadcastNavPortal = () => {
   }, []);
 
   useEffect(() => {
+    if (!host || !isMobileViewport()) return undefined;
+    const activeButton = host.querySelector('.dhq-mobile-broadcast-nav button.is-active');
+    activeButton?.scrollIntoView?.({ behavior: 'auto', block: 'nearest', inline: 'center' });
+    return undefined;
+  }, [active, host]);
+
+  useEffect(() => {
     if (!moreOpen) return undefined;
     const closeOnOutside = (event) => {
       if (event.target?.closest?.('.dhq-mobile-more-sheet, .dhq-broadcast-header__profile')) return;

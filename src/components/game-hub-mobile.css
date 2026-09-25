@@ -59,7 +59,14 @@
   }
 
   .dhq-game-hub__toolbar-actions label {
+    min-width: 0 !important;
     height: 34px !important;
+  }
+
+  .dhq-game-hub__toolbar-actions select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    text-overflow: ellipsis;
   }
 
   .dhq-game-hub__toolbar-actions > button {
@@ -79,6 +86,8 @@
     top: 43px !important;
     width: 90% !important;
     max-width: 350px;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
     font-size: clamp(22px, 6.7vw, 27px) !important;
     line-height: .98 !important;
   }
@@ -180,6 +189,16 @@
     font-size: 8px;
     font-weight: 900;
     letter-spacing: .13em;
+  }
+
+  .dhq-game-hub :where(.dhq-gh-card, .dhq-gh-wide-card, .dhq-gh-story-grid, .dhq-gh-summary-grid) {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .dhq-game-hub :where(h2, h3, .dhq-gh-card__heading strong, .dhq-gh-wide-card strong) {
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
   }
 }
 

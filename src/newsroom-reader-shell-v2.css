@@ -123,12 +123,12 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   min-width: 0;
 }
 
-/* Keep the Newsroom media board and Article Media control in their own full-width
-   grid rows. In Android desktop-site mode the unstyled media-network portal wrapper
-   could share an implicit grid row with another mount, making the row much taller
-   than the visible card and leaving a large blank band above Article Media. */
+/* Give every post-article Newsroom surface a deterministic grid row. Several
+   enhancement portals are mounted as direct children of the reader; leaving these
+   rows implicit can create a tall empty track between Media Network and Article Media. */
 .dhq-newsroom-reader-mode > [data-media-network-newsroom="true"] {
   grid-column: 1 / -1 !important;
+  grid-row: 3;
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
@@ -140,10 +140,23 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   margin: 0 !important;
 }
 
-/* The production toggle should sit immediately below the finished media surface,
-   not create another detached workspace section. */
 .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount] {
+  grid-row: 4;
   margin-top: 0 !important;
+  align-self: start;
+}
+
+.dhq-newsroom-reader-mode > [data-editorial-photo-director-mount] {
+  grid-row: 5;
+  align-self: start;
+}
+
+.dhq-newsroom-reader-mode > [data-editorial-photo-director-mount][data-open="false"] {
+  display: none !important;
+}
+
+.dhq-newsroom-reader-mode > .dhq-newsroom-media-tools {
+  grid-row: 6;
   align-self: start;
 }
 
@@ -181,6 +194,22 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
 
   .dhq-newsroom-reader-mode > .dhq-news-article {
     grid-row: 3;
+  }
+
+  .dhq-newsroom-reader-mode > [data-media-network-newsroom="true"] {
+    grid-row: 4;
+  }
+
+  .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount] {
+    grid-row: 5;
+  }
+
+  .dhq-newsroom-reader-mode > [data-editorial-photo-director-mount] {
+    grid-row: 6;
+  }
+
+  .dhq-newsroom-reader-mode > .dhq-newsroom-media-tools {
+    grid-row: 7;
   }
 }
 

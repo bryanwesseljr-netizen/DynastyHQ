@@ -26,12 +26,14 @@ test('broadcast dashboard uses the approved reference proportions and real workf
   assert.match(source, /dhq-gameweek-immersion/);
   assert.match(source, /import '\.\/broadcast-reference\.css';/);
   assert.match(source, /import '\.\/game-week-immersion\.css';/);
-  assert.match(immersion, /SATURDAY STARTS HERE/);
+  assert.match(immersion, /UP NEXT · WEEK/);
   assert.match(immersion, /buildGameDayBrief\(state\)/);
-  assert.match(immersion, /OPEN GAME DAY/);
+  assert.match(immersion, /OPEN GAME HUB/);
   assert.match(immersion, /IMPORT AFTER GAME/);
   assert.match(immersion, /CONTINUE WRAP-UP/);
-  assert.match(immersion, /THE NEXT CHAPTER AWAITS/);
+  assert.match(immersion, /LATEST RESULT/);
+  assert.match(immersion, /PRESEASON/);
+  assert.match(immersion, /OPEN OFFSEASON/);
   assert.match(app, /tab === 'importSession' \|\| tab === 'gameHub'/);
   assert.match(styles, /\.dhq-broadcast-hero \{[\s\S]*?width: min\(1002px, 100%\)/);
   assert.match(styles, /\.dhq-broadcast-hero \{[\s\S]*?height: 314px/);

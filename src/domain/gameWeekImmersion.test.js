@@ -269,7 +269,7 @@ test('completed college season switches Home into offseason mode after wrap-up i
   const state = {
     currentSeason: 4,
     currentWeek: 15,
-    player: { college: 'Oregon', role: 'QB1' },
+    player: { college: 'Oregon', school: 'Oregon', careerStage: 'College', role: 'QB1' },
     rtg: { rank: 'QB1' },
     gameLogs: [
       { season: 4, week: 1, stage: 'college', opponent: 'Vanderbilt', homeScore: 35, awayScore: 17, result: 'W' },

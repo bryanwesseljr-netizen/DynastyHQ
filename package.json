@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test src/domain/*.test.js src/services/screenshotClient.test.js src/services/freeFirstVision.test.js",
-    "preview": "vite preview"
+    "test": "npm run test:smoke && npm run test:regression",
+    "preview": "vite preview",
+    "test:smoke": "node --test src/smoke/*.test.js",
+    "test:regression": "node --test src/domain/*.test.js src/services/screenshotClient.test.js src/services/freeFirstVision.test.js"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

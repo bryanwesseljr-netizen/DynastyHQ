@@ -1,5 +1,6 @@
 import { buildGameDayBrief } from './gameDayBrief.js';
 import { nextScheduledGame, teamRecordThroughWeek } from './seasonSchedule.js';
+import { buildPlayerOffseasonMode } from './playerOffseason.js';
 
 const clean = (value) => String(value ?? '').trim();
 const finite = (value, fallback = 0) => {
@@ -145,24 +146,30 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     || state.currentWeekSetup?.phase
     || (week === 0 ? 'preseason' : 'regular'),
   ).toLowerCase();
+  const offseason = buildPlayerOffseasonMode(state);
+  const offseasonReady = Boolean(offseason?.isCollegePlayer && offseason?.seasonComplete);
+  const preseason = currentPhase === 'preseason' || week === 0;
+  const pendingFinalize = flow.mode === 'wrap-up' && clean(flow.nextAction?.target) === 'finalize';
+  const upcomingOpponent = clean(activeOpponent || upcomingGame?.opponent);
 
   let mode = 'idle';
   if (flow.mode === 'wrap-up' && wrapUpGame) mode = 'postgame';
-  else if (flow.mode === 'wrap-up') mode = 'season';
+  else if (offseasonReady) mode = 'offseason';
   else if (configured && isBye) mode = 'bye';
-  else if (configured && activeOpponent) mode = 'pregame';
+  else if (preseason) mode = 'preseason';
+  else if (upcomingOpponent) mode = 'pregame';
   else if (archivedLatestGame) mode = 'between';
 
   const latestGame = mode === 'postgame' ? wrapUpGame : archivedLatestGame;
 
-  // Pregame belongs to the active Week Setup. Postgame/between-week presentation
-  // belongs to the completed game. Never combine a future opponent with an older
-  // final score just because Week Setup has already advanced.
+  // Every Home state is scoped to the current season. Pregame may use the
+  // current Week Setup or the current-season schedule, while final/between
+  // states use only a current-season completed game.
   const opponent = mode === 'pregame'
-    ? (activeOpponent || clean(latestGame?.opponent) || 'NEXT OPPONENT')
-    : mode === 'season'
-      ? (clean(archivedLatestGame?.opponent) || clean(upcomingGame?.opponent) || 'NEXT OPPONENT')
-      : (clean(latestGame?.opponent) || activeOpponent || 'NEXT OPPONENT');
+    ? (upcomingOpponent || 'NEXT OPPONENT')
+    : ['postgame', 'between'].includes(mode)
+      ? (clean(latestGame?.opponent) || 'OPPONENT')
+      : '';
   const score = scoreFor(latestGame || {});
   const result = clean(latestGame?.result).toUpperCase();
   const latestGameSeason = finite(latestGame?.season, state.currentSeason || 1);
@@ -170,115 +177,204 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const latestGameRecord = latestGame
     ? teamRecordThroughWeek(state, latestGameSeason, latestGameWeek)
     : null;
+  const upcomingWeek = finite(upcomingGame?.week, week);
+  const upcomingSite = clean(
+    state.currentWeekSetup?.venue
+    || (upcomingGame?.homeAway === 'home' ? 'HOME'
+      : upcomingGame?.homeAway === 'away' ? 'AWAY'
+        : upcomingGame?.homeAway === 'neutral' ? 'NEUTRAL SITE' : ''),
+  );
+  const upcomingKickoff = clean(state.currentWeekSetup?.kickoff || upcomingGame?.date);
 
-  const presentation = mode === 'pregame'
-    ? {
-        kicker: 'GAME DAY',
-        headline: 'SATURDAY STARTS HERE',
-        center: 'VS',
-        centerLine: clean(state.currentWeekSetup?.kickoff) || 'KICKOFF TBD',
-        centerDetail: clean(state.currentWeekSetup?.venue) || 'STADIUM DETAILS PENDING',
-        primaryLabel: 'OPEN GAME DAY',
-        primaryTarget: 'gameHub',
-        secondaryLabel: 'IMPORT AFTER GAME',
-        secondaryTarget: 'importSession',
-      }
-    : mode === 'postgame'
-      ? {
-          kicker: 'POSTGAME',
-          headline: `WEEK ${latestGame?.week ?? week} IS IN THE BOOKS`,
-          center: 'FINAL',
-          centerLine: score || 'RESULT PUBLISHED',
-          centerDetail: result ? `${result} · WEEK ${latestGame?.week ?? week}` : `WEEK ${latestGame?.week ?? week}`,
-          primaryLabel: 'CONTINUE WRAP-UP',
-          primaryTarget: nextTarget(flow),
-          secondaryLabel: 'VIEW WEEK HUB',
-          secondaryTarget: 'gameHub',
-        }
-      : mode === 'between'
-        ? {
-            kicker: 'BETWEEN WEEKS',
-            headline: 'THE NEXT CHAPTER AWAITS',
-            center: 'FINAL',
-            centerLine: score || 'LAST RESULT',
-            centerDetail: `SET UP WEEK ${week} TO CONTINUE`,
-            primaryLabel: `SET UP WEEK ${week}`,
-            primaryTarget: 'agenda',
-            secondaryLabel: 'VIEW LAST GAME',
-            secondaryTarget: 'gameHub',
-          }
-        : mode === 'bye'
-          ? {
-              kicker: 'DEVELOPMENT WEEK',
-              headline: 'THE STORY CONTINUES THIS WEEK',
-              center: 'BYE',
-              centerLine: `WEEK ${week}`,
-              centerDetail: 'DEVELOPMENT WEEK',
-              primaryLabel: 'OPEN WEEK HUB',
-              primaryTarget: 'gameHub',
-              secondaryLabel: 'VIEW CAREER',
-              secondaryTarget: 'career',
-            }
-        : mode === 'season'
-          ? {
-              kicker: `SEASON ${currentSeason}`,
-              headline: archivedLatestGame ? `LATEST SEASON ${currentSeason} RESULT` : `SEASON ${currentSeason} · NO FINAL YET`,
-              center: archivedLatestGame ? 'FINAL' : '—',
-              centerLine: archivedLatestGame ? (score || 'RESULT PUBLISHED') : `WEEK ${week}`,
-              centerDetail: archivedLatestGame
-                ? (result ? `${result} · WEEK ${archivedLatestGame.week ?? week}` : `WEEK ${archivedLatestGame.week ?? week}`)
-                : 'FIRST RESULT PENDING',
-              primaryLabel: clean(flow.nextAction?.label).toUpperCase() || 'OPEN WEEK HUB',
-              primaryTarget: clean(flow.nextAction?.target) === 'finalize' ? 'importSession' : nextTarget(flow),
-              secondaryLabel: 'OPEN GAME HUB',
-              secondaryTarget: 'gameHub',
-            }
-          : {
-              kicker: 'DYNASTYHQ',
-              headline: 'YOUR STORY STARTS HERE',
-              center: 'NEXT',
-              centerLine: `WEEK ${week}`,
-              centerDetail: 'SET UP THE WEEK TO BEGIN',
-              primaryLabel: `SET UP WEEK ${week}`,
-              primaryTarget: 'agenda',
-              secondaryLabel: 'VIEW CAREER',
-              secondaryTarget: 'career',
-            };
+  let presentation;
+  if (mode === 'pregame') {
+    presentation = {
+      kicker: `UP NEXT · WEEK ${upcomingWeek}`,
+      headline: `${school.toUpperCase()} VS ${opponent.toUpperCase()}`,
+      center: 'VS',
+      centerLine: `WEEK ${upcomingWeek}`,
+      centerDetail: upcomingKickoff || upcomingSite || 'MATCHUP READY',
+      centerLayout: 'matchup',
+      heroOpponent: opponent,
+      rightTeamName: opponent,
+      primaryLabel: pendingFinalize
+        ? (clean(flow.nextAction?.label).toUpperCase() || 'FINALIZE WEEK')
+        : 'OPEN GAME HUB',
+      primaryTarget: pendingFinalize ? 'importSession' : 'gameHub',
+      secondaryLabel: pendingFinalize ? 'OPEN GAME HUB' : 'IMPORT AFTER GAME',
+      secondaryTarget: pendingFinalize ? 'gameHub' : 'importSession',
+    };
+  } else if (mode === 'postgame') {
+    presentation = {
+      kicker: 'POSTGAME',
+      headline: `WEEK ${latestGame?.week ?? week} IS IN THE BOOKS`,
+      center: 'FINAL',
+      centerLine: score || 'RESULT PUBLISHED',
+      centerDetail: result ? `${result} · WEEK ${latestGame?.week ?? week}` : `WEEK ${latestGame?.week ?? week}`,
+      centerLayout: 'matchup',
+      heroOpponent: opponent,
+      rightTeamName: opponent,
+      primaryLabel: 'CONTINUE WRAP-UP',
+      primaryTarget: nextTarget(flow),
+      secondaryLabel: 'VIEW WEEK HUB',
+      secondaryTarget: 'gameHub',
+    };
+  } else if (mode === 'between') {
+    presentation = {
+      kicker: 'LATEST RESULT',
+      headline: `WEEK ${latestGame?.week ?? '—'} FINAL`,
+      center: 'FINAL',
+      centerLine: score || 'LAST RESULT',
+      centerDetail: result ? `${result} · SEASON ${currentSeason}` : `SEASON ${currentSeason}`,
+      centerLayout: 'matchup',
+      heroOpponent: opponent,
+      rightTeamName: opponent,
+      primaryLabel: `SET UP WEEK ${week}`,
+      primaryTarget: 'agenda',
+      secondaryLabel: 'VIEW LAST GAME',
+      secondaryTarget: 'gameHub',
+    };
+  } else if (mode === 'bye') {
+    presentation = {
+      kicker: `WEEK ${week} · BYE`,
+      headline: `${school.toUpperCase()} · DEVELOPMENT WEEK`,
+      center: 'BYE',
+      centerLine: `WEEK ${week}`,
+      centerDetail: 'DEVELOPMENT WEEK',
+      centerLayout: 'status',
+      heroOpponent: '',
+      rightTeamName: 'BYE WEEK',
+      primaryLabel: 'OPEN WEEK HUB',
+      primaryTarget: 'gameHub',
+      secondaryLabel: 'VIEW CAREER',
+      secondaryTarget: 'career',
+    };
+  } else if (mode === 'preseason') {
+    presentation = {
+      kicker: `SEASON ${currentSeason} · PRESEASON`,
+      headline: `${school.toUpperCase()} PRESEASON`,
+      center: 'PRE',
+      centerLine: `WEEK ${week}`,
+      centerDetail: `SEASON ${currentSeason} START`,
+      centerLayout: 'status',
+      heroOpponent: '',
+      rightTeamName: 'PRESEASON',
+      primaryLabel: pendingFinalize
+        ? (clean(flow.nextAction?.label).toUpperCase() || 'FINALIZE WEEK')
+        : 'OPEN GAME HUB',
+      primaryTarget: pendingFinalize ? 'importSession' : 'gameHub',
+      secondaryLabel: 'VIEW CAREER',
+      secondaryTarget: 'career',
+    };
+  } else if (mode === 'offseason') {
+    presentation = {
+      kicker: `OFFSEASON · SEASON ${currentSeason}`,
+      headline: `${school.toUpperCase()} OFFSEASON`,
+      center: 'OFF',
+      centerLine: 'SEASON COMPLETE',
+      centerDetail: `${offseason.teamRecord?.wins || 0}-${offseason.teamRecord?.losses || 0} · NEXT CHAPTER`,
+      centerLayout: 'status',
+      heroOpponent: '',
+      rightTeamName: 'OFFSEASON',
+      primaryLabel: 'OPEN OFFSEASON',
+      primaryTarget: 'offseason',
+      secondaryLabel: 'VIEW CAREER',
+      secondaryTarget: 'career',
+    };
+  } else {
+    presentation = {
+      kicker: 'DYNASTYHQ',
+      headline: 'YOUR STORY STARTS HERE',
+      center: 'NEXT',
+      centerLine: `WEEK ${week}`,
+      centerDetail: 'SET UP THE WEEK TO BEGIN',
+      centerLayout: 'status',
+      heroOpponent: '',
+      rightTeamName: 'NEXT CHAPTER',
+      primaryLabel: `SET UP WEEK ${week}`,
+      primaryTarget: 'agenda',
+      secondaryLabel: 'VIEW CAREER',
+      secondaryTarget: 'career',
+    };
+  }
 
   const role = clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'Current role';
-  const keys = mode === 'pregame'
+  const pregameKeys = configured && activeOpponent
     ? gameDay.keys
+    : [
+        { title: 'UP NEXT', detail: `Week ${upcomingWeek} brings ${opponent}.` },
+        { title: 'CURRENT ROLE', detail: `${role} at ${school}.` },
+        { title: 'GAME HUB', detail: 'Open the matchup hub for kickoff, venue, and game-day details.' },
+      ];
+
+  const keys = mode === 'pregame'
+    ? pregameKeys
     : mode === 'postgame'
       ? postgameKeys(flow)
-      : mode === 'season'
+      : mode === 'bye'
         ? [
-            { title: 'CURRENT ROLE', detail: `${role} at ${school}.` },
-            { title: 'CURRENT STORY', detail: 'Home follows the latest career state; Game Hub owns matchup and game-day detail.' },
-            { title: 'NEXT ACTION', detail: clean(flow.nextAction?.detail) || 'Continue the current week when you are ready.' },
+            { title: 'RECOVER', detail: 'Use the bye to reset wear, health, and weekly readiness.' },
+            { title: 'DEVELOP', detail: `${role} remains the current saved role at ${school}.` },
+            { title: 'STAY CURRENT', detail: 'Use Game Hub and Weekly Agenda for any verified bye-week changes.' },
           ]
-        : betweenKeys({ week });
+        : mode === 'preseason'
+          ? [
+              { title: 'CURRENT ROLE', detail: `${role} at ${school}.` },
+              { title: 'NEW SEASON', detail: `Season ${currentSeason} begins from the verified preseason state.` },
+              { title: 'NEXT ACTION', detail: clean(flow.nextAction?.detail) || 'Finish preseason setup before the first game.' },
+            ]
+          : mode === 'offseason'
+            ? [
+                { title: 'SEASON COMPLETE', detail: `${school} finished ${offseason.teamRecord?.wins || 0}-${offseason.teamRecord?.losses || 0}.` },
+                { title: 'CAREER DECISION', detail: offseason.decision?.detail || 'Record the next career decision before advancing.' },
+                { title: 'DEVELOPMENT', detail: 'Capture verified offseason progression before the next season begins.' },
+              ]
+            : betweenKeys({ week });
 
-  const previous = mode === 'pregame'
-    ? { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: gameDay.previous.copy }
-    : mode === 'season'
+  const previous = mode === 'offseason'
+    ? {
+        title: 'SEASON IN THE BOOKS',
+        copy: `Season ${currentSeason} is complete at ${school}. The Home page is now in offseason mode until the next season begins.`,
+      }
+    : mode === 'preseason'
       ? {
-          title: 'CURRENT CAREER STATE',
-          copy: `${school} is in Season ${currentSeason}${currentPhase === 'preseason' ? ' preseason' : ''}. The homepage now follows the active career state instead of carrying an older matchup forward.`,
+          title: 'NEW SEASON, CLEAN SLATE',
+          copy: `${school} is entering Season ${currentSeason}. Older opponents and finals stay in the archive instead of carrying into this preseason card.`,
         }
-      : { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: previousCopyFor({ mode, school, opponent, latestGame, week }) };
+      : mode === 'bye'
+        ? {
+            title: 'THIS WEEK',
+            copy: `${school} has a Week ${week} bye. The matchup card stays out of the way until the next scheduled opponent.`,
+          }
+        : { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: previousCopyFor({ mode, school, opponent, latestGame, week }) };
 
+  const setup = state.currentWeekSetup || {};
+  const opponentRecord = clean(setup.opponentRecord || latestGame?.opponentRecord);
+  const opponentRank = clean(setup.opponentRank || setup.opponentRanking || setup.rank);
   const scout = mode === 'pregame'
-    ? { eyebrow: 'OPPONENT SCOUT', team: gameDay.scout.team, facts: gameDay.scout.facts, note: gameDay.scout.note }
-    : mode === 'season'
+    ? {
+        eyebrow: 'OPPONENT SCOUT',
+        team: opponent,
+        facts: [
+          opponentRank ? { label: 'RANK', value: opponentRank.startsWith('#') ? opponentRank : `#${opponentRank}` } : null,
+          opponentRecord ? { label: 'RECORD', value: opponentRecord } : null,
+          upcomingKickoff ? { label: 'KICKOFF', value: upcomingKickoff } : null,
+          upcomingSite ? { label: 'SITE', value: upcomingSite } : null,
+        ].filter(Boolean),
+        note: 'Game Hub owns the full matchup and game-day detail.',
+      }
+    : ['preseason', 'bye', 'offseason'].includes(mode)
       ? {
-          eyebrow: 'PROGRAM PULSE',
+          eyebrow: mode === 'offseason' ? 'PROGRAM WRAP' : 'PROGRAM PULSE',
           team: school,
           facts: [
             { label: 'SEASON', value: String(currentSeason) },
-            { label: 'WEEK', value: String(week) },
+            { label: 'WEEK', value: mode === 'offseason' ? 'DONE' : String(week) },
             { label: 'ROLE', value: role.toUpperCase() },
           ],
-          note: 'Open Game Hub when you want the current week, opponent, and game-day presentation.',
+          note: mode === 'offseason'
+            ? 'Open Offseason for the full season review, career decision, and development path.'
+            : 'Game Hub remains the home for detailed weekly football context.',
         }
       : scoutFor({ mode, state, opponent, latestGame });
 
@@ -288,6 +384,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     opponent,
     currentSeason,
     currentPhase,
+    offseasonReady,
+    pendingFinalize,
     hasCurrentSeasonGame: Boolean(archivedLatestGame),
     upcomingGame,
     historicalLatestGame,
@@ -300,7 +398,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     ...presentation,
     previous,
     keys,
-    keysTitle: mode === 'pregame' ? '3 KEYS TO THE GAME' : mode === 'postgame' ? 'WEEK WRAP-UP' : mode === 'season' ? 'WHAT MATTERS NOW' : 'NEXT CHAPTER',
+    keysTitle: mode === 'pregame' ? 'UPCOMING GAME' : mode === 'postgame' ? 'WEEK WRAP-UP' : mode === 'offseason' ? 'OFFSEASON PRIORITIES' : mode === 'preseason' ? 'PRESEASON PRIORITIES' : mode === 'bye' ? 'BYE WEEK PLAN' : 'NEXT CHAPTER',
     scout,
     gameDay,
   };

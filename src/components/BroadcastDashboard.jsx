@@ -99,9 +99,9 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const player = state.player || {};
   const school = immersion.school;
   const opponent = immersion.opponent;
-  const latestGame = immersion.mode === 'season'
-    ? (immersion.latestGame || null)
-    : (immersion.latestGame || sortedByWeek(state.gameLogs || []).at(-1) || null);
+  // The immersion model already scopes completed games to the current season.
+  // Never fall back to a historical game here or an old opponent can leak into Home.
+  const latestGame = immersion.latestGame || null;
   const newsItems = latestNewsItems(state);
   const chronicle = [...(state.careerChronicle || [])].filter(Boolean).reverse().slice(0, 4);
   const latestPodcast = [...(state.podcastEpisodes || [])].filter(Boolean).reverse().at(0) || null;
@@ -124,18 +124,35 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
     }
     onNavigate?.(target);
   };
+  const upcomingSiteLabel = immersion.upcomingGame?.homeAway === 'home'
+    ? 'HOME'
+    : immersion.upcomingGame?.homeAway === 'away'
+      ? 'AWAY'
+      : immersion.upcomingGame?.homeAway === 'neutral'
+        ? 'NEUTRAL'
+        : '';
   const rightTeamMeta = immersion.mode === 'pregame'
-    ? (state.currentWeekSetup?.opponentRecord || '—')
-    : immersion.mode === 'season' && !immersion.hasCurrentSeasonGame
-      ? (immersion.upcomingGame?.week !== undefined ? `WEEK ${immersion.upcomingGame.week}` : 'UP NEXT')
-      : (latestGame?.opponentRecord || '—');
+    ? (state.currentWeekSetup?.opponentRecord || upcomingSiteLabel || 'UP NEXT')
+    : immersion.mode === 'bye'
+      ? `WEEK ${immersion.week}`
+      : immersion.mode === 'preseason'
+        ? `SEASON ${immersion.currentSeason}`
+        : immersion.mode === 'offseason'
+          ? 'SEASON COMPLETE'
+          : (latestGame?.opponentRecord || '—');
   const rightTeamLabel = immersion.mode === 'pregame'
-    ? 'CONFERENCE'
+    ? 'NEXT OPPONENT'
     : immersion.mode === 'postgame'
       ? 'FINAL OPPONENT'
-      : immersion.mode === 'season'
-        ? (immersion.hasCurrentSeasonGame ? 'LAST OPPONENT' : 'NEXT OPPONENT')
-        : 'LAST OPPONENT';
+      : immersion.mode === 'between'
+        ? 'LAST OPPONENT'
+        : immersion.mode === 'bye'
+          ? 'BYE WEEK'
+          : immersion.mode === 'preseason'
+            ? 'PRESEASON'
+            : immersion.mode === 'offseason'
+              ? 'OFFSEASON'
+              : 'CURRENT STATE';
 
   return (
     <div
@@ -155,7 +172,7 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
           <DynamicMatchupHelmets
             className="dhq-broadcast-helmets"
             homeTeam={school}
-            awayTeam={opponent}
+            awayTeam={immersion.heroOpponent || ''}
             highSchool={model.stage === 'HighSchool'}
           />
 
@@ -165,12 +182,12 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
             <small>{model.stage === 'HighSchool' ? 'HIGH SCHOOL' : 'CONFERENCE'}</small>
           </div>
           <div className="dhq-broadcast-team dhq-broadcast-team--right">
-            <strong>{shortName(opponent, 'OPPONENT')}</strong>
+            <strong>{shortName(immersion.rightTeamName || opponent, 'OPPONENT')}</strong>
             <span>{rightTeamMeta}</span>
-            <small>{opponent === 'NEXT OPPONENT' ? 'ADD IN GAME HUB' : rightTeamLabel}</small>
+            <small>{rightTeamLabel}</small>
           </div>
 
-          {immersion.mode === 'season' ? (
+          {immersion.centerLayout === 'status' ? (
             <div className="dhq-broadcast-season-center" aria-label="Current season status">
               <b>{immersion.center}</b>
               <span>{immersion.centerLine}</span>
@@ -207,7 +224,7 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
           </article>
 
           <article className="dhq-immersion-panel dhq-immersion-keys">
-            <span className="dhq-immersion-eyebrow">{immersion.mode === 'pregame' ? 'GAME PLAN' : 'WEEK STATE'}</span>
+            <span className="dhq-immersion-eyebrow">{immersion.mode === 'pregame' ? 'UP NEXT' : immersion.mode === 'offseason' ? 'NEXT CHAPTER' : 'WEEK STATE'}</span>
             <h2>{immersion.keysTitle}</h2>
             <div className="dhq-immersion-key-list">
               {immersion.keys.map((key, index) => (

@@ -591,7 +591,11 @@ body.dhq-career-overview-open {
   }
 
   .dhq-career-player-row h1 {
-    font-size: 31px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+    font-size: clamp(25px, 7.4vw, 31px);
+    line-height: .98;
   }
 
   .dhq-career-player-row p {
@@ -641,7 +645,10 @@ body.dhq-career-overview-open {
   }
 
   .dhq-career-panel__heading h2 {
-    font-size: 21px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+    font-size: clamp(18px, 5.4vw, 21px);
   }
 
   .dhq-career-rivalries {
@@ -654,7 +661,11 @@ body.dhq-career-overview-open {
   }
 
   .dhq-career-footer button {
+    min-width: 0;
+    min-height: 42px;
     justify-content: center;
+    white-space: normal;
+    text-align: center;
   }
 
   .dhq-career-footer p {

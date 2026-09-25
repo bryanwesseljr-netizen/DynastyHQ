@@ -1,5 +1,5 @@
 import { buildGameDayBrief } from './gameDayBrief.js';
-import { teamRecordThroughWeek } from './seasonSchedule.js';
+import { nextScheduledGame, teamRecordThroughWeek } from './seasonSchedule.js';
 
 const clean = (value) => String(value ?? '').trim();
 const finite = (value, fallback = 0) => {
@@ -132,6 +132,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const week = finite(flow.activeWeek?.week ?? state.currentWeek ?? dashboard.week, 1);
   const currentSeason = finite(state.currentSeason ?? dashboard.season, 1);
   const archivedLatestGame = latestGameForSeason(state, currentSeason);
+  const upcomingGame = nextScheduledGame(state, currentSeason);
   const isBye = flow.activeWeek?.type === 'bye' || state.currentWeekSetup?.type === 'bye';
   const configured = Boolean(flow.activeWeek?.configured);
   const gameDay = buildGameDayBrief(state);
@@ -160,7 +161,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const opponent = mode === 'pregame'
     ? (activeOpponent || clean(latestGame?.opponent) || 'NEXT OPPONENT')
     : mode === 'season'
-      ? (clean(archivedLatestGame?.opponent) || 'NO RESULT YET')
+      ? (clean(archivedLatestGame?.opponent) || clean(upcomingGame?.opponent) || 'NEXT OPPONENT')
       : (clean(latestGame?.opponent) || activeOpponent || 'NEXT OPPONENT');
   const score = scoreFor(latestGame || {});
   const result = clean(latestGame?.result).toUpperCase();
@@ -288,6 +289,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     currentSeason,
     currentPhase,
     hasCurrentSeasonGame: Boolean(archivedLatestGame),
+    upcomingGame,
     historicalLatestGame,
     latestGame,
     latestGameRecord,

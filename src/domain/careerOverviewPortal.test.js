@@ -59,3 +59,11 @@ test('obsolete prototype-based Career compatibility guard is no longer loaded', 
   const indexSource = await readFile(indexUrl, 'utf8');
   assert.doesNotMatch(indexSource, /career-view-guard\.js/);
 });
+
+test('Career mobile typography contains long player names and panel headings', async () => {
+  const styles = await readFile(stylesUrl, 'utf8');
+
+  assert.match(styles, /\.dhq-career-player-row h1 \{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?font-size: clamp\(25px, 7\.4vw, 31px\);/);
+  assert.match(styles, /\.dhq-career-panel__heading h2 \{[\s\S]*?overflow-wrap: anywhere;[\s\S]*?font-size: clamp\(18px, 5\.4vw, 21px\);/);
+  assert.match(styles, /\.dhq-career-footer button \{[\s\S]*?white-space: normal;[\s\S]*?text-align: center;/);
+});

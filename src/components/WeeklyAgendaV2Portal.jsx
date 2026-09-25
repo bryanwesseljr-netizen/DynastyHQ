@@ -48,14 +48,24 @@ const findUniversalScannerInput = (root = document) => {
 const findOriginalActions = (agenda) => [...(agenda?.querySelectorAll('.dhq-agenda-v2-actions') || [])]
   .find((node) => node.parentElement === agenda && !node.closest('[data-guided-weekly-action]')) || null;
 
+const quarantineLegacyBlock = (node, className = '') => {
+  if (!node) return null;
+  if (className) node.classList.add(className);
+  node.dataset.dhqLegacyHidden = 'true';
+  node.setAttribute('aria-hidden', 'true');
+  node.querySelectorAll('button, a, input, select, textarea, [tabindex]').forEach((control) => {
+    control.setAttribute('tabindex', '-1');
+  });
+  return node;
+};
+
 const markTopLevelContaining = (agenda, matcher, className) => {
   const candidate = [...agenda.querySelectorAll('h1,h2,h3,h4,p,span,label')]
     .find((element) => matcher.test((element.textContent || '').trim()));
   if (!candidate) return null;
   let node = candidate;
   while (node?.parentElement && node.parentElement !== agenda) node = node.parentElement;
-  if (node?.parentElement === agenda) node.classList.add(className);
-  return node;
+  return node?.parentElement === agenda ? quarantineLegacyBlock(node, className) : null;
 };
 
 const markAgendaStructure = (agenda) => {
@@ -66,7 +76,11 @@ const markAgendaStructure = (agenda) => {
   if (scannerLabel) {
     let node = scannerLabel;
     while (node?.parentElement && node.parentElement !== agenda) node = node.parentElement;
-    if (node?.parentElement === agenda) node.classList.add('dhq-agenda-v2-legacy-scanner');
+    if (node?.parentElement === agenda) {
+      node.classList.add('dhq-agenda-v2-legacy-scanner');
+      node.dataset.dhqLegacyHidden = 'true';
+      node.setAttribute('aria-hidden', 'true');
+    }
   }
 
   markTopLevelContaining(agenda, /college game week command center/i, 'dhq-agenda-v2-duplicate-block');
@@ -340,7 +354,7 @@ const WeeklyAgendaShell = ({
           <div>
             <span className="dhq-agenda-v3-label"><Sparkles size={12} /> Only open what you need</span>
             <strong>Manual corrections stay out of the way</strong>
-            <small>Use the scanner first. Open the old fields only when something is missing or needs a correction.</small>
+            <small>Use the scanner first. Open manual fields only when something is missing or needs a correction.</small>
           </div>
           <div className="dhq-agenda-v3-tools-actions">
             <button type="button" onClick={onToggleManual} className={manualOpen ? 'is-active' : ''}><PenLine size={13} /> {manualOpen ? 'Hide Manual Fields' : 'Manual Entry'}</button>
@@ -407,11 +421,7 @@ const GuidedActionBar = ({ agenda, setupReady, setupOpen, workflow, onToggleSetu
       if (!setupOpen) onToggleSetup();
       window.setTimeout(() => focus('[data-week-setup-panel]'), 50);
     };
-  } else if (workflow.hasApplied) {
-    label = 'Publish Verified Week';
-    detail = 'The reviewed facts are applied and ready for the Chronicle, stats, and weekly record.';
-    action = () => clickOriginal(/publish verified week|process completed game week|save & process weekly agenda|update game log/i);
-  } else if (workflow.hasReview && workflow.attention === 0) {
+    } else if (workflow.hasReview && workflow.attention === 0) {
     label = 'Apply Verified Draft';
     detail = workflow.missing ? `${workflow.missing} required item${workflow.missing === 1 ? '' : 's'} intentionally missing; the verified facts can still be applied.` : 'Review is clean. Apply the verified facts before publishing.';
     action = () => clickOriginal(/apply verified draft|apply intentional partial update/i) || focus('.dhq-postgame-review');

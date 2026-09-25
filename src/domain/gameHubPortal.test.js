@@ -23,15 +23,17 @@ test('Game Hub is mounted as a broadcast companion page instead of exposing Week
   assert.match(gameHub, /STORY DIRECTOR/);
 });
 
-test('Game Hub preserves the verified scanner through an explicit one-shot legacy pass-through', async () => {
+test('Game Hub and Session Import use canonical routing for the verified scanner', async () => {
   const [gameHub, sessionImport] = await Promise.all([
     readFile(gameHubUrl, 'utf8'),
     readFile(sessionImportUrl, 'utf8'),
   ]);
 
-  assert.match(gameHub, /window\.__dhqAllowLegacyGameHubOnce/);
-  assert.match(sessionImport, /window\.__dhqAllowLegacyGameHubOnce = true;/);
-  assert.match(sessionImport, /findButton\(\/\^game hub\$\/i\)/);
+  assert.doesNotMatch(gameHub, /__dhqAllowLegacyGameHubOnce/);
+  assert.match(sessionImport, /import \{ requestNavigation \} from '\.\.\/domain\/navigationBus\.js';/);
+  assert.match(sessionImport, /requestNavigation\('importSession'\)/);
+  assert.doesNotMatch(sessionImport, /__dhqAllowLegacyGameHubOnce/);
+  assert.doesNotMatch(sessionImport, /findButton\(\/\^game hub\$\/i\)/);
 });
 
 test('Game Hub can launch Session Import and the redesigned session hands back to Process Week', async () => {

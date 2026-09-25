@@ -1,4 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import WeekSetupPortal from './WeekSetupPortal.jsx';
+import GameweekFlowPortal from './GameweekFlowPortal.jsx';
+import QuickImportPortal from './QuickImportPortal.jsx';
 import SessionImportPortal from './SessionImportPortal.jsx';
 import ProcessWeek2Portal from './ProcessWeek2Portal.jsx';
 import SeasonSchedulePortal from './SeasonSchedulePortal.jsx';
@@ -7,8 +9,19 @@ import ImmersiveExperienceV3Portal from './ImmersiveExperienceV3Portal.jsx';
 import CareerStoryExperiencePortal from './CareerStoryExperiencePortal.jsx';
 import ExperienceRepairPortal from './ExperienceRepairPortal.jsx';
 import SeasonWirePortal from './SeasonWirePortal.jsx';
+import GameHubOverviewSchedulePortal from './GameHubOverviewSchedulePortal.jsx';
 import CareerOverviewPortal from './CareerOverviewPortal.jsx';
+import CareerOverviewViewportPortal from './CareerOverviewViewportPortal.jsx';
+import CareerStandbyPortal from './CareerStandbyPortal.jsx';
+import StandbyStatusUpdatePortal from './StandbyStatusUpdatePortal.jsx';
+import CareerEditorialEventPortal from './CareerEditorialEventPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
+import GameDayPregamePortal from './GameDayPregamePortal.jsx';
+import BackupSeasonPortal from './BackupSeasonPortal.jsx';
+import GameDayActivationPortal from './GameDayActivationPortal.jsx';
+import GameHubIntegrationPortal from './GameHubIntegrationPortal.jsx';
+import GameHubMobilePolishPortal from './GameHubMobilePolishPortal.jsx';
+import WeekHubRoutingPortal from './WeekHubRoutingPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
 import NavigationStatePortal from './NavigationStatePortal.jsx';
 import ZoomPanPortal from './ZoomPanPortal.jsx';
@@ -16,114 +29,42 @@ import FreshStartPortal from './FreshStartPortal.jsx';
 import ImmersionPortal from './ImmersionPortal.jsx';
 import StorylineContinuityPortal from './StorylineContinuityPortal.jsx';
 import PodcastUniversalBrandPortal from './PodcastUniversalBrandPortal.jsx';
+import WeeklyAgendaV2Portal from './WeeklyAgendaV2Portal.jsx';
+import WeeklyDataIntakePortal from './WeeklyDataIntakePortal.jsx';
+import DryRunModePortal from './DryRunModePortal.jsx';
+import AiScanRoutingPortal from './AiScanRoutingPortal.jsx';
+import CoverageDataIntakePortal from './CoverageDataIntakePortal.jsx';
+import RtgStatusIntakePortal from './RtgStatusIntakePortal.jsx';
+import WeeklyAppearanceAndLocationPortal from './WeeklyAppearanceAndLocationPortal.jsx';
 import CollegeGameCoverageRepairPortal from './CollegeGameCoverageRepairPortal.jsx';
 import OfficialCoverageCapturePortal from './OfficialCoverageCapturePortal.jsx';
 import OfficialCoverageReaderPortal from './OfficialCoverageReaderPortal.jsx';
+import CareerMuseumPortal from './CareerMuseumPortal.jsx';
+import CollegeCareerAgendaCardPortal from './CollegeCareerAgendaCardPortal.jsx';
+import CoachRecruitingWorkspaceV2Portal from './CoachRecruitingWorkspaceV2Portal.jsx';
+import PodcastHumanizedAudioPortal from './PodcastHumanizedAudioPortal.jsx';
+import PodcastArtworkHydrationPortal from './PodcastArtworkHydrationPortal.jsx';
+import PodcastLocalShowPortal from './PodcastLocalShowPortal.jsx';
+import PodcastMasterAudioPortalV2 from './PodcastMasterAudioPortalV2.jsx';
+import PodcastFinishedAudioIntegrationPortal from './PodcastFinishedAudioIntegrationPortal.jsx';
+import PodcastSeekControlsPortal from './PodcastSeekControlsPortal.jsx';
+import EditorialPhotoDirectorPortal from './EditorialPhotoDirectorPortal.jsx';
+import EditorialLanguageRealismPortal from './EditorialLanguageRealismPortal.jsx';
+import NewsroomGameLocationPortal from './NewsroomGameLocationPortal.jsx';
+import NewsroomUniformContextPortal from './NewsroomUniformContextPortal.jsx';
+import NewsroomArticleExperiencePortal from './NewsroomArticleExperiencePortal.jsx';
+import NewsroomArticleRewritePortal from './NewsroomArticleRewritePortal.jsx';
+import NewsroomArticleToolsPortal from './NewsroomArticleToolsPortal.jsx';
+import NewsroomArticleSharePortal from './NewsroomArticleSharePortal.jsx';
+import NewsroomExactStoryRoutingPortal from './NewsroomExactStoryRoutingPortal.jsx';
+import NewsroomLibraryScrollGuardPortal from './NewsroomLibraryScrollGuardPortal.jsx';
+import NewsroomTeamHubPortal from './NewsroomTeamHubPortal.jsx';
 import PublicMediaProfileSharePortal from './PublicMediaProfileSharePortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
 import DynamicMatchupHelmetPortal from './DynamicMatchupHelmetPortal.jsx';
 import PlayerOffseasonNavigationPortal from './PlayerOffseasonNavigationPortal.jsx';
 import DesktopPrimaryNavFinalizer from './DesktopPrimaryNavFinalizer.jsx';
 import { OwnerCareerProvider } from './OwnerCareerContext.jsx';
-import { DYNASTYHQ_NAVIGATE_EVENT } from '../domain/navigationBus.js';
-
-const OwnerWeeklyEnhancements = lazy(() => import('./OwnerWeeklyEnhancements.jsx'));
-const OwnerGameHubEnhancements = lazy(() => import('./OwnerGameHubEnhancements.jsx'));
-const OwnerCareerEnhancements = lazy(() => import('./OwnerCareerEnhancements.jsx'));
-const OwnerRecruitingEnhancements = lazy(() => import('./OwnerRecruitingEnhancements.jsx'));
-const OwnerNewsroomEnhancements = lazy(() => import('./OwnerNewsroomEnhancements.jsx'));
-const OwnerPodcastEnhancements = lazy(() => import('./OwnerPodcastEnhancements.jsx'));
-
-const groupsForTarget = (target) => {
-  const value = String(target || '').trim();
-  if (['agenda', 'importSession', 'dataEntry'].includes(value)) return ['weekly'];
-  if (value === 'gameHub') return ['gameHub'];
-  if (['career', 'chronicle', 'offseason'].includes(value)) return ['career'];
-  if (value === 'recruiting') return ['recruiting'];
-  if (value === 'newsroom') return ['newsroom'];
-  if (value === 'podcast') return ['podcast'];
-  return [];
-};
-
-const visibleFeatureGroups = () => {
-  if (typeof document === 'undefined') return [];
-  const groups = new Set();
-  const activeTab = document.querySelector('main.dhq-page-main')?.dataset?.activeTab || '';
-  groupsForTarget(activeTab).forEach((group) => groups.add(group));
-
-  const visualTarget = document.body?.dataset?.dhqNavVisualActive || '';
-  groupsForTarget(visualTarget).forEach((group) => groups.add(group));
-
-  if (document.body?.classList.contains('dhq-game-hub-open')) groups.add('gameHub');
-  if (
-    document.body?.classList.contains('dhq-career-overview-open')
-    || document.body?.classList.contains('dhq-player-offseason-open')
-  ) groups.add('career');
-  if (document.body?.classList.contains('dhq-session-import-mode')) groups.add('weekly');
-
-  return [...groups];
-};
-
-const OwnerFeatureEnhancements = () => {
-  const [activeGroups, setActiveGroups] = useState(() => new Set(visibleFeatureGroups()));
-
-  const activate = useCallback((groups) => {
-    const requested = (Array.isArray(groups) ? groups : [groups]).filter(Boolean);
-    if (!requested.length) return;
-    setActiveGroups((current) => {
-      const next = new Set(current);
-      let changed = false;
-      requested.forEach((group) => {
-        if (!next.has(group)) {
-          next.add(group);
-          changed = true;
-        }
-      });
-      return changed ? next : current;
-    });
-  }, []);
-
-  useEffect(() => {
-    const syncVisible = () => activate(visibleFeatureGroups());
-    const onNavigate = (event) => activate(groupsForTarget(event?.detail?.target));
-
-    syncVisible();
-    window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, onNavigate);
-
-    const observer = new MutationObserver(syncVisible);
-    observer.observe(document.body, {
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'data-active-tab', 'data-dhq-nav-visual-active'],
-    });
-
-    const prefetchCommon = () => {
-      import('./OwnerGameHubEnhancements.jsx');
-      import('./OwnerWeeklyEnhancements.jsx');
-    };
-    const idleId = typeof window.requestIdleCallback === 'function'
-      ? window.requestIdleCallback(prefetchCommon, { timeout: 2600 })
-      : window.setTimeout(prefetchCommon, 1800);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, onNavigate);
-      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idleId);
-      else window.clearTimeout(idleId);
-    };
-  }, [activate]);
-
-  return (
-    <Suspense fallback={null}>
-      {activeGroups.has('weekly') ? <OwnerWeeklyEnhancements /> : null}
-      {activeGroups.has('gameHub') ? <OwnerGameHubEnhancements /> : null}
-      {activeGroups.has('career') ? <OwnerCareerEnhancements /> : null}
-      {activeGroups.has('recruiting') ? <OwnerRecruitingEnhancements /> : null}
-      {activeGroups.has('newsroom') ? <OwnerNewsroomEnhancements /> : null}
-      {activeGroups.has('podcast') ? <OwnerPodcastEnhancements /> : null}
-    </Suspense>
-  );
-};
 
 const OwnerEnhancements = () => (
   <OwnerCareerProvider>
@@ -143,20 +84,56 @@ const OwnerEnhancements = () => (
     <CareerStoryExperiencePortal />
     <ExperienceRepairPortal />
     <SeasonWirePortal />
+    <GameHubOverviewSchedulePortal />
     <PodcastUniversalBrandPortal />
     <PublicMediaProfileSharePortal />
     <CollegeGameCoverageRepairPortal />
     <OfficialCoverageCapturePortal />
     <OfficialCoverageReaderPortal />
-
-    {/* Entry portals stay mounted so clicks/events are never missed. Heavier
-        feature polish loads only when that destination is actually used. */}
+    <CareerMuseumPortal />
+    <WeekSetupPortal />
+    <GameweekFlowPortal />
+    <QuickImportPortal />
     <SessionImportPortal />
     <ProcessWeek2Portal />
     <GameHubPortal />
+    <GameDayActivationPortal />
+    <GameDayPregamePortal />
+    <BackupSeasonPortal />
+    <GameHubIntegrationPortal />
     <CareerOverviewPortal />
-
-    <OwnerFeatureEnhancements />
+    <CareerOverviewViewportPortal />
+    <CareerStandbyPortal />
+    <StandbyStatusUpdatePortal />
+    <CareerEditorialEventPortal />
+    <WeekHubRoutingPortal />
+    <GameHubMobilePolishPortal />
+    <WeeklyAgendaV2Portal />
+    <WeeklyDataIntakePortal />
+    <DryRunModePortal />
+    <AiScanRoutingPortal />
+    <WeeklyAppearanceAndLocationPortal />
+    <RtgStatusIntakePortal />
+    <CoverageDataIntakePortal />
+    <CollegeCareerAgendaCardPortal />
+    <CoachRecruitingWorkspaceV2Portal />
+    <EditorialPhotoDirectorPortal />
+    <EditorialLanguageRealismPortal />
+    <NewsroomGameLocationPortal />
+    <NewsroomUniformContextPortal />
+    <NewsroomExactStoryRoutingPortal />
+    <NewsroomLibraryScrollGuardPortal />
+    <NewsroomTeamHubPortal />
+    <NewsroomArticleExperiencePortal />
+    <NewsroomArticleRewritePortal />
+    <NewsroomArticleToolsPortal />
+    <NewsroomArticleSharePortal />
+    <PodcastArtworkHydrationPortal />
+    <PodcastLocalShowPortal />
+    <PodcastHumanizedAudioPortal />
+    <PodcastMasterAudioPortalV2 />
+    <PodcastFinishedAudioIntegrationPortal />
+    <PodcastSeekControlsPortal />
   </OwnerCareerProvider>
 );
 

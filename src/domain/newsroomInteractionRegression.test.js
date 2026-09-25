@@ -72,3 +72,10 @@ test('Article Media backstage panels are width-contained for Android desktop-sit
   assert.match(css, /overflow-x: clip !important/);
   assert.match(css, /grid-template-columns: minmax\(0, 1fr\) !important/);
 });
+
+test('Article Media stays visually attached to the full-width Newsroom media card', async () => {
+  const css = await readFile(new URL('../newsroom-reader-shell-v2.css', import.meta.url), 'utf8');
+  assert.match(css, /\[data-media-network-newsroom="true"\]/);
+  assert.match(css, /\[data-media-network-newsroom="true"\][\s\S]*?grid-column:\s*1 \/ -1 !important/);
+  assert.match(css, /\[data-newsroom-article-tools-mount\][\s\S]*?margin-top:\s*0 !important/);
+});

@@ -29,6 +29,7 @@ import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import { teamRecordForSeason } from '../domain/seasonSchedule.js';
 import { conferenceAbbreviation, conferenceRecordForSeason } from '../domain/conferenceRecord.js';
 import { isBackupRole } from '../domain/backupSeasonMode.js';
+import { DYNASTYHQ_NAVIGATE_EVENT, requestNavigation } from '../domain/navigationBus.js';
 import './game-hub.css';
 
 const clean = (value) => String(value ?? '').trim();
@@ -134,10 +135,6 @@ const GameHubPortal = () => {
       if (!button) return;
 
       if (isGameHubButton(button)) {
-        if (window.__dhqAllowLegacyGameHubOnce) {
-          delete window.__dhqAllowLegacyGameHubOnce;
-          return;
-        }
         event.preventDefault();
         // Keep the legacy Game Hub route from receiving the click, but allow other
         // capture listeners on this same root (notably Career) to close themselves.
@@ -162,6 +159,21 @@ const GameHubPortal = () => {
   }, []);
 
   useEffect(() => {
+    const handleNavigation = (event) => {
+      const target = String(event?.detail?.target || '').trim();
+      if (!target) return;
+      if (target === 'gameHub') {
+        setSelection('current');
+        setOpen(true);
+        return;
+      }
+      if (openRef.current) setOpen(false);
+    };
+    window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
+    return () => window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
+  }, []);
+
+  useEffect(() => {
     document.body.classList.toggle('dhq-game-hub-open', open);
     return () => document.body.classList.remove('dhq-game-hub-open');
   }, [open]);
@@ -169,8 +181,7 @@ const GameHubPortal = () => {
   useEffect(() => {
     const openVerifiedTools = () => {
       setOpen(false);
-      window.__dhqAllowLegacyGameHubOnce = true;
-      window.setTimeout(() => visibleNavButton('Game Hub')?.click(), 20);
+      requestNavigation('importSession');
     };
     window.addEventListener('dynastyhq:open-verified-data-tools', openVerifiedTools);
     return () => window.removeEventListener('dynastyhq:open-verified-data-tools', openVerifiedTools);
@@ -312,7 +323,7 @@ const GameHubPortal = () => {
 
   const goToNav = (label) => {
     close();
-    window.setTimeout(() => visibleNavButton(label)?.click(), 20);
+    requestNavigation(label);
   };
 
   const openImport = () => {

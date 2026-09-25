@@ -123,10 +123,28 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
   min-width: 0;
 }
 
-/* The production toggle should sit directly below the finished story, not create
-   another detached workspace section. */
+/* Keep the Newsroom media board and Article Media control in their own full-width
+   grid rows. In Android desktop-site mode the unstyled media-network portal wrapper
+   could share an implicit grid row with another mount, making the row much taller
+   than the visible card and leaving a large blank band above Article Media. */
+.dhq-newsroom-reader-mode > [data-media-network-newsroom="true"] {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  align-self: start;
+  justify-self: stretch;
+}
+
+.dhq-newsroom-reader-mode > [data-media-network-newsroom="true"] > .dhq-media-network--newsroom {
+  margin: 0 !important;
+}
+
+/* The production toggle should sit immediately below the finished media surface,
+   not create another detached workspace section. */
 .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount] {
-  margin-top: 10px !important;
+  margin-top: 0 !important;
+  align-self: start;
 }
 
 /* Tablet, desktop-mode phone, and narrower laptop widths get a dedicated article

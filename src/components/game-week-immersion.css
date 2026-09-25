@@ -427,6 +427,35 @@
     font-size: 0.5rem;
   }
 
+  /* In the matchup-style Home hero, keep the center status copy anchored to
+     the full card instead of the narrow center column. This prevents WEEK /
+     result-detail text from drifting into the Oregon column on phones. */
+  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-versus {
+    left: 0;
+    width: 100%;
+    transform: none;
+    text-align: center;
+  }
+
+  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-versus span,
+  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-versus small {
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    margin-right: 0;
+    margin-left: 0;
+    transform: none;
+    text-align: center;
+  }
+
+  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-team small {
+    width: 100%;
+    margin-right: 0;
+    margin-left: 0;
+    text-align: center;
+  }
+
   .dhq-gameweek-immersion {
     grid-template-columns: 1fr;
     gap: 7px;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import {
   BarChart2, Headphones, Loader2, Newspaper, Radio, ShieldCheck, Trophy, UserRound,
@@ -11,8 +11,8 @@ import {
   PUBLIC_MEDIA_SECTIONS,
   summarizePublicPlayerStats,
 } from '../domain/publicMediaProfile';
-import GroundedNewsroom from './GroundedNewsroom';
-import PodcastStudio from './PodcastStudio';
+const GroundedNewsroom = lazy(() => import('./GroundedNewsroom'));
+const PodcastStudio = lazy(() => import('./PodcastStudio'));
 
 const sectionLabel = Object.freeze({ stats: 'Player Stats', newsroom: 'Newsroom', podcast: 'Podcast' });
 const sectionIcon = Object.freeze({ stats: BarChart2, newsroom: Newspaper, podcast: Radio });
@@ -191,12 +191,14 @@ const PublicMediaProfilePage = ({ ownerId }) => {
 
       <main className="relative z-10 px-4 py-7 md:px-8 md:py-10">
         {section === 'stats' ? <PublicPlayerStats state={state} /> : null}
-        {section === 'newsroom' ? (
-          state.newsroomIssues?.length ? <GroundedNewsroom issues={state.newsroomIssues} initialIssueId="" newsTheme={newsTheme} setNewsTheme={setNewsTheme} outletImages={state.outletImages || {}} readOnly mediaLibrary={state.newsroomMediaLibrary || []} mediaBusy={false} writingBusyId="" autoAssignLibrary={false} frontPages={state.postgameFrontPages || []} initialFrontPageId="" /> : <div className="mx-auto max-w-3xl rounded-3xl border border-slate-700 bg-slate-950/90 p-10 text-center"><Newspaper className="mx-auto text-slate-600" size={40} /><h2 className="mt-4 text-2xl font-black uppercase text-white">No Newsroom editions yet</h2></div>
-        ) : null}
-        {section === 'podcast' ? (
-          state.podcastEpisodes?.length || state.newsroomIssues?.length ? <PodcastStudio state={state} readOnly initialPublicationId="" onLoadAudio={loadAudio} /> : <div className="mx-auto max-w-3xl rounded-3xl border border-slate-700 bg-slate-950/90 p-10 text-center"><Headphones className="mx-auto text-slate-600" size={40} /><h2 className="mt-4 text-2xl font-black uppercase text-white">No podcast episodes yet</h2></div>
-        ) : null}
+        <Suspense fallback={<div className="mx-auto max-w-3xl rounded-3xl border border-slate-800 bg-slate-950/85 p-10 text-center"><Loader2 className="mx-auto animate-spin text-amber-300" size={28} /><p className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Loading media desk…</p></div>}>
+          {section === 'newsroom' ? (
+            state.newsroomIssues?.length ? <GroundedNewsroom issues={state.newsroomIssues} initialIssueId="" newsTheme={newsTheme} setNewsTheme={setNewsTheme} outletImages={state.outletImages || {}} readOnly mediaLibrary={state.newsroomMediaLibrary || []} mediaBusy={false} writingBusyId="" autoAssignLibrary={false} frontPages={state.postgameFrontPages || []} initialFrontPageId="" /> : <div className="mx-auto max-w-3xl rounded-3xl border border-slate-700 bg-slate-950/90 p-10 text-center"><Newspaper className="mx-auto text-slate-600" size={40} /><h2 className="mt-4 text-2xl font-black uppercase text-white">No Newsroom editions yet</h2></div>
+          ) : null}
+          {section === 'podcast' ? (
+            state.podcastEpisodes?.length || state.newsroomIssues?.length ? <PodcastStudio state={state} readOnly initialPublicationId="" onLoadAudio={loadAudio} /> : <div className="mx-auto max-w-3xl rounded-3xl border border-slate-700 bg-slate-950/90 p-10 text-center"><Headphones className="mx-auto text-slate-600" size={40} /><h2 className="mt-4 text-2xl font-black uppercase text-white">No podcast episodes yet</h2></div>
+          ) : null}
+        </Suspense>
       </main>
     </div>
   );

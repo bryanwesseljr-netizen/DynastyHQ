@@ -26,7 +26,6 @@ import {
 import { doc, setDoc, onSnapshot, collection, getDoc, getDocs, deleteDoc, runTransaction } from 'firebase/firestore';
 import { appId, auth, db, firebaseApp, isPreviewDeployment, productionAppId } from './firebase';
 import { FacebookIcon as Facebook, TwitterIcon as Twitter } from './components/BrandIcons';
-import CareerArchive from './components/CareerArchive';
 import { DEFAULT_CAREER_STATE } from './domain/defaultCareerState';
 import {
   createMigrationBackupPayload,
@@ -103,9 +102,7 @@ import { compressImage } from './services/imageCompression';
 import { generateNewsroomImage } from './services/newsroomImageClient';
 import { generateNewsroomEdition } from './services/newsroomClient';
 import { deleteNewsroomMedia, uploadNewsroomMedia } from './services/newsroomMediaStorage';
-import PlayerRecruitingWorkspace from './components/PlayerRecruitingWorkspace';
-import HighSchoolEvaluationEditor from './components/HighSchoolEvaluationEditor';
-import HighSchoolScreenshotUploader from './components/HighSchoolScreenshotUploader';
+
 import {
   createEmptyHighSchoolEvaluation,
   normalizeHighSchoolEvaluation,
@@ -166,6 +163,10 @@ const PersonnelCfoWorkspace = lazy(() => import('./components/PersonnelCfoWorksp
 const OffseasonPlanner = lazy(() => import('./components/OffseasonPlanner'));
 const PodcastStudio = lazy(() => import('./components/PodcastStudio'));
 const CareerHandbookModal = lazy(() => import('./components/CareerHandbookModal'));
+const CareerArchive = lazy(() => import('./components/CareerArchive'));
+const PlayerRecruitingWorkspace = lazy(() => import('./components/PlayerRecruitingWorkspace'));
+const HighSchoolEvaluationEditor = lazy(() => import('./components/HighSchoolEvaluationEditor'));
+const HighSchoolScreenshotUploader = lazy(() => import('./components/HighSchoolScreenshotUploader'));
 
 const publicationLocks = new Set();
 const SAVE_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'dynastyhq-device';

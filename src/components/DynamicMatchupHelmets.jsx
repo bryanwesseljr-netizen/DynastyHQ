@@ -5,12 +5,6 @@ const TeamLogo = ({ brand, teamName, side }) => {
   const [imageAttempt, setImageAttempt] = useState(0);
   const placeholder = !String(teamName || '').trim()
     || /NO RESULT|NO FINAL|NEXT OPPONENT|^OPPONENT$/i.test(String(teamName || '').trim());
-  const imageSource = imageAttempt === 0
-    ? brand.logo
-    : imageAttempt === 1
-      ? brand.directLogo
-      : '';
-
   useEffect(() => {
     setImageAttempt(0);
   }, [brand.logo, brand.directLogo, teamName]);
@@ -28,12 +22,19 @@ const TeamLogo = ({ brand, teamName, side }) => {
     >
       {placeholder ? (
         <span>—</span>
-      ) : imageSource ? (
+      ) : imageAttempt === 0 && brand.logo ? (
         <img
-          src={imageSource}
+          src={brand.logo}
           alt=""
           draggable="false"
-          onError={() => setImageAttempt((attempt) => Math.min(2, attempt + 1))}
+          onError={() => setImageAttempt(1)}
+        />
+      ) : imageAttempt <= 1 && brand.directLogo ? (
+        <img
+          src={brand.directLogo}
+          alt=""
+          draggable="false"
+          onError={() => setImageAttempt(2)}
         />
       ) : (
         <span>{brand.abbreviation}</span>

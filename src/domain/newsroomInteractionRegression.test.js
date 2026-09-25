@@ -74,8 +74,15 @@ test('Article Media backstage panels are width-contained for Android desktop-sit
 });
 
 test('Article Media stays visually attached to the full-width Newsroom media card', async () => {
-  const css = await readFile(new URL('../newsroom-reader-shell-v2.css', import.meta.url), 'utf8');
-  assert.match(css, /\[data-media-network-newsroom="true"\]/);
-  assert.match(css, /\[data-media-network-newsroom="true"\][\s\S]*?grid-column:\s*1 \/ -1 !important/);
-  assert.match(css, /\[data-newsroom-article-tools-mount\][\s\S]*?margin-top:\s*0 !important/);
+  const [css, portal] = await Promise.all([
+    readFile(new URL('../newsroom-reader-shell-v2.css', import.meta.url), 'utf8'),
+    readFile(new URL('../components/NewsroomArticleToolsPortal.jsx', import.meta.url), 'utf8'),
+  ]);
+  assert.match(css, /\[data-media-network-newsroom="true"\][\s\S]*?grid-row:\s*3/);
+  assert.match(css, /\[data-newsroom-article-tools-mount\][\s\S]*?grid-row:\s*4/);
+  assert.match(css, /@media \(max-width: 1180px\)[\s\S]*?\[data-media-network-newsroom="true"\][\s\S]*?grid-row:\s*4/);
+  assert.match(css, /@media \(max-width: 1180px\)[\s\S]*?\[data-newsroom-article-tools-mount\][\s\S]*?grid-row:\s*5/);
+  assert.match(css, /\[data-editorial-photo-director-mount\]\[data-open="false"\][\s\S]*?display:\s*none !important/);
+  assert.match(portal, /directorMount\.dataset\.open = open \? 'true' : 'false'/);
+  assert.match(portal, /directorMount\.dataset\.open = isOpen \? 'true' : 'false'/);
 });

@@ -5,7 +5,7 @@ import { frameDifference, shouldKeepMenuFrame } from '../services/menuVideoFrame
 
 const quickImportSourceUrl = new URL('../components/QuickImportPortal.jsx', import.meta.url);
 const mainSourceUrl = new URL('../main.jsx', import.meta.url);
-const ownerEnhancementsSourceUrl = new URL('../components/OwnerWeeklyEnhancements.jsx', import.meta.url);
+const ownerEnhancementsSourceUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const videoSourceUrl = new URL('../services/menuVideoFrames.js', import.meta.url);
 
 test('menu-video frame selection keeps changed screens and periodically samples similar menus', () => {

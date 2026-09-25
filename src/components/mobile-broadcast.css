@@ -361,15 +361,23 @@
 
   .dhq-broadcast-versus span {
     top: 82px !important;
-    right: -70px !important;
-    left: -70px !important;
+    right: auto !important;
+    left: 50% !important;
+    width: min(230px, calc(100vw - 128px)) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    text-align: center !important;
     font-size: .57rem !important;
   }
 
   .dhq-broadcast-versus small {
     top: 101px !important;
-    right: -84px !important;
-    left: -84px !important;
+    right: auto !important;
+    left: 50% !important;
+    width: min(250px, calc(100vw - 108px)) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    text-align: center !important;
     font-size: .52rem !important;
   }
 

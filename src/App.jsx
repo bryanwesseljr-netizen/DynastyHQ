@@ -148,6 +148,7 @@ import {
   updatePostgameFrontPage,
   upsertPostgameFrontPage,
 } from './domain/postgameFrontPage';
+import { DYNASTYHQ_NAVIGATE_EVENT } from './domain/navigationBus';
 import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
@@ -260,6 +261,68 @@ const App = () => {
   const [tempInterests, setTempInterests] = useState({});
 
   // --- FIREBASE AUTHENTICATION LOGIC ---
+  useEffect(() => {
+    const handleNavigationRequest = (event) => {
+      const target = String(event?.detail?.target || '').trim();
+      if (!target) return;
+
+      // Portal-owned destinations listen to the same navigation request and
+      // open their dedicated surfaces without sending App through a legacy tab.
+      if (target === 'gameHub' || target === 'career' || target === 'offseason') return;
+
+      const resetScroll = () => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+      };
+
+      if (target === 'rules') {
+        setIsHouseRulesModalOpen(true);
+        setMobileNavOpen(false);
+        return;
+      }
+
+      if (target === 'commandCenter') {
+        setActiveTab('dashboard');
+        setMobileNavOpen(false);
+        window.setTimeout(() => {
+          document.getElementById('recruit-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
+        return;
+      }
+
+      if (target === 'agenda' || target === 'importSession' || target === 'dataEntry') {
+        setActiveTab('dataEntry');
+        setMobileNavOpen(false);
+        window.setTimeout(() => {
+          const selector = target === 'importSession'
+            ? '[data-weekly-data-intake], [data-gameweek-scanner]'
+            : '[data-week-setup-panel], #dhq-gameweek-flow-agenda, .dhq-weekly-agenda-workspace';
+          document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+        return;
+      }
+
+      if (target === 'newsroom') setNewsroomFocusId(event?.detail?.publicationId || '');
+      if (target === 'podcast') setPodcastFocusId(event?.detail?.publicationId || '');
+
+      const standardTabs = new Set([
+        'dashboard', 'newsroom', 'podcast', 'chronicle',
+        'recruiting', 'frontOffice', 'settings', 'trophies',
+      ]);
+      if (!standardTabs.has(target)) return;
+
+      setActiveTab(target);
+      setMobileNavOpen(false);
+      resetScroll();
+      window.requestAnimationFrame(resetScroll);
+    };
+
+    window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigationRequest);
+    return () => window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigationRequest);
+  }, []);
+
   useEffect(() => {
     const initAuth = async () => {
       // Only auto-login in the AI Sandbox environment

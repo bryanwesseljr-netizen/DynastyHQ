@@ -6,8 +6,7 @@ import { missingCollegeGameCoverageUpdates } from './collegeGameCoverageRepair.j
 import { resolveWeeklyWorkContext } from './weeklyWorkContext.js';
 
 const weeklyAgendaUrl = new URL('../components/WeeklyAgendaV2Portal.jsx', import.meta.url);
-const ambientEnhancementsUrl = new URL('../components/OwnerAmbientEnhancements.jsx', import.meta.url);
-const weeklyEnhancementsUrl = new URL('../components/OwnerWeeklyEnhancements.jsx', import.meta.url);
+const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const coveragePortalUrl = new URL('../components/CoverageDataIntakePortal.jsx', import.meta.url);
 const coverageApiUrl = new URL('../../api/analyze-coverage-reference.js', import.meta.url);
 
@@ -93,15 +92,14 @@ test('weekly agenda guided actions cannot reclassify themselves as legacy action
 });
 
 test('owner workflow mounts coverage repair and editorial-only intake tools', async () => {
-  const [ambient, weekly, portal, api] = await Promise.all([
-    readFile(ambientEnhancementsUrl, 'utf8'),
-    readFile(weeklyEnhancementsUrl, 'utf8'),
+  const [owner, portal, api] = await Promise.all([
+    readFile(ownerEnhancementsUrl, 'utf8'),
     readFile(coveragePortalUrl, 'utf8'),
     readFile(coverageApiUrl, 'utf8'),
   ]);
-  assert.match(ambient, /CollegeGameCoverageRepairPortal/);
-  assert.match(weekly, /CoverageDataIntakePortal/);
-  assert.match(weekly, /WeeklyDataIntakePortal/);
+  assert.match(owner, /CollegeGameCoverageRepairPortal/);
+  assert.match(owner, /CoverageDataIntakePortal/);
+  assert.match(owner, /WeeklyDataIntakePortal/);
   assert.match(portal, /Newsroom and Podcast can use them; your RTG stats and career totals cannot/);
   assert.match(portal, /editorial-only and never write into your player stat line/);
   assert.match(api, /Newsroom articles and podcast talking points ONLY/);

@@ -1,3 +1,38 @@
+
+.dhq-broadcast-hero[data-week-state="preseason"],
+.dhq-broadcast-hero[data-week-state="bye"],
+.dhq-broadcast-hero[data-week-state="offseason"] {
+  background:
+    linear-gradient(105deg, rgba(2, 18, 23, 0.985), rgba(4, 34, 31, 0.92) 54%, rgba(8, 24, 31, 0.96)),
+    radial-gradient(circle at 50% 48%, rgba(109, 140, 55, 0.18), transparent 48%);
+  border-color: rgba(202, 187, 116, 0.46);
+}
+
+.dhq-broadcast-hero[data-week-state="preseason"] .dhq-broadcast-hero__kicker,
+.dhq-broadcast-hero[data-week-state="bye"] .dhq-broadcast-hero__kicker,
+.dhq-broadcast-hero[data-week-state="offseason"] .dhq-broadcast-hero__kicker {
+  color: #f4d45e;
+}
+
+.dhq-broadcast-hero[data-week-state="offseason"] {
+  background:
+    linear-gradient(105deg, rgba(12, 13, 18, .985), rgba(27, 24, 20, .92) 54%, rgba(9, 18, 22, .96)),
+    radial-gradient(circle at 50% 48%, rgba(244, 212, 94, .12), transparent 48%);
+}
+
+.dhq-gameweek-immersion[data-week-state="preseason"] .dhq-immersion-panel,
+.dhq-gameweek-immersion[data-week-state="bye"] .dhq-immersion-panel,
+.dhq-gameweek-immersion[data-week-state="offseason"] .dhq-immersion-panel {
+  border-color: rgba(131, 160, 116, 0.38);
+  background:
+    linear-gradient(150deg, rgba(5, 24, 28, 0.965), rgba(2, 12, 17, 0.97)),
+    radial-gradient(circle at 16% 0%, rgba(118, 151, 72, 0.11), transparent 48%);
+}
+
+.dhq-gameweek-immersion[data-week-state="offseason"] .dhq-immersion-panel {
+  border-color: rgba(202, 187, 116, .34);
+}
+
 .dhq-broadcast-hero[data-week-state="season"] {
   background:
     linear-gradient(105deg, rgba(2, 18, 23, 0.985), rgba(4, 34, 31, 0.92) 54%, rgba(8, 24, 31, 0.96)),
@@ -493,7 +528,9 @@
     white-space: nowrap;
   }
 
-  .dhq-broadcast-hero[data-week-state="season"] .dhq-broadcast-team small {
+  .dhq-broadcast-hero[data-week-state="preseason"] .dhq-broadcast-team small,
+  .dhq-broadcast-hero[data-week-state="bye"] .dhq-broadcast-team small,
+  .dhq-broadcast-hero[data-week-state="offseason"] .dhq-broadcast-team small {
     width: 100%;
     margin-right: 0;
     margin-left: 0;

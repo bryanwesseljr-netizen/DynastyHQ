@@ -42,6 +42,7 @@ test('mobile uses the same primary broadcast destinations as desktop', async () 
     /const primaryItems = \[[\s\S]*Home[\s\S]*Game Hub[\s\S]*Newsroom[\s\S]*Podcast[\s\S]*Offseason[\s\S]*Career[\s\S]*Chronicle[\s\S]*\];/,
   );
   assert.match(portal, /dhq-mobile-broadcast-nav/);
+  assert.match(portal, /scrollIntoView\?\.\(\{ behavior: 'auto', block: 'nearest', inline: 'center' \}\)/);
 });
 
 test('mobile broadcast nav waits for the header and remounts if React replaces it', async () => {
@@ -128,6 +129,8 @@ test('mobile QA guardrails cover the primary DynastyHQ experiences without repla
   assert.match(sessionImport, /dhq-session-import__ready-summary \{ grid-template-columns: 1fr; \}/);
   assert.match(podcast, /section\.grid\.xl\\:grid-cols-[\s\S]*flex-direction: column !important/);
   assert.match(chronicle, /scroll-snap-type: x proximity/);
+  assert.match(await readFile(stylesUrl, 'utf8'), /overscroll-behavior-x: contain/);
+  assert.match(await readFile(stylesUrl, 'utf8'), /max-height: calc\(100dvh - 76px - env\(safe-area-inset-top, 0px\)\)/);
 });
 
 
@@ -316,11 +319,11 @@ test('SAFE PREVIEW can clone the current live career without mutating production
   assert.match(source, /Live production is read-only and will not be changed/);
 });
 
-test('Home Open Game Hub uses the actual Game Hub navigation trigger instead of legacy verified-data tools', async () => {
+test('Home Open Game Hub uses the canonical navigation bus instead of synthetic nav clicks', async () => {
   const source = await readFile(broadcastDashboardUrl, 'utf8');
 
-  assert.match(source, /if \(target === 'gameHub'/);
-  assert.match(source, /\.dhq-primary-nav button, #mobile-primary-navigation button/);
-  assert.match(source, /clean\(button\.textContent\)\.toUpperCase\(\) === 'GAME HUB'/);
-  assert.match(source, /gameHubButton\.click\(\)/);
+  assert.match(source, /import \{ requestNavigation \} from '\.\.\/domain\/navigationBus\.js';/);
+  assert.match(source, /if \(requestNavigation\(target\)\) return;/);
+  assert.doesNotMatch(source, /gameHubButton\.click\(\)/);
+  assert.doesNotMatch(source, /querySelectorAll\('\.dhq-primary-nav button/);
 });

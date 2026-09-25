@@ -4,20 +4,23 @@ import test from 'node:test';
 
 const portalUrl = new URL('../components/GameHubMobilePolishPortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const gameHubEnhancementsUrl = new URL('../components/OwnerGameHubEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../components/game-hub-mobile.css', import.meta.url);
 const viewportStylesUrl = new URL('../components/game-hub-viewport.css', import.meta.url);
 const podcastShowUrl = new URL('./podcastShow.js', import.meta.url);
 
 test('Game Hub mobile polish uses the canonical podcast show identity', async () => {
-  const [portal, owner, podcastShow] = await Promise.all([
+  const [portal, owner, gameHubEnhancements, podcastShow] = await Promise.all([
     readFile(portalUrl, 'utf8'),
     readFile(ownerUrl, 'utf8'),
+    readFile(gameHubEnhancementsUrl, 'utf8'),
     readFile(podcastShowUrl, 'utf8'),
   ]);
 
   assert.match(portal, /resolvePodcastShow/);
   assert.match(portal, /dataset\.podcastShow/);
-  assert.match(owner, /<GameHubMobilePolishPortal \/>/);
+  assert.match(owner, /const OwnerGameHubEnhancements = lazy/);
+  assert.match(gameHubEnhancements, /<GameHubMobilePolishPortal \/>/);
   assert.match(podcastShow, /name: 'The Huddle Podcast'/);
 });
 

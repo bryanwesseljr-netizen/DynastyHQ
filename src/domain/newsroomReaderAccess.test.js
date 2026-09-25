@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const experienceUrl = new URL('../components/NewsroomArticleExperiencePortal.jsx', import.meta.url);
 const rewriteUrl = new URL('../components/NewsroomArticleRewritePortal.jsx', import.meta.url);
-const ownerUrl = new URL('../components/OwnerNewsroomEnhancements.jsx', import.meta.url);
+const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const dashboardUrl = new URL('../components/BroadcastDashboard.jsx', import.meta.url);
 const immersionUrl = new URL('./gameWeekImmersion.js', import.meta.url);
 const readerStylesUrl = new URL('../newsroom-reader-shell-v2.css', import.meta.url);

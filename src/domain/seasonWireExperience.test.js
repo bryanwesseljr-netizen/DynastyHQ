@@ -6,7 +6,7 @@ const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.
 
 test('site-wide season wire replaces the static score ticker with useful career signals', async () => {
   const [owner, wire, styles] = await Promise.all([
-    readSource('../components/OwnerEnhancements.jsx'),
+    readSource('../components/OwnerAmbientEnhancements.jsx'),
     readSource('../components/SeasonWirePortal.jsx'),
     readSource('../components/season-wire.css'),
   ]);
@@ -24,7 +24,7 @@ test('site-wide season wire replaces the static score ticker with useful career 
 
 test('Game Hub overview keeps a compact season schedule in context', async () => {
   const [owner, portal, styles] = await Promise.all([
-    readSource('../components/OwnerEnhancements.jsx'),
+    readSource('../components/OwnerGameHubEnhancements.jsx'),
     readSource('../components/GameHubOverviewSchedulePortal.jsx'),
     readSource('../components/game-hub-overview-schedule.css'),
   ]);

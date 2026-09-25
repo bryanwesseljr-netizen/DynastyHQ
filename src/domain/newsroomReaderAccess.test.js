@@ -57,7 +57,9 @@ test('homepage matchup immersion keeps active pregame and completed postgame opp
   assert.match(immersion, /const activeOpponentFor/);
   assert.match(immersion, /state\.currentWeekSetup/);
   assert.match(immersion, /state\.weeklyAgendaDraft\?\.newGame/);
+  assert.match(immersion, /const upcomingOpponent = clean\(activeOpponent \|\| upcomingGame\?\.opponent\)/);
   assert.match(immersion, /const opponent = mode === 'pregame'/);
-  assert.match(immersion, /activeOpponent \|\| clean\(latestGame\?\.opponent\) \|\| 'NEXT OPPONENT'/);
-  assert.match(immersion, /clean\(latestGame\?\.opponent\) \|\| activeOpponent \|\| 'NEXT OPPONENT'/);
+  assert.match(immersion, /upcomingOpponent \|\| 'NEXT OPPONENT'/);
+  assert.match(immersion, /\['postgame', 'between'\]\.includes\(mode\)/);
+  assert.match(immersion, /clean\(latestGame\?\.opponent\) \|\| 'OPPONENT'/);
 });

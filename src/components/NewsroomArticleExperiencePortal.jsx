@@ -204,8 +204,17 @@ const NewsroomArticleExperiencePortal = () => {
       return Boolean(button);
     };
 
+    const isNewsroomStoryOpenEvent = (event) => {
+      if (!(event.target instanceof Element)) return false;
+      return Boolean(event.target.closest(
+        '.dhq-team-story-tile, .dhq-team-news-row, .dhq-newsroom-story-card, '
+        + 'button[aria-label^="Read full article"], [data-newsroom-outlet-id]',
+      ));
+    };
+
     const handleNewsroomPointerDown = (event) => {
-      if (isNewsroomDeskButton(event)) {
+      if (isNewsroomDeskButton(event) || isNewsroomStoryOpenEvent(event)) {
+        // User-selected story navigation must win over delayed Newsroom-home retries.
         cancelHomeReset();
         return;
       }
@@ -214,7 +223,7 @@ const NewsroomArticleExperiencePortal = () => {
     };
 
     const handleNewsroomClick = (event) => {
-      if (isNewsroomDeskButton(event)) {
+      if (isNewsroomDeskButton(event) || isNewsroomStoryOpenEvent(event)) {
         cancelHomeReset();
         return;
       }

@@ -16,7 +16,7 @@ test('weekly agenda v2 mounts without replacing the existing weekly engine', asy
     readFile(appUrl, 'utf8'),
   ]);
 
-  assert.match(main, /import OwnerEnhancements from '\.\/components\/OwnerEnhancements\.jsx'/);
+  assert.match(main, /const OwnerEnhancements = lazy\(\(\) => import\('\.\/components\/OwnerEnhancements\.jsx'\)\)/);
   assert.match(main, /<OwnerEnhancements \/>/);
   assert.match(ownerEnhancements, /import WeeklyAgendaV2Portal from '\.\/WeeklyAgendaV2Portal\.jsx'/);
   assert.match(ownerEnhancements, /<WeeklyAgendaV2Portal \/>/);

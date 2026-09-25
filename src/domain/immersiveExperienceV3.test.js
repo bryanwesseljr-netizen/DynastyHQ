@@ -6,7 +6,7 @@ const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.
 
 test('hierarchy-first experience is mounted and replaces the Home information wall', async () => {
   const [owner, portal, styles] = await Promise.all([
-    readSource('../components/OwnerAmbientEnhancements.jsx'),
+    readSource('../components/OwnerEnhancements.jsx'),
     readSource('../components/ImmersiveExperienceV3Portal.jsx'),
     readSource('../components/immersive-experience-v3.css'),
   ]);

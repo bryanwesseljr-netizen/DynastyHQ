@@ -4,6 +4,7 @@ import { Target } from 'lucide-react';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import PlayerOffseasonMode from './PlayerOffseasonMode.jsx';
 import { deriveCareerStage, CAREER_STAGES } from '../domain/commandCenter.js';
+import { DYNASTYHQ_NAVIGATE_EVENT, requestNavigation } from '../domain/navigationBus.js';
 import './player-offseason-navigation.css';
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -81,6 +82,21 @@ const PlayerOffseasonNavigationPortal = () => {
   const [host, setHost] = useState(null);
   const stage = useMemo(() => deriveCareerStage(career || {}), [career]);
   const available = ready && Boolean(career) && stage === CAREER_STAGES.COLLEGE;
+
+  useEffect(() => {
+    const handleNavigation = (event) => {
+      const target = String(event?.detail?.target || '').trim();
+      if (!target) return;
+      if (target === 'offseason' && available) {
+        setOpen(true);
+        document.querySelector('main.dhq-page-main')?.scrollTo?.({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+      if (target !== 'offseason') setOpen(false);
+    };
+    window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
+    return () => window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
+  }, [available]);
 
   useEffect(() => {
     if (!available) {
@@ -175,7 +191,7 @@ const PlayerOffseasonNavigationPortal = () => {
 
   const navigate = (destination) => {
     setOpen(false);
-    window.setTimeout(() => clickDestination(destination), 0);
+    requestNavigation(destination);
   };
 
   return createPortal(

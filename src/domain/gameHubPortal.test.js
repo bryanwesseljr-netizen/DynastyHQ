@@ -79,7 +79,7 @@ test('backup season mode is exposed from Game Hub only for saved backup roles', 
   const [gameHub, gameDay, owner, backupPortal] = await Promise.all([
     readFile(gameHubUrl, 'utf8'),
     readFile(new URL('../components/GameDayPregamePortal.jsx', import.meta.url), 'utf8'),
-    readFile(new URL('../components/OwnerEnhancements.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../components/OwnerGameHubEnhancements.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../components/BackupSeasonPortal.jsx', import.meta.url), 'utf8'),
   ]);
 

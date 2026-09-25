@@ -16,6 +16,11 @@ const sortedGames = (state = {}) => [...(state.gameLogs || [])]
 
 const latestGameFor = (state = {}) => sortedGames(state).at(-1) || null;
 
+const gameForWeek = (state = {}, season, week) => sortedGames(state).find((game) => (
+  finite(game?.season, 1) === finite(season, 1)
+  && finite(game?.week, 0) === finite(week, 0)
+)) || null;
+
 const activeOpponentFor = (state = {}) => {
   const setup = state.currentWeekSetup || {};
   const draft = state.weeklyAgendaDraft?.newGame || state.weeklyAgendaDraft?.game || {};
@@ -117,19 +122,32 @@ const scoutFor = ({ mode, state, opponent, latestGame }) => {
 };
 
 export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) => {
-  const latestGame = latestGameFor(state);
+  const archivedLatestGame = latestGameFor(state);
   const activeOpponent = activeOpponentFor(state);
   const school = schoolFor(state, dashboard);
   const week = finite(flow.activeWeek?.week ?? state.currentWeek ?? dashboard.week, 1);
+  const currentSeason = finite(state.currentSeason ?? dashboard.season, 1);
   const isBye = flow.activeWeek?.type === 'bye' || state.currentWeekSetup?.type === 'bye';
   const configured = Boolean(flow.activeWeek?.configured);
   const gameDay = buildGameDayBrief(state);
+  const wrapUpSeason = finite(flow.wrapUp?.season, currentSeason);
+  const wrapUpWeek = finite(flow.wrapUp?.week, week);
+  const wrapUpGame = flow.mode === 'wrap-up' ? gameForWeek(state, wrapUpSeason, wrapUpWeek) : null;
+  const currentPhase = clean(
+    flow.activeWeek?.phase
+    || flow.wrapUp?.entry?.weekPhase
+    || state.currentWeekSetup?.phase
+    || (week === 0 ? 'preseason' : 'regular'),
+  ).toLowerCase();
 
   let mode = 'idle';
-  if (flow.mode === 'wrap-up' && latestGame) mode = 'postgame';
+  if (flow.mode === 'wrap-up' && wrapUpGame) mode = 'postgame';
+  else if (flow.mode === 'wrap-up') mode = 'season';
   else if (configured && isBye) mode = 'bye';
   else if (configured && activeOpponent) mode = 'pregame';
-  else if (latestGame) mode = 'between';
+  else if (archivedLatestGame) mode = 'between';
+
+  const latestGame = mode === 'postgame' ? wrapUpGame : archivedLatestGame;
 
   // Pregame belongs to the active Week Setup. Postgame/between-week presentation
   // belongs to the completed game. Never combine a future opponent with an older
@@ -193,6 +211,18 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
               secondaryLabel: 'VIEW CAREER',
               secondaryTarget: 'career',
             }
+        : mode === 'season'
+          ? {
+              kicker: currentPhase === 'preseason' ? `SEASON ${currentSeason} · PRESEASON` : `SEASON ${currentSeason} · CURRENT STATUS`,
+              headline: currentPhase === 'preseason' ? 'THE NEXT CHAPTER STARTS NOW' : 'THE SEASON STORY MOVES FORWARD',
+              center: clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'READY',
+              centerLine: `WEEK ${week}`,
+              centerDetail: `${school.toUpperCase()} · ${currentPhase === 'preseason' ? 'PRESEASON' : 'CURRENT SEASON'}`,
+              primaryLabel: clean(flow.nextAction?.label).toUpperCase() || 'OPEN WEEK HUB',
+              primaryTarget: nextTarget(flow),
+              secondaryLabel: 'VIEW CAREER',
+              secondaryTarget: 'career',
+            }
           : {
               kicker: 'DYNASTYHQ',
               headline: 'YOUR STORY STARTS HERE',
@@ -205,19 +235,42 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
               secondaryTarget: 'career',
             };
 
+  const role = clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'Current role';
   const keys = mode === 'pregame'
     ? gameDay.keys
     : mode === 'postgame'
       ? postgameKeys(flow)
-      : betweenKeys({ week });
+      : mode === 'season'
+        ? [
+            { title: 'CURRENT ROLE', detail: `${role} at ${school}.` },
+            { title: 'CURRENT STORY', detail: 'Home follows the latest career state; Game Hub owns matchup and game-day detail.' },
+            { title: 'NEXT ACTION', detail: clean(flow.nextAction?.detail) || 'Continue the current week when you are ready.' },
+          ]
+        : betweenKeys({ week });
 
   const previous = mode === 'pregame'
     ? { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: gameDay.previous.copy }
-    : { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: previousCopyFor({ mode, school, opponent, latestGame, week }) };
+    : mode === 'season'
+      ? {
+          title: 'CURRENT CAREER STATE',
+          copy: `${school} is in Season ${currentSeason}${currentPhase === 'preseason' ? ' preseason' : ''}. The homepage now follows the active career state instead of carrying an older matchup forward.`,
+        }
+      : { title: 'PREVIOUSLY ON DYNASTYHQ…', copy: previousCopyFor({ mode, school, opponent, latestGame, week }) };
 
   const scout = mode === 'pregame'
     ? { eyebrow: 'OPPONENT SCOUT', team: gameDay.scout.team, facts: gameDay.scout.facts, note: gameDay.scout.note }
-    : scoutFor({ mode, state, opponent, latestGame });
+    : mode === 'season'
+      ? {
+          eyebrow: 'PROGRAM PULSE',
+          team: school,
+          facts: [
+            { label: 'SEASON', value: String(currentSeason) },
+            { label: 'WEEK', value: String(week) },
+            { label: 'ROLE', value: role.toUpperCase() },
+          ],
+          note: 'Open Game Hub when you want the current week, opponent, and game-day presentation.',
+        }
+      : scoutFor({ mode, state, opponent, latestGame });
 
   return {
     mode,
@@ -232,7 +285,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     ...presentation,
     previous,
     keys,
-    keysTitle: mode === 'pregame' ? '3 KEYS TO THE GAME' : mode === 'postgame' ? 'WEEK WRAP-UP' : 'NEXT CHAPTER',
+    keysTitle: mode === 'pregame' ? '3 KEYS TO THE GAME' : mode === 'postgame' ? 'WEEK WRAP-UP' : mode === 'season' ? 'WHAT MATTERS NOW' : 'NEXT CHAPTER',
     scout,
     gameDay,
   };

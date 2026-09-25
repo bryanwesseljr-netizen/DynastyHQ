@@ -1,10 +1,25 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import SessionImportPortal from './SessionImportPortal.jsx';
 import ProcessWeek2Portal from './ProcessWeek2Portal.jsx';
+import SeasonSchedulePortal from './SeasonSchedulePortal.jsx';
+import MediaNetworkLayerPortal from './MediaNetworkLayerPortal.jsx';
+import ImmersiveExperienceV3Portal from './ImmersiveExperienceV3Portal.jsx';
+import CareerStoryExperiencePortal from './CareerStoryExperiencePortal.jsx';
+import ExperienceRepairPortal from './ExperienceRepairPortal.jsx';
+import SeasonWirePortal from './SeasonWirePortal.jsx';
 import CareerOverviewPortal from './CareerOverviewPortal.jsx';
 import GameHubPortal from './GameHubPortal.jsx';
 import MobileBroadcastNavPortal from './MobileBroadcastNavPortal.jsx';
 import NavigationStatePortal from './NavigationStatePortal.jsx';
+import ZoomPanPortal from './ZoomPanPortal.jsx';
+import FreshStartPortal from './FreshStartPortal.jsx';
+import ImmersionPortal from './ImmersionPortal.jsx';
+import StorylineContinuityPortal from './StorylineContinuityPortal.jsx';
+import PodcastUniversalBrandPortal from './PodcastUniversalBrandPortal.jsx';
+import CollegeGameCoverageRepairPortal from './CollegeGameCoverageRepairPortal.jsx';
+import OfficialCoverageCapturePortal from './OfficialCoverageCapturePortal.jsx';
+import OfficialCoverageReaderPortal from './OfficialCoverageReaderPortal.jsx';
+import PublicMediaProfileSharePortal from './PublicMediaProfileSharePortal.jsx';
 import TeamAccentPortal from './TeamAccentPortal.jsx';
 import DynamicMatchupHelmetPortal from './DynamicMatchupHelmetPortal.jsx';
 import PlayerOffseasonNavigationPortal from './PlayerOffseasonNavigationPortal.jsx';
@@ -18,7 +33,6 @@ const OwnerCareerEnhancements = lazy(() => import('./OwnerCareerEnhancements.jsx
 const OwnerRecruitingEnhancements = lazy(() => import('./OwnerRecruitingEnhancements.jsx'));
 const OwnerNewsroomEnhancements = lazy(() => import('./OwnerNewsroomEnhancements.jsx'));
 const OwnerPodcastEnhancements = lazy(() => import('./OwnerPodcastEnhancements.jsx'));
-const OwnerAmbientEnhancements = lazy(() => import('./OwnerAmbientEnhancements.jsx'));
 
 const groupsForTarget = (target) => {
   const value = String(target || '').trim();
@@ -48,37 +62,6 @@ const visibleFeatureGroups = () => {
   if (document.body?.classList.contains('dhq-session-import-mode')) groups.add('weekly');
 
   return [...groups];
-};
-
-const OwnerAmbientLoader = () => {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (ready) return undefined;
-    const activate = () => setReady(true);
-    const idleId = typeof window.requestIdleCallback === 'function'
-      ? window.requestIdleCallback(activate, { timeout: 1200 })
-      : window.setTimeout(activate, 700);
-
-    window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, activate, { once: true });
-    window.addEventListener('pointerdown', activate, { once: true, passive: true });
-    window.addEventListener('keydown', activate, { once: true });
-
-    return () => {
-      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idleId);
-      else window.clearTimeout(idleId);
-      window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, activate);
-      window.removeEventListener('pointerdown', activate);
-      window.removeEventListener('keydown', activate);
-    };
-  }, [ready]);
-
-  if (!ready) return null;
-  return (
-    <Suspense fallback={null}>
-      <OwnerAmbientEnhancements />
-    </Suspense>
-  );
 };
 
 const OwnerFeatureEnhancements = () => {
@@ -151,7 +134,20 @@ const OwnerEnhancements = () => (
     <MobileBroadcastNavPortal />
     <PlayerOffseasonNavigationPortal />
     <DesktopPrimaryNavFinalizer />
-    <OwnerAmbientLoader />
+    <FreshStartPortal />
+    <ImmersionPortal />
+    <StorylineContinuityPortal />
+    <SeasonSchedulePortal />
+    <MediaNetworkLayerPortal />
+    <ImmersiveExperienceV3Portal />
+    <CareerStoryExperiencePortal />
+    <ExperienceRepairPortal />
+    <SeasonWirePortal />
+    <PodcastUniversalBrandPortal />
+    <PublicMediaProfileSharePortal />
+    <CollegeGameCoverageRepairPortal />
+    <OfficialCoverageCapturePortal />
+    <OfficialCoverageReaderPortal />
 
     {/* Entry portals stay mounted so clicks/events are never missed. Heavier
         feature polish loads only when that destination is actually used. */}

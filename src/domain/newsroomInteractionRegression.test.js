@@ -52,3 +52,23 @@ test('photo library reserves save-status space before the first metadata edit', 
   assert.match(manager, /Defeat \/ Disappointment/);
   assert.match(manager, /Generate New Photo Recommended/);
 });
+
+
+test('Article Media toggle stays a direct reader-grid sibling and does not remount on every open/close', async () => {
+  const source = await readFile(new URL('../components/NewsroomArticleToolsPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /director\?\.closest\('\[data-editorial-photo-director-mount\]'\)/);
+  assert.match(source, /const anchor = directorMount \|\| mediaTools/);
+  assert.match(source, /host\.insertBefore\(ownedMount, anchor\)/);
+  assert.match(source, /const openRef = useRef\(false\)/);
+  assert.match(source, /const articleKeyRef = useRef\(''\)/);
+  assert.doesNotMatch(source, /\}, \[articleKey, open\]\);/);
+});
+
+test('Article Media backstage panels are width-contained for Android desktop-site and narrow layouts', async () => {
+  const css = await readFile(new URL('../newsroom-reader-shell-v2.css', import.meta.url), 'utf8');
+  assert.match(css, /@media \(max-width: 1199px\)/);
+  assert.match(css, /\[data-editorial-photo-director\]\[data-open="true"\]/);
+  assert.match(css, /\.dhq-newsroom-native-media-backstage\[data-open="true"\]/);
+  assert.match(css, /overflow-x: clip !important/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) !important/);
+});

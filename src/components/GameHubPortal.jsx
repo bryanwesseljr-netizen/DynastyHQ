@@ -165,9 +165,17 @@ const GameHubPortal = () => {
       if (target === 'gameHub') {
         setSelection('current');
         setOpen(true);
+        document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button').forEach((button) => {
+          if (clean(button.textContent).toUpperCase() === 'GAME HUB') button.classList.add('dhq-game-hub-active');
+        });
         return;
       }
-      if (openRef.current) setOpen(false);
+      if (openRef.current) {
+        setOpen(false);
+        document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button').forEach((button) => {
+          if (clean(button.textContent).toUpperCase() === 'GAME HUB') button.classList.remove('dhq-game-hub-active');
+        });
+      }
     };
     window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
     return () => window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);

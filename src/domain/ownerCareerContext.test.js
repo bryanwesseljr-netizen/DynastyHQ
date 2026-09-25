@@ -4,21 +4,24 @@ import test from 'node:test';
 
 const providerUrl = new URL('../components/OwnerCareerContext.jsx', import.meta.url);
 const enhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const weeklyEnhancementsUrl = new URL('../components/OwnerWeeklyEnhancements.jsx', import.meta.url);
 const quickImportUrl = new URL('../components/QuickImportPortal.jsx', import.meta.url);
 const collegeAgendaUrl = new URL('../components/CollegeCareerAgendaCardPortal.jsx', import.meta.url);
 
 test('owner enhancement portals share one owner career provider', async () => {
-  const [provider, enhancements] = await Promise.all([
+  const [provider, enhancements, weeklyEnhancements] = await Promise.all([
     readFile(providerUrl, 'utf8'),
     readFile(enhancementsUrl, 'utf8'),
+    readFile(weeklyEnhancementsUrl, 'utf8'),
   ]);
 
   assert.match(provider, /export const OwnerCareerProvider/);
   assert.match(provider, /onAuthStateChanged\(auth/);
   assert.match(provider, /onSnapshot\(/);
   assert.match(enhancements, /<OwnerCareerProvider>/);
-  assert.match(enhancements, /<QuickImportPortal \/>/);
-  assert.match(enhancements, /<CollegeCareerAgendaCardPortal \/>/);
+  assert.match(enhancements, /<OwnerWeeklyEnhancements \/>/);
+  assert.match(weeklyEnhancements, /<QuickImportPortal \/>/);
+  assert.match(weeklyEnhancements, /<CollegeCareerAgendaCardPortal \/>/);
 });
 
 test('quick import consumes shared owner state instead of opening another Firebase listener', async () => {

@@ -118,15 +118,13 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const open = (target) => onNavigate?.(target);
   const rightTeamMeta = immersion.mode === 'pregame'
     ? (state.currentWeekSetup?.opponentRecord || '—')
-    : immersion.mode === 'season'
-      ? '—'
-      : (latestGame?.opponentRecord || '—');
+    : (latestGame?.opponentRecord || '—');
   const rightTeamLabel = immersion.mode === 'pregame'
     ? 'CONFERENCE'
     : immersion.mode === 'postgame'
       ? 'FINAL OPPONENT'
       : immersion.mode === 'season'
-        ? 'CURRENT SEASON'
+        ? (immersion.hasCurrentSeasonGame ? 'LAST OPPONENT' : 'CURRENT SEASON')
         : 'LAST OPPONENT';
 
   return (

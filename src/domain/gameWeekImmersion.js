@@ -16,6 +16,10 @@ const sortedGames = (state = {}) => [...(state.gameLogs || [])]
 
 const latestGameFor = (state = {}) => sortedGames(state).at(-1) || null;
 
+const latestGameForSeason = (state = {}, season) => sortedGames(state)
+  .filter((game) => finite(game?.season, 1) === finite(season, 1))
+  .at(-1) || null;
+
 const gameForWeek = (state = {}, season, week) => sortedGames(state).find((game) => (
   finite(game?.season, 1) === finite(season, 1)
   && finite(game?.week, 0) === finite(week, 0)
@@ -122,11 +126,12 @@ const scoutFor = ({ mode, state, opponent, latestGame }) => {
 };
 
 export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) => {
-  const archivedLatestGame = latestGameFor(state);
+  const historicalLatestGame = latestGameFor(state);
   const activeOpponent = activeOpponentFor(state);
   const school = schoolFor(state, dashboard);
   const week = finite(flow.activeWeek?.week ?? state.currentWeek ?? dashboard.week, 1);
   const currentSeason = finite(state.currentSeason ?? dashboard.season, 1);
+  const archivedLatestGame = latestGameForSeason(state, currentSeason);
   const isBye = flow.activeWeek?.type === 'bye' || state.currentWeekSetup?.type === 'bye';
   const configured = Boolean(flow.activeWeek?.configured);
   const gameDay = buildGameDayBrief(state);
@@ -154,7 +159,9 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   // final score just because Week Setup has already advanced.
   const opponent = mode === 'pregame'
     ? (activeOpponent || clean(latestGame?.opponent) || 'NEXT OPPONENT')
-    : (clean(latestGame?.opponent) || activeOpponent || 'NEXT OPPONENT');
+    : mode === 'season'
+      ? 'NO RESULT YET'
+      : (clean(latestGame?.opponent) || activeOpponent || 'NEXT OPPONENT');
   const score = scoreFor(latestGame || {});
   const result = clean(latestGame?.result).toUpperCase();
   const latestGameSeason = finite(latestGame?.season, state.currentSeason || 1);
@@ -213,11 +220,13 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
             }
         : mode === 'season'
           ? {
-              kicker: `SEASON ${currentSeason} · WEEK ${week}`,
-              headline: `${school.toUpperCase()} · ${(clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'CURRENT STATUS').toUpperCase()}`,
-              center: clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'READY',
-              centerLine: `WEEK ${week}`,
-              centerDetail: currentPhase === 'preseason' ? 'PRESEASON' : 'CURRENT SEASON',
+              kicker: `SEASON ${currentSeason}`,
+              headline: archivedLatestGame ? `LATEST SEASON ${currentSeason} RESULT` : `SEASON ${currentSeason} · NO GAME RESULT YET`,
+              center: archivedLatestGame ? 'FINAL' : '0-0',
+              centerLine: archivedLatestGame ? (score || 'RESULT PUBLISHED') : `WEEK ${week}`,
+              centerDetail: archivedLatestGame
+                ? (result ? `${result} · WEEK ${archivedLatestGame.week ?? week}` : `WEEK ${archivedLatestGame.week ?? week}`)
+                : (currentPhase === 'preseason' ? 'PRESEASON / FIRST RESULT PENDING' : 'FIRST RESULT PENDING'),
               primaryLabel: clean(flow.nextAction?.label).toUpperCase() || 'OPEN WEEK HUB',
               primaryTarget: nextTarget(flow),
               secondaryLabel: 'OPEN GAME HUB',
@@ -278,6 +287,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     opponent,
     currentSeason,
     currentPhase,
+    hasCurrentSeasonGame: Boolean(archivedLatestGame),
+    historicalLatestGame,
     latestGame,
     latestGameRecord,
     activeOpponent,

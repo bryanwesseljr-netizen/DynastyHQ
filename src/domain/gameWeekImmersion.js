@@ -213,15 +213,15 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
             }
         : mode === 'season'
           ? {
-              kicker: currentPhase === 'preseason' ? `SEASON ${currentSeason} · PRESEASON` : `SEASON ${currentSeason} · CURRENT STATUS`,
-              headline: currentPhase === 'preseason' ? 'THE NEXT CHAPTER STARTS NOW' : 'THE SEASON STORY MOVES FORWARD',
+              kicker: `SEASON ${currentSeason} · WEEK ${week}`,
+              headline: `${school.toUpperCase()} · ${(clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'CURRENT STATUS').toUpperCase()}`,
               center: clean(state.rtg?.rank || state.player?.depthChartRank || state.player?.role) || 'READY',
               centerLine: `WEEK ${week}`,
-              centerDetail: `${school.toUpperCase()} · ${currentPhase === 'preseason' ? 'PRESEASON' : 'CURRENT SEASON'}`,
+              centerDetail: currentPhase === 'preseason' ? 'PRESEASON' : 'CURRENT SEASON',
               primaryLabel: clean(flow.nextAction?.label).toUpperCase() || 'OPEN WEEK HUB',
               primaryTarget: nextTarget(flow),
-              secondaryLabel: 'VIEW CAREER',
-              secondaryTarget: 'career',
+              secondaryLabel: 'OPEN GAME HUB',
+              secondaryTarget: 'gameHub',
             }
           : {
               kicker: 'DYNASTYHQ',
@@ -276,6 +276,8 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     mode,
     school,
     opponent,
+    currentSeason,
+    currentPhase,
     latestGame,
     latestGameRecord,
     activeOpponent,

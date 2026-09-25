@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const portalUrl = new URL('../components/FreshStartPortal.jsx', import.meta.url);
-const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const ownerUrl = new URL('../components/OwnerAmbientEnhancements.jsx', import.meta.url);
 const defaultsUrl = new URL('./defaultCareerState.js', import.meta.url);
 
 test('fresh start is mounted and replaces the legacy factory-reset click path', async () => {

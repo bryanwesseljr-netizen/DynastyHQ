@@ -386,9 +386,29 @@
 @media (max-width: 760px) {
   .dhq-weekly-agenda-v2 { padding-inline: 10px; }
   .dhq-agenda-v3-header { padding: 13px; }
-  .dhq-agenda-v3-steps { grid-template-columns: repeat(4, minmax(58px, 1fr)); overflow-x: auto; }
-  .dhq-agenda-v3-step { padding: 7px; gap: 5px; }
-  .dhq-agenda-v3-step strong { font-size: 7px; }
+
+  .dhq-agenda-v3-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    overflow: visible;
+  }
+
+  .dhq-agenda-v3-step {
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    gap: 7px;
+  }
+
+  .dhq-agenda-v3-step strong {
+    min-width: 0;
+    font-size: 7px;
+    line-height: 1.25;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
   .dhq-agenda-v3-control-grid { grid-template-columns: 1fr; }
   .dhq-agenda-v3-tools-card { grid-column: auto; }
   .dhq-agenda-v3-import-card { grid-template-columns: 1fr; }
@@ -400,11 +420,35 @@
   .dhq-agenda-v3-header__identity { align-items: flex-start; }
   .dhq-agenda-v3-header__icon { width: 36px; height: 36px; }
   .dhq-agenda-v3-header h1 { font-size: 18px; }
-  .dhq-agenda-v3-steps { gap: 5px; }
-  .dhq-agenda-v3-step > span { width: 20px; height: 20px; }
+
+  .dhq-agenda-v3-steps { gap: 6px; }
+  .dhq-agenda-v3-step { min-height: 46px; padding: 8px 9px; }
+  .dhq-agenda-v3-step > span { width: 22px; height: 22px; }
+
+  .dhq-agenda-v3-control-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .dhq-agenda-v3-control-card .dhq-agenda-v3-text-button {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .dhq-agenda-v3-control-card strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
   .dhq-agenda-v3-control-card,
   .dhq-agenda-v3-import-card,
   .dhq-agenda-v3-tools-card { padding: 11px; }
+
   .dhq-agenda-v3-import-actions,
   .dhq-agenda-v3-tools-actions { grid-template-columns: 1fr 1fr; }
 }

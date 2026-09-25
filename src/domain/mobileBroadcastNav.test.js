@@ -21,6 +21,7 @@ const activeThemeV3Url = new URL('../active-program-theme-v3.css', import.meta.u
 const activeThemeV4Url = new URL('../active-program-theme-v4.css', import.meta.url);
 const globalAccentUrl = new URL('../global-team-accent.css', import.meta.url);
 const appSourceUrl = new URL('../App.jsx', import.meta.url);
+const broadcastDashboardUrl = new URL('../components/BroadcastDashboard.jsx', import.meta.url);
 const desktopFinalizerUrl = new URL('../components/DesktopPrimaryNavFinalizer.jsx', import.meta.url);
 const navigationStatePortalUrl = new URL('../components/NavigationStatePortal.jsx', import.meta.url);
 const zoomPanPortalUrl = new URL('../components/ZoomPanPortal.jsx', import.meta.url);
@@ -313,4 +314,13 @@ test('SAFE PREVIEW can clone the current live career without mutating production
   assert.match(source, /clearWeeklyDraftRecord\(userState\.uid\)/);
   assert.match(source, /Copy Live Save Into Preview/);
   assert.match(source, /Live production is read-only and will not be changed/);
+});
+
+test('Home Open Game Hub uses the actual Game Hub navigation trigger instead of legacy verified-data tools', async () => {
+  const source = await readFile(broadcastDashboardUrl, 'utf8');
+
+  assert.match(source, /if \(target === 'gameHub'/);
+  assert.match(source, /\.dhq-primary-nav button, #mobile-primary-navigation button/);
+  assert.match(source, /clean\(button\.textContent\)\.toUpperCase\(\) === 'GAME HUB'/);
+  assert.match(source, /gameHubButton\.click\(\)/);
 });

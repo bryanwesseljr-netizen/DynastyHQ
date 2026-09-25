@@ -92,7 +92,7 @@ const toBrand = (team = {}) => {
     primaryColor: catalog.source === 'fbs-2026' ? catalog.primaryColor : ensureHex(team.color, '#23313f'),
     secondaryColor: catalog.source === 'fbs-2026' ? catalog.secondaryColor : ensureHex(team.alternateColor, '#d7dee5'),
     logo: teamId
-      ? `/api/analyze-rtg-status?resource=team-logo&id=${encodeURIComponent(teamId)}`
+      ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${encodeURIComponent(teamId)}.png`
       : '',
     aliases: teamAliases(team),
     source: 'espn+fbs-2026',

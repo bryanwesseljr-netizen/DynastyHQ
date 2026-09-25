@@ -23,8 +23,7 @@ const TeamLogo = ({ brand, teamName, side }) => {
       {placeholder ? (
         <span>—</span>
       ) : imageAttempt === 0 && brand.logo ? (
-        <img
-          src={brand.logo}
+        <img src={brand.logo}
           alt=""
           draggable="false"
           onError={() => setImageAttempt(1)}

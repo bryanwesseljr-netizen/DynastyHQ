@@ -5,7 +5,7 @@ import test from 'node:test';
 const intakeUrl = new URL('../components/WeeklyDataIntakePortal.jsx', import.meta.url);
 const rtgUrl = new URL('../components/RtgStatusIntakePortal.jsx', import.meta.url);
 const coverageUrl = new URL('../components/CoverageDataIntakePortal.jsx', import.meta.url);
-const ownerUrl = new URL('../components/OwnerWeeklyEnhancements.jsx', import.meta.url);
+const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-data-intake.css', import.meta.url);
 
 test('college Weekly Agenda presents game, RTG, and coverage data as one ordered intake', async () => {

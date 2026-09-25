@@ -155,11 +155,19 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
             <small>{opponent === 'NEXT OPPONENT' ? 'ADD IN GAME HUB' : rightTeamLabel}</small>
           </div>
 
-          <div className="dhq-broadcast-versus">
-            <b>{immersion.center}</b>
-            <span>{immersion.centerLine}</span>
-            <small>{immersion.centerDetail}</small>
-          </div>
+          {immersion.mode === 'season' ? (
+            <div className="dhq-broadcast-season-center" aria-label="Current season status">
+              <b>{immersion.center}</b>
+              <span>{immersion.centerLine}</span>
+              <small>{immersion.centerDetail}</small>
+            </div>
+          ) : (
+            <div className="dhq-broadcast-versus">
+              <b>{immersion.center}</b>
+              <span>{immersion.centerLine}</span>
+              <small>{immersion.centerDetail}</small>
+            </div>
+          )}
 
           {!readOnly ? (
             <div className="dhq-broadcast-hero__buttons">

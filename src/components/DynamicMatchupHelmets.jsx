@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { catalogTeamBrand, fallbackTeamBrand, resolveTeamBrand } from '../domain/teamBrandResolver.js';
 
 const TeamLogo = ({ brand, teamName, side }) => {
+  const [imageFailed, setImageFailed] = useState(false);
   const placeholder = !String(teamName || '').trim()
     || /NO RESULT|NO FINAL|NEXT OPPONENT|^OPPONENT$/i.test(String(teamName || '').trim());
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [brand.logo, teamName]);
 
   return (
     <div
@@ -18,8 +23,8 @@ const TeamLogo = ({ brand, teamName, side }) => {
     >
       {placeholder ? (
         <span>—</span>
-      ) : brand.logo ? (
-        <img src={brand.logo} alt="" draggable="false" />
+      ) : brand.logo && !imageFailed ? (
+        <img src={brand.logo} alt="" draggable="false" onError={() => setImageFailed(true)} />
       ) : (
         <span>{brand.abbreviation}</span>
       )}

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import footballStadiumBg from '../assets/dynastyhq-football-stadium-bg.webp';
 import matchupHelmets from '../assets/matchup-helmets.webp';
+import DynamicMatchupHelmets from './DynamicMatchupHelmets.jsx';
+import './dynamic-matchup-helmets.css';
 import { buildDashboardV2 } from '../domain/dashboardV2';
 import { buildGameweekFlow } from '../domain/gameweekFlow';
 import { buildGameWeekImmersion } from '../domain/gameWeekImmersion.js';
@@ -36,14 +38,6 @@ const shortName = (value, fallback = 'TEAM') => {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length > 1) return words.at(-1).slice(0, 13).toUpperCase();
   return text.slice(0, 13).toUpperCase();
-};
-
-const teamMark = (value, fallback = '—') => {
-  const text = clean(value);
-  if (!text || /NO RESULT|NEXT OPPONENT|OPPONENT/i.test(text)) return fallback;
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 1) return words[0].slice(0, 1).toUpperCase();
-  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 };
 
 const sortedByWeek = (entries = []) => [...entries].filter(Boolean).sort((left, right) => (
@@ -143,10 +137,12 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
           <div className="dhq-broadcast-hero__angles" aria-hidden="true" />
           <span className="dhq-broadcast-hero__kicker">{immersion.kicker}</span>
           <h1 id="broadcast-week-title">{immersion.headline}</h1>
-          <div className="dhq-broadcast-matchup-marks" aria-hidden="true">
-            <span className="dhq-broadcast-matchup-mark dhq-broadcast-matchup-mark--left">{teamMark(school, 'O')}</span>
-            <span className="dhq-broadcast-matchup-mark dhq-broadcast-matchup-mark--right">{teamMark(opponent)}</span>
-          </div>
+          <DynamicMatchupHelmets
+            className="dhq-broadcast-helmets"
+            homeTeam={school}
+            awayTeam={opponent}
+            highSchool={model.stage === 'HighSchool'}
+          />
 
           <div className="dhq-broadcast-team dhq-broadcast-team--left">
             <strong>{shortName(school)}</strong>

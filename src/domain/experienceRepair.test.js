@@ -6,7 +6,7 @@ const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.
 
 test('experience repair layer is mounted and owns broken high-level actions', async () => {
   const [owner, repair] = await Promise.all([
-    readSource('../components/OwnerEnhancements.jsx'),
+    readSource('../components/OwnerAmbientEnhancements.jsx'),
     readSource('../components/ExperienceRepairPortal.jsx'),
   ]);
 

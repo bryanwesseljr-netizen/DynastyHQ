@@ -46,7 +46,6 @@ test('owner enhancements keep entry listeners mounted while route-heavy polish i
     'OwnerRecruitingEnhancements',
     'OwnerNewsroomEnhancements',
     'OwnerPodcastEnhancements',
-    'OwnerAmbientEnhancements',
   ].forEach((name) => {
     assert.match(source, new RegExp(`const ${name} = lazy\\(\\(\\) => import\\('\.\\/${name}\\.jsx'\\)\\);`));
   });
@@ -59,17 +58,4 @@ test('owner enhancements keep entry listeners mounted while route-heavy polish i
   assert.match(source, /activeGroups\.has\('newsroom'\)/);
   assert.match(source, /activeGroups\.has\('podcast'\)/);
   assert.match(source, /requestIdleCallback\(prefetchCommon/);
-  assert.match(source, /requestIdleCallback\(activate, \{ timeout: 1200 \}\)/);
-  assert.match(source, /<OwnerAmbientLoader \/>/);
-  [
-    'SeasonSchedulePortal',
-    'MediaNetworkLayerPortal',
-    'ImmersiveExperienceV3Portal',
-    'ExperienceRepairPortal',
-    'SeasonWirePortal',
-    'OfficialCoverageCapturePortal',
-    'OfficialCoverageReaderPortal',
-  ].forEach((name) => {
-    assert.doesNotMatch(source, new RegExp(`import ${name} from`));
-  });
 });

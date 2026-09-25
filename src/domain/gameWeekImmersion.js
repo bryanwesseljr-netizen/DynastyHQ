@@ -229,7 +229,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
                 ? (result ? `${result} · WEEK ${archivedLatestGame.week ?? week}` : `WEEK ${archivedLatestGame.week ?? week}`)
                 : 'FIRST RESULT PENDING',
               primaryLabel: clean(flow.nextAction?.label).toUpperCase() || 'OPEN WEEK HUB',
-              primaryTarget: nextTarget(flow),
+              primaryTarget: clean(flow.nextAction?.target) === 'finalize' ? 'importSession' : nextTarget(flow),
               secondaryLabel: 'OPEN GAME HUB',
               secondaryTarget: 'gameHub',
             }

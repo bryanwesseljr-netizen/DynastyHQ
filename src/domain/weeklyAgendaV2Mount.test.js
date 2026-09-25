@@ -8,7 +8,7 @@ const portal = readFileSync(new URL('../components/WeeklyAgendaV2Portal.jsx', im
 const styles = readFileSync(new URL('../weekly-agenda-v2.css', import.meta.url), 'utf8');
 
 test('Weekly Agenda v2 is mounted from the application entry point through owner enhancements', () => {
-  assert.match(main, /import OwnerEnhancements from '\.\/components\/OwnerEnhancements\.jsx'/);
+  assert.match(main, /const OwnerEnhancements = lazy\(\(\) => import\('\.\/components\/OwnerEnhancements\.jsx'\)\)/);
   assert.match(main, /<OwnerEnhancements \/>/);
   assert.match(ownerEnhancements, /import WeeklyAgendaV2Portal from '\.\/WeeklyAgendaV2Portal\.jsx'/);
   assert.match(ownerEnhancements, /<WeeklyAgendaV2Portal \/>/);

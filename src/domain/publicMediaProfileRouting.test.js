@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const mainUrl = new URL('../main.jsx', import.meta.url);
-const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const ownerEnhancementsUrl = new URL('../components/OwnerAmbientEnhancements.jsx', import.meta.url);
 const sharePortalUrl = new URL('../components/PublicMediaProfileSharePortal.jsx', import.meta.url);
 const publicPageUrl = new URL('../components/PublicMediaProfilePage.jsx', import.meta.url);
 

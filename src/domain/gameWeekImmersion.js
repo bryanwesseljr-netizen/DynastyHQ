@@ -150,12 +150,14 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const offseasonReady = Boolean(offseason?.isCollegePlayer && offseason?.seasonComplete);
   const preseason = currentPhase === 'preseason' || week === 0;
   const pendingFinalize = flow.mode === 'wrap-up' && clean(flow.nextAction?.target) === 'finalize';
+  const wrapUpIsBye = flow.mode === 'wrap-up'
+    && clean(flow.wrapUp?.entry?.weekType || flow.wrapUp?.entry?.type).toLowerCase() === 'bye';
   const upcomingOpponent = clean(activeOpponent || upcomingGame?.opponent);
 
   let mode = 'idle';
   if (flow.mode === 'wrap-up' && wrapUpGame) mode = 'postgame';
   else if (offseasonReady) mode = 'offseason';
-  else if (configured && isBye) mode = 'bye';
+  else if (wrapUpIsBye || (configured && isBye)) mode = 'bye';
   else if (preseason) mode = 'preseason';
   else if (upcomingOpponent) mode = 'pregame';
   else if (archivedLatestGame) mode = 'between';
@@ -244,10 +246,12 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
       centerLayout: 'status',
       heroOpponent: '',
       rightTeamName: 'BYE WEEK',
-      primaryLabel: 'OPEN WEEK HUB',
-      primaryTarget: 'gameHub',
-      secondaryLabel: 'VIEW CAREER',
-      secondaryTarget: 'career',
+      primaryLabel: pendingFinalize
+        ? (clean(flow.nextAction?.label).toUpperCase() || 'FINALIZE WEEK')
+        : 'OPEN WEEK HUB',
+      primaryTarget: pendingFinalize ? 'importSession' : 'gameHub',
+      secondaryLabel: pendingFinalize ? 'OPEN GAME HUB' : 'VIEW CAREER',
+      secondaryTarget: pendingFinalize ? 'gameHub' : 'career',
     };
   } else if (mode === 'preseason') {
     presentation = {
@@ -386,6 +390,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
     currentPhase,
     offseasonReady,
     pendingFinalize,
+    wrapUpIsBye,
     hasCurrentSeasonGame: Boolean(archivedLatestGame),
     upcomingGame,
     historicalLatestGame,

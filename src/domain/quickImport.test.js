@@ -25,7 +25,7 @@ test('dashboard quick import keeps screenshots first-class and adds optional loc
     readFile(videoSourceUrl, 'utf8'),
   ]);
 
-  assert.match(mainSource, /import OwnerEnhancements from '\.\/components\/OwnerEnhancements\.jsx'/);
+  assert.match(mainSource, /const OwnerEnhancements = lazy\(\(\) => import\('\.\/components\/OwnerEnhancements\.jsx'\)\)/);
   assert.match(mainSource, /<OwnerEnhancements \/>/);
   assert.match(ownerEnhancementsSource, /import QuickImportPortal from '\.\/QuickImportPortal\.jsx'/);
   assert.match(ownerEnhancementsSource, /<QuickImportPortal \/>/);

@@ -1,13 +1,13 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import './services/podcastBinaryTransport.js'
 import { startPreviewToProductionPromotion } from './services/previewPromotion.js'
 import AuthAwareApp from './components/AuthAwareApp.jsx'
-import OwnerEnhancements from './components/OwnerEnhancements.jsx'
-import DuplicateGuardPortal from './components/DuplicateGuardPortal.jsx'
-import PublicShareGuard from './components/PublicShareGuard.jsx'
-import PublicNewsroomArticlePage from './components/PublicNewsroomArticlePage.jsx'
-import PublicMediaProfilePage from './components/PublicMediaProfilePage.jsx'
+const OwnerEnhancements = lazy(() => import('./components/OwnerEnhancements.jsx'))
+const DuplicateGuardPortal = lazy(() => import('./components/DuplicateGuardPortal.jsx'))
+const PublicShareGuard = lazy(() => import('./components/PublicShareGuard.jsx'))
+const PublicNewsroomArticlePage = lazy(() => import('./components/PublicNewsroomArticlePage.jsx'))
+const PublicMediaProfilePage = lazy(() => import('./components/PublicMediaProfilePage.jsx'))
 import { resolveViewContext } from './domain/viewMode.js'
 import { readSharedNewsroomArticleId } from './domain/newsroomArticleShare.js'
 import { readPublicMediaProfileId } from './domain/publicMediaProfile.js'
@@ -41,16 +41,20 @@ const mediaProfileId = readPublicMediaProfileId(window.location.search)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {sharedArticleId ? (
-      <PublicNewsroomArticlePage shareId={sharedArticleId} />
-    ) : mediaProfileId ? (
-      <PublicMediaProfilePage ownerId={mediaProfileId} />
-    ) : (
-      <>
-        <AuthAwareApp />
-        {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
-        <DuplicateGuardPortal />
-      </>
-    )}
+    <Suspense fallback={<div className="min-h-screen bg-[#02070b]" aria-label="Loading DynastyHQ" />}>
+      {sharedArticleId ? (
+        <PublicNewsroomArticlePage shareId={sharedArticleId} />
+      ) : mediaProfileId ? (
+        <PublicMediaProfilePage ownerId={mediaProfileId} />
+      ) : (
+        <>
+          <AuthAwareApp />
+          <Suspense fallback={null}>
+            {viewContext.isPublicShare ? <PublicShareGuard /> : <OwnerEnhancements />}
+            <DuplicateGuardPortal />
+          </Suspense>
+        </>
+      )}
+    </Suspense>
   </React.StrictMode>,
 )

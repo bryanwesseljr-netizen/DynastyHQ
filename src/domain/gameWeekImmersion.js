@@ -151,6 +151,7 @@ export const buildGameWeekImmersion = (state = {}, dashboard = {}, flow = {}) =>
   const preseason = currentPhase === 'preseason' || week === 0;
   const pendingFinalize = flow.mode === 'wrap-up' && clean(flow.nextAction?.target) === 'finalize';
   const wrapUpIsBye = flow.mode === 'wrap-up'
+    && wrapUpWeek === week
     && clean(flow.wrapUp?.entry?.weekType || flow.wrapUp?.entry?.type).toLowerCase() === 'bye';
   const upcomingOpponent = clean(activeOpponent || upcomingGame?.opponent);
 

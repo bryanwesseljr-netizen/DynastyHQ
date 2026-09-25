@@ -25,6 +25,7 @@ import { buildStorylineEngine } from '../domain/storylineEngine.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import './immersive-experience-v3.css';
 import './immersive-experience-v3-polish.css';
+import { requestNavigation } from '../domain/navigationBus.js';
 
 const clean = (value) => String(value ?? '').trim();
 const numberOf = (value, fallback = 0) => {
@@ -33,15 +34,17 @@ const numberOf = (value, fallback = 0) => {
 };
 const arrayOf = (value) => (Array.isArray(value) ? value.filter(Boolean) : []);
 
-const visibleNavButton = (labels = []) => {
-  const wanted = (Array.isArray(labels) ? labels : [labels]).map((label) => clean(label).toUpperCase());
-  const buttons = [...document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button')];
-  return buttons.find((button) => wanted.includes(clean(button.textContent).toUpperCase()) && button.offsetParent !== null)
-    || buttons.find((button) => wanted.includes(clean(button.textContent).toUpperCase()))
-    || null;
+const openNav = (labels) => {
+  const wanted = (Array.isArray(labels) ? labels : [labels]).map((label) => clean(label).toLowerCase());
+  const joined = wanted.join(' ');
+  if (joined.includes('newsroom')) return requestNavigation('newsroom');
+  if (joined.includes('podcast')) return requestNavigation('podcast');
+  if (joined.includes('chronicle')) return requestNavigation('chronicle');
+  if (joined.includes('career') || joined.includes('legacy')) return requestNavigation('career');
+  if (joined.includes('game hub')) return requestNavigation('gameHub');
+  if (joined.includes('home') || joined.includes('dashboard')) return requestNavigation('dashboard');
+  return requestNavigation(wanted[0] || '');
 };
-
-const openNav = (labels) => visibleNavButton(labels)?.click();
 
 const roleFor = (career = {}) => clean(
   career.rtg?.rank

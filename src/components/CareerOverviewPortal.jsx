@@ -100,9 +100,19 @@ const CareerOverviewPortal = () => {
       if (!target) return;
       if (target === 'career') {
         setOpen(true);
+        document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button').forEach((button) => {
+          const label = String(button.textContent || '').replace(/\s+/g, ' ').trim().toUpperCase();
+          if (label === 'CAREER' || label === 'LEGACY') button.classList.add('dhq-career-active');
+        });
         return;
       }
-      if (openRef.current) setOpen(false);
+      if (openRef.current) {
+        setOpen(false);
+        document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button').forEach((button) => {
+          const label = String(button.textContent || '').replace(/\s+/g, ' ').trim().toUpperCase();
+          if (label === 'CAREER' || label === 'LEGACY') button.classList.remove('dhq-career-active');
+        });
+      }
     };
     window.addEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);
     return () => window.removeEventListener(DYNASTYHQ_NAVIGATE_EVENT, handleNavigation);

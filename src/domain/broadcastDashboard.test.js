@@ -48,16 +48,19 @@ test('broadcast dashboard uses the approved reference proportions and real workf
 });
 
 test('mobile dashboard preserves the compact information grid and stacks immersion panels', async () => {
-  const [styles, immersionStyles, siteStyles] = await Promise.all([
+  const [styles, immersionStyles, siteStyles, mobileBroadcastStyles] = await Promise.all([
     readFile(stylesUrl, 'utf8'),
     readFile(immersionStylesUrl, 'utf8'),
     readFile(new URL('../index.css', import.meta.url), 'utf8'),
+    readFile(new URL('../components/mobile-broadcast.css', import.meta.url), 'utf8'),
   ]);
   assert.match(styles, /@media \(max-width: 767px\)/);
   assert.match(styles, /\.dhq-broadcast-cards \{ grid-template-columns: repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.dhq-broadcast-lower-row \{ grid-template-columns: 1fr/);
   assert.match(immersionStyles, /@media \(max-width: 767px\)[\s\S]*?\.dhq-gameweek-immersion \{[\s\S]*?grid-template-columns: 1fr/);
   assert.match(siteStyles, /\.dhq-broadcast-header \.dhq-primary-nav-item \{[\s\S]*?order: initial !important/);
+  assert.match(mobileBroadcastStyles, /\.dhq-broadcast-versus span \{[\s\S]*?left: 50% !important;[\s\S]*?transform: translateX\(-50%\) !important;[\s\S]*?text-align: center !important;/);
+  assert.match(mobileBroadcastStyles, /\.dhq-broadcast-versus small \{[\s\S]*?left: 50% !important;[\s\S]*?transform: translateX\(-50%\) !important;[\s\S]*?text-align: center !important;/);
 });
 
 test('preview builds use an isolated Firebase namespace and seed only that copy', async () => {

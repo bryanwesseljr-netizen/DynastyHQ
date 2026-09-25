@@ -16,11 +16,13 @@ const NewsroomArticleToolsPortal = () => {
     if (!root) return;
 
     const director = root.querySelector('[data-editorial-photo-director]');
+    const directorMount = director?.closest('[data-editorial-photo-director-mount]') || null;
     const mediaTools = root.querySelector('.dhq-newsroom-media-tools');
     if (director) {
       director.classList.add('dhq-newsroom-director-backstage');
       director.dataset.open = open ? 'true' : 'false';
     }
+    if (directorMount) directorMount.dataset.open = open ? 'true' : 'false';
     if (mediaTools) {
       mediaTools.classList.add('dhq-newsroom-native-media-backstage');
       mediaTools.dataset.open = open ? 'true' : 'false';
@@ -48,6 +50,8 @@ const NewsroomArticleToolsPortal = () => {
       if (director) {
         director.classList.add('dhq-newsroom-director-backstage');
         director.dataset.open = isOpen ? 'true' : 'false';
+        const directorMount = director.closest('[data-editorial-photo-director-mount]');
+        if (directorMount) directorMount.dataset.open = isOpen ? 'true' : 'false';
       }
       if (mediaTools) {
         mediaTools.classList.add('dhq-newsroom-native-media-backstage');

@@ -292,3 +292,58 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
     margin-top: 0 !important;
   }
 }
+
+
+/* Article Media must never widen the Newsroom reader. Android desktop-site mode
+   can report a tablet-sized layout viewport while the visual viewport is phone-sized,
+   so constrain the backstage production panels well above the phone breakpoint. */
+.dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount],
+.dhq-newsroom-reader-mode > [data-editorial-photo-director-mount],
+.dhq-newsroom-reader-mode > .dhq-newsroom-media-tools {
+  box-sizing: border-box;
+  justify-self: stretch;
+  overflow-x: clip;
+}
+
+.dhq-newsroom-reader-mode [data-editorial-photo-director][data-open="true"],
+.dhq-newsroom-reader-mode .dhq-newsroom-native-media-backstage[data-open="true"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+@media (max-width: 1199px) {
+  .dhq-newsroom-reader-mode > [data-newsroom-article-tools-mount],
+  .dhq-newsroom-reader-mode > [data-editorial-photo-director-mount],
+  .dhq-newsroom-reader-mode > .dhq-newsroom-media-tools {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .dhq-newsroom-reader-mode [data-editorial-photo-director][data-open="true"] :where(
+    div, section, details, label, p, span, button, select, input, img
+  ),
+  .dhq-newsroom-reader-mode .dhq-newsroom-native-media-backstage[data-open="true"] :where(
+    div, section, details, label, p, span, button, select, input, img
+  ) {
+    min-width: 0 !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+  }
+
+  .dhq-newsroom-reader-mode [data-editorial-photo-director][data-open="true"] .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dhq-newsroom-reader-mode .dhq-newsroom-native-media-backstage[data-open="true"] > section {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+}

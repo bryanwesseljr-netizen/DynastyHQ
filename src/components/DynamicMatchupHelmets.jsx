@@ -1,23 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { catalogTeamBrand, fallbackTeamBrand, resolveTeamBrand } from '../domain/teamBrandResolver.js';
 
-const TeamLogo = ({ brand, teamName, side }) => (
-  <div
-    className={`dhq-matchup-team-logo dhq-matchup-team-logo--${side}`}
-    style={{
-      '--dhq-team-primary': brand.primaryColor,
-      '--dhq-team-secondary': brand.secondaryColor,
-    }}
-    role="img"
-    aria-label={`${teamName || brand.displayName} logo`}
-  >
-    {brand.logo ? (
-      <img src={brand.logo} alt="" draggable="false" />
-    ) : (
-      <span>{brand.abbreviation}</span>
-    )}
-  </div>
-);
+const TeamLogo = ({ brand, teamName, side }) => {
+  const placeholder = !String(teamName || '').trim()
+    || /NO RESULT|NO FINAL|NEXT OPPONENT|^OPPONENT$/i.test(String(teamName || '').trim());
+
+  return (
+    <div
+      className={`dhq-matchup-team-logo dhq-matchup-team-logo--${side}`}
+      style={{
+        '--dhq-team-primary': brand.primaryColor,
+        '--dhq-team-secondary': brand.secondaryColor,
+      }}
+      role="img"
+      aria-label={placeholder ? 'No current opponent result' : `${teamName || brand.displayName} logo`}
+      data-placeholder={placeholder ? 'true' : 'false'}
+    >
+      {placeholder ? (
+        <span>—</span>
+      ) : brand.logo ? (
+        <img src={brand.logo} alt="" draggable="false" />
+      ) : (
+        <span>{brand.abbreviation}</span>
+      )}
+    </div>
+  );
+};
 
 const useBrand = (teamName, highSchool, overrides = {}) => {
   const fallback = useMemo(() => {

@@ -29,11 +29,13 @@ test('the fixed workspace background cannot intercept newsroom article clicks', 
   );
 });
 
-test('Career Chronicle ships with the app shell so commitment navigation cannot lose its lazy chunk', async () => {
+test('Career Chronicle is route-split but remains mounted inside the shared Suspense shell', async () => {
   const appSource = await readFile(appSourceUrl, 'utf8');
 
-  assert.match(appSource, /import CareerArchive from '\.\/components\/CareerArchive';/);
-  assert.doesNotMatch(appSource, /lazy\(\(\) => import\('\.\/components\/CareerArchive'\)\)/);
+  assert.match(appSource, /const CareerArchive = lazy\(\(\) => import\('\.\/components\/CareerArchive'\)\);/);
+  assert.doesNotMatch(appSource, /import CareerArchive from '\.\/components\/CareerArchive';/);
+  assert.match(appSource, /<Suspense fallback=/);
+  assert.match(appSource, /activeTab === 'chronicle'[\s\S]*<CareerArchive/);
 });
 
 test('the newsroom keeps podcast controls in the dedicated Gridiron Grind workspace', async () => {

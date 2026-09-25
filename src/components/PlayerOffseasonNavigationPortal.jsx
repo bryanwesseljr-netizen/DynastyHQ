@@ -9,52 +9,6 @@ import './player-offseason-navigation.css';
 
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-const destinationMatchers = {
-  dashboard: /^(home|dashboard)$/i,
-  gameHub: /^(game hub|weekly agenda|log weekly agenda)$/i,
-  dataEntry: /^(game hub|weekly agenda|log weekly agenda)$/i,
-  recruiting: /^recruiting board$/i,
-  newsroom: /^(the )?newsroom$/i,
-  chronicle: /^chronicle$/i,
-  podcast: /^(podcast|gridiron grind podcast)$/i,
-  settings: /^settings$/i,
-};
-
-const allNavButtons = () => [...document.querySelectorAll(
-  '.dhq-primary-nav button, #mobile-primary-navigation button, .dhq-mobile-broadcast-nav button',
-)];
-
-const findButton = (matcher) => allNavButtons().find((button) => matcher.test(String(button.textContent || '').trim())) || null;
-
-const clickDestination = (destination) => {
-  if (destination === 'dashboard') {
-    const logo = document.querySelector('button.dhq-broadcast-header-logo');
-    if (logo) {
-      logo.click();
-      return true;
-    }
-  }
-
-  const matcher = destinationMatchers[destination];
-  if (!matcher) return false;
-  const immediate = findButton(matcher);
-  if (immediate) {
-    immediate.click();
-    return true;
-  }
-
-  // Recruiting and other secondary destinations may only exist inside the
-  // profile menu. Open that menu, then hand off to the real app navigation.
-  const profile = document.querySelector('button.dhq-broadcast-header__profile');
-  if (!profile) return false;
-  profile.click();
-  window.setTimeout(() => {
-    const delayed = findButton(matcher);
-    delayed?.click();
-  }, 80);
-  return true;
-};
-
 const makeDesktopButton = (onOpen) => {
   const button = document.createElement('button');
   button.id = 'dhq-player-offseason-desktop-nav';

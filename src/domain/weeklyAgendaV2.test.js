@@ -95,3 +95,15 @@ test('weekly agenda mobile workflow uses roomy two-column steps and lets setup c
   assert.match(styles, /@media \(max-width: 480px\)[\s\S]*?\.dhq-agenda-v3-control-card \{[\s\S]*?grid-template-columns: auto minmax\(0, 1fr\)/);
   assert.match(styles, /@media \(max-width: 480px\)[\s\S]*?\.dhq-agenda-v3-control-card strong \{[\s\S]*?white-space: normal/);
 });
+
+test('weekly agenda quarantines hidden legacy presentation without disabling its verified workflow bridge', async () => {
+  const portal = await readFile(portalUrl, 'utf8');
+
+  assert.match(portal, /const quarantineLegacyBlock =/);
+  assert.match(portal, /node\.dataset\.dhqLegacyHidden = 'true'/);
+  assert.match(portal, /node\.setAttribute\('aria-hidden', 'true'\)/);
+  assert.match(portal, /control\.setAttribute\('tabindex', '-1'\)/);
+  assert.match(portal, /Open manual fields only when something is missing or needs a correction/);
+  assert.match(portal, /if \(workflow\.hasApplied\) return null/);
+  assert.doesNotMatch(portal, /else if \(workflow\.hasApplied\)/);
+});

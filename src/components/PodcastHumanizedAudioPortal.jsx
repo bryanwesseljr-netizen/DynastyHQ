@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, FileText, Loader2, RefreshCw, Sparkles, Volume2 } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
@@ -58,6 +58,7 @@ const issueChronology = (left = {}, right = {}) => (
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   const [liveEpisodes, setLiveEpisodes] = useState({});
+  const previousLatestPublicationIdRef = useRef('');
 
   const busy = Boolean(operation);
   const transcriptBusy = operation === 'transcript';
@@ -116,12 +117,20 @@ const issueChronology = (left = {}, right = {}) => (
 
   useEffect(() => {
     if (!issues.length) {
+      previousLatestPublicationIdRef.current = '';
       setSelectedPublicationId('');
       return;
     }
-    if (!issues.some((issue) => publicationIdFor(issue) === selectedPublicationId)) {
-      setSelectedPublicationId(publicationIdFor(issues[issues.length - 1]));
+    const latest = publicationIdFor(issues[issues.length - 1]);
+    const previousLatest = previousLatestPublicationIdRef.current;
+    const selectedStillExists = issues.some((issue) => publicationIdFor(issue) === selectedPublicationId);
+    const wasFollowingLatest = Boolean(previousLatest && selectedPublicationId === previousLatest);
+
+    if (!selectedStillExists || !selectedPublicationId || (wasFollowingLatest && latest !== previousLatest)) {
+      setSelectedPublicationId(latest);
+      setMessage('');
     }
+    previousLatestPublicationIdRef.current = latest;
   }, [issues, selectedPublicationId]);
 
   const selectedIssue = issues.find((issue) => publicationIdFor(issue) === selectedPublicationId) || null;

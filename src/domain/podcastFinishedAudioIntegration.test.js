@@ -6,6 +6,8 @@ const masterUrl = new URL('../components/PodcastMasterAudioPortalV2.jsx', import
 const studioUrl = new URL('../components/PodcastStudio.jsx', import.meta.url);
 const integrationUrl = new URL('../components/PodcastFinishedAudioIntegrationPortal.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const humanizedUrl = new URL('../components/PodcastHumanizedAudioPortal.jsx', import.meta.url);
+const podcastApiUrl = new URL('../../api/generate-podcast.js', import.meta.url);
 
 test('finished podcast workflow accepts NotebookLM M4A and archives it as continuous ready audio', async () => {
   const master = await readFile(masterUrl, 'utf8');
@@ -69,4 +71,34 @@ test('NotebookLM source pack is current-week issue-first and includes full resea
   assert.match(master, /Use the preseason QB1 story only as background context/);
   assert.doesNotMatch(master, /disabled=\{busy \|\| !selectedIssue \|\| !selectedHasTranscript\}/);
   assert.match(master, /disabled=\{busy \|\| !selectedEpisode \|\| !selectedHasTranscript\}/);
+});
+
+test('podcast production tools automatically follow a newly published latest week without breaking archive selection', async () => {
+  const [master, studio, humanized] = await Promise.all([
+    readFile(masterUrl, 'utf8'),
+    readFile(studioUrl, 'utf8'),
+    readFile(humanizedUrl, 'utf8'),
+  ]);
+
+  [master, studio, humanized].forEach((source) => {
+    assert.match(source, /previousLatestPublicationIdRef/);
+    assert.match(source, /wasFollowingLatest/);
+  });
+  assert.match(master, /latest !== previousLatest/);
+  assert.match(humanized, /latest !== previousLatest/);
+  assert.match(studio, /latest !== previousLatest/);
+});
+
+test('podcast API preserves detailed current-week research instead of reducing the transcript to the brief', async () => {
+  const source = await readFile(podcastApiUrl, 'utf8');
+
+  assert.match(source, /const sanitizeResearchPacket =/);
+  assert.match(source, /researchPacket: sanitizeResearchPacket\(body\)/);
+  assert.match(source, /playerGameFacts: sanitizeResearchFacts/);
+  assert.match(source, /teamGameFacts: sanitizeResearchFacts/);
+  assert.match(source, /scoringFacts: sanitizeResearchFacts/);
+  assert.match(source, /progressionFacts: sanitizeResearchFacts/);
+  assert.match(source, /developmentChanges:/);
+  assert.match(source, /researchPacket\.game contains a completed game/);
+  assert.match(source, /first start with a completed game/i);
 });

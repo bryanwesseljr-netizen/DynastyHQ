@@ -59,7 +59,8 @@ test('NotebookLM source pack is current-week issue-first and includes full resea
   const master = await readFile(masterUrl, 'utf8');
 
   assert.match(master, /buildPodcastResearchPacket/);
-  assert.match(master, /Source-pack selection is issue-first/);
+  assert.match(master, /Source-pack selection follows every verified weekly update/);
+  assert.match(master, /listPodcastProductionIssues\(career \|\| \{\}\)/);
   assert.match(master, /\.sort\(issueChronology\)/);
   assert.match(master, /issues\[issues\.length - 1\]/);
   assert.match(master, /## Current game — full verified summary/);
@@ -71,6 +72,14 @@ test('NotebookLM source pack is current-week issue-first and includes full resea
   assert.match(master, /Use the preseason QB1 story only as background context/);
   assert.doesNotMatch(master, /disabled=\{busy \|\| !selectedIssue \|\| !selectedHasTranscript\}/);
   assert.match(master, /disabled=\{busy \|\| !selectedEpisode \|\| !selectedHasTranscript\}/);
+});
+
+test('podcast transcript controls do not require a current Newsroom podcastBrief', async () => {
+  const humanized = await readFile(humanizedUrl, 'utf8');
+
+  assert.match(humanized, /listPodcastProductionIssues\(career \|\| \{\}\)/);
+  assert.doesNotMatch(humanized, /issue\?\.podcastBrief\)/);
+  assert.match(humanized, /full weekly packet/);
 });
 
 test('podcast production tools automatically follow a newly published latest week without breaking archive selection', async () => {

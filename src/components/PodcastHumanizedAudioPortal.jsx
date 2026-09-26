@@ -42,7 +42,13 @@ const transcriptFingerprint = (episode) => {
   return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
 };
 
-const PodcastHumanizedAudioPortal = () => {
+const issueChronology = (left = {}, right = {}) => (
+  Number(left?.season || 1) - Number(right?.season || 1)
+  || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+  || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
+);
+
+  const PodcastHumanizedAudioPortal = () => {
   const [user, setUser] = useState(auth.currentUser || null);
   const [career, setCareer] = useState(null);
   const [visible, setVisible] = useState(false);
@@ -101,8 +107,9 @@ const PodcastHumanizedAudioPortal = () => {
     return onSnapshot(ref, (snapshot) => setCareer(snapshot.exists() ? snapshot.data() : null));
   }, [user]);
 
-  const issues = useMemo(() => (career?.newsroomIssues || [])
-    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief), [career?.newsroomIssues]);
+  const issues = useMemo(() => [...(career?.newsroomIssues || [])]
+    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief)
+    .sort(issueChronology), [career?.newsroomIssues]);
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
     .filter((episode) => publicationIdFor(episode) && Array.isArray(episode?.segments) && episode.segments.length >= 8), [career?.podcastEpisodes]);
   const episodeByPublication = useMemo(() => new Map(episodes.map((episode) => [episode.publicationId, episode])), [episodes]);

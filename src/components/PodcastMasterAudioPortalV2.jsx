@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, Download, FileAudio2, Loader2, UploadCloud } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
@@ -247,6 +247,7 @@ const PodcastMasterAudioPortalV2 = () => {
   const [operation, setOperation] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
+  const previousLatestPublicationIdRef = useRef('');
 
   const selectPublication = (publicationId) => {
     const next = String(publicationId || '').trim();
@@ -271,12 +272,20 @@ const PodcastMasterAudioPortalV2 = () => {
 
   useEffect(() => {
     if (!issues.length) {
+      previousLatestPublicationIdRef.current = '';
       setSelectedPublicationId('');
       return;
     }
-    if (!issues.some((issue) => publicationIdFor(issue) === selectedPublicationId)) {
-      setSelectedPublicationId(publicationIdFor(issues[issues.length - 1]));
+    const latest = publicationIdFor(issues[issues.length - 1]);
+    const previousLatest = previousLatestPublicationIdRef.current;
+    const selectedStillExists = issues.some((issue) => publicationIdFor(issue) === selectedPublicationId);
+    const wasFollowingLatest = Boolean(previousLatest && selectedPublicationId === previousLatest);
+
+    if (!selectedStillExists || !selectedPublicationId || (wasFollowingLatest && latest !== previousLatest)) {
+      setSelectedPublicationId(latest);
+      setMessage('');
     }
+    previousLatestPublicationIdRef.current = latest;
   }, [issues, selectedPublicationId]);
 
   useEffect(() => {

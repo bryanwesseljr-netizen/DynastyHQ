@@ -330,5 +330,11 @@ test('current first-start podcast research includes game stats, scoring coverage
   assert.equal(payload.facts.find((fact) => fact.key === 'game.passYds')?.value, 286);
   assert.match(payload.facts.find((fact) => fact.key === 'program.coverage.scoring.oregon-drive-1')?.value || '', /touchdown pass/i);
   assert.match(payload.facts.find((fact) => fact.key === 'player.development.weekly')?.value || '', /Coach Trust/);
+  assert.equal(payload.researchPacket.game.opponent, 'Vanderbilt');
+  assert.equal(payload.researchPacket.playerGameFacts.find((fact) => fact.key === 'game.passYds')?.value, 286);
+  assert.equal(payload.researchPacket.scoringFacts.length, 1);
+  assert.match(payload.researchPacket.scoringFacts[0].value, /7 plays, 75 yards/);
+  assert.match(payload.researchPacket.developmentSummary.join(' '), /Coach Trust/);
+  assert.equal(payload.researchPacket.progressionFacts.some((fact) => fact.key === 'profile.player.overall'), true);
   assert.equal(payload.facts.some((fact) => fact.value === 'Preseason starter announcement.'), false);
 });

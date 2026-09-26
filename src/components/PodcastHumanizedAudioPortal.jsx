@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
 import { generateHumanizedPodcastMix, generatePodcastScript } from '../services/podcastClient';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
-import { buildPodcastGenerationPayload, normalizeGeneratedPodcast } from '../domain/podcastEngine';
+import { buildPodcastGenerationPayload, listPodcastProductionIssues, normalizeGeneratedPodcast } from '../domain/podcastEngine';
 import { PODCAST_SHOW } from '../domain/podcastShow';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'podcast-humanized-audio-v3';
@@ -108,9 +108,9 @@ const issueChronology = (left = {}, right = {}) => (
     return onSnapshot(ref, (snapshot) => setCareer(snapshot.exists() ? snapshot.data() : null));
   }, [user]);
 
-  const issues = useMemo(() => [...(career?.newsroomIssues || [])]
-    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief)
-    .sort(issueChronology), [career?.newsroomIssues]);
+  const issues = useMemo(() => listPodcastProductionIssues(career || {})
+    .filter((issue) => publicationIdFor(issue))
+    .sort(issueChronology), [career]);
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
     .filter((episode) => publicationIdFor(episode) && Array.isArray(episode?.segments) && episode.segments.length >= 8), [career?.podcastEpisodes]);
   const episodeByPublication = useMemo(() => new Map(episodes.map((episode) => [episode.publicationId, episode])), [episodes]);
@@ -388,7 +388,7 @@ const issueChronology = (left = {}, right = {}) => (
             </div>
             <button type="button" aria-label="Minimize Podcast v3 controls" onClick={() => setExpanded(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-white"><ChevronDown size={16} /></button>
           </div>
-          <p className="mt-1 text-[11px] leading-5 text-slate-400">Choose a newsroom week. DynastyHQ decides whether it deserves a show, then keeps transcript writing and audio rendering separate.</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-400">Choose the latest verified football week. DynastyHQ uses the full weekly packet — game data, coverage/scoring detail and player development — then keeps transcript writing and audio rendering separate.</p>
         </div>
       </div>
 

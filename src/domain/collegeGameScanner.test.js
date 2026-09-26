@@ -10,7 +10,7 @@ test('college Game Data scanner requires fixed player and team stat-line checks'
   assert.match(source, /A plainly visible zero MUST be returned as value="0"/);
   assert.match(source, /game\.teamRushYds/);
   assert.match(source, /game\.opponentRushYds/);
-  assert.match(source, /augmentGameAnalysis\(result\.analysis\)/);
+  assert.match(source, /analysis = augmentGameAnalysis\(analysis\)/);
   assert.match(source, /TD COLUMN RULE:/);
   assert.match(source, /PASSING table\/section[\s\S]*playerStatLine\.passTD/);
   assert.match(source, /RUSHING table\/section[\s\S]*playerStatLine\.rushTD/);

@@ -72,6 +72,11 @@ test('NotebookLM source pack is current-week issue-first and includes full resea
   assert.match(master, /Use the preseason QB1 story only as background context/);
   assert.doesNotMatch(master, /disabled=\{busy \|\| !selectedIssue \|\| !selectedHasTranscript\}/);
   assert.match(master, /disabled=\{busy \|\| !selectedEpisode \|\| !selectedHasTranscript\}/);
+  assert.match(master, /podcastTranscriptText/);
+  assert.match(master, /buildNotebookLmSourcePack = \(state, publicationId, episode = null\)/);
+  assert.match(master, /## DynastyHQ generated transcript — complete/);
+  assert.match(master, /podcastTranscriptText\(episode\)/);
+  assert.match(master, /buildNotebookLmSourcePack\(career, publicationId, selectedEpisode\)/);
 });
 
 test('podcast transcript controls do not require a current Newsroom podcastBrief', async () => {
@@ -110,4 +115,14 @@ test('podcast API preserves detailed current-week research instead of reducing t
   assert.match(source, /developmentChanges:/);
   assert.match(source, /researchPacket\.game contains a completed game/);
   assert.match(source, /first start with a completed game/i);
+});
+
+test('Podcast page exposes downloadable and printable generated transcripts', async () => {
+  const studio = await readFile(studioUrl, 'utf8');
+
+  assert.match(studio, /const printPodcastTranscript = \(episode\) =>/);
+  assert.match(studio, /podcastTranscriptText\(episode\)/);
+  assert.match(studio, /window\.print\(\)/);
+  assert.match(studio, /Download Transcript/);
+  assert.match(studio, /Print Transcript/);
 });

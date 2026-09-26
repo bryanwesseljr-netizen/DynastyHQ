@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildPodcastGenerationPayload,
   buildPodcastResearchPacket,
+  listPodcastProductionIssues,
   markPodcastAudioReady,
   normalizeGeneratedPodcast,
   podcastTranscriptText,
@@ -336,5 +337,91 @@ test('current first-start podcast research includes game stats, scoring coverage
   assert.match(payload.researchPacket.scoringFacts[0].value, /7 plays, 75 yards/);
   assert.match(payload.researchPacket.developmentSummary.join(' '), /Coach Trust/);
   assert.equal(payload.researchPacket.progressionFacts.some((fact) => fact.key === 'profile.player.overall'), true);
+  assert.equal(payload.facts.some((fact) => fact.value === 'Preseason starter announcement.'), false);
+});
+
+test('latest verified game remains podcast-eligible when its Newsroom brief is missing', () => {
+  const vanderbiltState = {
+    careerPhase: 'Player',
+    currentSeason: 4,
+    currentWeek: 2,
+    player: { name: 'Bryan Wessel', school: 'Oregon', college: 'Oregon', isCommitted: true, pos: 'QB' },
+    rtg: { rank: 'QB1', coachTrust: 1820 },
+    weeklyUpdates: [
+      {
+        id: 'season-4-week-0', weekKey: 'season-4-week-0', season: 4, week: 0,
+        weekType: 'bye', weekPhase: 'preseason', rtgSnapshot: { rank: 'QB1', coachTrust: 1500 }, game: null,
+      },
+      {
+        id: 'season-4-week-1', weekKey: 'season-4-week-1', season: 4, week: 1,
+        careerPhase: 'Player', weekType: 'game', publishedAt: '2026-09-26T01:00:00.000Z',
+        game: {
+          opponent: 'Vanderbilt', result: 'W', homeScore: 34, awayScore: 24,
+          passYds: 286, passTD: 3, rushYds: 44, rushTD: 1, int: 1,
+          teamTotalYards: 472, opponentTotalYards: 358, didPlay: true,
+        },
+        rtgSnapshot: { rank: 'QB1', coachTrust: 1820 },
+        rtgChanges: [{ key: 'coachTrust', label: 'Coach Trust', previous: 1500, current: 1820, delta: 320, kind: 'number' }],
+        sourceCount: 8,
+      },
+    ],
+    gameLogs: [{
+      season: 4, week: 1, opponent: 'Vanderbilt', result: 'W', homeScore: 34, awayScore: 24,
+      passYds: 286, passTD: 3, rushYds: 44, rushTD: 1, int: 1, didPlay: true,
+    }],
+    factLedger: [
+      { publicationId: 'season-4-week-0', key: 'rtg.rank', label: 'Depth Chart', value: 'QB1', verified: true },
+      { publicationId: 'season-4-week-0', key: 'rtg.coachTrust', label: 'Coach Trust', value: 1500, verified: true },
+      { publicationId: 'season-4-week-0', key: 'profile.player.overall', label: 'Overall', value: 76, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.opponent', label: 'Opponent', value: 'Vanderbilt', verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.result', label: 'Result', value: 'W', verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.homeScore', label: 'Team score', value: 34, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.awayScore', label: 'Opponent score', value: 24, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.passYds', label: 'Passing yards', value: 286, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.passTD', label: 'Passing touchdowns', value: 3, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.rushYds', label: 'Rushing yards', value: 44, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.rushTD', label: 'Rushing touchdowns', value: 1, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.int', label: 'Interceptions', value: 1, verified: true },
+      { publicationId: 'season-4-week-1', key: 'rtg.rank', label: 'Depth Chart', value: 'QB1', verified: true },
+      { publicationId: 'season-4-week-1', key: 'rtg.coachTrust', label: 'Coach Trust', value: 1820, verified: true },
+      { publicationId: 'season-4-week-1', key: 'profile.player.overall', label: 'Overall', value: 77, verified: true },
+      {
+        publicationId: 'season-4-week-1',
+        key: 'program.coverage.scoring.drive-1',
+        label: 'Oregon scoring drive',
+        value: '7 plays, 75 yards, touchdown pass to take a 14-7 lead',
+        verified: true,
+        editorialOnly: true,
+        editorialUse: 'primary',
+        sourceType: 'coverage-reference',
+      },
+    ],
+    newsroomIssues: [{
+      id: 'season-4-week-0', publicationId: 'season-4-week-0', season: 4, week: 0,
+      weekType: 'bye', weekPhase: 'preseason', careerPhase: 'Player',
+      podcastBrief: { title: 'Wessel named QB1', summary: 'Preseason starter announcement.', citedFactKeys: ['rtg.rank'] },
+    }],
+    podcastEpisodes: [],
+    playerRecruiting: { transfer: { decisions: [] } },
+    seasonSchedules: [],
+  };
+
+  const productionIssues = listPodcastProductionIssues(vanderbiltState);
+  assert.equal(productionIssues.at(-1).publicationId, 'season-4-week-1');
+  assert.equal(productionIssues.at(-1).game.opponent, 'Vanderbilt');
+  assert.match(productionIssues.at(-1).podcastBrief.summary, /Vanderbilt/);
+
+  const research = buildPodcastResearchPacket(vanderbiltState, 'season-4-week-1');
+  assert.equal(research.game.opponent, 'Vanderbilt');
+  assert.equal(research.playerGameFacts.find((fact) => fact.key === 'game.passYds')?.value, 286);
+  assert.equal(research.scoringFacts.length, 1);
+  assert.match(research.developmentSummary.join(' '), /Coach Trust/);
+  assert.match(research.developmentSummary.join(' '), /Overall/);
+
+  const payload = buildPodcastGenerationPayload(vanderbiltState, 'season-4-week-1');
+  assert.equal(payload.episodeContext.opponent, 'Vanderbilt');
+  assert.equal(payload.facts.find((fact) => fact.key === 'game.passTD')?.value, 3);
+  assert.match(payload.facts.find((fact) => fact.key === 'program.coverage.scoring.drive-1')?.value || '', /75 yards/);
+  assert.match(payload.facts.find((fact) => fact.key === 'player.development.weekly')?.value || '', /Coach Trust/);
   assert.equal(payload.facts.some((fact) => fact.value === 'Preseason starter announcement.'), false);
 });

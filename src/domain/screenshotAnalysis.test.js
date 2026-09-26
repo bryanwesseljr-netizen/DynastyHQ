@@ -446,3 +446,31 @@ test('preserves EA Sports Network article detection metadata on the scanned sour
   assert.equal(result.source.officialCoverage.bodyCaptured, true);
   assert.ok(result.source.officialCoverage.bodyCharacters > 0);
 });
+
+test('preserves non-zero passing and rushing touchdowns as separate player stats', () => {
+  const result = normalizeScreenshotAnalysis({
+    sourceId: 'postgame-player-tds',
+    fileName: 'oregon-vanderbilt-player-stats.png',
+    recruiting: [],
+    careerPhase: 'Player',
+    analysis: {
+      screenTypes: ['box_score'],
+      screenTitle: 'Player Stats',
+      summary: 'Tracked QB appears in separate passing and rushing sections.',
+      facts: [
+        { key: 'game.passYds', label: 'Passing yards', value: '312', confidence: 0.99, evidence: 'Passing YDS 312' },
+        { key: 'game.passTD', label: 'Passing TDs', value: '3', confidence: 0.99, evidence: 'Passing TD 3' },
+        { key: 'game.rushYds', label: 'Rushing yards', value: '41', confidence: 0.99, evidence: 'Rushing YDS 41' },
+        { key: 'game.rushTD', label: 'Rushing TDs', value: '1', confidence: 0.99, evidence: 'Rushing TD 1' },
+        { key: 'game.int', label: 'Interceptions', value: '1', confidence: 0.99, evidence: 'Passing INT 1' },
+      ],
+    },
+  });
+
+  assert.equal(result.gamePatch.passTD, 3);
+  assert.equal(result.gamePatch.rushTD, 1);
+  assert.equal(result.facts.find((entry) => entry.key === 'game.passTD').value, 3);
+  assert.equal(result.facts.find((entry) => entry.key === 'game.rushTD').value, 1);
+  assert.equal(result.facts.find((entry) => entry.key === 'game.passTD').label, 'Player passing TDs');
+  assert.equal(result.facts.find((entry) => entry.key === 'game.rushTD').label, 'Player rushing TDs');
+});

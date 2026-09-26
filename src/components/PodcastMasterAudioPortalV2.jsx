@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, Download, FileAudio2, Loader2, UploadCloud } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
-import { buildPodcastGenerationPayload, buildPodcastResearchPacket } from '../domain/podcastEngine';
+import { buildPodcastGenerationPayload, buildPodcastResearchPacket, listPodcastProductionIssues } from '../domain/podcastEngine';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../podcast-master-audio.css';
@@ -263,11 +263,12 @@ const PodcastMasterAudioPortalV2 = () => {
     .filter((episode) => publicationIdFor(episode)), [career?.podcastEpisodes]);
   const episodeByPublication = useMemo(() => new Map(episodes.map((episode) => [publicationIdFor(episode), episode])), [episodes]);
 
-  // Source-pack selection is issue-first, not audio-timestamp-first. A recently
-  // touched preseason audio file must never outrank a newer completed game.
-  const issues = useMemo(() => [...(career?.newsroomIssues || [])]
-    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief)
-    .sort(issueChronology), [career?.newsroomIssues]);
+  // Source-pack selection follows every verified weekly update, even when the
+  // matching Newsroom issue/brief is missing or has not been regenerated yet.
+  // A preseason episode must never outrank a newer completed game.
+  const issues = useMemo(() => listPodcastProductionIssues(career || {})
+    .filter((issue) => publicationIdFor(issue))
+    .sort(issueChronology), [career]);
   const issueByPublication = useMemo(() => new Map(issues.map((issue) => [publicationIdFor(issue), issue])), [issues]);
 
   useEffect(() => {

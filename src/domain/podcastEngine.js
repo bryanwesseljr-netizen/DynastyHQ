@@ -447,12 +447,16 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     researchPacket: {
       game: researchPacket.game,
       priorGame: researchPacket.priorGame,
+      playerGameFacts: researchPacket.playerGameFacts,
+      teamGameFacts: researchPacket.teamGameFacts,
       scoringFacts: researchPacket.scoringFacts,
       coverageFacts: researchPacket.coverageFacts,
+      progressionFacts: researchPacket.progressionFacts,
       developmentChanges: researchPacket.developmentChanges,
       developmentSummary: researchPacket.developmentSummary,
       rtgSnapshot: researchPacket.rtgSnapshot,
       quote: researchPacket.quote,
+      sourceCount: researchPacket.sourceCount,
     },
   };
 };

@@ -48,7 +48,7 @@ const podcastUseFor = (fact, coverageStage) => {
   if (!key) return 'exclude';
   if (coverageStage === 'college-player' && isHighSchoolLegacyFact(key)) return 'exclude';
   if (coverageStage === 'college-player' && key.startsWith('recruiting.')) return 'exclude';
-  if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'exclude';
+  if (coverageStage === 'college-player' && isMechanicalRtgFact(key)) return 'background-only';
   if (coverageStage === 'coach' && (key.startsWith('rtg.') || key.startsWith('highSchool.') || key.startsWith('recruiting.profile.'))) return 'exclude';
   if (key === 'player.coverageRelevance' || key === 'program.coverageTier') return 'background-only';
   if (key.startsWith('program.') || key.startsWith('player.')) return fact.editorialUse || 'context';
@@ -189,6 +189,150 @@ const currentGameForIssue = (state = {}, issue = {}) => {
   )) || null;
 };
 
+const matchesIssuePublication = (entry = {}, issue = {}) => {
+  const publicationId = issue?.publicationId || issue?.id || '';
+  return entry?.publicationId === publicationId
+    || entry?.id === publicationId
+    || entry?.weekKey === publicationId
+    || (
+      Number(entry?.season || 1) === Number(issue?.season || 1)
+      && Number(entry?.week ?? 0) === Number(issue?.week ?? 0)
+    );
+};
+
+const chronologicalWeek = (left = {}, right = {}) => (
+  Number(left?.season || 1) - Number(right?.season || 1)
+  || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+  || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
+);
+
+const weeklyUpdateForIssue = (state = {}, issue = {}) => (
+  (state.weeklyUpdates || []).find((entry) => matchesIssuePublication(entry, issue)) || null
+);
+
+const previousWeeklyUpdateForIssue = (state = {}, issue = {}) => {
+  const season = Number(issue?.season || 1);
+  const week = Number(issue?.week ?? 0);
+  return [...(state.weeklyUpdates || [])]
+    .filter((entry) => (
+      Number(entry?.season || 1) === season
+      && Number(entry?.week ?? 0) < week
+    ))
+    .sort(chronologicalWeek)
+    .at(-1) || null;
+};
+
+const researchFact = (fact = {}) => ({
+  key: text(fact.key, 180),
+  label: text(fact.label, 200),
+  value: fact.value,
+  evidence: text(fact.evidence, 700),
+  sourceType: text(fact.sourceType, 100),
+  editorialOnly: Boolean(fact.editorialOnly),
+});
+
+const changeText = (change = {}) => {
+  const previous = change.previous ?? '';
+  const current = change.current ?? '';
+  const delta = Number(change.delta);
+  const suffix = Number.isFinite(delta) && delta !== 0
+    ? ` (${delta > 0 ? '+' : '−'}${Math.abs(delta).toLocaleString()})`
+    : '';
+  return `${change.label || change.key}: ${previous} → ${current}${suffix}`;
+};
+
+export const buildPodcastResearchPacket = (state = {}, publicationId = '') => {
+  const issue = findPodcastIssue(state, publicationId);
+  if (!issue) throw new Error('A published newsroom issue is required before building podcast research.');
+  const currentUpdate = weeklyUpdateForIssue(state, issue);
+  const previousUpdate = previousWeeklyUpdateForIssue(state, issue);
+  const game = currentUpdate?.game || currentGameForIssue(state, issue);
+  const priorGame = [...(state.gameLogs || [])]
+    .filter((entry) => (
+      Number(entry?.season || 1) === Number(issue?.season || 1)
+      && Number(entry?.week ?? 0) < Number(issue?.week ?? 0)
+    ))
+    .sort(chronologicalWeek)
+    .at(-1) || null;
+  const currentFacts = (state.factLedger || [])
+    .filter((fact) => fact?.verified && matchesIssuePublication(fact, issue))
+    .map(researchFact);
+  const factByKey = new Map(currentFacts.map((fact) => [fact.key, fact]));
+  const coverageFacts = currentFacts.filter((fact) => fact.editorialOnly || fact.key.startsWith('program.coverage.'));
+  const scoringFacts = coverageFacts.filter((fact) => (
+    /(?:^|\.)scoring(?:\.|$)/i.test(fact.key)
+    || /scor|touchdown|field goal|drive/i.test(`${fact.label} ${fact.value}`)
+  ));
+  const playerGameFacts = currentFacts.filter((fact) => [
+    'game.passYds', 'game.passTD', 'game.rushYds', 'game.rushTD', 'game.int',
+  ].includes(fact.key));
+  const teamGameFacts = currentFacts.filter((fact) => (
+    fact.key.startsWith('game.team')
+    || fact.key.startsWith('game.opponent')
+    || fact.key.startsWith('program.')
+  ));
+  const progressionFacts = currentFacts.filter((fact) => (
+    fact.key === 'profile.player.overall'
+    || fact.key.startsWith('rtg.')
+  ));
+
+  const developmentByKey = new Map();
+  (currentUpdate?.rtgChanges || []).forEach((change) => {
+    if (!change?.key) return;
+    developmentByKey.set(change.key, { ...change });
+  });
+
+  const priorPublicationId = previousUpdate?.publicationId || previousUpdate?.id || previousUpdate?.weekKey || '';
+  const previousFacts = (state.factLedger || [])
+    .filter((fact) => fact?.verified && priorPublicationId && (
+      fact.publicationId === priorPublicationId
+      || fact.id === priorPublicationId
+      || fact.weekKey === priorPublicationId
+    ));
+  const previousFactsByKey = new Map(previousFacts.map((fact) => [fact.key, fact]));
+  ['profile.player.overall', 'rtg.rank'].forEach((key) => {
+    if (developmentByKey.has(key.replace(/^rtg\./, ''))) return;
+    const current = factByKey.get(key)?.value;
+    const previous = previousFactsByKey.get(key)?.value;
+    if (current === '' || current === null || current === undefined) return;
+    if (previous === '' || previous === null || previous === undefined || String(current) === String(previous)) return;
+    const currentNumber = Number(current);
+    const previousNumber = Number(previous);
+    developmentByKey.set(key, {
+      key,
+      label: factByKey.get(key)?.label || key,
+      previous,
+      current,
+      delta: Number.isFinite(currentNumber) && Number.isFinite(previousNumber) ? currentNumber - previousNumber : null,
+      kind: Number.isFinite(currentNumber) && Number.isFinite(previousNumber) ? 'number' : 'text',
+    });
+  });
+
+  const developmentChanges = [...developmentByKey.values()];
+  return {
+    publicationId: issue.publicationId || issue.id,
+    season: Number(issue.season) || 1,
+    week: Math.max(0, Number(issue.week) || 0),
+    label: text(issue.label || issue.weekLabel, 160),
+    issue,
+    currentUpdate,
+    previousUpdate,
+    game,
+    priorGame,
+    currentFacts,
+    playerGameFacts,
+    teamGameFacts,
+    coverageFacts,
+    scoringFacts,
+    progressionFacts,
+    rtgSnapshot: currentUpdate?.rtgSnapshot || {},
+    developmentChanges,
+    developmentSummary: developmentChanges.map(changeText),
+    quote: text(currentUpdate?.quote || factByKey.get('weekly.quote')?.value, 1200),
+    sourceCount: Number(currentUpdate?.sourceCount) || 0,
+  };
+};
+
 const mergeStorylineThreads = (coverageThreads = [], continuityThreads = []) => {
   const byKey = new Map();
   continuityThreads.forEach((thread) => {
@@ -210,7 +354,26 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     error.code = 'NO_NEWSWORTHY_PODCAST';
     throw error;
   }
-  const facts = factsForIssue(state, issue, coverageStage, coverageContext);
+  const researchPacket = buildPodcastResearchPacket(state, issue.publicationId || issue.id);
+  const factsByKey = new Map(factsForIssue(state, issue, coverageStage, coverageContext).map((fact) => [fact.key, fact]));
+  researchPacket.currentFacts.forEach((fact) => {
+    if (!(fact.key.startsWith('game.') || fact.key.startsWith('program.coverage.'))) return;
+    factsByKey.set(fact.key, {
+      key: fact.key,
+      label: fact.label || fact.key,
+      value: fact.value,
+      editorialUse: fact.key.startsWith('game.') || fact.key.startsWith('program.coverage.') ? 'primary' : 'context',
+    });
+  });
+  if (researchPacket.developmentSummary.length) {
+    factsByKey.set('player.development.weekly', {
+      key: 'player.development.weekly',
+      label: 'Player development changes since the prior update',
+      value: researchPacket.developmentSummary.join('; '),
+      editorialUse: 'context',
+    });
+  }
+  const facts = [...factsByKey.values()];
   const usableFacts = facts.filter((fact) => fact.editorialUse !== 'background-only');
   if (!usableFacts.length) throw new Error('The selected issue has no football facts available for a podcast.');
   const brief = editorialBriefFor(state, issue, coverageStage, coverageContext);
@@ -281,6 +444,16 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     brief,
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
+    researchPacket: {
+      game: researchPacket.game,
+      priorGame: researchPacket.priorGame,
+      scoringFacts: researchPacket.scoringFacts,
+      coverageFacts: researchPacket.coverageFacts,
+      developmentChanges: researchPacket.developmentChanges,
+      developmentSummary: researchPacket.developmentSummary,
+      rtgSnapshot: researchPacket.rtgSnapshot,
+      quote: researchPacket.quote,
+    },
   };
 };
 

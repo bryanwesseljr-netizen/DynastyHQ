@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, Download, FileAudio2, Loader2, UploadCloud } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
-import { buildPodcastGenerationPayload, buildPodcastResearchPacket, listPodcastProductionIssues } from '../domain/podcastEngine';
+import { buildPodcastGenerationPayload, buildPodcastResearchPacket, listPodcastProductionIssues, podcastTranscriptText } from '../domain/podcastEngine';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../podcast-master-audio.css';
@@ -71,7 +71,7 @@ const factValue = (value) => {
   return String(value);
 };
 
-export const buildNotebookLmSourcePack = (state, publicationId) => {
+export const buildNotebookLmSourcePack = (state, publicationId, episode = null) => {
   const research = buildPodcastResearchPacket(state, publicationId);
   let payload = null;
   try {
@@ -116,6 +116,7 @@ export const buildNotebookLmSourcePack = (state, publicationId) => {
     '## Audio Overview direction',
     `Create a detailed, natural two-host local college-football conversation centered on ${school}. The show identity is ${showName}.`,
     'Use this document as a full producer research packet. It is intentionally more detailed than the finished conversation so the hosts can choose the strongest angles without losing any verified game information.',
+    'When a DynastyHQ transcript has been generated for this selected week, the complete transcript is included near the end of this source pack as an additional production reference.',
     'Cover the CURRENT week first. Do not let an older preseason or depth-chart storyline replace a newer completed game.',
     'Use individual statistics, team statistical comparisons, scoring/drive notes, role changes, and player progression or regression when they help explain what happened and what changed.',
     'Treat every value below as source material only. Never invent anything that is not supplied.',
@@ -227,6 +228,25 @@ export const buildNotebookLmSourcePack = (state, publicationId) => {
 
   lines.push('', '## Complete verified current-week fact ledger');
   addFactLines(lines, research.currentFacts);
+
+  const transcript = Array.isArray(episode?.segments) && episode.segments.length
+    ? podcastTranscriptText(episode)
+    : '';
+  if (transcript) {
+    lines.push(
+      '',
+      '## DynastyHQ generated transcript — complete',
+      'This is the complete saved DynastyHQ transcript for the selected week. Use it as a detailed editorial and conversational reference alongside the verified research above.',
+      '',
+      transcript,
+    );
+  } else {
+    lines.push(
+      '',
+      '## DynastyHQ generated transcript',
+      'No saved transcript is attached to this selected week yet. Create or regenerate the transcript in Podcast v3, then export this NotebookLM source pack again.',
+    );
+  }
 
   lines.push(
     '',
@@ -462,12 +482,14 @@ const PodcastMasterAudioPortalV2 = () => {
     }
     try {
       const publicationId = publicationIdFor(selectedIssue);
-      const text = buildNotebookLmSourcePack(career, publicationId);
+      const text = buildNotebookLmSourcePack(career, publicationId, selectedEpisode);
       const season = Number(selectedIssue.season) || 1;
       const week = Math.max(0, Number(selectedIssue.week) || 0);
       downloadText(text, `DynastyHQ-NotebookLM-S${season}-W${week}.txt`);
       setMessageType('success');
-      setMessage('Detailed current-week NotebookLM source pack downloaded. Add it as a source before generating the Audio Overview.');
+      setMessage(selectedHasTranscript
+        ? 'Detailed current-week NotebookLM source pack downloaded with the complete DynastyHQ transcript included.'
+        : 'Detailed current-week NotebookLM source pack downloaded. Generate this week’s transcript and export again if you want the transcript embedded too.');
     } catch (error) {
       setMessageType('error');
       setMessage(error?.message || 'The NotebookLM source pack could not be created.');

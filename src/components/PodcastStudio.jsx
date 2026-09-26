@@ -2,7 +2,7 @@ import { Component, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen, CalendarDays, CheckCircle2, ChevronDown, Clock3, Download,
   FileText, Headphones, Layers3, Loader2, Mic2, Pause, Play, Radio,
-  ShieldCheck, SkipBack, SkipForward, Sparkles, UploadCloud, Volume2,
+  Printer, ShieldCheck, SkipBack, SkipForward, Sparkles, UploadCloud, Volume2,
 } from 'lucide-react';
 import defaultPodcastCover from '../assets/gridiron-grind-cover.webp';
 import { audioSegmentDataUrl, podcastAudioBlob } from '../services/podcastAudioStorage';
@@ -57,6 +57,25 @@ const downloadFile = (content, fileName, type) => {
   anchor.download = fileName;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+const escapeTranscriptHtml = (value) => String(value || '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;');
+
+const printPodcastTranscript = (episode) => {
+  const transcript = podcastTranscriptText(episode);
+  if (!transcript) return;
+  const printWindow = window.open('', '_blank', 'width=900,height=760');
+  if (!printWindow) {
+    downloadFile(transcript, `${episode?.id || 'podcast'}-transcript.txt`, 'text/plain');
+    return;
+  }
+  const title = escapeTranscriptHtml(episode?.title || 'Podcast Transcript');
+  const body = escapeTranscriptHtml(transcript);
+  printWindow.document.write(`<!doctype html><html><head><title>${title}</title><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;margin:40px;color:#111}h1{font-size:24px;margin:0 0 8px}p.meta{color:#555;margin:0 0 28px}pre{white-space:pre-wrap;word-break:break-word;font:15px/1.6 Georgia,serif}@media print{body{margin:.5in}}</style></head><body><h1>${title}</h1><p class="meta">DynastyHQ podcast transcript</p><pre>${body}</pre><script>window.addEventListener('load',()=>{window.focus();window.print();});<\/script></body></html>`);
+  printWindow.document.close();
 };
 
 const formatClock = (seconds) => {
@@ -649,9 +668,14 @@ const PodcastStudioContent = ({
                     <div className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 px-4 py-3 text-[10px] font-bold leading-5 text-cyan-200">Use the Podcast v3 panel to create the transcript first. Audio stays separate until you approve the writing.</div>
                   )}
                   {episode && (
-                    <button type="button" onClick={() => downloadFile(podcastTranscriptText(episode), `${episode.id}-transcript.txt`, 'text/plain')} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-800">
-                      <BookOpen size={14} /> Transcript
-                    </button>
+                    <>
+                      <button type="button" onClick={() => downloadFile(podcastTranscriptText(episode), `${episode.id}-transcript.txt`, 'text/plain')} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-800">
+                        <BookOpen size={14} /> Download Transcript
+                      </button>
+                      <button type="button" onClick={() => printPodcastTranscript(episode)} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-800">
+                        <Printer size={14} /> Print Transcript
+                      </button>
+                    </>
                   )}
                   {audioReady && (
                     <button type="button" onClick={() => downloadFile(podcastAudioBlob(audioSegments), `${episode.id}.mp3`, 'audio/mpeg')} className="flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-800">

@@ -17,4 +17,11 @@ test('college Game Data scanner requires fixed player and team stat-line checks'
   assert.match(source, /MULTI-SECTION PLAYER SCREEN RULE:/);
   assert.match(source, /description: 'Tracked player PASSING table TD column only\. This is passing touchdowns\.'/);
   assert.match(source, /description: 'Tracked player RUSHING table TD column only\. This is rushing touchdowns\.'/);
+  assert.match(source, /const needsPlayerTdRecovery =/);
+  assert.match(source, /cfb27_player_touchdown_recovery/);
+  assert.match(source, /A visible 0 is a valid touchdown total and MUST be returned as "0"/);
+  assert.match(source, /PASSING: if the tracked player's row is visible/);
+  assert.match(source, /RUSHING: if the tracked player's row is visible/);
+  assert.match(source, /analysis = await recoverMissingPlayerTouchdowns/);
+  assert.match(source, /analysis = augmentGameAnalysis\(analysis\)/);
 });

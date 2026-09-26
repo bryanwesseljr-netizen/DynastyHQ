@@ -91,6 +91,84 @@ const sanitizeStorylineThreads = (body = {}) => (Array.isArray(body.storylineThr
   editorialUse: ['primary', 'context', 'background-only'].includes(thread?.editorialUse) ? thread.editorialUse : 'context',
 })).filter((thread) => thread.key && thread.label) : []);
 
+const sanitizeResearchFact = (fact = {}) => ({
+  key: safeText(fact.key, 180),
+  label: safeText(fact.label, 200),
+  value: typeof fact.value === 'number' || typeof fact.value === 'boolean'
+    ? fact.value
+    : safeText(fact.value, 1200),
+  evidence: safeText(fact.evidence, 700),
+});
+
+const sanitizeResearchFacts = (facts, max = 80) => (
+  Array.isArray(facts)
+    ? facts.slice(0, max).map(sanitizeResearchFact).filter((fact) => fact.key && fact.label)
+    : []
+);
+
+const sanitizeResearchGame = (game = {}) => {
+  if (!game || typeof game !== 'object') return null;
+  const keys = [
+    'opponent', 'result', 'homeScore', 'awayScore', 'teamRank', 'opponentRank',
+    'passYds', 'passTD', 'rushYds', 'rushTD', 'int',
+    'teamTotalYards', 'opponentTotalYards',
+    'teamFirstDowns', 'opponentFirstDowns',
+    'teamTurnovers', 'opponentTurnovers',
+    'teamRushYds', 'opponentRushYds',
+    'teamPassYds', 'opponentPassYds',
+    'didPlay', 'isConferenceGame',
+  ];
+  const cleaned = {};
+  keys.forEach((key) => {
+    const value = game[key];
+    if (value === '' || value === null || value === undefined) return;
+    cleaned[key] = typeof value === 'number' || typeof value === 'boolean'
+      ? value
+      : safeText(value, 300);
+  });
+  return Object.keys(cleaned).length ? cleaned : null;
+};
+
+const sanitizeDevelopmentChange = (change = {}) => ({
+  key: safeText(change.key, 180),
+  label: safeText(change.label, 200),
+  previous: typeof change.previous === 'number' ? change.previous : safeText(change.previous, 300),
+  current: typeof change.current === 'number' ? change.current : safeText(change.current, 300),
+  delta: Number.isFinite(Number(change.delta)) ? Number(change.delta) : null,
+  kind: safeText(change.kind, 40),
+});
+
+const sanitizeResearchPacket = (body = {}) => {
+  const raw = body.researchPacket || {};
+  const rtgSnapshot = raw.rtgSnapshot && typeof raw.rtgSnapshot === 'object'
+    ? {
+        overall: raw.rtgSnapshot.overall ?? '',
+        rank: safeText(raw.rtgSnapshot.rank, 80),
+        coachTrust: raw.rtgSnapshot.coachTrust ?? '',
+        draftProjection: safeText(raw.rtgSnapshot.draftProjection, 120),
+        coachHappiness: raw.rtgSnapshot.coachHappiness ?? '',
+      }
+    : {};
+  return {
+    game: sanitizeResearchGame(raw.game),
+    priorGame: sanitizeResearchGame(raw.priorGame),
+    playerGameFacts: sanitizeResearchFacts(raw.playerGameFacts, 20),
+    teamGameFacts: sanitizeResearchFacts(raw.teamGameFacts, 40),
+    scoringFacts: sanitizeResearchFacts(raw.scoringFacts, 50),
+    coverageFacts: sanitizeResearchFacts(raw.coverageFacts, 80),
+    progressionFacts: sanitizeResearchFacts(raw.progressionFacts, 30),
+    developmentChanges: Array.isArray(raw.developmentChanges)
+      ? raw.developmentChanges.slice(0, 30).map(sanitizeDevelopmentChange).filter((change) => change.key)
+      : [],
+    developmentSummary: Array.isArray(raw.developmentSummary)
+      ? raw.developmentSummary.slice(0, 30).map((entry) => safeText(entry, 500)).filter(Boolean)
+      : [],
+    rtgSnapshot,
+    quote: safeText(raw.quote, 1200),
+    sourceCount: Math.max(0, Number(raw.sourceCount) || 0),
+  };
+};
+
 const validatePayload = (body = {}) => {
   const coverageStage = ['high-school', 'college-player', 'coach'].includes(body.coverageStage)
     ? body.coverageStage
@@ -189,6 +267,7 @@ const validatePayload = (body = {}) => {
     brief: { title: briefTitle, summary: briefSummary },
     hosts: PODCAST_PUBLIC_HOSTS.map((host) => ({ ...host })),
     facts,
+    researchPacket: sanitizeResearchPacket(body),
   };
 };
 
@@ -354,7 +433,7 @@ const requestEpisode = async ({ user, payload, repairNote = '' }) => {
   const storylineNote = payload.storylineThreads?.length
     ? ` Active storyline memory: ${payload.storylineThreads.map((thread) => `${thread.label}=${thread.status}${thread.changedThisWeek ? ' (changed this week)' : ''}${thread.recentlyCovered ? ' (recently covered)' : ''}`).join('; ')}.`
     : '';
-  const input = `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. Statistics are evidence for football conclusions, not lines that need to be read aloud. Discuss only what deserves airtime and leave trivial, stale or suppressed player facts out entirely. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`;
+  const input = `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. The researchPacket is the detailed producer packet for THIS selected week: use its current game, tracked-player line, team comparison, scoring/drive facts, coverage notes, and progression/regression changes to make the conversation specific and complete. When researchPacket.game contains a completed game, that current game outranks older preseason/depth-chart storylines. A first start with a completed game should be treated as a new football event, with the prior QB1 announcement used only as context. Statistics are evidence for football conclusions, not lines that need to be read aloud, but do not omit the core individual stat line, meaningful team comparison, scoring flow, or verified development change when those are supplied and relevant. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`;
 
   return generateTextFreeFirst({
     instructions: INSTRUCTIONS,

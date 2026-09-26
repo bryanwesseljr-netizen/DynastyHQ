@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, Download, FileAudio2, Loader2, UploadCloud } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
-import { buildPodcastGenerationPayload } from '../domain/podcastEngine';
+import { buildPodcastGenerationPayload, podcastTranscriptText } from '../domain/podcastEngine';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../podcast-master-audio.css';
@@ -60,13 +60,37 @@ const factValue = (value) => {
   return String(value);
 };
 
-const notebookSourcePack = (state, publicationId) => {
+const issueChronology = (left = {}, right = {}) => (
+  Number(left?.season || 1) - Number(right?.season || 1)
+  || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+  || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
+);
+
+const appendFactSection = (lines, title, facts = []) => {
+  const usable = (facts || []).filter(Boolean);
+  if (!usable.length) return;
+  lines.push('', '## ' + title);
+  usable.forEach((fact) => {
+    const label = fact?.label || fact?.key || 'Fact';
+    const evidence = clean(fact?.evidence);
+    lines.push('- ' + label + ': ' + factValue(fact?.value) + (evidence ? ' — Evidence: ' + evidence : ''));
+  });
+};
+
+const appendObjectSection = (lines, title, value) => {
+  if (!value || (typeof value === 'object' && !Array.isArray(value) && !Object.keys(value).length)) return;
+  lines.push('', '## ' + title, JSON.stringify(value, null, 2));
+};
+
+const notebookSourcePack = (state, publicationId, episode = null) => {
   const payload = buildPodcastGenerationPayload(state, publicationId);
   const showName = payload.show?.name || 'DynastyHQ Football Podcast';
   const school = payload.show?.school || 'Current Program';
   const facts = (payload.facts || []).filter((fact) => fact.editorialUse !== 'background-only');
   const backgroundFacts = (payload.facts || []).filter((fact) => fact.editorialUse === 'background-only');
   const threads = payload.storylineThreads || payload.coverageDecision?.storylineThreads || [];
+  const research = payload.researchPacket || {};
+  const transcript = episode?.segments?.length ? podcastTranscriptText(episode) : '';
   const lines = [
     `# ${showName} — NotebookLM Source Pack`,
     '',
@@ -76,44 +100,65 @@ const notebookSourcePack = (state, publicationId) => {
     payload.label ? `Week label: ${payload.label}` : '',
     payload.episodeContext?.opponent ? `Opponent: ${payload.episodeContext.opponent}` : '',
     payload.episodeContext?.result ? `Result: ${payload.episodeContext.result}` : '',
+    research.sourceCount ? `Verified upload sources: ${research.sourceCount}` : '',
     '',
     '## Audio Overview direction',
-    `Create a natural two-host local college-football conversation for ${showName}. Sound like knowledgeable hosts who cover ${school} every week, not announcers reading a script. Use casual reactions, follow-up questions, disagreement when reasonable, and natural transitions. Keep the team/game as the default subject.`,
+    `Create a natural two-host local college-football conversation for ${showName}. Sound like knowledgeable hosts who cover ${school} every week, not announcers reading a script. Use casual reactions, follow-up questions, disagreement when reasonable, and natural transitions. Keep the current team/game as the default subject.`,
     '',
-    'IMPORTANT: Treat the facts below as authoritative. Do not invent scores, statistics, injuries, rankings, roster moves, quotes, awards, recruiting developments, or player participation that are not supplied here. If a detail is absent, discuss the football meaning without making up the missing detail.',
+    'IMPORTANT: This pack is for the SELECTED week above. The current completed game, current player performance, scoring flow, team comparison and verified development changes outrank older preseason or depth-chart context. Treat the verified material below as authoritative and do not invent missing facts.',
     '',
-    'Do not read this source pack verbatim. It is reporting material for the conversation, not a finished script.',
+    'The complete DynastyHQ-generated transcript is included near the end as a production reference. NotebookLM may use its structure, topics and detail, but should still sound conversational rather than simply reading the transcript verbatim.',
     '',
     '## Episode focus',
     `Working title: ${payload.brief?.title || `${school} Week ${payload.week}`}`,
     `Editorial brief: ${payload.brief?.summary || 'Cover the most meaningful verified football developments from this week.'}`,
     payload.coveragePlan?.editorialPrinciple ? `Editorial principle: ${payload.coveragePlan.editorialPrinciple}` : '',
     payload.coveragePlan?.playerMentionPolicy ? `Tracked-player mention policy: ${payload.coveragePlan.playerMentionPolicy}` : '',
-    '',
-    '## Verified facts',
-    ...facts.map((fact) => `- ${fact.label || fact.key}: ${factValue(fact.value)}${fact.editorialUse ? ` [${fact.editorialUse}]` : ''}`),
   ].filter((line) => line !== '');
+
+  appendObjectSection(lines, 'Current game record', research.game);
+  appendFactSection(lines, 'Tracked player — game statistics', research.playerGameFacts);
+  appendFactSection(lines, 'Team and opponent — game statistics', research.teamGameFacts);
+  appendFactSection(lines, 'Scoring summary and drive detail', research.scoringFacts);
+  appendFactSection(lines, 'Additional game coverage detail', research.coverageFacts);
+
+  if ((research.developmentSummary || []).length || (research.progressionFacts || []).length) {
+    lines.push('', '## Player progress / regression since the prior update');
+    (research.developmentSummary || []).forEach((change) => lines.push('- ' + change));
+    (research.progressionFacts || []).forEach((fact) => {
+      lines.push('- ' + (fact.label || fact.key) + ': ' + factValue(fact.value) + (fact.evidence ? ' — Evidence: ' + fact.evidence : ''));
+    });
+  }
+  appendObjectSection(lines, 'Current RTG snapshot', research.rtgSnapshot);
+
+  if (research.quote) lines.push('', '## Current quote / weekly context', research.quote);
+  appendObjectSection(lines, 'Prior game context', research.priorGame);
+
+  lines.push('', '## Verified facts');
+  facts.forEach((fact) => lines.push('- ' + (fact.label || fact.key) + ': ' + factValue(fact.value) + (fact.editorialUse ? ' [' + fact.editorialUse + ']' : '')));
 
   if (threads.length) {
     lines.push('', '## Active storylines');
     threads.forEach((thread) => {
       const label = clean(thread?.label || thread?.title || thread?.key || thread);
-      if (label) lines.push(`- ${label}`);
+      const status = clean(thread?.status);
+      const changed = thread?.changedThisWeek ? ' — changed this week' : '';
+      if (label) lines.push('- ' + label + (status ? ': ' + status : '') + changed);
     });
   }
 
   if (backgroundFacts.length) {
     lines.push('', '## Background only — use sparingly');
-    backgroundFacts.forEach((fact) => lines.push(`- ${fact.label || fact.key}: ${factValue(fact.value)}`));
+    backgroundFacts.forEach((fact) => lines.push('- ' + (fact.label || fact.key) + ': ' + factValue(fact.value)));
   }
 
-  lines.push(
-    '',
-    '## Closing guidance',
-    'Prioritize what changed this week, why it matters, and what the program should watch next. Avoid box-score dumping. Let statistics support analysis rather than become the entire conversation.',
-    '',
-    'Generated by DynastyHQ from the verified career record.',
-  );
+  if (transcript) {
+    lines.push('', '## DynastyHQ generated transcript — complete', 'Use this as the detailed editorial/script reference for the selected episode.', '', transcript);
+  } else {
+    lines.push('', '## DynastyHQ generated transcript', 'No saved transcript is attached to this selected week yet. Create/regenerate the transcript in Podcast v3 first, then export this source pack again.');
+  }
+
+  lines.push('', '## Closing guidance', 'Prioritize what changed this week, why it matters, the current game flow, the tracked player’s actual production, and verified progress/regression. Older preseason context is secondary once a newer completed game exists.', '', 'Generated by DynastyHQ from the verified career record.');
 
   return lines.join('\n');
 };
@@ -125,6 +170,7 @@ const PodcastMasterAudioPortal = () => {
   const [operation, setOperation] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
+  const previousLatestPublicationIdRef = useRef('');
 
   const selectPublication = (publicationId) => {
     const next = String(publicationId || '').trim();
@@ -136,8 +182,9 @@ const PodcastMasterAudioPortal = () => {
     }));
   };
 
-  const issues = useMemo(() => (career?.newsroomIssues || [])
-    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief), [career?.newsroomIssues]);
+  const issues = useMemo(() => [...(career?.newsroomIssues || [])]
+    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief)
+    .sort(issueChronology), [career?.newsroomIssues]);
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
     .filter((episode) => publicationIdFor(episode) && Array.isArray(episode?.segments) && episode.segments.length), [career?.podcastEpisodes]);
   const episodeByPublication = useMemo(() => new Map(episodes.map((episode) => [episode.publicationId, episode])), [episodes]);
@@ -145,12 +192,18 @@ const PodcastMasterAudioPortal = () => {
 
   useEffect(() => {
     if (!eligibleIssues.length) {
+      previousLatestPublicationIdRef.current = '';
       setSelectedPublicationId('');
       return;
     }
-    if (!eligibleIssues.some((issue) => publicationIdFor(issue) === selectedPublicationId)) {
-      setSelectedPublicationId(publicationIdFor(eligibleIssues[eligibleIssues.length - 1]));
+    const latest = publicationIdFor(eligibleIssues[eligibleIssues.length - 1]);
+    const previousLatest = previousLatestPublicationIdRef.current;
+    const selectedStillExists = eligibleIssues.some((issue) => publicationIdFor(issue) === selectedPublicationId);
+    const wasFollowingLatest = Boolean(previousLatest && selectedPublicationId === previousLatest);
+    if (!selectedStillExists || !selectedPublicationId || (wasFollowingLatest && latest !== previousLatest)) {
+      setSelectedPublicationId(latest);
     }
+    previousLatestPublicationIdRef.current = latest;
   }, [eligibleIssues, selectedPublicationId]);
 
   useEffect(() => {
@@ -310,12 +363,12 @@ const PodcastMasterAudioPortal = () => {
   const exportSourcePack = () => {
     if (!career || !selectedIssue || !selectedPublicationId) return;
     try {
-      const text = notebookSourcePack(career, selectedPublicationId);
+      const text = notebookSourcePack(career, selectedPublicationId, selectedEpisode);
       const season = Number(selectedIssue.season) || 1;
       const week = Math.max(0, Number(selectedIssue.week) || 0);
       downloadText(text, `DynastyHQ-NotebookLM-S${season}-W${week}.txt`);
       setMessageType('success');
-      setMessage('NotebookLM source pack downloaded. Add it as a source before generating the Audio Overview.');
+      setMessage('NotebookLM source pack downloaded with the detailed weekly research packet and complete saved transcript.');
     } catch (error) {
       setMessageType('error');
       setMessage(error?.message || 'The NotebookLM source pack could not be created.');

@@ -166,8 +166,109 @@ const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) 
 
 export { PODCAST_HOSTS };
 
+const productionPublicationIdFor = (entry = {}) => {
+  const explicit = text(entry?.publicationId || entry?.id || entry?.weekKey, 180);
+  if (explicit) return explicit;
+  const season = Math.max(1, Number(entry?.season) || 1);
+  const week = Math.max(0, Number(entry?.week ?? 0) || 0);
+  return `season-${season}-week-${week}`;
+};
+
+const syntheticPodcastBriefForUpdate = (state = {}, update = {}, publicationId = '') => {
+  const game = update?.game || {};
+  const school = text(resolveCurrentProgramSchool(state) || state.player?.college || state.player?.school, 160) || 'Current Program';
+  const playerName = text(state.player?.name, 120) || 'the tracked player';
+  const opponent = text(game?.opponent, 160);
+  const result = text(game?.result, 20);
+  const score = game?.homeScore !== '' && game?.homeScore !== undefined && game?.awayScore !== '' && game?.awayScore !== undefined
+    ? `${game.homeScore}-${game.awayScore}`
+    : '';
+  const statParts = [
+    game?.passYds !== '' && game?.passYds !== undefined ? `${game.passYds} pass yds` : '',
+    game?.passTD !== '' && game?.passTD !== undefined ? `${game.passTD} pass TD` : '',
+    game?.rushYds !== '' && game?.rushYds !== undefined ? `${game.rushYds} rush yds` : '',
+    game?.rushTD !== '' && game?.rushTD !== undefined ? `${game.rushTD} rush TD` : '',
+    game?.int !== '' && game?.int !== undefined ? `${game.int} INT` : '',
+  ].filter(Boolean);
+  const citedFactKeys = (state.factLedger || [])
+    .filter((fact) => fact?.verified && (
+      fact?.publicationId === publicationId
+      || fact?.id === publicationId
+      || fact?.weekKey === publicationId
+    ))
+    .map((fact) => fact.key)
+    .filter(Boolean);
+
+  if (opponent) {
+    return {
+      title: `${school} vs. ${opponent}: Week ${Math.max(0, Number(update?.week) || 0)}`,
+      summary: [
+        `${playerName}'s current game against ${opponent} is the lead story.`,
+        result ? `Result: ${result}${score ? ` (${score})` : ''}.` : '',
+        statParts.length ? `Player line: ${statParts.join(', ')}.` : '',
+        'Use the complete verified game, scoring, coverage and development packet for the episode.',
+      ].filter(Boolean).join(' '),
+      citedFactKeys,
+    };
+  }
+
+  return {
+    title: `${school} Week ${Math.max(0, Number(update?.week) || 0)} football update`,
+    summary: 'Use the newest verified football and player-development information from this week. Older preseason stories are background only unless they directly explain a new development.',
+    citedFactKeys,
+  };
+};
+
+const issueFromWeeklyUpdate = (state = {}, update = {}, existing = null) => {
+  const publicationId = productionPublicationIdFor(update);
+  const podcastBrief = existing?.podcastBrief || syntheticPodcastBriefForUpdate(state, update, publicationId);
+  return {
+    ...(update || {}),
+    ...(existing || {}),
+    id: existing?.id || publicationId,
+    publicationId,
+    season: Number(existing?.season ?? update?.season) || 1,
+    week: Math.max(0, Number(existing?.week ?? update?.week) || 0),
+    careerPhase: existing?.careerPhase || update?.careerPhase || state.careerPhase,
+    weekType: existing?.weekType || update?.weekType || (update?.game ? 'game' : 'weekly'),
+    publishedAt: existing?.publishedAt || update?.publishedAt || '',
+    game: existing?.game || update?.game || null,
+    podcastBrief,
+    syntheticPodcastIssue: !existing,
+  };
+};
+
+export const listPodcastProductionIssues = (state = {}) => {
+  const byPublication = new Map();
+
+  (state.newsroomIssues || []).forEach((issue) => {
+    const publicationId = productionPublicationIdFor(issue);
+    if (!publicationId) return;
+    byPublication.set(publicationId, { ...issue, id: issue.id || publicationId, publicationId });
+  });
+
+  (state.weeklyUpdates || []).forEach((update) => {
+    const publicationId = productionPublicationIdFor(update);
+    if (!publicationId) return;
+    byPublication.set(publicationId, issueFromWeeklyUpdate(
+      state,
+      update,
+      byPublication.get(publicationId) || null,
+    ));
+  });
+
+  return [...byPublication.values()]
+    .filter((issue) => productionPublicationIdFor(issue))
+    .sort((left, right) => (
+      Number(left?.season || 1) - Number(right?.season || 1)
+      || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+      || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
+    ));
+};
+
 export const findPodcastIssue = (state, publicationId) => (
-  (state.newsroomIssues || []).find((issue) => issue.publicationId === publicationId || issue.id === publicationId) || null
+  listPodcastProductionIssues(state)
+    .find((issue) => productionPublicationIdFor(issue) === publicationId) || null
 );
 
 export const findPodcastEpisode = (state, publicationId) => (
@@ -346,7 +447,7 @@ const mergeStorylineThreads = (coverageThreads = [], continuityThreads = []) => 
 
 export const buildPodcastGenerationPayload = (state, publicationId) => {
   const issue = findPodcastIssue(state, publicationId);
-  if (!issue?.podcastBrief) throw new Error('A published newsroom issue is required before generating an episode.');
+  if (!issue) throw new Error('A verified weekly update is required before generating an episode.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
   if (coverageStage === 'college-player' && !coverageContext?.coverageDecision?.podcastEligible) {

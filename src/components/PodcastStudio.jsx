@@ -248,6 +248,9 @@ const PodcastStudioContent = ({
   const [expandedJourneyKey, setExpandedJourneyKey] = useState('');
   const [autoPlayPublicationId, setAutoPlayPublicationId] = useState('');
   const audioRef = useRef(null);
+  const previousLatestPublicationIdRef = useRef(
+    latestIssue?.publicationId || latestIssue?.id || latestEpisode?.publicationId || '',
+  );
 
   const managedCover = resolvePodcastCoverUrl(state.outletImages?.podcast, defaultPodcastCover);
   useEffect(() => setCoverFailed(false), [managedCover]);
@@ -329,6 +332,30 @@ const PodcastStudioContent = ({
   useEffect(() => {
     if (initialPublicationId) setSelectedPublicationId(initialPublicationId);
   }, [initialPublicationId]);
+
+  useEffect(() => {
+    if (initialPublicationId) return;
+    const latest = latestIssue?.publicationId || latestIssue?.id || latestEpisode?.publicationId || '';
+    const previousLatest = previousLatestPublicationIdRef.current;
+    const selectedStillExists = Boolean(selectedPublicationId && (
+      issues.some((entry) => (entry.publicationId || entry.id) === selectedPublicationId)
+      || episodes.some((entry) => entry.publicationId === selectedPublicationId)
+    ));
+    const wasFollowingLatest = Boolean(previousLatest && selectedPublicationId === previousLatest);
+
+    if (latest && (!selectedStillExists || (wasFollowingLatest && latest !== previousLatest))) {
+      setSelectedPublicationId(latest);
+      setSegmentIndex(0);
+      setAudioSegments(null);
+      setIsPlaying(false);
+      setAudioCurrentTime(0);
+      setAudioDuration(0);
+      setGeneration(null);
+      setShowTranscript(false);
+      setError('');
+    }
+    previousLatestPublicationIdRef.current = latest;
+  }, [episodes, initialPublicationId, issues, latestEpisode?.publicationId, latestIssue, selectedPublicationId]);
 
   useEffect(() => {
     const onPublicationSelected = (event) => {

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildPodcastGenerationPayload,
+  buildPodcastResearchPacket,
   markPodcastAudioReady,
   normalizeGeneratedPodcast,
   podcastTranscriptText,
@@ -187,4 +188,147 @@ test('podcast gate treats first verified preseason QB1 status as meaningful move
   assert.equal(payload.coverageDecision.podcastEligible, true);
   assert.equal(payload.coveragePlan.playerRelevance.starterAnnouncement, true);
   assert.equal(payload.facts.find((fact) => fact.key === 'player.programStayDecisionCount')?.value, 3);
+});
+
+test('current first-start podcast research includes game stats, scoring coverage and player development instead of preseason', () => {
+  const firstStartState = {
+    careerPhase: 'Player',
+    currentSeason: 4,
+    currentWeek: 2,
+    player: {
+      name: 'Bryan Wessel',
+      school: 'Oregon',
+      college: 'Oregon',
+      isCommitted: true,
+      pos: 'QB',
+    },
+    rtg: { rank: 'QB1', coachTrust: 1820 },
+    weeklyUpdates: [
+      {
+        id: 'season-4-week-0',
+        weekKey: 'season-4-week-0',
+        season: 4,
+        week: 0,
+        weekType: 'bye',
+        weekPhase: 'preseason',
+        rtgSnapshot: { rank: 'QB1', coachTrust: 1500 },
+        game: null,
+      },
+      {
+        id: 'season-4-week-1',
+        weekKey: 'season-4-week-1',
+        season: 4,
+        week: 1,
+        weekType: 'game',
+        game: {
+          opponent: 'Vanderbilt',
+          result: 'W',
+          homeScore: 34,
+          awayScore: 24,
+          passYds: 286,
+          passTD: 3,
+          rushYds: 44,
+          rushTD: 1,
+          int: 1,
+          teamTotalYards: 472,
+          opponentTotalYards: 358,
+          teamRushYds: 186,
+          opponentRushYds: 112,
+          teamPassYds: 286,
+          opponentPassYds: 246,
+          didPlay: true,
+        },
+        rtgSnapshot: { rank: 'QB1', coachTrust: 1820 },
+        rtgChanges: [
+          { key: 'coachTrust', label: 'Coach Trust', previous: 1500, current: 1820, delta: 320, kind: 'number' },
+        ],
+        quote: 'We settled in after the first drive and played our game.',
+      },
+    ],
+    gameLogs: [{
+      season: 4,
+      week: 1,
+      opponent: 'Vanderbilt',
+      result: 'W',
+      homeScore: 34,
+      awayScore: 24,
+      passYds: 286,
+      passTD: 3,
+      rushYds: 44,
+      rushTD: 1,
+      int: 1,
+      didPlay: true,
+    }],
+    factLedger: [
+      { publicationId: 'season-4-week-0', key: 'rtg.rank', label: 'Depth Chart', value: 'QB1', verified: true },
+      { publicationId: 'season-4-week-0', key: 'rtg.coachTrust', label: 'Coach Trust', value: 1500, verified: true },
+      { publicationId: 'season-4-week-0', key: 'profile.player.overall', label: 'Overall', value: 76, verified: true },
+      { publicationId: 'season-4-week-1', key: 'profile.player.name', label: 'Player', value: 'Bryan Wessel', verified: true },
+      { publicationId: 'season-4-week-1', key: 'profile.player.overall', label: 'Overall', value: 77, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.opponent', label: 'Opponent', value: 'Vanderbilt', verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.result', label: 'Result', value: 'W', verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.homeScore', label: 'Team score', value: 34, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.awayScore', label: 'Opponent score', value: 24, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.passYds', label: 'Passing yards', value: 286, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.passTD', label: 'Passing touchdowns', value: 3, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.rushYds', label: 'Rushing yards', value: 44, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.rushTD', label: 'Rushing touchdowns', value: 1, verified: true },
+      { publicationId: 'season-4-week-1', key: 'game.int', label: 'Interceptions', value: 1, verified: true },
+      { publicationId: 'season-4-week-1', key: 'rtg.rank', label: 'Depth Chart', value: 'QB1', verified: true },
+      { publicationId: 'season-4-week-1', key: 'rtg.coachTrust', label: 'Coach Trust', value: 1820, verified: true },
+      {
+        publicationId: 'season-4-week-1',
+        key: 'program.coverage.scoring.oregon-drive-1',
+        label: 'Oregon · Bryan Wessel · 12-yard touchdown pass',
+        value: '7 plays, 75 yards, touchdown pass to take a 14-7 lead',
+        evidence: 'Scoring Summary Q2',
+        verified: true,
+        editorialOnly: true,
+        editorialUse: 'primary',
+        sourceType: 'coverage-reference',
+      },
+    ],
+    newsroomIssues: [
+      {
+        id: 'season-4-week-0',
+        publicationId: 'season-4-week-0',
+        season: 4,
+        week: 0,
+        weekType: 'bye',
+        weekPhase: 'preseason',
+        careerPhase: 'Player',
+        podcastBrief: { title: 'Wessel named QB1', summary: 'Preseason starter announcement.', citedFactKeys: ['rtg.rank'] },
+      },
+      {
+        id: 'season-4-week-1',
+        publicationId: 'season-4-week-1',
+        season: 4,
+        week: 1,
+        weekType: 'game',
+        careerPhase: 'Player',
+        podcastBrief: { title: 'Oregon vs. Vanderbilt', summary: 'Wessel makes his first start.', citedFactKeys: ['game.result', 'game.passYds'] },
+      },
+    ],
+    podcastEpisodes: [],
+    playerRecruiting: { transfer: { decisions: [] } },
+  };
+
+  const research = buildPodcastResearchPacket(firstStartState, 'season-4-week-1');
+  assert.equal(research.publicationId, 'season-4-week-1');
+  assert.equal(research.game.opponent, 'Vanderbilt');
+  assert.equal(research.game.passYds, 286);
+  assert.equal(research.game.passTD, 3);
+  assert.equal(research.game.rushTD, 1);
+  assert.equal(research.scoringFacts.length, 1);
+  assert.match(research.scoringFacts[0].value, /7 plays, 75 yards/);
+  assert.match(research.developmentSummary.join(' '), /Coach Trust: 1,?500 → 1,?820 \(\+320\)/);
+  assert.match(research.developmentSummary.join(' '), /Overall: 76 → 77 \(\+1\)/);
+  assert.equal(research.currentFacts.some((fact) => fact.publicationId === 'season-4-week-0'), false);
+
+  const payload = buildPodcastGenerationPayload(firstStartState, 'season-4-week-1');
+  assert.equal(payload.episodeContext.opponent, 'Vanderbilt');
+  assert.equal(payload.facts.find((fact) => fact.key === 'game.passYds')?.value, 286);
+  assert.match(payload.facts.find((fact) => fact.key === 'program.coverage.scoring.oregon-drive-1')?.value || '', /touchdown pass/i);
+  assert.match(payload.facts.find((fact) => fact.key === 'player.development.weekly')?.value || '', /Coach Trust/);
+  assert.equal(payload.facts.some((fact) => fact.value === 'Preseason starter announcement.'), false);
 });

@@ -84,7 +84,16 @@ const GAME_SCHEMA = {
     screenTitle: { type: 'string' },
     summary: { type: 'string' },
     officialArticle: OFFICIAL_ARTICLE_SCHEMA,
-    playerStatLine: fixedStatLineSchema(['passYds', 'passTD', 'rushYds', 'rushTD', 'int']),
+    playerStatLine: {
+      ...fixedStatLineSchema(['passYds', 'passTD', 'rushYds', 'rushTD', 'int']),
+      properties: {
+        passYds: { ...visibleStatValueSchema, description: 'Tracked player PASSING table YDS/YARDS column only.' },
+        passTD: { ...visibleStatValueSchema, description: 'Tracked player PASSING table TD column only. This is passing touchdowns.' },
+        rushYds: { ...visibleStatValueSchema, description: 'Tracked player RUSHING table YDS/YARDS column only.' },
+        rushTD: { ...visibleStatValueSchema, description: 'Tracked player RUSHING table TD column only. This is rushing touchdowns.' },
+        int: { ...visibleStatValueSchema, description: 'Tracked player PASSING table INT column only.' },
+      },
+    },
     teamStatLine: fixedStatLineSchema([
       'teamTotalYards', 'opponentTotalYards',
       'teamFirstDowns', 'opponentFirstDowns',
@@ -197,6 +206,8 @@ const GAME_INSTRUCTIONS = `You extract verified college-game facts AND recognize
 - game.result is W or L only when the final score and tracked team are clear.
 - game.passYds, passTD, rushYds, rushTD and int are the TRACKED PLAYER'S own totals only. Zero is a valid visible value.
 - PLAYER STAT-LINE CHECK: Always inspect the tracked player's full visible stat row/rows for PASS YDS, PASS TD, RUSH YDS, RUSH TD and INT. Populate playerStatLine for all five fields. A plainly visible zero MUST be returned as value="0"; use value="" only when that field truly is not visible in this screenshot. Do not skip TD or INT columns just because they are zero.
+- TD COLUMN RULE: The abbreviation "TD" is contextual. On the PASSING table/section, the tracked player's TD column is playerStatLine.passTD and game.passTD. On the RUSHING table/section, the tracked player's TD column is playerStatLine.rushTD and game.rushTD. Read the TD value from the same tracked-player row as the neighboring passing/rushing stats. Never leave a clearly visible TD column blank merely because the header only says "TD".
+- MULTI-SECTION PLAYER SCREEN RULE: A player-stat screenshot may show PASSING and RUSHING as separate sections. Inspect both sections independently. If the tracked player appears in both, preserve BOTH touchdown totals even when one is 0. Do not let the passing TD overwrite the rushing TD or vice versa.
 - TEAM STAT-LINE CHECK: On a team-comparison screen, inspect the entire visible table through the Rushing Yards and Passing Yards rows. Populate teamStatLine for both teams. A plainly visible zero MUST be returned as "0"; use an empty value only when the field is not visible.
 - PASSING TABLE RULE: game.passYds comes ONLY from the tracked player's YDS/YARDS column in a passing-stat row. Never map CMP/COMP, ATT/ATTEMPTS, C/ATT, completion percentage, TD, INT, LONG, or rating into game.passYds. If the YDS column cannot be aligned confidently with the tracked player's row, omit game.passYds.
 - game.teamPassYds and game.opponentPassYds come ONLY from a plainly labeled team-level Passing Yards/YDS value. Never use team pass attempts or completions for these keys.
@@ -299,7 +310,7 @@ const taskFor = (body = {}) => {
       schemaName: 'cfb27_college_game_and_official_article_analysis',
       instructions: GAME_INSTRUCTIONS,
       maxOutputTokens: 6500,
-      userText: `Analyze college game/session screenshot ${String(body.fileName || 'upload').slice(0, 160)}. It may be a postgame/stat screen OR an EA SPORTS Network article page. Tracked player context: ${JSON.stringify({ name: player.name || '', school: player.college || player.school || '', position: player.pos || '', number: player.number || '' })}`,
+      userText: `Analyze college game/session screenshot ${String(body.fileName || 'upload').slice(0, 160)}. It may be a postgame/stat screen OR an EA SPORTS Network article page. For player-stat screens, explicitly inspect TD in both PASSING and RUSHING sections and map them separately to passTD and rushTD. Tracked player context: ${JSON.stringify({ name: player.name || '', school: player.college || player.school || '', position: player.pos || '', number: player.number || '' })}`,
     };
   }
   if (kind === 'rtg') {

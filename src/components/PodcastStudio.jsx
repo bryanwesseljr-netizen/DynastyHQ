@@ -209,6 +209,12 @@ class PodcastStudioBoundary extends Component {
   }
 }
 
+const podcastIssueChronology = (left = {}, right = {}) => (
+  Number(left?.season || 1) - Number(right?.season || 1)
+  || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+  || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
+);
+
 const PodcastStudioContent = ({
   state = {},
   readOnly,
@@ -218,10 +224,14 @@ const PodcastStudioContent = ({
   onCoverUpload,
   coverBusy = false,
 }) => {
-  const issues = useMemo(() => state.newsroomIssues || [], [state.newsroomIssues]);
+  const issues = useMemo(() => [...(state.newsroomIssues || [])].sort(podcastIssueChronology), [state.newsroomIssues]);
   const episodes = useMemo(() => state.podcastEpisodes || [], [state.podcastEpisodes]);
   const latestIssue = issues[issues.length - 1];
-  const latestEpisode = episodes[episodes.length - 1];
+  const latestEpisode = [...episodes].sort((left, right) => (
+    Number(left?.season || 1) - Number(right?.season || 1)
+    || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+    || String(left?.generatedAt || '').localeCompare(String(right?.generatedAt || ''))
+  )).at(-1);
   const [selectedPublicationId, setSelectedPublicationId] = useState(
     initialPublicationId || latestIssue?.publicationId || latestIssue?.id || latestEpisode?.publicationId || '',
   );

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, Download, FileAudio2, Loader2, UploadCloud } from 'lucide-react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
-import { buildPodcastGenerationPayload } from '../domain/podcastEngine';
+import { buildPodcastGenerationPayload, buildPodcastResearchPacket } from '../domain/podcastEngine';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../podcast-master-audio.css';
@@ -19,6 +19,12 @@ const episodeTimestamp = (episode) => {
   const value = Date.parse(clean(episode?.audioGeneratedAt || episode?.generatedAt || episode?.capturedAt));
   return Number.isFinite(value) ? value : 0;
 };
+
+const issueChronology = (left = {}, right = {}) => (
+  Number(left?.season || 1) - Number(right?.season || 1)
+  || Number(left?.week ?? 0) - Number(right?.week ?? 0)
+  || String(left?.publishedAt || '').localeCompare(String(right?.publishedAt || ''))
+);
 
 const audioMimeFor = (file) => {
   const supplied = clean(file?.type).toLowerCase();
@@ -66,60 +72,169 @@ const factValue = (value) => {
 };
 
 export const buildNotebookLmSourcePack = (state, publicationId) => {
-  const payload = buildPodcastGenerationPayload(state, publicationId);
-  const showName = payload.show?.name || 'DynastyHQ Football Podcast';
-  const school = payload.show?.school || payload.episodeContext?.school || 'Current Program';
-  const facts = (payload.facts || []).filter((fact) => fact.editorialUse !== 'background-only');
-  const backgroundFacts = (payload.facts || []).filter((fact) => fact.editorialUse === 'background-only');
-  const threads = payload.storylineThreads || [];
+  const research = buildPodcastResearchPacket(state, publicationId);
+  let payload = null;
+  try {
+    payload = buildPodcastGenerationPayload(state, publicationId);
+  } catch {
+    // A source pack is research material and should remain exportable even if
+    // the listener-facing editorial gate decides not to produce an episode.
+  }
+
+  const issue = research.issue || {};
+  const showName = payload?.show?.name || 'DynastyHQ Football Podcast';
+  const school = payload?.show?.school
+    || payload?.episodeContext?.school
+    || state?.player?.college
+    || state?.player?.school
+    || 'Current Program';
+  const game = research.game || {};
+  const priorGame = research.priorGame || {};
+  const threads = payload?.storylineThreads || [];
+  const gameValue = (key) => game?.[key] === '' || game?.[key] === null || game?.[key] === undefined
+    ? ''
+    : factValue(game[key]);
+  const addFactLines = (lines, facts = []) => {
+    facts.forEach((fact) => {
+      const evidence = clean(fact.evidence);
+      lines.push(`- ${fact.label || fact.key}: ${factValue(fact.value)}${evidence ? ` — source: ${evidence}` : ''}`);
+    });
+  };
 
   const lines = [
     `# ${showName} — NotebookLM Audio Overview Source Pack`,
     '',
+    '## Current episode identity',
     `Program: ${school}`,
-    `Season: ${payload.season}`,
-    `Week: ${payload.week}`,
-    payload.label ? `Week label: ${payload.label}` : '',
-    payload.episodeContext?.opponent ? `Opponent: ${payload.episodeContext.opponent}` : '',
-    payload.episodeContext?.result ? `Result: ${payload.episodeContext.result}` : '',
+    `Season: ${research.season}`,
+    `Week: ${research.week}`,
+    research.label ? `Week label: ${research.label}` : '',
+    gameValue('opponent') ? `Opponent: ${gameValue('opponent')}` : '',
+    gameValue('result') ? `Result: ${gameValue('result')}` : '',
+    gameValue('homeScore') && gameValue('awayScore') ? `Final score: ${school} ${gameValue('homeScore')}, ${gameValue('opponent') || 'Opponent'} ${gameValue('awayScore')}` : '',
     '',
     '## Audio Overview direction',
-    `Create a natural two-host local college-football conversation centered on ${school}. The show identity is ${showName}. Sound like knowledgeable local hosts who cover this program every week, not announcers reading a script or analysts reciting a box score.`,
-    'Let the hosts react to each other, ask natural follow-up questions, occasionally agree or disagree, and move fluidly between the biggest football takeaways.',
-    'Use statistics as evidence for football conclusions rather than reading complete stat lines. Exact numbers should be used only when one is genuinely important to the story.',
-    '',
-    'IMPORTANT: Treat the verified facts below as authoritative. Do not invent scores, statistics, injuries, rankings, roster moves, quotes, awards, recruiting developments, player participation, future opponents, or game details that are not supplied.',
-    'Do not read this source pack verbatim. It is reporting material for the conversation, not a finished script.',
+    `Create a detailed, natural two-host local college-football conversation centered on ${school}. The show identity is ${showName}.`,
+    'Use this document as a full producer research packet. It is intentionally more detailed than the finished conversation so the hosts can choose the strongest angles without losing any verified game information.',
+    'Cover the CURRENT week first. Do not let an older preseason or depth-chart storyline replace a newer completed game.',
+    'Use individual statistics, team statistical comparisons, scoring/drive notes, role changes, and player progression or regression when they help explain what happened and what changed.',
+    'Treat every value below as source material only. Never invent anything that is not supplied.',
     '',
     '## Episode focus',
-    `Working title: ${payload.brief?.title || `${school} Week ${payload.week}`}`,
-    `Editorial brief: ${payload.brief?.summary || 'Cover the most meaningful verified football developments from this week.'}`,
-    payload.coveragePlan?.editorialPrinciple ? `Editorial principle: ${payload.coveragePlan.editorialPrinciple}` : '',
-    payload.coveragePlan?.playerMentionPolicy ? `Tracked-player mention policy: ${payload.coveragePlan.playerMentionPolicy}` : '',
-    '',
-    '## Verified facts',
-    ...facts.map((fact) => `- ${fact.label || fact.key}: ${factValue(fact.value)}${fact.editorialUse ? ` [${fact.editorialUse}]` : ''}`),
+    `Working title: ${payload?.brief?.title || issue?.podcastBrief?.title || `${school} Week ${research.week}`}`,
+    `Editorial brief: ${payload?.brief?.summary || issue?.podcastBrief?.summary || 'Break down the current verified football week in depth.'}`,
   ].filter(Boolean);
 
-  if (threads.length) {
-    lines.push('', '## Active storylines');
-    threads.forEach((thread) => {
-      const label = clean(thread?.label || thread?.title || thread?.key || thread);
-      if (label) lines.push(`- ${label}`);
+  if (game && Object.keys(game).length) {
+    lines.push('', '## Current game — full verified summary');
+    [
+      ['opponent', 'Opponent'],
+      ['result', 'Result'],
+      ['homeScore', 'Team score'],
+      ['awayScore', 'Opponent score'],
+      ['teamRank', 'Team rank'],
+      ['opponentRank', 'Opponent rank'],
+      ['isConferenceGame', 'Conference game'],
+    ].forEach(([key, label]) => {
+      const value = gameValue(key);
+      if (value !== '') lines.push(`- ${label}: ${value}`);
+    });
+
+    lines.push('', '## Tracked player — full game stat line');
+    [
+      ['passYds', 'Passing yards'],
+      ['passTD', 'Passing touchdowns'],
+      ['rushYds', 'Rushing yards'],
+      ['rushTD', 'Rushing touchdowns'],
+      ['int', 'Interceptions'],
+    ].forEach(([key, label]) => {
+      const value = gameValue(key);
+      if (value !== '') lines.push(`- ${label}: ${value}`);
+    });
+
+    lines.push('', '## Team statistical comparison');
+    [
+      ['teamTotalYards', 'opponentTotalYards', 'Total offense'],
+      ['teamFirstDowns', 'opponentFirstDowns', 'First downs'],
+      ['teamTurnovers', 'opponentTurnovers', 'Turnovers'],
+      ['teamRushYds', 'opponentRushYds', 'Rushing yards'],
+      ['teamPassYds', 'opponentPassYds', 'Passing yards'],
+    ].forEach(([teamKey, opponentKey, label]) => {
+      const teamValue = gameValue(teamKey);
+      const opponentValue = gameValue(opponentKey);
+      if (teamValue !== '' || opponentValue !== '') {
+        lines.push(`- ${label}: ${school} ${teamValue || 'not supplied'} · ${gameValue('opponent') || 'Opponent'} ${opponentValue || 'not supplied'}`);
+      }
     });
   }
 
-  if (backgroundFacts.length) {
-    lines.push('', '## Background only — use sparingly');
-    backgroundFacts.forEach((fact) => lines.push(`- ${fact.label || fact.key}: ${factValue(fact.value)}`));
+  if (research.scoringFacts.length) {
+    lines.push('', '## Scoring summary / drive details');
+    addFactLines(lines, research.scoringFacts);
   }
+
+  const nonScoringCoverage = research.coverageFacts.filter((fact) => !research.scoringFacts.some((scoring) => scoring.key === fact.key));
+  if (nonScoringCoverage.length) {
+    lines.push('', '## Teammate, opponent and coverage detail');
+    addFactLines(lines, nonScoringCoverage);
+  }
+
+  if (research.developmentChanges.length || research.progressionFacts.length) {
+    lines.push('', '## Player progression / regression');
+    if (research.developmentChanges.length) {
+      research.developmentSummary.forEach((change) => lines.push(`- CHANGE: ${change}`));
+    } else {
+      lines.push('- No week-over-week player development change was calculated from the saved snapshots.');
+    }
+    if (research.progressionFacts.length) {
+      lines.push('', '### Current saved player-development snapshot');
+      addFactLines(lines, research.progressionFacts);
+    }
+  }
+
+  if (research.quote) {
+    lines.push('', '## Postgame voice', `- Verified player quote/note: ${research.quote}`);
+  }
+
+  if (priorGame && Object.keys(priorGame).length) {
+    lines.push('', '## Previous-game comparison context');
+    const priorOpponent = factValue(priorGame.opponent || 'Previous opponent');
+    lines.push(`- Previous opponent: ${priorOpponent}`);
+    if (priorGame.result) lines.push(`- Previous result: ${factValue(priorGame.result)}`);
+    [
+      ['passYds', 'Passing yards'],
+      ['passTD', 'Passing touchdowns'],
+      ['rushYds', 'Rushing yards'],
+      ['rushTD', 'Rushing touchdowns'],
+      ['int', 'Interceptions'],
+    ].forEach(([key, label]) => {
+      if (priorGame[key] !== '' && priorGame[key] !== null && priorGame[key] !== undefined) {
+        lines.push(`- Previous ${label.toLowerCase()}: ${factValue(priorGame[key])}`);
+      }
+    });
+  }
+
+  if (threads.length) {
+    lines.push('', '## Active storyline continuity');
+    threads.forEach((thread) => {
+      const label = clean(thread?.label || thread?.title || thread?.key || thread);
+      if (!label) return;
+      const value = thread?.value === undefined || thread?.value === null || thread?.value === '' ? '' : `: ${factValue(thread.value)}`;
+      const change = thread?.changedThisWeek ? ' [changed this week]' : '';
+      lines.push(`- ${label}${value}${change}`);
+    });
+  }
+
+  lines.push('', '## Complete verified current-week fact ledger');
+  addFactLines(lines, research.currentFacts);
 
   lines.push(
     '',
     '## Closing guidance',
-    'Prioritize what changed, why the game took the shape it did, which players or units actually influenced the outcome, and what the program should learn from the week. Avoid box-score dumping and do not force every available player statistic into the conversation.',
+    'Build the discussion from the newest game and newest player state first. Use the preseason QB1 story only as background context for why the first start matters.',
+    'Use the complete research above to explain the game: who produced, how the scoring unfolded, where the team won or lost statistically, and what changed for the tracked player afterward.',
     '',
-    'Generated by DynastyHQ from the verified career record.',
+    'Generated by DynastyHQ from the verified current-week career record.',
   );
 
   return lines.join('\n');
@@ -143,37 +258,37 @@ const PodcastMasterAudioPortalV2 = () => {
     }));
   };
 
-  // Master-audio availability is episode-first. A valid saved podcast episode is
-  // enough to attach audio; a matching Newsroom issue is only required when the
-  // user wants DynastyHQ to export a NotebookLM source pack.
   const episodes = useMemo(() => (career?.podcastEpisodes || [])
-    .filter((episode) => publicationIdFor(episode))
-    .sort((a, b) => episodeTimestamp(a) - episodeTimestamp(b)), [career?.podcastEpisodes]);
+    .filter((episode) => publicationIdFor(episode)), [career?.podcastEpisodes]);
+  const episodeByPublication = useMemo(() => new Map(episodes.map((episode) => [publicationIdFor(episode), episode])), [episodes]);
 
-  const issues = useMemo(() => (career?.newsroomIssues || [])
-    .filter((issue) => publicationIdFor(issue)), [career?.newsroomIssues]);
+  // Source-pack selection is issue-first, not audio-timestamp-first. A recently
+  // touched preseason audio file must never outrank a newer completed game.
+  const issues = useMemo(() => [...(career?.newsroomIssues || [])]
+    .filter((issue) => publicationIdFor(issue) && issue?.podcastBrief)
+    .sort(issueChronology), [career?.newsroomIssues]);
   const issueByPublication = useMemo(() => new Map(issues.map((issue) => [publicationIdFor(issue), issue])), [issues]);
 
   useEffect(() => {
-    if (!episodes.length) {
+    if (!issues.length) {
       setSelectedPublicationId('');
       return;
     }
-    if (!episodes.some((episode) => publicationIdFor(episode) === selectedPublicationId)) {
-      setSelectedPublicationId(publicationIdFor(episodes[episodes.length - 1]));
+    if (!issues.some((issue) => publicationIdFor(issue) === selectedPublicationId)) {
+      setSelectedPublicationId(publicationIdFor(issues[issues.length - 1]));
     }
-  }, [episodes, selectedPublicationId]);
+  }, [issues, selectedPublicationId]);
 
   useEffect(() => {
     const onSelected = (event) => {
       const publicationId = String(event.detail?.publicationId || '').trim();
-      if (!publicationId || !episodes.some((episode) => publicationIdFor(episode) === publicationId)) return;
+      if (!publicationId || !issues.some((issue) => publicationIdFor(issue) === publicationId)) return;
       setSelectedPublicationId(publicationId);
       setMessage('');
     };
     window.addEventListener('dynastyhq:podcast-publication-selected', onSelected);
     return () => window.removeEventListener('dynastyhq:podcast-publication-selected', onSelected);
-  }, [episodes]);
+  }, [issues]);
 
   // The local Podcast hero is rendered through its own React portal. Observe the
   // document, not just #root, and attach to the explicit Studio Controls container
@@ -223,7 +338,7 @@ const PodcastMasterAudioPortalV2 = () => {
     };
   }, []);
 
-  const selectedEpisode = episodes.find((episode) => publicationIdFor(episode) === selectedPublicationId) || null;
+  const selectedEpisode = episodeByPublication.get(selectedPublicationId) || null;
   const selectedIssue = issueByPublication.get(selectedPublicationId) || null;
   const selectedHasTranscript = Boolean(Array.isArray(selectedEpisode?.segments) && selectedEpisode.segments.length);
   const isNotebookMaster = selectedEpisode?.audioEngine === 'notebooklm-master-upload';
@@ -330,26 +445,26 @@ const PodcastMasterAudioPortalV2 = () => {
   };
 
   const exportSourcePack = () => {
-    if (!career || !selectedEpisode || !selectedIssue) {
+    if (!career || !selectedIssue) {
       setMessageType('error');
-      setMessage('This episode is saved, but its matching verified Newsroom week is not available for a NotebookLM source pack. You can still attach master audio.');
+      setMessage('Choose a verified Newsroom week before exporting the NotebookLM source pack.');
       return;
     }
     try {
-      const publicationId = publicationIdFor(selectedEpisode);
+      const publicationId = publicationIdFor(selectedIssue);
       const text = buildNotebookLmSourcePack(career, publicationId);
-      const season = Number(selectedIssue.season || selectedEpisode.season) || 1;
-      const week = Math.max(0, Number(selectedIssue.week ?? selectedEpisode.week) || 0);
+      const season = Number(selectedIssue.season) || 1;
+      const week = Math.max(0, Number(selectedIssue.week) || 0);
       downloadText(text, `DynastyHQ-NotebookLM-S${season}-W${week}.txt`);
       setMessageType('success');
-      setMessage('NotebookLM source pack downloaded. Add it as a source before generating the Audio Overview.');
+      setMessage('Detailed current-week NotebookLM source pack downloaded. Add it as a source before generating the Audio Overview.');
     } catch (error) {
       setMessageType('error');
       setMessage(error?.message || 'The NotebookLM source pack could not be created.');
     }
   };
 
-  if (!mount || !career || !episodes.length || !selectedEpisode) return null;
+  if (!mount || !career || !issues.length || !selectedIssue) return null;
 
   return createPortal(
     <div className="dhq-podcast-master" data-master-audio-visible="true">
@@ -364,21 +479,21 @@ const PodcastMasterAudioPortalV2 = () => {
         </div>
       </div>
 
-      {episodes.length > 1 && (
+      {issues.length > 1 && (
         <select
-          aria-label="Choose episode for NotebookLM master audio"
+          aria-label="Choose week for NotebookLM source pack and master audio"
           value={selectedPublicationId}
           disabled={busy}
           onChange={(event) => selectPublication(event.target.value)}
         >
-          {[...episodes].reverse().map((episode) => {
-            const id = publicationIdFor(episode);
-            const issue = issueByPublication.get(id);
+          {[...issues].reverse().map((issue) => {
+            const id = publicationIdFor(issue);
+            const episode = episodeByPublication.get(id);
             const season = Number(issue?.season || episode?.season) || 1;
             const week = Math.max(0, Number(issue?.week ?? episode?.week) || 0);
             return (
               <option key={id} value={id}>
-                S{season} · W{week} — {episode.title || issue?.label || 'Podcast episode'}
+                S{season} · W{week} — {episode?.title || issue?.podcastBrief?.title || issue?.label || 'Podcast week'}
               </option>
             );
           })}
@@ -389,9 +504,9 @@ const PodcastMasterAudioPortalV2 = () => {
         <button
           type="button"
           onClick={exportSourcePack}
-          disabled={busy || !selectedIssue || !selectedHasTranscript}
+          disabled={busy || !selectedIssue}
           className="dhq-podcast-master__source"
-          title={!selectedHasTranscript ? 'Regenerate the episode transcript first' : (selectedIssue ? 'Download a verified source pack for NotebookLM' : 'Matching Newsroom week is unavailable')}
+          title={selectedIssue ? 'Download a detailed verified source pack for this week' : 'Matching Newsroom week is unavailable'}
         >
           <Download size={13} /> NotebookLM Source Pack
         </button>
@@ -399,7 +514,7 @@ const PodcastMasterAudioPortalV2 = () => {
           <input
             type="file"
             accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,audio/aac,audio/ogg,.mp3,.m4a,.wav,.aac,.ogg"
-            disabled={busy || !selectedHasTranscript}
+            disabled={busy || !selectedEpisode || !selectedHasTranscript}
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = '';
@@ -407,12 +522,12 @@ const PodcastMasterAudioPortalV2 = () => {
             }}
           />
           {operation === 'upload' ? <Loader2 className="animate-spin" size={13} /> : <UploadCloud size={13} />}
-          {operation === 'upload' ? 'Attaching…' : (!selectedHasTranscript ? 'Regenerate Transcript First' : (isNotebookMaster ? 'Replace Master' : 'Attach Master Audio'))}
+          {operation === 'upload' ? 'Attaching…' : (!selectedEpisode || !selectedHasTranscript ? 'Generate Transcript First' : (isNotebookMaster ? 'Replace Master' : 'Attach Master Audio'))}
         </label>
       </div>
 
-      {!selectedHasTranscript && (
-        <p className="dhq-podcast-master__message" data-type="error">This episode shell was preserved, but its transcript needs to be regenerated before master audio can be attached. Open Podcast v3 and regenerate the transcript; the audio upload tools will stay here.</p>
+      {(!selectedEpisode || !selectedHasTranscript) && (
+        <p className="dhq-podcast-master__message">The detailed NotebookLM source pack is available now. Generate this week's transcript before attaching finished master audio back to DynastyHQ.</p>
       )}
       {isNotebookMaster && selectedEpisode?.masterAudioFileName && (
         <p className="dhq-podcast-master__file">Now playing: {selectedEpisode.masterAudioFileName}</p>

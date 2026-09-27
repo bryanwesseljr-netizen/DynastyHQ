@@ -94,11 +94,29 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
   const gameValue = (key) => game?.[key] === '' || game?.[key] === null || game?.[key] === undefined
     ? ''
     : factValue(game[key]);
+  const seenFactKeys = new Set();
+  const seenFactSignatures = new Set();
+  const normalizeFactPart = (value) => clean(value).toLowerCase().replace(/\s+/g, ' ');
+  const rememberFact = (key, label, value) => {
+    const normalizedKey = clean(key);
+    if (normalizedKey) seenFactKeys.add(normalizedKey);
+    const signature = `${normalizeFactPart(label)}::${normalizeFactPart(factValue(value))}`;
+    if (signature !== '::') seenFactSignatures.add(signature);
+  };
   const addFactLines = (lines, facts = []) => {
+    let added = 0;
     facts.forEach((fact) => {
+      const key = clean(fact.key);
+      const label = fact.label || fact.key;
+      const value = factValue(fact.value);
+      const signature = `${normalizeFactPart(label)}::${normalizeFactPart(value)}`;
+      if ((key && seenFactKeys.has(key)) || seenFactSignatures.has(signature)) return;
       const evidence = clean(fact.evidence);
-      lines.push(`- ${fact.label || fact.key}: ${factValue(fact.value)}${evidence ? ` — source: ${evidence}` : ''}`);
+      lines.push(`- ${label}: ${value}${evidence ? ` — source: ${evidence}` : ''}`);
+      rememberFact(key, label, value);
+      added += 1;
     });
+    return added;
   };
 
   const lines = [
@@ -118,7 +136,7 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
     'Use this document as a full producer research packet. It is intentionally more detailed than the finished conversation so the hosts can choose the strongest angles without losing any verified game information.',
     'When a DynastyHQ transcript has been generated for this selected week, the complete transcript is included near the end of this source pack as an additional production reference.',
     'Cover the CURRENT week first. Do not let an older preseason or depth-chart storyline replace a newer completed game.',
-    'Use individual statistics, team statistical comparisons, scoring/drive notes, role changes, and player progression or regression when they help explain what happened and what changed.',
+    'Use individual statistics, team statistical comparisons, scoring/drive notes, and role/context changes when they help explain what happened.',
     'Treat every value below as source material only. Never invent anything that is not supplied.',
     '',
     '## Episode focus',
@@ -129,16 +147,15 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
   if (game && Object.keys(game).length) {
     lines.push('', '## Current game — full verified summary');
     [
-      ['opponent', 'Opponent'],
-      ['result', 'Result'],
-      ['homeScore', 'Team score'],
-      ['awayScore', 'Opponent score'],
       ['teamRank', 'Team rank'],
       ['opponentRank', 'Opponent rank'],
       ['isConferenceGame', 'Conference game'],
     ].forEach(([key, label]) => {
       const value = gameValue(key);
-      if (value !== '') lines.push(`- ${label}: ${value}`);
+      if (value !== '') {
+        lines.push(`- ${label}: ${value}`);
+        rememberFact(`game.${key}`, label, value);
+      }
     });
 
     lines.push('', '## Tracked player — full game stat line');
@@ -150,7 +167,10 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
       ['int', 'Interceptions'],
     ].forEach(([key, label]) => {
       const value = gameValue(key);
-      if (value !== '') lines.push(`- ${label}: ${value}`);
+      if (value !== '') {
+        lines.push(`- ${label}: ${value}`);
+        rememberFact(`game.${key}`, label, value);
+      }
     });
 
     lines.push('', '## Team statistical comparison');
@@ -165,6 +185,8 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
       const opponentValue = gameValue(opponentKey);
       if (teamValue !== '' || opponentValue !== '') {
         lines.push(`- ${label}: ${school} ${teamValue || 'not supplied'} · ${gameValue('opponent') || 'Opponent'} ${opponentValue || 'not supplied'}`);
+        if (teamValue !== '') rememberFact(`game.${teamKey}`, `${school} ${label}`, teamValue);
+        if (opponentValue !== '') rememberFact(`game.${opponentKey}`, `${gameValue('opponent') || 'Opponent'} ${label}`, opponentValue);
       }
     });
   }
@@ -178,19 +200,6 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
   if (nonScoringCoverage.length) {
     lines.push('', '## Teammate, opponent and coverage detail');
     addFactLines(lines, nonScoringCoverage);
-  }
-
-  if (research.developmentChanges.length || research.progressionFacts.length) {
-    lines.push('', '## Player progression / regression');
-    if (research.developmentChanges.length) {
-      research.developmentSummary.forEach((change) => lines.push(`- CHANGE: ${change}`));
-    } else {
-      lines.push('- No week-over-week player development change was calculated from the saved snapshots.');
-    }
-    if (research.progressionFacts.length) {
-      lines.push('', '### Current saved player-development snapshot');
-      addFactLines(lines, research.progressionFacts);
-    }
   }
 
   if (research.quote) {
@@ -226,8 +235,11 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
     });
   }
 
-  lines.push('', '## Complete verified current-week fact ledger');
-  addFactLines(lines, research.currentFacts);
+  const uniqueLedgerLines = [];
+  addFactLines(uniqueLedgerLines, research.currentFacts);
+  if (uniqueLedgerLines.length) {
+    lines.push('', '## Complete verified current-week fact ledger', ...uniqueLedgerLines);
+  }
 
   const transcript = Array.isArray(episode?.segments) && episode.segments.length
     ? podcastTranscriptText(episode)
@@ -252,7 +264,7 @@ export const buildNotebookLmSourcePack = (state, publicationId, episode = null) 
     '',
     '## Closing guidance',
     'Build the discussion from the newest game and newest player state first. Use the preseason QB1 story only as background context for why the first start matters.',
-    'Use the complete research above to explain the game: who produced, how the scoring unfolded, where the team won or lost statistically, and what changed for the tracked player afterward.',
+    'Use the complete research above to explain the game: who produced, how the scoring unfolded, and where the team won or lost statistically.',
     '',
     'Generated by DynastyHQ from the verified current-week career record.',
   );

@@ -67,7 +67,11 @@ test('NotebookLM source pack is current-week issue-first and includes full resea
   assert.match(master, /## Tracked player — full game stat line/);
   assert.match(master, /## Team statistical comparison/);
   assert.match(master, /## Scoring summary \/ drive details/);
-  assert.match(master, /## Player progression \/ regression/);
+  assert.doesNotMatch(master, /## Player progression \/ regression/);
+  assert.doesNotMatch(master, /### Current saved player-development snapshot/);
+  assert.match(master, /seenFactKeys/);
+  assert.match(master, /seenFactSignatures/);
+  assert.match(master, /uniqueLedgerLines/);
   assert.match(master, /## Complete verified current-week fact ledger/);
   assert.match(master, /Use the preseason QB1 story only as background context/);
   assert.doesNotMatch(master, /disabled=\{busy \|\| !selectedIssue \|\| !selectedHasTranscript\}/);

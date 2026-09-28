@@ -9,6 +9,7 @@ import {
   Loader2,
   Newspaper,
   PenLine,
+  Radio,
   ScanLine,
   ShieldCheck,
   Sparkles,
@@ -16,12 +17,16 @@ import {
 } from 'lucide-react';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter';
 import { coverageReferenceFor } from '../domain/coverageReferences.js';
+import { officialCoverageCandidateFromAnalysis, officialCoverageForWeek } from '../domain/officialCoverageCapture.js';
 import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
+import { compressImage } from '../services/imageCompression.js';
 import { extractMenuVideoFrames } from '../services/menuVideoFrames';
+import { analyzeScreenshot } from '../services/screenshotClient.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../weekly-data-intake.css';
 
 const MAX_SCREENSHOTS = 12;
+const MAX_OFFICIAL_ARTICLE_SCREENSHOTS = 8;
 
 const findByText = (root, selector, matcher) => [...(root?.querySelectorAll(selector) || [])]
   .find((element) => matcher.test((element.textContent || '').trim()));
@@ -95,10 +100,14 @@ const Lane = ({ number, icon: Icon, title, badge, badgeTone, subtitle, timing, c
   </section>
 );
 
-const WeeklyDataIntake = ({ career, agenda }) => {
+const WeeklyDataIntake = ({ user, career, agenda }) => {
   const screenshotInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  const officialArticleInputRef = useRef(null);
   const [gameBusy, setGameBusy] = useState(false);
+  const [officialArticleBusy, setOfficialArticleBusy] = useState(false);
+  const [officialArticleCaptureCount, setOfficialArticleCaptureCount] = useState(0);
+  const [officialArticleMessage, setOfficialArticleMessage] = useState('');
   const [videoStatus, setVideoStatus] = useState(null);
   const [pendingScreens, setPendingScreens] = useState(0);
   const [message, setMessage] = useState('');
@@ -111,6 +120,8 @@ const WeeklyDataIntake = ({ career, agenda }) => {
   const { season, week, setupReady, setup } = work;
   const isBye = setupReady && setup?.type === 'bye';
   const coverageSaved = useMemo(() => coverageReferenceFor(career, work.publicationId), [career, work.publicationId]);
+  const officialCoverage = useMemo(() => officialCoverageForWeek(career, season, week), [career, season, week]);
+  const officialCoverageSaved = officialCoverage?.kind === 'official' || officialCoverage?.kind === 'source';
   const lastRtgScan = career?.rtg?.lastStatusScan || null;
   const rtgCurrent = Boolean(lastRtgScan
     && Number(lastRtgScan.season) === Number(season)
@@ -122,6 +133,8 @@ const WeeklyDataIntake = ({ career, agenda }) => {
     setPendingScreens(0);
     setVideoStatus(null);
     setMessage('');
+    setOfficialArticleCaptureCount(0);
+    setOfficialArticleMessage('');
   }, [work.publicationId]);
 
   useEffect(() => {
@@ -186,6 +199,51 @@ const WeeklyDataIntake = ({ career, agenda }) => {
     }
   };
 
+  const importOfficialArticle = async (fileList) => {
+    const files = [...(fileList || [])].slice(0, MAX_OFFICIAL_ARTICLE_SCREENSHOTS);
+    if (!files.length || !user || !setupReady || isBye) return;
+
+    setOfficialArticleBusy(true);
+    setOfficialArticleMessage(`Scanning ${files.length} EA SPORTS Network page${files.length === 1 ? '' : 's'}…`);
+    let captured = 0;
+    let skipped = 0;
+
+    try {
+      const idToken = await user.getIdToken();
+      for (const file of files) {
+        const imageDataUrl = await compressImage(file, 2000, 0.88);
+        const result = await analyzeScreenshot({
+          idToken,
+          imageDataUrl,
+          fileName: file.name,
+          careerPhase: 'Player',
+          player: career?.player || {},
+          recruitingSchools: career?.recruitingSchools || [],
+          rosterPlayers: career?.rosterPlayers || [],
+          suppressAnalysisEvent: true,
+        });
+        const candidate = officialCoverageCandidateFromAnalysis({
+          analysis: result?.analysis || {},
+          fileName: file.name,
+        });
+        if (candidate) captured += 1;
+        else skipped += 1;
+      }
+
+      setOfficialArticleCaptureCount((current) => current + captured);
+      if (captured) {
+        setOfficialArticleMessage(
+          `Captured ${captured} EA SPORTS Network page${captured === 1 ? '' : 's'}${skipped ? `; ${skipped} file${skipped === 1 ? '' : 's'} did not look like an EA article` : ''}. DynastyHQ keeps these as official Newsroom coverage, separate from generated stories.`,
+        );
+      } else {
+        setOfficialArticleMessage('No EA SPORTS Network article was recognized. Use screenshots that clearly show the EA SPORTS Network article page and headline.');
+      }
+    } catch (error) {
+      setOfficialArticleMessage(error?.message || 'The EA SPORTS Network article could not be scanned.');
+    } finally {
+      setOfficialArticleBusy(false);
+    }
+  };
   const focusGameReview = () => {
     const target = gameWorkflow.hasApplied
       ? agenda?.querySelector('.dhq-agenda-v3-applied-ready')
@@ -311,6 +369,50 @@ const WeeklyDataIntake = ({ career, agenda }) => {
           </button>
           {coverageOpen ? <div id="dhq-weekly-coverage-data-host" className="dhq-data-intake-detail-host" /> : null}
         </Lane>
+
+        <Lane
+          number="4"
+          icon={Radio}
+          title="EA SPORTS Network"
+          badge={officialCoverageSaved ? 'Saved' : officialArticleCaptureCount ? 'Captured' : 'Optional'}
+          badgeTone={officialCoverageSaved ? 'green' : officialArticleCaptureCount ? 'blue' : 'muted'}
+          subtitle="Preserves the game's official in-game article separately from DynastyHQ-generated Newsroom stories."
+          timing={isBye ? 'Not needed during a bye week.' : 'After the EA SPORTS Network article appears, before generating weekly media.'}
+          complete={officialCoverageSaved || officialArticleCaptureCount > 0}
+        >
+          <p className="dhq-data-intake-description">
+            Upload every page of the EA SPORTS Network article you want preserved. These screenshots are archived as official coverage and do not become Game Data or Coverage Data stats.
+          </p>
+          {!isBye ? (
+            <>
+              <button
+                type="button"
+                className="dhq-data-intake-single-action"
+                disabled={officialArticleBusy || !setupReady}
+                onClick={() => officialArticleInputRef.current?.click()}
+              >
+                {officialArticleBusy ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
+                {officialArticleBusy ? 'Scanning EA Article…' : officialCoverageSaved ? 'Add / Update EA Article Pages' : 'Upload EA SPORTS Network Article'}
+              </button>
+              <input
+                ref={officialArticleInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                disabled={officialArticleBusy}
+                onChange={(event) => {
+                  importOfficialArticle(event.target.files);
+                  event.target.value = '';
+                }}
+              />
+            </>
+          ) : null}
+          {officialCoverageSaved && officialCoverage?.entry?.headline ? (
+            <p className="dhq-data-intake-inline-note">Saved official coverage: {officialCoverage.entry.headline}</p>
+          ) : null}
+          {officialArticleMessage ? <p className="dhq-data-intake-inline-note">{officialArticleMessage}</p> : null}
+        </Lane>
       </div>
 
       {message ? <p className="dhq-weekly-data-intake__message">{message}</p> : null}
@@ -393,7 +495,7 @@ const WeeklyDataIntakePortal = () => {
   }, []);
 
   if (!user || !career || stage !== CAREER_STAGES.COLLEGE || !target || !agenda) return null;
-  return createPortal(<WeeklyDataIntake career={career} agenda={agenda} />, target);
+  return createPortal(<WeeklyDataIntake user={user} career={career} agenda={agenda} />, target);
 };
 
 export default WeeklyDataIntakePortal;

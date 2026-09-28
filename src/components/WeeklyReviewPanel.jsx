@@ -145,6 +145,8 @@ const WeeklyReviewPanel = ({
   const isHighSchool = draft.careerPhase === 'Player' && !draft.isCommitted;
   const detectedTypes = [...new Set(draft.sources.flatMap((source) => source.detectedTypes))];
   const officialSources = draft.sources.filter((source) => source.officialCoverage?.detected);
+  const failedSources = draft.sources.filter((source) => source.error);
+  const temporaryFailureCount = failedSources.filter((source) => /temporar|busy|high demand|try again|unavailable/i.test(String(source.error || ''))).length;
   const officialHeadline = officialSources.map((source) => source.officialCoverage?.headline).find(Boolean) || '';
   const officialBodyPages = officialSources.filter((source) => source.officialCoverage?.bodyCaptured).length;
 
@@ -159,7 +161,7 @@ const WeeklyReviewPanel = ({
   const conflictCount = factsWithState.filter((item) => item.conflict).length;
   const uncertainCount = factsWithState.filter((item) => item.uncertain).length;
   const blockingCount = invalidCount + conflictCount + uncertainCount;
-  const canApply = draft.facts.length > 0 && blockingCount === 0;
+  const canApply = draft.facts.length > 0 && blockingCount === 0 && failedSources.length === 0;
   const visibleFacts = viewMode === 'all' || attentionFacts.length === 0 ? factsWithState : attentionFacts;
 
   const factValue = (key) => draft.facts.find((entry) => entry.key === key)?.value;
@@ -178,9 +180,11 @@ const WeeklyReviewPanel = ({
     <section tabIndex={-1} data-publication-id={`season-${Number(draft.season) || 1}-week-${Number(draft.week) || 0}`} aria-label={`Week ${draft.week} verification desk`} className="dhq-postgame-review mb-6 overflow-hidden rounded-2xl border border-blue-500/40 bg-slate-900/95 shadow-2xl">
       {sessionHost ? (
         <div className="dhq-session-review-next">
-          <div><strong>Next: RTG Status → Optional Coverage</strong><p>{canApply
-            ? (completeness.missingRequired > 0 ? 'Some essential values are missing. Continue only if this partial update is intentional.' : 'Game Data is ready. Apply it to continue.')
-            : `${blockingCount} flagged issue${blockingCount === 1 ? '' : 's'} must be resolved before continuing.`}</p></div>
+          <div><strong>Next: RTG Status → Optional Coverage</strong><p>{failedSources.length
+            ? `${failedSources.length} screenshot${failedSources.length === 1 ? '' : 's'} did not finish scanning. Re-upload before applying Game Data.`
+            : canApply
+              ? (completeness.missingRequired > 0 ? 'Some essential values are missing. Continue only if this partial update is intentional.' : 'Game Data is ready. Apply it to continue.')
+              : `${blockingCount} flagged issue${blockingCount === 1 ? '' : 's'} must be resolved before continuing.`}</p></div>
           <button type="button" disabled={!canApply} onClick={onApply}>
             {completeness.missingRequired > 0 ? 'Apply Partial Game Data & Continue to RTG Status' : 'Apply Game Data & Continue to RTG Status'}
           </button>
@@ -196,25 +200,42 @@ const WeeklyReviewPanel = ({
             </p>
             {draft.recoveredAt && <p className="mt-2 text-[10px] font-black uppercase tracking-wider text-blue-300">Recovered after refresh · screenshot previews are no longer attached</p>}
           </div>
-          <div className={`rounded-xl border px-4 py-3 ${blockingCount || completeness.missingRequired ? 'border-amber-500/30 bg-amber-500/10' : 'border-emerald-500/30 bg-emerald-500/10'}`}>
-            <p className={`flex items-center gap-2 text-xs font-black uppercase ${blockingCount || completeness.missingRequired ? 'text-amber-200' : 'text-emerald-200'}`}>
-              {blockingCount || completeness.missingRequired ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-              {blockingCount ? `${blockingCount} review item${blockingCount === 1 ? '' : 's'} remaining` : completeness.missingRequired ? `${completeness.missingRequired} essential item${completeness.missingRequired === 1 ? '' : 's'} missing` : 'Ready to apply'}
+          <div className={`rounded-xl border px-4 py-3 ${failedSources.length || blockingCount || completeness.missingRequired ? 'border-amber-500/30 bg-amber-500/10' : 'border-emerald-500/30 bg-emerald-500/10'}`}>
+            <p className={`flex items-center gap-2 text-xs font-black uppercase ${failedSources.length || blockingCount || completeness.missingRequired ? 'text-amber-200' : 'text-emerald-200'}`}>
+              {failedSources.length || blockingCount || completeness.missingRequired ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
+              {failedSources.length ? `${failedSources.length} screenshot scan${failedSources.length === 1 ? '' : 's'} failed` : blockingCount ? `${blockingCount} review item${blockingCount === 1 ? '' : 's'} remaining` : completeness.missingRequired ? `${completeness.missingRequired} essential item${completeness.missingRequired === 1 ? '' : 's'} missing` : 'Ready to apply'}
             </p>
             <p className="mt-1 max-w-sm text-[10px] leading-relaxed text-slate-400">
-              {blockingCount ? 'Resolve conflicts, invalid values, and uncertain reads before applying.' : completeness.missingRequired ? 'You may intentionally continue with a partial update; missing values will never be invented.' : 'All extracted values are internally valid and no screenshot conflicts remain.'}
+              {failedSources.length ? 'Do not apply this partial scan. DynastyHQ will now retry temporary scanner outages automatically; if a file still fails, discard this draft and upload the screenshots again.' : blockingCount ? 'Resolve conflicts, invalid values, and uncertain reads before applying.' : completeness.missingRequired ? 'You may intentionally continue with a partial update; missing values will never be invented.' : 'All extracted values are internally valid and no screenshot conflicts remain.'}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
           <SummaryStat label="Screens" value={draft.sources.length} />
           <SummaryStat label="Extracted facts" value={draft.facts.length} />
+          <SummaryStat label="Failed scans" value={failedSources.length} tone={failedSources.length ? 'attention' : 'ready'} />
           <SummaryStat label="Needs review" value={attentionFacts.length} tone={attentionFacts.length ? 'attention' : 'ready'} />
           <SummaryStat label="Required missing" value={completeness.missingRequired} tone={completeness.missingRequired ? 'attention' : 'ready'} />
         </div>
       </div>
 
+      {failedSources.length > 0 && (
+        <div className="border-b border-red-500/20 bg-red-950/20 px-5 py-4 md:px-6">
+          <div className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-300" />
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-red-200">Incomplete Game Data scan</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-300">
+                {failedSources.length} of {draft.sources.length} uploaded screenshot{draft.sources.length === 1 ? '' : 's'} did not finish analysis.
+                {temporaryFailureCount ? ` ${temporaryFailureCount} failed because the AI scanner was temporarily unavailable or busy.` : ''}
+                {' '}The facts below are only the successful portion of the batch, so DynastyHQ will not let this draft be applied until every uploaded screenshot has scanned successfully.
+              </p>
+              <p className="mt-2 text-[10px] font-bold text-red-200">Discard this scan and upload the same screenshots again. New scans automatically retry temporary provider failures before giving up.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {hasGameSnapshot && !isHighSchool && (
         <div className="border-b border-slate-800 bg-slate-950/55 px-5 py-4 md:px-6">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -425,9 +446,11 @@ const WeeklyReviewPanel = ({
             <p className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-300">Next action</p>
             <h4 className="mt-1 text-sm font-black uppercase text-white">{canApply ? 'Apply verified draft' : 'Finish flagged review'}</h4>
             <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-              {canApply
-                ? 'This copies the reviewed scanner values into the Weekly Agenda. It still does not publish the week; you will get one final verified summary first.'
-                : 'Resolve each flagged read above. The Apply button unlocks automatically when conflicts, invalid values, and uncertain facts are cleared.'}
+              {failedSources.length
+                ? 'One or more uploaded screenshots failed analysis, so this partial batch is locked. Discard it and re-upload the same screenshots; transient failures are now retried automatically.'
+                : canApply
+                  ? 'This copies the reviewed scanner values into the Weekly Agenda. It still does not publish the week; you will get one final verified summary first.'
+                  : 'Resolve each flagged read above. The Apply button unlocks automatically when conflicts, invalid values, and uncertain facts are cleared.'}
             </p>
             <button
               type="button"

@@ -5,6 +5,7 @@ import test from 'node:test';
 const intakeUrl = new URL('../components/WeeklyDataIntakePortal.jsx', import.meta.url);
 const rtgUrl = new URL('../components/RtgStatusIntakePortal.jsx', import.meta.url);
 const coverageUrl = new URL('../components/CoverageDataIntakePortal.jsx', import.meta.url);
+const reviewUrl = new URL('../components/WeeklyReviewPanel.jsx', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-data-intake.css', import.meta.url);
 
@@ -93,4 +94,15 @@ test('official article uploads use the game/article scanner without entering the
   assert.match(scanner, /suppressAnalysisEvent = false/);
   assert.match(scanner, /typeof window !== 'undefined' && !suppressAnalysisEvent/);
   assert.match(scanner, /dynastyhq:official-coverage-captured/);
+});
+
+
+test('Game Data review makes failed screenshot analysis explicit and blocks accidental partial apply', async () => {
+  const review = await readFile(reviewUrl, 'utf8');
+
+  assert.match(review, /const failedSources = draft\.sources\.filter\(\(source\) => source\.error\)/);
+  assert.match(review, /Failed scans/);
+  assert.match(review, /Incomplete Game Data scan/);
+  assert.match(review, /blockingCount === 0 && failedSources\.length === 0/);
+  assert.match(review, /New scans automatically retry temporary provider failures/);
 });

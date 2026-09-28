@@ -8,20 +8,26 @@ const coverageUrl = new URL('../components/CoverageDataIntakePortal.jsx', import
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-data-intake.css', import.meta.url);
 
-test('college Weekly Agenda presents game, RTG, and coverage data as one ordered intake', async () => {
+test('college Weekly Agenda presents game, RTG, coverage, and official EA media as one ordered intake', async () => {
   const intake = await readFile(intakeUrl, 'utf8');
   const game = intake.indexOf('title="Game Data"');
   const rtg = intake.indexOf('title="RTG Status"');
   const coverage = intake.indexOf('title="Coverage Data"');
+  const official = intake.indexOf('title="EA SPORTS Network"');
 
   assert.ok(game >= 0, 'Game Data lane should exist');
   assert.ok(rtg > game, 'RTG Status should follow Game Data');
   assert.ok(coverage > rtg, 'Coverage Data should follow RTG Status');
+  assert.ok(official > coverage, 'EA SPORTS Network should follow Coverage Data');
   assert.match(intake, /Weekly Data Intake/);
   assert.match(intake, /Immediately after the game/);
   assert.match(intake, /Skip this lane when nothing changed/);
   assert.match(intake, /before generating weekly media/);
   assert.match(intake, /badge=\{coverageSaved \? 'Added' : 'Optional'\}/);
+  assert.match(intake, /Upload EA SPORTS Network Article/);
+  assert.match(intake, /officialCoverageForWeek/);
+  assert.match(intake, /officialCoverageCandidateFromAnalysis/);
+  assert.match(intake, /suppressAnalysisEvent: true/);
 });
 
 test('Game Data keeps screenshots and menu video separate while using the verified scanner', async () => {
@@ -72,4 +78,19 @@ test('owner workflow uses intake-specific scanners and retires the scattered top
   assert.match(styles, /dhq-weekly-data-intake-active[\s\S]*dhq-agenda-v3-import-card/);
   assert.match(styles, /dhq-weekly-data-intake-active[\s\S]*dhq-agenda-v3-tools-card/);
   assert.match(styles, /dhq-weekly-data-intake-active[\s\S]*dhq-agenda-v3-rtg-row/);
+});
+
+
+test('official article uploads use the game/article scanner without entering the Game Data review stream', async () => {
+  const [intake, scanner] = await Promise.all([
+    readFile(intakeUrl, 'utf8'),
+    readFile(new URL('../services/screenshotClient.js', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(intake, /MAX_OFFICIAL_ARTICLE_SCREENSHOTS/);
+  assert.match(intake, /compressImage\(file, 2000, 0\.88\)/);
+  assert.match(intake, /careerPhase: 'Player'/);
+  assert.match(scanner, /suppressAnalysisEvent = false/);
+  assert.match(scanner, /typeof window !== 'undefined' && !suppressAnalysisEvent/);
+  assert.match(scanner, /dynastyhq:official-coverage-captured/);
 });

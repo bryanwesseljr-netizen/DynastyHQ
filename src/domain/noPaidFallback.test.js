@@ -46,3 +46,14 @@ test('scan panel exposes the protection state and deliberate opt-in control', ()
   assert.match(portal, /Paid Fallback · ALLOWED/);
   assert.match(portal, /setPaidVisionFallbackEnabled/);
 });
+
+
+test('RTG scans retry temporary free-provider outages before surfacing an error', () => {
+  const rtgClient = read('../services/rtgStatusScannerClient.js');
+
+  assert.match(rtgClient, /RTG_RETRY_DELAYS_MS = \[1200, 3200\]/);
+  assert.match(rtgClient, /shouldRetryRtgStatusScan/);
+  assert.match(rtgClient, /\[502, 503, 504\]/);
+  assert.match(rtgClient, /maxAttempts = RTG_RETRY_DELAYS_MS\.length \+ 1/);
+  assert.match(rtgClient, /still busy after automatic retries/);
+});

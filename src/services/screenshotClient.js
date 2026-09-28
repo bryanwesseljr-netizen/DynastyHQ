@@ -33,6 +33,13 @@ const isExplicitTotalOffenseSource = (fact = {}) => {
   return /\btotal\s+offense\b/.test(source) || /\btotal\s+offensive\s+yards?\b/.test(source);
 };
 
+const RETRY_DELAYS_MS = [1200, 3200];
+
+export const shouldRetryScreenshotAnalysis = ({ status = 0, retryable = false } = {}) => (
+  retryable === true || [502, 503, 504].includes(Number(status))
+);
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isGenericTotalYardsSource = (fact = {}) => {
   if (!OFFENSIVE_TOTAL_YARD_KEYS.has(fact?.key)) return false;
   const source = totalSourceText(fact);
@@ -103,36 +110,50 @@ export const analyzeScreenshot = async ({
     : '/api/analyze-screenshot';
   const allowPaidFallback = readPaidVisionFallbackEnabled();
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
-      imageDataUrl,
-      fileName,
-      careerPhase,
-      player,
-      recruitingSchools,
-      rosterPlayers,
-      uploadContext,
-      allowPaidFallback,
-      ...(useFreeCollegeScanner ? { scanKind: 'game' } : {}),
-    }),
-  });
-
+  let response = null;
   let body = {};
-  try {
-    body = await response.json();
-  } catch {
-    // Keep the user-facing error useful even if an upstream proxy returns HTML.
-  }
+  const maxAttempts = useFreeCollegeScanner ? RETRY_DELAYS_MS.length + 1 : 1;
 
-  if (!response.ok) {
-    const error = new Error(body.error || 'Screenshot analysis failed.');
-    error.status = response.status;
-    throw error;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({
+        imageDataUrl,
+        fileName,
+        careerPhase,
+        player,
+        recruitingSchools,
+        rosterPlayers,
+        uploadContext,
+        allowPaidFallback,
+        ...(useFreeCollegeScanner ? { scanKind: 'game' } : {}),
+      }),
+    });
+
+    body = {};
+    try {
+      body = await response.json();
+    } catch {
+      // Keep the user-facing error useful even if an upstream proxy returns HTML.
+    }
+
+    if (response.ok) break;
+
+    const canRetry = useFreeCollegeScanner
+      && attempt < maxAttempts - 1
+      && shouldRetryScreenshotAnalysis({ status: response.status, retryable: body.retryable });
+    if (!canRetry) {
+      const error = new Error(body.error || 'Screenshot analysis failed.');
+      error.status = response.status;
+      error.retryable = body.retryable === true;
+      throw error;
+    }
+
+    await wait(RETRY_DELAYS_MS[attempt]);
   }
 
   recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);

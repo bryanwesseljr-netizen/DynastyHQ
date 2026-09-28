@@ -1,6 +1,17 @@
 import OpenAI from 'openai';
 
 export const GEMINI_VISION_MODEL = process.env.GEMINI_VISION_MODEL || 'gemini-3.1-flash-lite';
+
+const modelList = (value = '') => String(value)
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
+export const GEMINI_VISION_FALLBACK_MODELS = modelList(
+  process.env.GEMINI_VISION_FALLBACK_MODELS || 'gemini-3.5-flash-lite,gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash',
+);
+export const GEMINI_VISION_MODELS = [...new Set([GEMINI_VISION_MODEL, ...GEMINI_VISION_FALLBACK_MODELS])];
+
 export const OPENAI_VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_MODEL || 'gpt-5.6-luna';
 
 const GEMINI_GENERATE_URL = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -91,7 +102,7 @@ export const visionAnalysisNeedsFallback = (analysis) => {
   return average < 0.76 || lowCount > Math.ceil(confidenceValues.length / 2);
 };
 
-const requestGemini = async ({ schema, instructions, userText, imageDataUrl, maxOutputTokens }) => {
+const requestGemini = async ({ schema, instructions, userText, imageDataUrl, maxOutputTokens, model = GEMINI_VISION_MODEL }) => {
   if (!process.env.GEMINI_API_KEY) {
     const error = new Error('Gemini vision is not configured.');
     error.code = 'GEMINI_NOT_CONFIGURED';
@@ -100,7 +111,7 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
 
   const image = parseImageDataUrl(imageDataUrl);
   const schemaGuide = JSON.stringify(schema);
-  const response = await fetch(GEMINI_GENERATE_URL(GEMINI_VISION_MODEL), {
+  const response = await fetch(GEMINI_GENERATE_URL(model), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -160,10 +171,103 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
     analysis,
     usage: normalizeUsage({
       provider: 'google',
-      model: GEMINI_VISION_MODEL,
+      model,
       usage: payload.usageMetadata || {},
     }),
   };
+};
+
+const retryableGeminiVisionError = (error = {}) => {
+  const status = Number(error?.status) || 0;
+  if (status === 404 || status === 408 || status === 425 || status === 429 || status >= 500) return true;
+  return ['GEMINI_EMPTY_OUTPUT', 'GEMINI_INVALID_JSON', 'GEMINI_SCHEMA_MISMATCH'].includes(String(error?.code || ''));
+};
+
+const confidenceAverage = (analysis = {}) => {
+  const values = (analysis.facts || [])
+    .map((entry) => Number(entry?.confidence))
+    .filter((value) => Number.isFinite(value));
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+};
+
+const requestGeminiFreeChain = async ({ schema, instructions, userText, imageDataUrl, maxOutputTokens }) => {
+  const attempts = [];
+  let bestCandidate = null;
+
+  for (const model of GEMINI_VISION_MODELS) {
+    try {
+      const result = await requestGemini({
+        schema,
+        instructions,
+        userText,
+        imageDataUrl,
+        maxOutputTokens,
+        model,
+      });
+
+      if (!visionAnalysisNeedsFallback(result.analysis)) {
+        return {
+          ...result,
+          usage: {
+            ...result.usage,
+            freeModelAttempts: attempts.length + 1,
+          },
+        };
+      }
+
+      const candidate = {
+        ...result,
+        usage: {
+          ...result.usage,
+          reviewRecommended: true,
+          fallbackReason: 'LOW_CONFIDENCE',
+          freeModelAttempts: attempts.length + 1,
+        },
+      };
+      if (!bestCandidate || confidenceAverage(candidate.analysis) > confidenceAverage(bestCandidate.analysis)) {
+        bestCandidate = candidate;
+      }
+      attempts.push({
+        model,
+        status: 200,
+        code: 'LOW_CONFIDENCE',
+        message: 'Gemini extraction was too uncertain for automatic acceptance.',
+      });
+    } catch (error) {
+      const attempt = {
+        model,
+        status: Number(error?.status) || 0,
+        code: String(error?.code || ''),
+        message: String(error?.message || 'Gemini vision request failed.').slice(0, 240),
+      };
+      attempts.push(attempt);
+      console.warn('Gemini vision model attempt failed', attempt);
+
+      if (!retryableGeminiVisionError(error)) {
+        error.geminiAttempts = attempts;
+        throw error;
+      }
+    }
+  }
+
+  if (bestCandidate) {
+    return {
+      ...bestCandidate,
+      usage: {
+        ...bestCandidate.usage,
+        fallbackReason: 'FREE_MODELS_LOW_CONFIDENCE',
+        freeModelAttempts: attempts.length,
+      },
+    };
+  }
+
+  const last = attempts.at(-1) || {};
+  const error = new Error('All configured free-tier Gemini vision models are temporarily unavailable.');
+  error.status = 503;
+  error.code = 'GEMINI_FREE_MODELS_UNAVAILABLE';
+  error.geminiAttempts = attempts;
+  error.lastProviderStatus = last.status || 0;
+  throw error;
 };
 
 const requestOpenAiLuna = async ({ schema, schemaName, instructions, userText, imageDataUrl, maxOutputTokens, fallbackReason }) => {
@@ -228,13 +332,17 @@ export const analyzeVisionFreeFirst = async ({
   let geminiCandidate = null;
   if (process.env.GEMINI_API_KEY) {
     try {
-      const gemini = await requestGemini({ schema, instructions, userText, imageDataUrl, maxOutputTokens });
+      const gemini = await requestGeminiFreeChain({ schema, instructions, userText, imageDataUrl, maxOutputTokens });
       if (!visionAnalysisNeedsFallback(gemini.analysis)) return gemini;
       geminiCandidate = {
         ...gemini,
-        usage: { ...gemini.usage, reviewRecommended: true, fallbackReason: 'LOW_CONFIDENCE' },
+        usage: {
+          ...gemini.usage,
+          reviewRecommended: true,
+          fallbackReason: gemini.usage?.fallbackReason || 'FREE_MODELS_LOW_CONFIDENCE',
+        },
       };
-      geminiError = new Error('Gemini extraction was too uncertain for automatic acceptance.');
+      geminiError = new Error('All free Gemini vision models returned an extraction that still needs review.');
       geminiError.code = 'LOW_CONFIDENCE';
     } catch (error) {
       geminiError = error;

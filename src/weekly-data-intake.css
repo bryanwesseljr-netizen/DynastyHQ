@@ -469,6 +469,16 @@
 .dhq-intake-review__footer { display: flex; justify-content: flex-end; padding: 8px; border-top: 1px solid rgba(148, 163, 184, .1); }
 .dhq-intake-review__footer button { min-height: 34px; border-radius: 7px; background: #059669; padding: 0 11px; color: white; font-size: 7px; font-weight: 900; text-transform: uppercase; }
 
+.dhq-data-intake-inline-note {
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  border: 1px solid rgba(96, 165, 250, .14);
+  border-radius: 7px;
+  background: rgba(59, 130, 246, .045);
+  color: #94a3b8;
+  font-size: 8px;
+  line-height: 1.45;
+}
 .dhq-intake-message {
   margin-top: 8px;
   padding: 7px 9px;

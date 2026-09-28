@@ -93,6 +93,7 @@ export const analyzeScreenshot = async ({
   recruitingSchools,
   rosterPlayers,
   uploadContext,
+  suppressAnalysisEvent = false,
 }) => {
   const useFreeCollegeScanner = careerPhase === 'Player'
     && Boolean(player?.college)
@@ -137,7 +138,7 @@ export const analyzeScreenshot = async ({
   recordAiScanUsage(useFreeCollegeScanner ? 'game-data' : 'general-data', body);
   const normalized = normalizeScreenshotAnalysis(body);
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !suppressAnalysisEvent) {
     window.dispatchEvent(new CustomEvent('dynastyhq:screenshot-analyzed', {
       detail: {
         fileName: String(fileName || ''),

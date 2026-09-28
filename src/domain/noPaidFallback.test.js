@@ -57,3 +57,16 @@ test('RTG scans retry temporary free-provider outages before surfacing an error'
   assert.match(rtgClient, /maxAttempts = RTG_RETRY_DELAYS_MS\.length \+ 1/);
   assert.match(rtgClient, /still busy after automatic retries/);
 });
+
+
+test('vision router tries multiple free Gemini models before paid fallback', () => {
+  const router = read('../server/visionRouter.js');
+
+  assert.match(router, /GEMINI_VISION_FALLBACK_MODELS/);
+  assert.match(router, /GEMINI_VISION_MODELS/);
+  assert.match(router, /gemini-3\.5-flash-lite/);
+  assert.match(router, /requestGeminiFreeChain/);
+  assert.match(router, /for \(const model of GEMINI_VISION_MODELS\)/);
+  assert.match(router, /GEMINI_FREE_MODELS_UNAVAILABLE/);
+  assert.match(router, /FREE_MODELS_LOW_CONFIDENCE/);
+});

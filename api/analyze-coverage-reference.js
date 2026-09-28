@@ -519,7 +519,7 @@ export default async function handler(req, res) {
       : '';
     return json(res, status, {
       error: retryable
-        ? `${label} scanner is temporarily busy. DynastyHQ will retry this scan automatically.`
+        ? `${label} scanner is temporarily busy. Retryable provider outage detected.`
         : noPaidFallbackMessage || (status === 429
           ? `${label} analysis is out of available AI quota right now. Try again later.`
           : `${label} analysis failed. No saved career data was changed.`),

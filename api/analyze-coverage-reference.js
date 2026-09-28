@@ -510,15 +510,20 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error(`Free-first ${task.kind} screenshot analysis failed`, error);
-    const status = Number(error?.status) === 429 ? 429 : 502;
+    const upstreamStatus = Number(error?.status) || 0;
+    const retryable = upstreamStatus === 503 || error?.code === 'UNAVAILABLE';
+    const status = upstreamStatus === 429 ? 429 : retryable ? 503 : 502;
     const label = task.kind === 'rtg' ? 'RTG screenshot' : task.kind === 'game' ? 'Game or official article screenshot' : task.kind === 'schedule' ? 'Season schedule' : 'Coverage';
-    const noPaidFallbackMessage = error?.paidFallbackBlocked
+    const noPaidFallbackMessage = error?.paidFallbackBlocked && !retryable
       ? `${label} could not produce a safe automatic Gemini result and No Paid Fallback is on. Try another screenshot or review manually.`
       : '';
     return json(res, status, {
-      error: noPaidFallbackMessage || (status === 429
-        ? `${label} analysis is out of available AI quota right now. Try again later.`
-        : `${label} analysis failed. No saved career data was changed.`),
+      error: retryable
+        ? `${label} scanner is temporarily busy. DynastyHQ will retry this scan automatically.`
+        : noPaidFallbackMessage || (status === 429
+          ? `${label} analysis is out of available AI quota right now. Try again later.`
+          : `${label} analysis failed. No saved career data was changed.`),
+      retryable,
     });
   }
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeScreenshotAnalysis } from './screenshotClient.js';
+import { normalizeScreenshotAnalysis, shouldRetryScreenshotAnalysis } from './screenshotClient.js';
 
 test('Total Offense is the accepted offensive-total source', () => {
   const result = normalizeScreenshotAnalysis({
@@ -114,4 +114,14 @@ test('passing attempts or completions cannot compete with passing yards', () => 
   assert.equal(result.analysis.facts.length, 1);
   assert.equal(result.analysis.facts[0].value, '287');
   assert.equal(result.analysis.facts[0].label, 'Passing yards');
+});
+
+
+test('transient scanner outages are retryable but quota exhaustion is not retried by default', () => {
+  assert.equal(shouldRetryScreenshotAnalysis({ status: 503 }), true);
+  assert.equal(shouldRetryScreenshotAnalysis({ status: 502 }), true);
+  assert.equal(shouldRetryScreenshotAnalysis({ status: 504 }), true);
+  assert.equal(shouldRetryScreenshotAnalysis({ status: 429 }), false);
+  assert.equal(shouldRetryScreenshotAnalysis({ status: 400 }), false);
+  assert.equal(shouldRetryScreenshotAnalysis({ status: 400, retryable: true }), true);
 });

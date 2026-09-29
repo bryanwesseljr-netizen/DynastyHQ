@@ -347,3 +347,17 @@ test('SAFE PREVIEW deep recovery verifies the real Oregon Season 4 anchors befor
   assert.match(source, /recoveredCheckpoint: 'season-4-week-7-deep'/);
   assert.match(source, /Find \+ Restore Week 7 Save/);
 });
+
+
+test('Week 7 recovery searches archived public identities and can copy recovered podcast audio', async () => {
+  const source = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(source, /collectPublicIdentityArchive/);
+  assert.match(source, /shared_dynasties/);
+  assert.match(source, /archived public identity/);
+  assert.match(source, /sourceUid: entry\.id/);
+  assert.match(source, /best\.publicSnapshot/);
+  assert.match(source, /loadPublicPodcastAudio/);
+  assert.match(source, /savePodcastAudioCloud/);
+  assert.match(source, /recoveredPodcastAudioEpisodes/);
+});

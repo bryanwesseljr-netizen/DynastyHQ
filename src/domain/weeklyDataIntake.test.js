@@ -6,6 +6,7 @@ const intakeUrl = new URL('../components/WeeklyDataIntakePortal.jsx', import.met
 const rtgUrl = new URL('../components/RtgStatusIntakePortal.jsx', import.meta.url);
 const coverageUrl = new URL('../components/CoverageDataIntakePortal.jsx', import.meta.url);
 const reviewUrl = new URL('../components/WeeklyReviewPanel.jsx', import.meta.url);
+const scannerApiUrl = new URL('../../api/analyze-coverage-reference.js', import.meta.url);
 const ownerUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-data-intake.css', import.meta.url);
 
@@ -105,4 +106,16 @@ test('Game Data review makes failed screenshot analysis explicit and blocks acci
   assert.match(review, /Incomplete Game Data scan/);
   assert.match(review, /blockingCount === 0 && failedSources\.length === 0/);
   assert.match(review, /New scans automatically retry temporary provider failures/);
+});
+
+
+test('Coverage Data receiving scans preserve visible REC and YDS columns for every player row', async () => {
+  const scanner = await readFile(scannerApiUrl, 'utf8');
+
+  assert.match(scanner, /receivingRows/);
+  assert.match(scanner, /RECEIVING TABLE GUARANTEE/);
+  assert.match(scanner, /YDS means receiving yards/);
+  assert.match(scanner, /\['yds', 'Receiving yards'\]/);
+  assert.match(scanner, /augmentCoverageReceivingFacts/);
+  assert.match(scanner, /analysis = augmentCoverageReceivingFacts\(analysis\)/);
 });

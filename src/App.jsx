@@ -150,6 +150,7 @@ import {
   upsertPostgameFrontPage,
 } from './domain/postgameFrontPage';
 import { DYNASTYHQ_NAVIGATE_EVENT } from './domain/navigationBus';
+import { replaceCoverageReferences } from './domain/coverageReferences.js';
 import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
@@ -720,6 +721,29 @@ const App = () => {
       return newState;
     });
   }, [persistCloudState, userState]);
+
+  // Coverage Data must never perform an independent whole-document Firestore write.
+  // Route it through the current in-memory career state and the protected central save queue.
+  useEffect(() => {
+    const handleCoverageDataSave = (event) => {
+      const detail = event?.detail || {};
+      try {
+        if (!detail.publicationId) throw new Error('Coverage Data is missing its week identity.');
+        updateAppState((prev) => replaceCoverageReferences(prev, {
+          publicationId: detail.publicationId,
+          season: detail.season,
+          week: detail.week,
+          facts: Array.isArray(detail.facts) ? detail.facts : [],
+          sourceCount: detail.sourceCount,
+        }), `Coverage Data saved for Season ${detail.season} · Week ${detail.week}.`);
+        detail.resolve?.();
+      } catch (error) {
+        detail.reject?.(error?.message || 'Coverage Data could not be queued safely.');
+      }
+    };
+    window.addEventListener('dynastyhq:coverage-data-save', handleCoverageDataSave);
+    return () => window.removeEventListener('dynastyhq:coverage-data-save', handleCoverageDataSave);
+  }, [updateAppState]);
 
   // --- DERIVED STATS ---
   const isCoach = ['OC', 'HC', 'Retired'].includes(appState.careerPhase);

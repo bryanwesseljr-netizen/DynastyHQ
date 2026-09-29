@@ -133,3 +133,12 @@ test('Coverage Data cannot write the master career document independently', asyn
   assert.match(app, /replaceCoverageReferences\(prev/);
   assert.match(app, /persistCloudState/);
 });
+
+
+test('Coverage Data save button does not depend on a removed local Firestore db binding', async () => {
+  const coverage = await readFile(coverageUrl, 'utf8');
+
+  assert.doesNotMatch(coverage, /if \(!user \|\| !db \|\| busy\) return;/);
+  assert.match(coverage, /if \(!user \|\| busy\) return;/);
+  assert.match(coverage, /dynastyhq:coverage-data-save/);
+});

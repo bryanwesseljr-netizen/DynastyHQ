@@ -13,7 +13,7 @@ const filterWeek = (value) => arrayOf(value).filter((entry) => !matchesSeason4We
 
 const clearWeekFinalization = (value) => {
   if (Array.isArray(value)) return value.filter((entry) => !matchesSeason4Week1(entry));
-  if (!value || typeof value !== 'object') return value;
+  if (!value || typeof value !== 'object') return {};
   return Object.fromEntries(Object.entries(value).filter(([key, entry]) => (
     clean(key).toLowerCase() !== SEASON4_WEEK1_PUBLICATION_ID
     && !matchesSeason4Week1(entry)

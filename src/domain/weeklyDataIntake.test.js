@@ -119,3 +119,17 @@ test('Coverage Data receiving scans preserve visible REC and YDS columns for eve
   assert.match(scanner, /augmentCoverageReceivingFacts/);
   assert.match(scanner, /analysis = augmentCoverageReceivingFacts\(analysis\)/);
 });
+
+
+test('Coverage Data cannot write the master career document independently', async () => {
+  const coverage = await readFile(coverageUrl, 'utf8');
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(coverage, /runTransaction/);
+  assert.doesNotMatch(coverage, /transaction\.set\(/);
+  assert.doesNotMatch(coverage, /hq_data['"],\s*['"]main/);
+  assert.match(coverage, /dynastyhq:coverage-data-save/);
+  assert.match(app, /dynastyhq:coverage-data-save/);
+  assert.match(app, /replaceCoverageReferences\(prev/);
+  assert.match(app, /persistCloudState/);
+});

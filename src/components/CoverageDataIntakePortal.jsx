@@ -65,7 +65,7 @@ const CoverageDataScanner = ({ user, career }) => {
   const updateFact = (id, patch) => setFacts((current) => current.map((fact) => fact.id === id ? { ...fact, ...patch } : fact));
 
   const saveFacts = async () => {
-    if (!user || !db || busy) return;
+    if (!user || busy) return;
     const selectedFacts = facts.filter((fact) => fact.selected && String(fact.value || '').trim());
     if (!selectedFacts.length) {
       setMessageType('error');

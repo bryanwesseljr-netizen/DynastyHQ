@@ -141,6 +141,10 @@ import {
   recoverProductionCareerForSeason,
 } from './domain/seasonTransition.js';
 import {
+  checkpointForCareerAdvance,
+  detectDestructiveCareerRegression,
+} from './domain/saveProtection.js';
+import {
   buildPostgameFrontPage,
   updatePostgameFrontPage,
   upsertPostgameFrontPage,
@@ -590,10 +594,13 @@ const App = () => {
     setSaveStatus((current) => ({ ...current, state: isRetry ? 'retrying' : 'saving', message: '' }));
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
     const task = async () => {
+      let checkpoint = null;
+      let checkpointState = null;
       try {
         await runTransaction(db, async (transaction) => {
           const remoteSnapshot = await transaction.get(docRef);
-          const remoteSync = remoteSnapshot.exists() ? remoteSnapshot.data()?._sync : null;
+          const remoteRaw = remoteSnapshot.exists() ? remoteSnapshot.data() : {};
+          const remoteSync = remoteRaw?._sync || null;
           const remoteRevision = Number(remoteSync?.revision) || 0;
           const expectedRevision = cloudRevisionRef.current;
           if (remoteRevision > expectedRevision && remoteSync?.deviceId && remoteSync.deviceId !== SAVE_DEVICE_ID) {
@@ -601,13 +608,48 @@ const App = () => {
             conflict.code = 'SAVE_CONFLICT';
             throw conflict;
           }
+
+          if (remoteSnapshot.exists() && !options.allowDestructiveRollback) {
+            const remoteState = migrateCareerState(remoteRaw, defaultState);
+            const regression = detectDestructiveCareerRegression(remoteState, cloudState);
+            if (regression.blocked) {
+              const error = new Error(`DynastyHQ blocked a destructive career rollback. ${regression.reason}`);
+              error.code = 'CAREER_REGRESSION_BLOCKED';
+              throw error;
+            }
+            checkpoint = checkpointForCareerAdvance(remoteState, cloudState);
+          }
+
           const revision = Math.max(remoteRevision, expectedRevision) + 1;
-          transaction.set(docRef, {
+          checkpointState = {
             ...cloudState,
             _sync: { revision, deviceId: SAVE_DEVICE_ID, updatedAt: new Date().toISOString() },
-          });
+          };
+          transaction.set(docRef, checkpointState);
           cloudRevisionRef.current = revision;
         });
+
+        if (checkpoint && checkpointState) {
+          try {
+            const checkpointRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', checkpoint.id);
+            const existingCheckpoint = await getDoc(checkpointRef);
+            if (!existingCheckpoint.exists()) {
+              await setDoc(checkpointRef, {
+                ...checkpointState,
+                _checkpoint: {
+                  immutable: true,
+                  season: checkpoint.season,
+                  week: checkpoint.week,
+                  createdAt: new Date().toISOString(),
+                  reason: 'Automatic immutable checkpoint after published career progress advanced.',
+                },
+              });
+            }
+          } catch (checkpointError) {
+            console.warn('Automatic career checkpoint could not be written.', checkpointError);
+          }
+        }
+
         pendingCloudStateRef.current = null;
         if (options.clearDraftAfterSave) {
           setAppliedScanDraft(null);
@@ -621,11 +663,19 @@ const App = () => {
         }
       } catch (error) {
         const conflict = error?.code === 'SAVE_CONFLICT';
+        const regression = error?.code === 'CAREER_REGRESSION_BLOCKED';
         setSaveStatus({
           state: conflict ? 'conflict' : 'error',
           lastSavedAt: null,
-          message: conflict ? error.message : 'Cloud save failed. Your changes remain on this device.',
+          message: conflict || regression ? error.message : 'Cloud save failed. Your changes remain on this device.',
         });
+        if (regression) {
+          setMessageModal({
+            isOpen: true,
+            text: `${error.message} The more complete cloud career was preserved.`,
+            type: 'error',
+          });
+        }
       }
     };
     cloudWriteQueueRef.current = cloudWriteQueueRef.current.then(task, task);

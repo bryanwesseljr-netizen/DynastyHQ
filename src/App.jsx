@@ -194,6 +194,7 @@ const App = () => {
   const viewId = urlParams.get('view');
   const frontPageParam = urlParams.get('frontPage') || '';
   const previewRecoveryTarget = Math.max(0, Number(urlParams.get('recoverPreviewSeason')) || 0);
+  const recoverSeason4Week7 = urlParams.get('recoverCheckpoint') === 'season-4-week-7';
   const syncPreviewFromLive = urlParams.get('syncPreviewFromLive') === '1';
   const isReadOnly = !!viewId;
 
@@ -209,6 +210,9 @@ const App = () => {
   const [previewRecoveryError, setPreviewRecoveryError] = useState('');
   const [isSyncingPreviewFromLive, setIsSyncingPreviewFromLive] = useState(false);
   const [previewSyncError, setPreviewSyncError] = useState('');
+  const [checkpointRecoveryBusy, setCheckpointRecoveryBusy] = useState(false);
+  const [checkpointRecoveryError, setCheckpointRecoveryError] = useState('');
+  const [checkpointRecoverySummary, setCheckpointRecoverySummary] = useState('');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
@@ -1347,6 +1351,163 @@ const handleSaveGameClick = () => {
     } catch (error) {
       setPreviewRecoveryError(error?.message || 'Preview recovery failed. The live production save was not changed.');
       setIsRecoveringPreviewCareer(false);
+    }
+  };
+
+  const handleRecoverSeason4Week7 = async () => {
+    if (!isPreviewDeployment || !recoverSeason4Week7 || !userState || !db || checkpointRecoveryBusy) return;
+    setCheckpointRecoveryBusy(true);
+    setCheckpointRecoveryError('');
+    setCheckpointRecoverySummary('Searching preview backups, live backups, and published copies for your Oregon Season 4 checkpoint…');
+
+    const cleanText = (value) => String(value || '').trim();
+    const publicationParts = (entry = {}) => {
+      const text = cleanText(entry.publicationId || entry.weekKey || entry.id);
+      const match = text.match(/season-(\d+)-week-(\d+)/i);
+      return {
+        season: Number(entry.season) || Number(match?.[1]) || 0,
+        week: Number(entry.week) || Number(match?.[2]) || 0,
+      };
+    };
+    const summarizeCandidate = (rawState, source) => {
+      const state = migrateCareerState(rawState, defaultState);
+      const school = cleanText(state.player?.college || state.player?.school);
+      const season4Updates = (state.weeklyUpdates || []).filter((entry) => publicationParts(entry).season === 4);
+      const season4Games = (state.gameLogs || []).filter((entry) => Number(entry?.season || 0) === 4);
+      const season4News = (state.newsroomIssues || []).filter((entry) => publicationParts(entry).season === 4);
+      const season4Podcasts = (state.podcastEpisodes || []).filter((entry) => publicationParts(entry).season === 4);
+      const weeks = [
+        ...season4Updates.map((entry) => publicationParts(entry).week),
+        ...season4Games.map((entry) => Number(entry?.week) || 0),
+        ...season4News.map((entry) => publicationParts(entry).week),
+        ...season4Podcasts.map((entry) => publicationParts(entry).week),
+      ].filter((week) => Number.isFinite(week));
+      const latestContentWeek = weeks.length ? Math.max(...weeks) : 0;
+      const currentSeason = Number(state.currentSeason) || 1;
+      const currentWeek = Number(state.currentWeek) || 1;
+      const generatedCount = season4News.length + season4Podcasts.length;
+      const exactWeekScore = currentWeek === 7 ? 30000 : currentWeek === 8 ? 12000 : 0;
+      const score = (school.toLowerCase().includes('oregon') ? 50000 : 0)
+        + (currentSeason === 4 ? 25000 : 0)
+        + exactWeekScore
+        + Math.min(latestContentWeek, 7) * 2500
+        + season4Updates.length * 450
+        + season4Games.length * 350
+        + season4News.length * 500
+        + season4Podcasts.length * 500;
+      return {
+        source,
+        state,
+        school,
+        currentSeason,
+        currentWeek,
+        latestContentWeek,
+        season4Updates: season4Updates.length,
+        season4Games: season4Games.length,
+        season4News: season4News.length,
+        season4Podcasts: season4Podcasts.length,
+        generatedCount,
+        score,
+      };
+    };
+
+    try {
+      const candidates = [];
+      const errors = [];
+      const collectPrivate = async (namespace, label) => {
+        try {
+          const snapshot = await getDocs(collection(db, 'artifacts', namespace, 'users', userState.uid, 'hq_data'));
+          snapshot.docs.forEach((entry) => {
+            try {
+              candidates.push(summarizeCandidate(entry.data(), `${label} / ${entry.id}`));
+            } catch (error) {
+              errors.push(`${label}/${entry.id}: ${error?.message || 'unreadable'}`);
+            }
+          });
+        } catch (error) {
+          errors.push(`${label} backups: ${error?.message || 'unavailable'}`);
+        }
+      };
+      const collectPublic = async (namespace, label) => {
+        try {
+          const snapshot = await getDoc(doc(db, 'artifacts', namespace, 'public', 'data', 'shared_dynasties', userState.uid));
+          if (snapshot.exists()) candidates.push(summarizeCandidate(snapshot.data(), `${label} / published copy`));
+        } catch (error) {
+          errors.push(`${label} published copy: ${error?.message || 'unavailable'}`);
+        }
+      };
+
+      await Promise.all([
+        collectPrivate(appId, 'SAFE PREVIEW'),
+        collectPrivate(productionAppId, 'LIVE'),
+        collectPublic(appId, 'SAFE PREVIEW'),
+        collectPublic(productionAppId, 'LIVE'),
+      ]);
+
+      const eligible = candidates
+        .filter((candidate) => candidate.school.toLowerCase().includes('oregon'))
+        .filter((candidate) => candidate.currentSeason === 4)
+        .filter((candidate) => candidate.currentWeek === 7 || candidate.latestContentWeek >= 7)
+        .filter((candidate) => candidate.generatedCount > 0)
+        .sort((a, b) => b.score - a.score);
+
+      const best = eligible[0];
+      if (!best) {
+        const visible = [...candidates]
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5)
+          .map((candidate) => `${candidate.source}: ${candidate.school || 'no team'}, S${candidate.currentSeason} W${candidate.currentWeek}, content through W${candidate.latestContentWeek}, ${candidate.season4News} newsroom, ${candidate.season4Podcasts} podcasts`)
+          .join(' | ');
+        throw new Error(`No safe Oregon Season 4 Week 7 checkpoint was found, so DynastyHQ did NOT overwrite anything. ${visible ? `Closest saves: ${visible}.` : ''} ${errors.length ? `Some sources could not be read: ${errors.join('; ')}` : ''}`);
+      }
+
+      setCheckpointRecoverySummary(
+        `Found ${best.source}: ${best.school}, Season ${best.currentSeason} Week ${best.currentWeek}, content through Week ${best.latestContentWeek}, ${best.season4News} Season 4 newsroom issue${best.season4News === 1 ? '' : 's'}, and ${best.season4Podcasts} podcast episode${best.season4Podcasts === 1 ? '' : 's'}. Restoring it now…`,
+      );
+
+      const previewRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const currentSnapshot = await getDoc(previewRef);
+      const recoveredAt = new Date().toISOString();
+      if (currentSnapshot.exists()) {
+        const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-season4-week7-recovery-${Date.now()}`);
+        await setDoc(backupRef, {
+          ...currentSnapshot.data(),
+          _checkpointRecoveryBackup: { createdAt: recoveredAt, reason: 'season-4-week-7-recovery' },
+        });
+      }
+
+      const revision = Math.max(
+        Number(currentSnapshot.data()?._sync?.revision) || 0,
+        Number(best.state?._sync?.revision) || 0,
+      ) + 1;
+      const recovered = {
+        ...best.state,
+        _preview: {
+          ...(best.state._preview || {}),
+          isolated: true,
+          recoveredCheckpoint: 'season-4-week-7',
+          recoveredFrom: best.source,
+          recoveredAt,
+        },
+        _sync: {
+          revision,
+          deviceId: SAVE_DEVICE_ID,
+          updatedAt: recoveredAt,
+        },
+      };
+
+      await setDoc(previewRef, recovered);
+      cloudRevisionRef.current = revision;
+      setAppState(recovered);
+      setRtgUpdate(recovered.rtg || defaultState.rtg);
+      setCoachUpdate(recovered.coach || defaultState.coach);
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('recoverCheckpoint');
+      window.location.replace(cleanUrl.toString());
+    } catch (error) {
+      setCheckpointRecoveryError(error?.message || 'Season 4 Week 7 recovery could not be completed. Nothing was overwritten.');
+      setCheckpointRecoveryBusy(false);
     }
   };
 
@@ -4608,6 +4769,33 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
+       {isPreviewDeployment && recoverSeason4Week7 && (
+           <div className="fixed inset-0 z-[275] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
+             <div className="w-full max-w-xl rounded-2xl border border-amber-500/40 bg-slate-950 p-7 text-center shadow-2xl">
+               <ShieldCheck size={46} className="mx-auto text-amber-300" />
+               <h2 className="mt-4 text-2xl font-black uppercase text-white">Restore Season 4 · Week 7</h2>
+               <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                 DynastyHQ will search every available SAFE PREVIEW backup, live backup, and published copy tied to this signed-in account. It will restore only a matching Oregon Season 4 checkpoint with generated Newsroom/Podcast history. The current preview is backed up first.
+               </p>
+               <p className="mt-3 text-xs font-bold text-amber-300">Nothing is written to your live production save.</p>
+               {checkpointRecoverySummary ? <p className="mt-4 rounded-lg border border-slate-700 bg-slate-900/80 p-3 text-left text-xs leading-relaxed text-slate-300">{checkpointRecoverySummary}</p> : null}
+               {checkpointRecoveryError ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 p-3 text-left text-xs font-bold leading-relaxed text-red-300">{checkpointRecoveryError}</p> : null}
+               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                 <button type="button" disabled={checkpointRecoveryBusy} onClick={handleRecoverSeason4Week7} className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50">
+                   {checkpointRecoveryBusy ? 'Searching + Restoring…' : 'Find + Restore Week 7 Save'}
+                 </button>
+                 <button type="button" disabled={checkpointRecoveryBusy} onClick={() => {
+                   const cleanUrl = new URL(window.location.href);
+                   cleanUrl.searchParams.delete('recoverCheckpoint');
+                   window.location.replace(cleanUrl.toString());
+                 }} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300">
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+       )}
+
        {isPreviewDeployment && syncPreviewFromLive && (
            <div className="fixed inset-0 z-[265] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
              <div className="w-full max-w-lg rounded-2xl border border-cyan-500/35 bg-slate-950 p-7 text-center shadow-2xl">

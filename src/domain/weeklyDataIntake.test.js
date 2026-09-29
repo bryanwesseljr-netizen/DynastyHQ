@@ -60,8 +60,8 @@ test('Coverage Data stays editorial-only and mounts inside its numbered lane', a
   const coverage = await readFile(coverageUrl, 'utf8');
 
   assert.match(coverage, /analyzeCoverageReference/);
-  assert.match(coverage, /replaceCoverageReferences/);
-  assert.match(coverage, /Newsroom and Podcast can use them; your RTG stats and career totals cannot/);
+  assert.match(coverage, /dynastyhq:coverage-data-save/);
+  assert.match(coverage, /Newsroom and Podcast can use them; your schedule, game history, RTG stats, and career totals are preserved/);
   assert.match(coverage, /never write into your player stat line/);
   assert.match(coverage, /#dhq-weekly-coverage-data-host/);
 });

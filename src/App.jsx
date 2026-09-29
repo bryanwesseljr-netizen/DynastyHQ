@@ -1358,7 +1358,7 @@ const handleSaveGameClick = () => {
     if (!isPreviewDeployment || !recoverSeason4Week7 || !userState || !db || checkpointRecoveryBusy) return;
     setCheckpointRecoveryBusy(true);
     setCheckpointRecoveryError('');
-    setCheckpointRecoverySummary('Searching preview backups, live backups, and published copies for your Oregon Season 4 checkpoint…');
+    setCheckpointRecoverySummary('Running a deep forensic scan across preview/live backups and published copies for the real Oregon Season 4 timeline…');
 
     const cleanText = (value) => String(value || '').trim();
     const publicationParts = (entry = {}) => {
@@ -1369,6 +1369,19 @@ const handleSaveGameClick = () => {
         week: Number(entry.week) || Number(match?.[2]) || 0,
       };
     };
+    const opponentForEntry = (entry = {}) => cleanText(entry.opponent || entry.game?.opponent || entry.matchup?.opponent);
+    const season4Schedule = (state = {}) => (state.seasonSchedules || []).find((entry) => Number(entry?.season) === 4) || null;
+    const opponentAtWeek = (state = {}, week) => {
+      const fromSchedule = season4Schedule(state)?.entries?.find((entry) => Number(entry?.week) === Number(week));
+      if (fromSchedule && !fromSchedule.isBye) return cleanText(fromSchedule.opponent);
+      const fromGame = (state.gameLogs || []).find((entry) => Number(entry?.season) === 4 && Number(entry?.week) === Number(week));
+      if (fromGame) return opponentForEntry(fromGame);
+      const fromUpdate = (state.weeklyUpdates || []).find((entry) => {
+        const parts = publicationParts(entry);
+        return parts.season === 4 && parts.week === Number(week);
+      });
+      return opponentForEntry(fromUpdate);
+    };
     const summarizeCandidate = (rawState, source) => {
       const state = migrateCareerState(rawState, defaultState);
       const school = cleanText(state.player?.college || state.player?.school);
@@ -1376,25 +1389,34 @@ const handleSaveGameClick = () => {
       const season4Games = (state.gameLogs || []).filter((entry) => Number(entry?.season || 0) === 4);
       const season4News = (state.newsroomIssues || []).filter((entry) => publicationParts(entry).season === 4);
       const season4Podcasts = (state.podcastEpisodes || []).filter((entry) => publicationParts(entry).season === 4);
+      const season4Chronicle = (state.careerChronicle || []).filter((entry) => publicationParts(entry).season === 4);
+      const season4Facts = (state.factLedger || []).filter((entry) => publicationParts(entry).season === 4 || /season-4-week-/i.test(cleanText(entry.publicationId)));
       const weeks = [
         ...season4Updates.map((entry) => publicationParts(entry).week),
         ...season4Games.map((entry) => Number(entry?.week) || 0),
         ...season4News.map((entry) => publicationParts(entry).week),
         ...season4Podcasts.map((entry) => publicationParts(entry).week),
-      ].filter((week) => Number.isFinite(week));
+        ...season4Chronicle.map((entry) => publicationParts(entry).week),
+        ...season4Facts.map((entry) => publicationParts(entry).week),
+      ].filter((week) => Number.isFinite(week) && week >= 0);
       const latestContentWeek = weeks.length ? Math.max(...weeks) : 0;
       const currentSeason = Number(state.currentSeason) || 1;
       const currentWeek = Number(state.currentWeek) || 1;
+      const week1Opponent = opponentAtWeek(state, 1);
+      const week7Opponent = opponentAtWeek(state, 7);
+      const hasVanderbiltWeek1 = /vanderbilt/i.test(week1Opponent);
+      const hasPurdueWeek7 = /purdue/i.test(week7Opponent);
       const generatedCount = season4News.length + season4Podcasts.length;
-      const exactWeekScore = currentWeek === 7 ? 30000 : currentWeek === 8 ? 12000 : 0;
       const score = (school.toLowerCase().includes('oregon') ? 50000 : 0)
-        + (currentSeason === 4 ? 25000 : 0)
-        + exactWeekScore
-        + Math.min(latestContentWeek, 7) * 2500
-        + season4Updates.length * 450
-        + season4Games.length * 350
-        + season4News.length * 500
-        + season4Podcasts.length * 500;
+        + (hasVanderbiltWeek1 ? 60000 : 0)
+        + (hasPurdueWeek7 ? 45000 : 0)
+        + Math.min(latestContentWeek, 7) * 6000
+        + season4Updates.length * 900
+        + season4Games.length * 800
+        + season4News.length * 1200
+        + season4Podcasts.length * 1200
+        + season4Chronicle.length * 300
+        + (currentSeason === 4 ? 5000 : 0);
       return {
         source,
         state,
@@ -1402,6 +1424,10 @@ const handleSaveGameClick = () => {
         currentSeason,
         currentWeek,
         latestContentWeek,
+        week1Opponent,
+        week7Opponent,
+        hasVanderbiltWeek1,
+        hasPurdueWeek7,
         season4Updates: season4Updates.length,
         season4Games: season4Games.length,
         season4News: season4News.length,
@@ -1444,25 +1470,28 @@ const handleSaveGameClick = () => {
         collectPublic(productionAppId, 'LIVE'),
       ]);
 
-      const eligible = candidates
+      const ranked = [...candidates]
         .filter((candidate) => candidate.school.toLowerCase().includes('oregon'))
-        .filter((candidate) => candidate.currentSeason === 4)
-        .filter((candidate) => candidate.currentWeek === 7 || candidate.latestContentWeek >= 7)
-        .filter((candidate) => candidate.generatedCount > 0)
         .sort((a, b) => b.score - a.score);
+
+      // Do not trust currentSeason/currentWeek pointers here. A prior recovery or
+      // fast-forward can corrupt those while the underlying Week 1-7 publications survive.
+      const eligible = ranked
+        .filter((candidate) => candidate.hasVanderbiltWeek1)
+        .filter((candidate) => candidate.latestContentWeek >= 7 || candidate.hasPurdueWeek7)
+        .filter((candidate) => candidate.generatedCount > 0);
 
       const best = eligible[0];
       if (!best) {
-        const visible = [...candidates]
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5)
-          .map((candidate) => `${candidate.source}: ${candidate.school || 'no team'}, S${candidate.currentSeason} W${candidate.currentWeek}, content through W${candidate.latestContentWeek}, ${candidate.season4News} newsroom, ${candidate.season4Podcasts} podcasts`)
+        const visible = ranked
+          .slice(0, 12)
+          .map((candidate) => `${candidate.source}: S${candidate.currentSeason} W${candidate.currentWeek}; S4 content→W${candidate.latestContentWeek}; W1=${candidate.week1Opponent || 'unknown'}; W7=${candidate.week7Opponent || 'unknown'}; ${candidate.season4News} newsroom; ${candidate.season4Podcasts} podcasts`)
           .join(' | ');
-        throw new Error(`No safe Oregon Season 4 Week 7 checkpoint was found, so DynastyHQ did NOT overwrite anything. ${visible ? `Closest saves: ${visible}.` : ''} ${errors.length ? `Some sources could not be read: ${errors.join('; ')}` : ''}`);
+        throw new Error(`Deep scan found no safe checkpoint that matches the real Season 4 anchors (Week 1 Vanderbilt plus Week 7/Purdue-era content), so DynastyHQ did NOT overwrite anything. ${visible ? `Forensic results: ${visible}.` : ''} ${errors.length ? `Unreadable sources: ${errors.join('; ')}` : ''}`);
       }
 
       setCheckpointRecoverySummary(
-        `Found ${best.source}: ${best.school}, Season ${best.currentSeason} Week ${best.currentWeek}, content through Week ${best.latestContentWeek}, ${best.season4News} Season 4 newsroom issue${best.season4News === 1 ? '' : 's'}, and ${best.season4Podcasts} podcast episode${best.season4Podcasts === 1 ? '' : 's'}. Restoring it now…`,
+        `Found ${best.source}: ${best.school}; saved pointer S${best.currentSeason} W${best.currentWeek}; real S4 content through W${best.latestContentWeek}; W1 ${best.week1Opponent}; W7 ${best.week7Opponent || 'not labeled'}; ${best.season4News} newsroom issue${best.season4News === 1 ? '' : 's'}; ${best.season4Podcasts} podcast episode${best.season4Podcasts === 1 ? '' : 's'}. Restoring this checkpoint now…`,
       );
 
       const previewRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
@@ -1472,7 +1501,7 @@ const handleSaveGameClick = () => {
         const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-season4-week7-recovery-${Date.now()}`);
         await setDoc(backupRef, {
           ...currentSnapshot.data(),
-          _checkpointRecoveryBackup: { createdAt: recoveredAt, reason: 'season-4-week-7-recovery' },
+          _checkpointRecoveryBackup: { createdAt: recoveredAt, reason: 'season-4-week-7-deep-recovery' },
         });
       }
 
@@ -1480,12 +1509,17 @@ const handleSaveGameClick = () => {
         Number(currentSnapshot.data()?._sync?.revision) || 0,
         Number(best.state?._sync?.revision) || 0,
       ) + 1;
+      const recoveredWeek = best.latestContentWeek >= 7
+        ? Math.max(8, Number(best.state.currentWeek) || 0)
+        : Number(best.state.currentWeek) || 7;
       const recovered = {
         ...best.state,
+        currentSeason: 4,
+        currentWeek: recoveredWeek,
         _preview: {
           ...(best.state._preview || {}),
           isolated: true,
-          recoveredCheckpoint: 'season-4-week-7',
+          recoveredCheckpoint: 'season-4-week-7-deep',
           recoveredFrom: best.source,
           recoveredAt,
         },
@@ -1506,7 +1540,7 @@ const handleSaveGameClick = () => {
       cleanUrl.searchParams.delete('recoverCheckpoint');
       window.location.replace(cleanUrl.toString());
     } catch (error) {
-      setCheckpointRecoveryError(error?.message || 'Season 4 Week 7 recovery could not be completed. Nothing was overwritten.');
+      setCheckpointRecoveryError(error?.message || 'Season 4 Week 7 deep recovery could not be completed. Nothing was overwritten.');
       setCheckpointRecoveryBusy(false);
     }
   };

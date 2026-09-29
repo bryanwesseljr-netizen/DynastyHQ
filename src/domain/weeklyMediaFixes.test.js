@@ -100,7 +100,7 @@ test('owner workflow mounts coverage repair and editorial-only intake tools', as
   assert.match(owner, /CollegeGameCoverageRepairPortal/);
   assert.match(owner, /CoverageDataIntakePortal/);
   assert.match(owner, /WeeklyDataIntakePortal/);
-  assert.match(portal, /Newsroom and Podcast can use them; your RTG stats and career totals cannot/);
+  assert.match(portal, /Newsroom and Podcast can use them; your schedule, game history, RTG stats, and career totals are preserved/);
   assert.match(portal, /editorial-only and never write into your player stat line/);
   assert.match(api, /Newsroom articles and podcast talking points ONLY/);
 });

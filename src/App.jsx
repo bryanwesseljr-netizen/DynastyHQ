@@ -151,6 +151,7 @@ import {
 } from './domain/postgameFrontPage';
 import { DYNASTYHQ_NAVIGATE_EVENT } from './domain/navigationBus';
 import { replaceCoverageReferences } from './domain/coverageReferences.js';
+import { hasCorruptedOhioStateWeek1, repairSeason4Week1Vanderbilt } from './domain/season4Week1Repair.js';
 import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
@@ -200,6 +201,7 @@ const App = () => {
   const frontPageParam = urlParams.get('frontPage') || '';
   const previewRecoveryTarget = Math.max(0, Number(urlParams.get('recoverPreviewSeason')) || 0);
   const recoverSeason4Week7 = urlParams.get('recoverCheckpoint') === 'season-4-week-7';
+  const repairSeason4Week1 = urlParams.get('repairSeason4Week1') === 'vanderbilt';
   const syncPreviewFromLive = urlParams.get('syncPreviewFromLive') === '1';
   const isReadOnly = !!viewId;
 
@@ -218,6 +220,8 @@ const App = () => {
   const [checkpointRecoveryBusy, setCheckpointRecoveryBusy] = useState(false);
   const [checkpointRecoveryError, setCheckpointRecoveryError] = useState('');
   const [checkpointRecoverySummary, setCheckpointRecoverySummary] = useState('');
+  const [week1RepairBusy, setWeek1RepairBusy] = useState(false);
+  const [week1RepairError, setWeek1RepairError] = useState('');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
@@ -1425,6 +1429,66 @@ const handleSaveGameClick = () => {
     } catch (error) {
       setPreviewRecoveryError(error?.message || 'Preview recovery failed. The live production save was not changed.');
       setIsRecoveringPreviewCareer(false);
+    }
+  };
+
+  const handleRepairSeason4Week1 = async () => {
+    if (!repairSeason4Week1 || !userState || !db || week1RepairBusy) return;
+    setWeek1RepairBusy(true);
+    setWeek1RepairError('');
+    try {
+      if (isPreviewDeployment) {
+        throw new Error('This repair must be run from the LIVE DynastyHQ site so it corrects the production career only.');
+      }
+      const mainRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-season4-week1-vanderbilt-repair-${Date.now()}`);
+      let repairedState = null;
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(mainRef);
+        if (!snapshot.exists()) throw new Error('Your LIVE DynastyHQ career could not be loaded.');
+        const remote = snapshot.data();
+        if (!hasCorruptedOhioStateWeek1(remote)) {
+          throw new Error('The current LIVE save does not look like the corrupted Season 4 Week 1 Ohio State record. Nothing was changed.');
+        }
+
+        const repaired = repairSeason4Week1Vanderbilt(remote);
+        const revision = (Number(remote?._sync?.revision) || 0) + 1;
+        const repairedAt = new Date().toISOString();
+        repairedState = {
+          ...repaired.state,
+          _sync: { revision, deviceId: SAVE_DEVICE_ID, updatedAt: repairedAt },
+          _repair: {
+            type: 'season-4-week-1-vanderbilt',
+            repairedAt,
+            removedCounts: repaired.removedCounts,
+          },
+        };
+
+        transaction.set(backupRef, {
+          ...remote,
+          _repairBackup: {
+            createdAt: repairedAt,
+            reason: 'Before removing corrupted Season 4 Week 1 Ohio State data and restoring Vanderbilt as Week 1.',
+          },
+        });
+        transaction.set(mainRef, repairedState);
+      });
+
+      if (!repairedState) throw new Error('The repair did not produce a restored career.');
+      cloudRevisionRef.current = Number(repairedState?._sync?.revision) || 0;
+      setAppState(repairedState);
+      setRtgUpdate(repairedState.rtg || defaultState.rtg);
+      setCoachUpdate(repairedState.coach || defaultState.coach);
+      setScanDraft(null);
+      setAppliedScanDraft(null);
+      clearWeeklyDraftRecord(userState.uid);
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('repairSeason4Week1');
+      window.location.replace(cleanUrl.toString());
+    } catch (error) {
+      setWeek1RepairError(error?.message || 'Season 4 Week 1 could not be repaired. Nothing was changed.');
+      setWeek1RepairBusy(false);
     }
   };
 
@@ -4950,6 +5014,32 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
+       {!isPreviewDeployment && repairSeason4Week1 && (
+           <div className="fixed inset-0 z-[285] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
+             <div className="w-full max-w-xl rounded-2xl border border-red-500/40 bg-slate-950 p-7 text-center shadow-2xl">
+               <ShieldCheck size={46} className="mx-auto text-amber-300" />
+               <h2 className="mt-4 text-2xl font-black uppercase text-white">Repair Season 4 · Week 1</h2>
+               <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                 This will make a full backup of your current LIVE save, then remove only the corrupted Season 4 Week 1 Ohio State game/history/media records. Week 1 will be reset to an unplayed Vanderbilt game so you can upload the real Vanderbilt data again.
+               </p>
+               <p className="mt-3 text-xs font-bold text-amber-300">Preseason content and every prior season are preserved. Other Season 4 schedule weeks are left alone for now.</p>
+               {week1RepairError ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 p-3 text-left text-xs font-bold leading-relaxed text-red-300">{week1RepairError}</p> : null}
+               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                 <button type="button" disabled={week1RepairBusy} onClick={handleRepairSeason4Week1} className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50">
+                   {week1RepairBusy ? 'Backing Up + Repairing…' : 'Backup + Restore Vanderbilt Week 1'}
+                 </button>
+                 <button type="button" disabled={week1RepairBusy} onClick={() => {
+                   const cleanUrl = new URL(window.location.href);
+                   cleanUrl.searchParams.delete('repairSeason4Week1');
+                   window.location.replace(cleanUrl.toString());
+                 }} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300">
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+       )}
+
        {isPreviewDeployment && recoverSeason4Week7 && (
            <div className="fixed inset-0 z-[275] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
              <div className="w-full max-w-xl rounded-2xl border border-amber-500/40 bg-slate-950 p-7 text-center shadow-2xl">

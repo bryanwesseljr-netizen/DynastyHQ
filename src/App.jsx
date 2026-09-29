@@ -1421,6 +1421,9 @@ const handleSaveGameClick = () => {
         source,
         state,
         school,
+        sourceNamespace: '',
+        sourceUid: '',
+        publicSnapshot: false,
         currentSeason,
         currentWeek,
         latestContentWeek,
@@ -1457,9 +1460,42 @@ const handleSaveGameClick = () => {
       const collectPublic = async (namespace, label) => {
         try {
           const snapshot = await getDoc(doc(db, 'artifacts', namespace, 'public', 'data', 'shared_dynasties', userState.uid));
-          if (snapshot.exists()) candidates.push(summarizeCandidate(snapshot.data(), `${label} / published copy`));
+          if (snapshot.exists()) {
+            candidates.push({
+              ...summarizeCandidate(snapshot.data(), `${label} / current-identity published copy`),
+              sourceNamespace: namespace,
+              sourceUid: userState.uid,
+              publicSnapshot: true,
+            });
+          }
         } catch (error) {
           errors.push(`${label} published copy: ${error?.message || 'unavailable'}`);
+        }
+      };
+
+      const collectPublicIdentityArchive = async (namespace, label) => {
+        try {
+          const snapshot = await getDocs(collection(db, 'artifacts', namespace, 'public', 'data', 'shared_dynasties'));
+          snapshot.docs.forEach((entry) => {
+            try {
+              const raw = entry.data();
+              const name = cleanText(raw?.player?.name).toLowerCase();
+              const school = cleanText(raw?.player?.college || raw?.player?.school).toLowerCase();
+              const currentName = cleanText(appState?.player?.name || 'Bryan Wessel').toLowerCase();
+              if (name && currentName && name !== currentName) return;
+              if (!school.includes('oregon')) return;
+              candidates.push({
+                ...summarizeCandidate(raw, `${label} / archived public identity`),
+                sourceNamespace: namespace,
+                sourceUid: entry.id,
+                publicSnapshot: true,
+              });
+            } catch (error) {
+              errors.push(`${label} archived public identity: ${error?.message || 'unreadable'}`);
+            }
+          });
+        } catch (error) {
+          errors.push(`${label} public identity archive: ${error?.message || 'list unavailable'}`);
         }
       };
 
@@ -1468,6 +1504,8 @@ const handleSaveGameClick = () => {
         collectPrivate(productionAppId, 'LIVE'),
         collectPublic(appId, 'SAFE PREVIEW'),
         collectPublic(productionAppId, 'LIVE'),
+        collectPublicIdentityArchive(appId, 'SAFE PREVIEW'),
+        collectPublicIdentityArchive(productionAppId, 'LIVE'),
       ]);
 
       const ranked = [...candidates]
@@ -1531,6 +1569,41 @@ const handleSaveGameClick = () => {
       };
 
       await setDoc(previewRef, recovered);
+
+      if (best.publicSnapshot && best.sourceNamespace && best.sourceUid && best.sourceUid !== userState.uid) {
+        const audioEpisodes = (recovered.podcastEpisodes || []).filter((episode) => episode?.audioStatus === 'ready');
+        let copiedAudio = 0;
+        for (const episode of audioEpisodes) {
+          const episodeId = episode?.id || episode?.publicationId;
+          if (!episodeId) continue;
+          try {
+            const segments = await loadPublicPodcastAudio({
+              db,
+              appId: best.sourceNamespace,
+              ownerId: best.sourceUid,
+              episodeId,
+            });
+            if (segments?.length) {
+              await savePodcastAudioCloud({
+                db,
+                appId,
+                userId: userState.uid,
+                episodeId,
+                segments,
+              });
+              copiedAudio += 1;
+            }
+          } catch (error) {
+            console.warn('Recovered podcast audio could not be copied from archived identity.', episodeId, error);
+          }
+        }
+        recovered._preview = {
+          ...(recovered._preview || {}),
+          recoveredPodcastAudioEpisodes: copiedAudio,
+        };
+        await setDoc(previewRef, recovered);
+      }
+
       cloudRevisionRef.current = revision;
       setAppState(recovered);
       setRtgUpdate(recovered.rtg || defaultState.rtg);

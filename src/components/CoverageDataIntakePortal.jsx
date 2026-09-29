@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, FileText, Loader2, UploadCloud, XCircle } from 'lucide-react';
-import { doc, runTransaction } from 'firebase/firestore';
-import { appId, db } from '../firebase';
-import { coverageReferenceFor, replaceCoverageReferences } from '../domain/coverageReferences.js';
+import { coverageReferenceFor } from '../domain/coverageReferences.js';
 import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
 import { analyzeCoverageReference } from '../services/coverageReferenceClient.js';
 import { compressImage } from '../services/imageCompression.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const MAX_REFERENCE_SCREENSHOTS = 12;
-const DEVICE_ID = 'coverage-data-intake';
 
 const CoverageDataScanner = ({ user, career }) => {
   const inputRef = useRef(null);
@@ -79,30 +76,34 @@ const CoverageDataScanner = ({ user, career }) => {
     setMessage('Saving editorial-only Coverage Data…');
     setMessageType('success');
     try {
-      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(ref);
-        if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
-        const remote = snapshot.data();
-        const next = replaceCoverageReferences(remote, {
-          publicationId: context.publicationId,
-          season: context.season,
-          week: context.week,
-          facts: selectedFacts,
-          sourceCount,
-        });
-        transaction.set(ref, {
-          ...next,
-          _sync: {
-            revision: (Number(remote?._sync?.revision) || 0) + 1,
-            deviceId: DEVICE_ID,
-            updatedAt: new Date().toISOString(),
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (callback) => (value) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timeoutId);
+          callback(value);
+        };
+        const timeoutId = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new Error('DynastyHQ could not reach the protected career save handler. Nothing was written.'));
+        }, 5000);
+        window.dispatchEvent(new CustomEvent('dynastyhq:coverage-data-save', {
+          detail: {
+            publicationId: context.publicationId,
+            season: context.season,
+            week: context.week,
+            facts: selectedFacts,
+            sourceCount,
+            resolve: finish(resolve),
+            reject: finish((message) => reject(new Error(message))),
           },
-        });
+        }));
       });
       setFacts([]);
       setSourceCount(0);
-      setMessage(`Saved ${selectedFacts.length} Coverage Data fact${selectedFacts.length === 1 ? '' : 's'} for Season ${context.season} · Week ${context.week}. Newsroom and Podcast can use them; your RTG stats and career totals cannot.`);
+      setMessage(`Queued ${selectedFacts.length} Coverage Data fact${selectedFacts.length === 1 ? '' : 's'} for Season ${context.season} · Week ${context.week} through the protected master-save path. Newsroom and Podcast can use them; your schedule, game history, RTG stats, and career totals are preserved.`);
     } catch (error) {
       setMessageType('error');
       setMessage(error?.message || 'Coverage Data could not be saved.');

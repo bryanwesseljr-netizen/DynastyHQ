@@ -95,3 +95,12 @@ test('repairs only Season 4 Week 1 and preserves preseason, older seasons, and l
   assert.equal(state.newsroomMediaLibrary.some((entry) => entry.id === 'preseason-photo'), true);
   assert.ok(removedCounts.weeklyUpdates >= 1);
 });
+
+
+test('repair is Firestore-safe when weekFinalizations is missing', () => {
+  const source = { ...corrupted };
+  delete source.weekFinalizations;
+  const { state } = repairSeason4Week1Vanderbilt(source);
+  assert.deepEqual(state.weekFinalizations, {});
+  assert.equal(Object.values(state).some((value) => value === undefined), false);
+});

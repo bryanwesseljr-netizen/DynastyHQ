@@ -327,3 +327,21 @@ test('Home Open Game Hub uses the canonical navigation bus instead of synthetic 
   assert.doesNotMatch(source, /gameHubButton\.click\(\)/);
   assert.doesNotMatch(source, /querySelectorAll\('\.dhq-primary-nav button/);
 });
+
+
+test('SAFE PREVIEW can recover the best Oregon Season 4 Week 7 checkpoint without touching live', async () => {
+  const source = await readFile(appSourceUrl, 'utf8');
+
+  assert.match(source, /recoverCheckpoint'\) === 'season-4-week-7'/);
+  assert.match(source, /handleRecoverSeason4Week7/);
+  assert.match(source, /collectPrivate\(appId, 'SAFE PREVIEW'\)/);
+  assert.match(source, /collectPrivate\(productionAppId, 'LIVE'\)/);
+  assert.match(source, /collectPublic\(appId, 'SAFE PREVIEW'\)/);
+  assert.match(source, /collectPublic\(productionAppId, 'LIVE'\)/);
+  assert.match(source, /school\.toLowerCase\(\)\.includes\('oregon'\)/);
+  assert.match(source, /currentSeason === 4/);
+  assert.match(source, /currentWeek === 7 \|\| candidate\.latestContentWeek >= 7/);
+  assert.match(source, /before-season4-week7-recovery-/);
+  assert.match(source, /recoveredCheckpoint: 'season-4-week-7'/);
+  assert.match(source, /Find \+ Restore Week 7 Save/);
+});

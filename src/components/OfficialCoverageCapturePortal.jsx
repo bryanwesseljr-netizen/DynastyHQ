@@ -168,14 +168,12 @@ const OfficialCoverageCapturePortal = () => {
             if (index >= 0) articles[index] = article;
             else articles.push(article);
           });
-          transaction.set(ref, {
-            ...remote,
+          const revision = (Number(remote?._sync?.revision) || 0) + 1;
+          transaction.update(ref, {
             eaSportsNetworkArticles: articles,
-            _sync: {
-              revision: (Number(remote?._sync?.revision) || 0) + 1,
-              deviceId: DEVICE_ID,
-              updatedAt: new Date().toISOString(),
-            },
+            '_sync.revision': revision,
+            '_sync.deviceId': DEVICE_ID,
+            '_sync.updatedAt': new Date().toISOString(),
           });
         });
         if (!cancelled) {

@@ -110,3 +110,35 @@ export const chooseBestLiveWeek7RecoveryCandidate = (candidates = []) => (
     .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0]
   || null
 );
+
+
+const isPublication = (entry = {}, season, week) => {
+  const parts = publicationParts(entry);
+  return parts.season === Number(season) && parts.week === Number(week);
+};
+
+export const prepareVerifiedWeek7RecoveryState = (state = {}) => {
+  // The recovery target is the verified career THROUGH Week 7, positioned to replay
+  // Week 8 cleanly. The failed Week 8 attempt may have left partial publication
+  // fragments in an otherwise-good checkpoint; remove only Season 4 Week 8 artifacts.
+  const season = 4;
+  const week = 8;
+  const withoutWeek8 = (value) => list(value).filter((entry) => !isPublication(entry, season, week));
+
+  return {
+    ...state,
+    currentSeason: season,
+    currentWeek: week,
+    weeklyUpdates: withoutWeek8(state.weeklyUpdates),
+    gameLogs: list(state.gameLogs).filter((entry) => !(Number(entry?.season) === season && Number(entry?.week) === week)),
+    newsroomIssues: withoutWeek8(state.newsroomIssues),
+    podcastEpisodes: withoutWeek8(state.podcastEpisodes),
+    careerChronicle: withoutWeek8(state.careerChronicle),
+    factLedger: withoutWeek8(state.factLedger),
+    postgameFrontPages: withoutWeek8(state.postgameFrontPages),
+    eaSportsNetworkArticles: withoutWeek8(state.eaSportsNetworkArticles),
+    coverageReferences: withoutWeek8(state.coverageReferences),
+    weekFinalizations: withoutWeek8(state.weekFinalizations),
+    weeklyAgendaDraft: null,
+  };
+};

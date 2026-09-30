@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, Download, FileAudio2, Loader2, UploadCloud } from 'lucide-react';
-import { doc, runTransaction } from 'firebase/firestore';
+import { runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
 import { buildPodcastGenerationPayload, buildPodcastResearchPacket, listPodcastProductionIssues, podcastTranscriptText } from '../domain/podcastEngine';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
+import {
+  readHydratedCareerInTransaction,
+  writeHydratedCareerInTransaction,
+} from '../services/careerStorageFirestore.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 import '../podcast-master-audio.css';
 
@@ -388,20 +392,31 @@ const PodcastMasterAudioPortalV2 = () => {
 
   const patchEpisode = async (publicationId, patch) => {
     if (!user || !db) throw new Error('Sign in to manage podcast audio.');
-    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     return runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(ref);
-      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
-      const state = snapshot.data();
+      const loaded = await readHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+      });
+      if (!loaded) throw new Error('Your DynastyHQ career could not be loaded.');
+      const state = loaded.state;
       const episodesNow = state.podcastEpisodes || [];
       const currentEpisode = episodesNow.find((episode) => publicationIdFor(episode) === publicationId);
       if (!currentEpisode) throw new Error('Create the episode transcript before attaching master audio.');
       const patchedEpisode = { ...currentEpisode, ...patch };
-      const revision = (Number(state?._sync?.revision) || 0) + 1;
-      transaction.set(ref, {
+      const revision = (Number(loaded.rawMain?._sync?.revision) || 0) + 1;
+      const nextState = {
         ...state,
         podcastEpisodes: episodesNow.map((episode) => publicationIdFor(episode) === publicationId ? patchedEpisode : episode),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
+      };
+      writeHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+        state: nextState,
       });
       return patchedEpisode;
     });

@@ -157,6 +157,10 @@ import {
   repairSeason4Week7Postgame,
 } from './domain/season4Week7PostgameRepair.js';
 import {
+  chooseBestLiveWeek7RecoveryCandidate,
+  summarizeLiveWeek7RecoveryCandidate,
+} from './domain/liveWeek7Recovery.js';
+import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
   loadLegacyPodcastAudioLocal,
@@ -207,6 +211,7 @@ const App = () => {
   const recoverSeason4Week7 = urlParams.get('recoverCheckpoint') === 'season-4-week-7';
   const repairSeason4Week1 = urlParams.get('repairSeason4Week1') === 'vanderbilt';
   const repairSeason4Week7PostgameMode = urlParams.get('repairSeason4Week7Postgame') === 'purdue';
+  const recoverLiveWeek7Mode = urlParams.get('recoverLiveWeek7') === '1';
   const syncPreviewFromLive = urlParams.get('syncPreviewFromLive') === '1';
   const isReadOnly = !!viewId;
 
@@ -229,6 +234,11 @@ const App = () => {
   const [week1RepairError, setWeek1RepairError] = useState('');
   const [week7PostgameRepairBusy, setWeek7PostgameRepairBusy] = useState(false);
   const [week7PostgameRepairError, setWeek7PostgameRepairError] = useState('');
+  const [liveWeek7RecoveryBusy, setLiveWeek7RecoveryBusy] = useState(false);
+  const [liveWeek7RecoveryError, setLiveWeek7RecoveryError] = useState('');
+  const [liveWeek7RecoveryCandidates, setLiveWeek7RecoveryCandidates] = useState([]);
+  const [liveWeek7RecoveryBestId, setLiveWeek7RecoveryBestId] = useState('');
+  const liveWeek7RecoveryScannedRef = useRef(false);
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
@@ -306,6 +316,48 @@ const App = () => {
     repairSeason4Week7PostgameMode,
     userState,
     week7PostgameInspection.needsRepair,
+  ]);
+
+  const scanLiveWeek7Recovery = useCallback(async () => {
+    if (!recoverLiveWeek7Mode || isPreviewDeployment || !userState || !db) return;
+    setLiveWeek7RecoveryBusy(true);
+    setLiveWeek7RecoveryError('');
+    try {
+      const snapshot = await getDocs(collection(db, 'artifacts', appId, 'users', userState.uid, 'hq_data'));
+      const candidates = snapshot.docs.map((entry) => {
+        const migrated = migrateCareerState(entry.data(), defaultState);
+        return summarizeLiveWeek7RecoveryCandidate({ id: entry.id, state: migrated });
+      }).sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+      const best = chooseBestLiveWeek7RecoveryCandidate(candidates);
+      setLiveWeek7RecoveryCandidates(candidates);
+      setLiveWeek7RecoveryBestId(best?.id || '');
+      if (!best) {
+        setLiveWeek7RecoveryError('DynastyHQ did not find a safe Vanderbilt → Purdue Week 7 recovery candidate. Nothing was changed.');
+      }
+    } catch (error) {
+      setLiveWeek7RecoveryError(error?.message || 'DynastyHQ could not inspect the Week 7 backups. Nothing was changed.');
+    } finally {
+      setLiveWeek7RecoveryBusy(false);
+    }
+  }, [recoverLiveWeek7Mode, userState]);
+
+  useEffect(() => {
+    if (
+      !recoverLiveWeek7Mode
+      || isPreviewDeployment
+      || !isLoaded
+      || !userState
+      || loadedOwnerId !== userState.uid
+      || liveWeek7RecoveryScannedRef.current
+    ) return;
+    liveWeek7RecoveryScannedRef.current = true;
+    void scanLiveWeek7Recovery();
+  }, [
+    isLoaded,
+    loadedOwnerId,
+    recoverLiveWeek7Mode,
+    scanLiveWeek7Recovery,
+    userState,
   ]);
 
   // --- FIREBASE AUTHENTICATION LOGIC ---
@@ -1684,6 +1736,93 @@ const handleSaveGameClick = () => {
     } catch (error) {
       setPreviewRecoveryError(error?.message || 'Preview recovery failed. The live production save was not changed.');
       setIsRecoveringPreviewCareer(false);
+    }
+  };
+
+  const handleRestoreLiveWeek7Checkpoint = async () => {
+    if (!recoverLiveWeek7Mode || isPreviewDeployment || !userState || !db || liveWeek7RecoveryBusy || !liveWeek7RecoveryBestId) return;
+    setLiveWeek7RecoveryBusy(true);
+    setLiveWeek7RecoveryError('');
+    try {
+      const mainRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const candidateRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', liveWeek7RecoveryBestId);
+      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-live-week7-recovery-${Date.now()}`);
+      let restoredState = null;
+      let restoredSummary = null;
+
+      await runTransaction(db, async (transaction) => {
+        const [mainSnapshot, candidateSnapshot] = await Promise.all([
+          transaction.get(mainRef),
+          transaction.get(candidateRef),
+        ]);
+        if (!mainSnapshot.exists()) throw new Error('The current LIVE master save could not be loaded.');
+        if (!candidateSnapshot.exists()) throw new Error('The selected Week 7 recovery checkpoint no longer exists.');
+
+        const candidateState = migrateCareerState(candidateSnapshot.data(), defaultState);
+        const candidateSummary = summarizeLiveWeek7RecoveryCandidate({
+          id: liveWeek7RecoveryBestId,
+          state: candidateState,
+        });
+        if (!candidateSummary.qualifies) {
+          throw new Error('The selected backup no longer matches Vanderbilt Week 1 → Purdue Week 7. Nothing was changed.');
+        }
+
+        const currentRaw = mainSnapshot.data();
+        const revision = Math.max(
+          Number(currentRaw?._sync?.revision) || 0,
+          Number(candidateSnapshot.data()?._sync?.revision) || 0,
+          cloudRevisionRef.current,
+        ) + 1;
+        const restoredAt = new Date().toISOString();
+        restoredState = stripUndefinedDeep({
+          ...candidateState,
+          _sync: {
+            revision,
+            deviceId: SAVE_DEVICE_ID,
+            updatedAt: restoredAt,
+          },
+          _recovery: {
+            ...(candidateState._recovery || {}),
+            liveWeek7: {
+              restoredAt,
+              sourceDocumentId: liveWeek7RecoveryBestId,
+              reason: 'Restored verified Season 4 Week 7 career after stale master-save overwrite.',
+            },
+          },
+        });
+        restoredSummary = candidateSummary;
+
+        transaction.set(backupRef, stripUndefinedDeep({
+          ...currentRaw,
+          _recoveryBackup: {
+            createdAt: restoredAt,
+            reason: 'Before restoring the verified Vanderbilt → Purdue Season 4 Week 7 checkpoint.',
+          },
+        }));
+        transaction.set(mainRef, restoredState);
+      });
+
+      if (!restoredState || !restoredSummary) throw new Error('The Week 7 checkpoint restore did not complete.');
+      cloudRevisionRef.current = Number(restoredState?._sync?.revision) || cloudRevisionRef.current;
+      appStateRef.current = restoredState;
+      setAppState(restoredState);
+      setRtgUpdate(restoredState.rtg || defaultState.rtg);
+      setCoachUpdate(restoredState.coach || defaultState.coach);
+      setScanDraft(null);
+      setAppliedScanDraft(null);
+      clearWeeklyDraftRecord(userState.uid);
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('recoverLiveWeek7');
+      if (!restoredSummary.game7 || !restoredSummary.newsroom7) {
+        cleanUrl.searchParams.set('repairSeason4Week7Postgame', 'purdue');
+      } else {
+        cleanUrl.searchParams.delete('repairSeason4Week7Postgame');
+      }
+      window.location.replace(cleanUrl.toString());
+    } catch (error) {
+      setLiveWeek7RecoveryError(error?.message || 'The Week 7 checkpoint could not be restored. Nothing was changed.');
+      setLiveWeek7RecoveryBusy(false);
     }
   };
 
@@ -5344,6 +5483,79 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
+       {!isPreviewDeployment
+         && recoverLiveWeek7Mode
+         && isLoaded
+         && userState
+         && loadedOwnerId === userState.uid && (
+           <div className="fixed inset-0 z-[295] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
+             <div className="w-full max-w-2xl rounded-2xl border border-emerald-500/35 bg-slate-950 p-6 shadow-2xl">
+               <ShieldCheck size={44} className="mx-auto text-emerald-300" />
+               <h2 className="mt-3 text-center text-2xl font-black uppercase text-white">Recover Verified Week 7 Career</h2>
+               <p className="mt-3 text-center text-sm leading-relaxed text-slate-300">
+                 This screen is read-only until you press Restore. DynastyHQ is looking through this account's saved checkpoints and backups for the rebuilt Season 4 timeline with Vanderbilt in Week 1 and Purdue in Week 7.
+               </p>
+
+               {liveWeek7RecoveryBusy && !liveWeek7RecoveryCandidates.length ? (
+                 <div className="mt-5 rounded-xl border border-blue-500/25 bg-blue-950/20 p-4 text-center text-sm font-bold text-blue-200">
+                   Inspecting LIVE checkpoints and backups…
+                 </div>
+               ) : null}
+
+               {(() => {
+                 const best = liveWeek7RecoveryCandidates.find((candidate) => candidate.id === liveWeek7RecoveryBestId);
+                 if (!best) return null;
+                 return (
+                   <div className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-4">
+                     <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Best safe recovery candidate</div>
+                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                       <span className="text-slate-500">Backup</span><strong className="truncate text-right text-white">{best.id}</strong>
+                       <span className="text-slate-500">Week 1</span><strong className="text-right text-white">{best.week1Opponent || 'Missing'}</strong>
+                       <span className="text-slate-500">Week 7</span><strong className="text-right text-white">{best.week7Opponent || 'Missing'}</strong>
+                       <span className="text-slate-500">Career position</span><strong className="text-right text-white">Season {best.currentSeason} · Week {best.currentWeek}</strong>
+                       <span className="text-slate-500">Latest saved content</span><strong className="text-right text-white">Week {best.latestContentWeek}</strong>
+                       <span className="text-slate-500">Week 7 game record</span><strong className={`text-right ${best.game7 ? 'text-emerald-300' : 'text-amber-300'}`}>{best.game7 ? 'Present' : 'Needs postgame repair'}</strong>
+                       <span className="text-slate-500">Week 7 Newsroom</span><strong className={`text-right ${best.newsroom7 ? 'text-emerald-300' : 'text-amber-300'}`}>{best.newsroom7 ? 'Present' : 'Needs postgame repair'}</strong>
+                       <span className="text-slate-500">Immutable checkpoint</span><strong className={`text-right ${best.immutableCheckpoint ? 'text-emerald-300' : 'text-slate-300'}`}>{best.immutableCheckpoint ? 'Yes' : 'Backup copy'}</strong>
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {liveWeek7RecoveryError ? (
+                 <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 p-3 text-xs font-bold leading-relaxed text-red-300">{liveWeek7RecoveryError}</p>
+               ) : null}
+
+               <p className="mt-4 text-xs font-bold leading-relaxed text-amber-300">
+                 Restore creates a fresh backup of the current Ohio State Week 1 master save first. Your unfinished Week 8 local draft will be cleared so it cannot immediately overwrite the restored career; Week 8 can then be uploaded again safely.
+               </p>
+
+               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                 <button
+                   type="button"
+                   disabled={liveWeek7RecoveryBusy || !liveWeek7RecoveryBestId}
+                   onClick={handleRestoreLiveWeek7Checkpoint}
+                   className="flex-1 rounded-xl bg-emerald-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50"
+                 >
+                   {liveWeek7RecoveryBusy ? 'Inspecting / Restoring…' : 'Backup Current + Restore Verified Week 7'}
+                 </button>
+                 <button
+                   type="button"
+                   disabled={liveWeek7RecoveryBusy}
+                   onClick={() => {
+                     const cleanUrl = new URL(window.location.href);
+                     cleanUrl.searchParams.delete('recoverLiveWeek7');
+                     window.location.replace(cleanUrl.toString());
+                   }}
+                   className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300"
+                 >
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+       )}
+
        {!isPreviewDeployment
          && repairSeason4Week7PostgameMode
          && isLoaded

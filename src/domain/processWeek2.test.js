@@ -128,3 +128,12 @@ test('completed Week 7 repair URL clears itself and never reopens the repair spl
   assert.match(app, /loadedOwnerId === userState\.uid/);
   assert.match(app, /repairSeason4Week7PostgameMode[\s\S]*week7PostgameInspection\.needsRepair && \(/);
 });
+
+
+test('direct Week publisher uses the native Map constructor, not the Lucide Map icon', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.match(app, /const verifiedGameFacts = new globalThis\.Map\(/);
+  assert.doesNotMatch(app, /const verifiedGameFacts = new Map\(/);
+});

@@ -180,10 +180,11 @@ test('Newsroom generation commits the generated edition atomically against the l
   const handlerEnd = source.indexOf('const handleAssignNewsroomMedia', handlerStart);
   const handler = source.slice(handlerStart, handlerEnd);
   assert.match(handler, /persistGeneratedEdition = async \(\) => runTransaction\(db/);
-  assert.match(handler, /const remoteState = migrateCareerState\(remoteSnapshot\.data\(\), defaultState\)/);
+  assert.match(handler, /readHydratedCareerInTransaction/);
+  assert.match(handler, /const remoteState = migrateCareerState\(loaded\.state, defaultState\)/);
   assert.match(handler, /applyGeneratedNewsroomEdition\(remoteState, publicationId, edition\)/);
   assert.match(handler, /savedIssue\?\.editorialStatus !== 'generated'/);
-  assert.match(handler, /transaction\.set\(docRef, committedState\)/);
+  assert.match(handler, /writeHydratedCareerInTransaction/);
   assert.match(handler, /setAppState\(committedState\)/);
   assert.match(handler, /Newsroom edition saved:/);
   assert.doesNotMatch(handler, /updateAppState\(/);
@@ -239,7 +240,7 @@ test('atomic newsroom save strips undefined values before Transaction.set', asyn
   const handlerEnd = source.indexOf('const handleAssignNewsroomMedia', handlerStart);
   const handler = source.slice(handlerStart, handlerEnd);
   assert.match(handler, /committedState = stripUndefinedDeep\(/);
-  assert.match(handler, /transaction\.set\(docRef, committedState\)/);
+  assert.match(handler, /writeHydratedCareerInTransaction/);
 });
 
 

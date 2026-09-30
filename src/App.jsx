@@ -162,6 +162,13 @@ import {
   summarizeLiveWeek7RecoveryCandidate,
 } from './domain/liveWeek7Recovery.js';
 import {
+  CAREER_ARCHIVE_COLLECTION,
+  estimatedJsonBytes,
+  hydrateCareerStateFromArchives,
+  splitCareerStateForStorage,
+  storageArchiveIds,
+} from './domain/careerStorage.js';
+import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
   loadLegacyPodcastAudioLocal,
@@ -547,7 +554,20 @@ const App = () => {
         getDoc(backupRef)
           .then((backupSnapshot) => setHasMigrationBackup(backupSnapshot.exists()))
           .catch(() => setHasMigrationBackup(false));
-        const cloudData = migrateCareerState(docSnap.data(), defaultState);
+        let hydratedRawCloudData = rawCloudData;
+        const archiveIds = storageArchiveIds(rawCloudData);
+        if (archiveIds.length) {
+          const archiveSnapshots = await Promise.all(
+            archiveIds.map((archiveId) => getDoc(
+              doc(db, 'artifacts', appId, 'users', userState.uid, CAREER_ARCHIVE_COLLECTION, archiveId),
+            )),
+          );
+          hydratedRawCloudData = hydrateCareerStateFromArchives(
+            rawCloudData,
+            archiveSnapshots.filter((snapshot) => snapshot.exists()).map((snapshot) => snapshot.data()),
+          );
+        }
+        const cloudData = migrateCareerState(hydratedRawCloudData, defaultState);
         if (!cloudData.careerPhase) cloudData.careerPhase = 'Player';
         if (!cloudData.coach) cloudData.coach = defaultState.coach;
         if (!cloudData.player.stars) cloudData.player.stars = 3;
@@ -589,7 +609,20 @@ const App = () => {
           try {
             const productionRef = doc(db, 'artifacts', productionAppId, 'users', userState.uid, 'hq_data', 'main');
             const productionSnapshot = await getDoc(productionRef);
-            if (productionSnapshot.exists()) previewSeed = migrateCareerState(productionSnapshot.data(), defaultState);
+            if (productionSnapshot.exists()) {
+              const productionRaw = productionSnapshot.data();
+              const productionArchiveIds = storageArchiveIds(productionRaw);
+              const productionArchives = productionArchiveIds.length
+                ? await Promise.all(productionArchiveIds.map((archiveId) => getDoc(
+                    doc(db, 'artifacts', productionAppId, 'users', userState.uid, CAREER_ARCHIVE_COLLECTION, archiveId),
+                  )))
+                : [];
+              const hydratedProduction = hydrateCareerStateFromArchives(
+                productionRaw,
+                productionArchives.filter((snapshot) => snapshot.exists()).map((snapshot) => snapshot.data()),
+              );
+              previewSeed = migrateCareerState(hydratedProduction, defaultState);
+            }
           } catch (error) {
             console.warn('Preview seed could not be copied; starting with a blank preview career.', error);
           }
@@ -677,6 +710,7 @@ const App = () => {
     if (!userState || !db) {
       return Promise.resolve({ ok: false, code: 'NOT_CONNECTED', message: 'Cloud Database is not connected.' });
     }
+
     const cloudState = stripUndefinedDeep({ ...nextState });
     if (cloudState.podcastAudio && cloudState.podcastAudio.startsWith('data:audio')) {
       cloudState.podcastAudio = '';
@@ -684,22 +718,56 @@ const App = () => {
     } else if (!cloudState.podcastAudio) {
       cloudState.hasCloudAudio = false;
     }
-    const estimatedBytes = (() => {
-      try { return new TextEncoder().encode(JSON.stringify(cloudState)).length; } catch { return 0; }
-    })();
+
+    const storagePreview = splitCareerStateForStorage(cloudState);
+    const estimatedBytes = estimatedJsonBytes(storagePreview.mainState);
+    const largestArchiveBytes = storagePreview.archives.reduce(
+      (largest, archive) => Math.max(largest, estimatedJsonBytes(archive)),
+      0,
+    );
+    const fullEstimatedBytes = estimatedJsonBytes(cloudState);
+
     pendingCloudStateRef.current = { state: cloudState, options };
     setSaveStatus((current) => ({ ...current, state: isRetry ? 'retrying' : 'saving', message: '' }));
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+
     const task = async () => {
       let checkpoint = null;
       let checkpointState = null;
       try {
+        if (estimatedBytes >= 950 * 1024 || largestArchiveBytes >= 950 * 1024) {
+          const error = new Error(
+            estimatedBytes >= 950 * 1024
+              ? `The compact DynastyHQ master save is still too large (${Math.round(estimatedBytes / 1024)} KB).`
+              : `One DynastyHQ week archive is too large (${Math.round(largestArchiveBytes / 1024)} KB).`,
+          );
+          error.code = 'STORAGE_SHARD_TOO_LARGE';
+          throw error;
+        }
+
         await runTransaction(db, async (transaction) => {
           const remoteSnapshot = await transaction.get(docRef);
           const remoteRaw = remoteSnapshot.exists() ? remoteSnapshot.data() : {};
           const remoteSync = remoteRaw?._sync || null;
           const remoteRevision = Number(remoteSync?.revision) || 0;
           const expectedRevision = cloudRevisionRef.current;
+
+          const remoteArchiveIds = storageArchiveIds(remoteRaw);
+          const remoteArchives = [];
+          for (const archiveId of remoteArchiveIds) {
+            const archiveRef = doc(
+              db,
+              'artifacts',
+              appId,
+              'users',
+              userState.uid,
+              CAREER_ARCHIVE_COLLECTION,
+              archiveId,
+            );
+            const archiveSnapshot = await transaction.get(archiveRef);
+            if (archiveSnapshot.exists()) remoteArchives.push(archiveSnapshot.data());
+          }
+
           if (remoteRevision > expectedRevision && remoteSync?.deviceId && remoteSync.deviceId !== SAVE_DEVICE_ID) {
             const conflict = new Error('This save changed moments ago through another DynastyHQ data lane. The current cloud version was preserved; retry from the refreshed state.');
             conflict.code = 'SAVE_CONFLICT';
@@ -707,7 +775,8 @@ const App = () => {
           }
 
           if (remoteSnapshot.exists() && !options.allowDestructiveRollback) {
-            const remoteState = migrateCareerState(remoteRaw, defaultState);
+            const hydratedRemote = hydrateCareerStateFromArchives(remoteRaw, remoteArchives);
+            const remoteState = migrateCareerState(hydratedRemote, defaultState);
             const regression = detectDestructiveCareerRegression(remoteState, cloudState);
             if (regression.blocked) {
               const error = new Error(`DynastyHQ blocked a destructive career rollback. ${regression.reason}`);
@@ -722,27 +791,43 @@ const App = () => {
             ...cloudState,
             _sync: { revision, deviceId: SAVE_DEVICE_ID, updatedAt: new Date().toISOString() },
           });
-          transaction.set(docRef, checkpointState);
+
+          const storagePayload = splitCareerStateForStorage(checkpointState);
+          transaction.set(docRef, stripUndefinedDeep(storagePayload.mainState));
+          storagePayload.archives.forEach((archive) => {
+            const archiveRef = doc(
+              db,
+              'artifacts',
+              appId,
+              'users',
+              userState.uid,
+              CAREER_ARCHIVE_COLLECTION,
+              archive.archiveId,
+            );
+            transaction.set(archiveRef, stripUndefinedDeep(archive));
+          });
           cloudRevisionRef.current = revision;
         });
 
         if (checkpoint && checkpointState) {
-          // The master career is already committed at this point. Preserve the immutable
-          // safety snapshot in the background so a large checkpoint cannot make Publish Week
-          // look frozen on mobile. Checkpoint failure remains non-destructive and is logged.
+          // Checkpoints keep a compact master manifest. The per-week archive documents are
+          // already separate, so the checkpoint can reference those archive IDs without
+          // exceeding Firestore's 1 MiB document limit.
           void (async () => {
             try {
               const checkpointRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', checkpoint.id);
               const existingCheckpoint = await getDoc(checkpointRef);
               if (!existingCheckpoint.exists()) {
+                const checkpointStorage = splitCareerStateForStorage(checkpointState);
                 await setDoc(checkpointRef, stripUndefinedDeep({
-                  ...checkpointState,
+                  ...checkpointStorage.mainState,
                   _checkpoint: {
                     immutable: true,
                     season: checkpoint.season,
                     week: checkpoint.week,
                     createdAt: new Date().toISOString(),
-                    reason: 'Automatic immutable checkpoint after published career progress advanced.',
+                    reason: 'Automatic compact checkpoint after published career progress advanced.',
+                    archiveIds: checkpointStorage.archives.map((archive) => archive.archiveId),
                   },
                 }));
               }
@@ -761,21 +846,35 @@ const App = () => {
         setSaveStatus({ state: 'saved', lastSavedAt: savedAt, message: '' });
         const publicationId = options.publicationId || options.publicationTarget?.weekKey || '';
         window.dispatchEvent(new CustomEvent('dynastyhq:cloud-save-success', {
-          detail: { publicationId, savedAt, estimatedBytes },
+          detail: {
+            publicationId,
+            savedAt,
+            estimatedBytes,
+            fullEstimatedBytes,
+            archiveCount: storagePreview.archives.length,
+          },
         }));
         if (successMessage) {
           setMessageModal({ isOpen: true, text: successMessage, type: 'success' });
           setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
         }
-        return { ok: true, savedAt, estimatedBytes };
+        return {
+          ok: true,
+          savedAt,
+          estimatedBytes,
+          fullEstimatedBytes,
+          archiveCount: storagePreview.archives.length,
+        };
       } catch (error) {
         const conflict = error?.code === 'SAVE_CONFLICT';
         const regression = error?.code === 'CAREER_REGRESSION_BLOCKED';
+        const storageTooLarge = error?.code === 'STORAGE_SHARD_TOO_LARGE';
         const code = String(error?.code || 'CLOUD_SAVE_FAILED');
         const firestoreMessage = error?.message || 'Cloud save failed. Your verified draft remains on this device.';
-        const likelyTooLarge = /too large|maximum size|1048576|1 mib|longer than.*bytes|exceeds.*size/i.test(firestoreMessage);
+        const likelyTooLarge = storageTooLarge
+          || /too large|maximum size|1048576|1 mib|longer than.*bytes|exceeds.*size/i.test(firestoreMessage);
         const message = likelyTooLarge
-          ? `The DynastyHQ master save is too large for one Firestore document (estimated JSON size: ${Math.round(estimatedBytes / 1024)} KB). Your verified draft is still safe and nothing was overwritten.`
+          ? `DynastyHQ could not fit one storage shard inside Firestore's document limit. Compact master: ${Math.round(estimatedBytes / 1024)} KB · largest week archive: ${Math.round(largestArchiveBytes / 1024)} KB. Your verified draft is still safe and nothing was overwritten.`
           : firestoreMessage;
         const target = options.publicationTarget;
         if (target?.weekKey) {
@@ -793,7 +892,14 @@ const App = () => {
         });
         const publicationId = options.publicationId || target?.weekKey || '';
         window.dispatchEvent(new CustomEvent('dynastyhq:cloud-save-error', {
-          detail: { publicationId, code, message, estimatedBytes },
+          detail: {
+            publicationId,
+            code,
+            message,
+            estimatedBytes,
+            fullEstimatedBytes,
+            largestArchiveBytes,
+          },
         }));
         if (regression) {
           setMessageModal({
@@ -802,12 +908,21 @@ const App = () => {
             type: 'error',
           });
         }
-        return { ok: false, code, message, estimatedBytes };
+        return {
+          ok: false,
+          code,
+          message,
+          estimatedBytes,
+          fullEstimatedBytes,
+          largestArchiveBytes,
+        };
       }
     };
+
     cloudWriteQueueRef.current = cloudWriteQueueRef.current.then(task, task);
     return cloudWriteQueueRef.current;
   }, [userState]);
+
 
   useEffect(() => () => window.clearTimeout(retryTimerRef.current), []);
 

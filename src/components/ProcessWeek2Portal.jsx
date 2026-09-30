@@ -216,7 +216,7 @@ const ConfirmPublish = ({ career, analyses, inbox, onClose, onConfirm, busy, err
   return createPortal(
     <div className="dhq-process2-confirm" role="dialog" aria-modal="true" aria-labelledby="dhq-process2-confirm-title" onClick={onClose}>
       <section onClick={(event) => event.stopPropagation()}>
-        <button className="dhq-process2-confirm__close" type="button" onClick={onClose} aria-label="Close Process Week confirmation"><X size={18} /></button>
+        <button className="dhq-process2-confirm__close" type="button" disabled={busy} onClick={onClose} aria-label="Close Process Week confirmation"><X size={18} /></button>
         <span className="dhq-process2-confirm__eyebrow"><Sparkles size={13} /> PROCESS WEEK · FINAL CONFIRMATION</span>
         <h2 id="dhq-process2-confirm-title">Publish Season {season} · Week {week}?</h2>
         <p>DynastyHQ will turn the verified session into the permanent week record and let the rest of the companion experience update from that source of truth.</p>
@@ -232,8 +232,17 @@ const ConfirmPublish = ({ career, analyses, inbox, onClose, onConfirm, busy, err
           <p>Game Hub · season record · player history · storyline context · Newsroom/Huddle source context · official coverage archive · Career Chronicle · Career Museum · Season Wire</p>
         </div>
         {error ? <div className="dhq-process2-inbox__error"><AlertTriangle size={13} /> {error}</div> : null}
+        {busy ? (
+          <div className="dhq-process2-confirm__saving" role="status" aria-live="polite">
+            <span className="dhq-process2-confirm__saving-spinner" aria-hidden="true" />
+            <div>
+              <strong>Saving the verified week to your career…</strong>
+              <small>Keep this screen open. Your master save is being committed first; the safety checkpoint will finish in the background.</small>
+            </div>
+          </div>
+        ) : null}
         <div className="dhq-process2-confirm__actions">
-          <button type="button" className="is-secondary" onClick={onClose}>KEEP REVIEWING</button>
+          <button type="button" className="is-secondary" disabled={busy} onClick={onClose}>{busy ? 'SAVE IN PROGRESS' : 'KEEP REVIEWING'}</button>
           <button
             type="button"
             className="is-primary"

@@ -1539,7 +1539,7 @@ const handleSaveGameClick = () => {
 
       let nextState;
       try {
-        const verifiedGameFacts = new Map(
+        const verifiedGameFacts = new globalThis.Map(
           (draft.facts || [])
             .filter((entry) => String(entry?.key || '').startsWith('game.'))
             .map((entry) => [String(entry.key), entry.value]),

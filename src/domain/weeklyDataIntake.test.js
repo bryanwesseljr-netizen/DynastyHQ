@@ -174,6 +174,6 @@ test('master-save success is not blocked by the immutable checkpoint upload', as
   const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
 
   assert.match(app, /void \(async \(\) => \{/);
-  assert.match(app, /Automatic immutable checkpoint after published career progress advanced/);
+  assert.match(app, /Automatic compact checkpoint after published career progress advanced/);
   assert.match(app, /pendingCloudStateRef\.current = null/);
 });

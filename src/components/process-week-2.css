@@ -308,3 +308,44 @@
   from { opacity: 0; transform: translateY(18px) scale(.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+
+.dhq-process2-confirm__saving {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--team-accent, #60a5fa) 34%, rgba(255,255,255,.08));
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(15,23,42,.78);
+}
+.dhq-process2-confirm__saving-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 2px solid rgba(148,163,184,.28);
+  border-top-color: var(--team-accent, #60a5fa);
+  border-radius: 999px;
+  animation: dhq-process2-spin .8s linear infinite;
+}
+.dhq-process2-confirm__saving strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 10px;
+  font-weight: 900;
+}
+.dhq-process2-confirm__saving small {
+  display: block;
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.dhq-process2-confirm button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+@keyframes dhq-process2-spin {
+  to { transform: rotate(360deg); }
+}

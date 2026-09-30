@@ -158,6 +158,7 @@ import {
 } from './domain/season4Week7PostgameRepair.js';
 import {
   chooseBestLiveWeek7RecoveryCandidate,
+  prepareVerifiedWeek7RecoveryState,
   summarizeLiveWeek7RecoveryCandidate,
 } from './domain/liveWeek7Recovery.js';
 import {
@@ -1767,6 +1768,20 @@ const handleSaveGameClick = () => {
           throw new Error('The selected backup no longer matches Vanderbilt Week 1 → Purdue Week 7. Nothing was changed.');
         }
 
+        const cleanCandidateState = prepareVerifiedWeek7RecoveryState(candidateState);
+        const cleanedSummary = summarizeLiveWeek7RecoveryCandidate({
+          id: liveWeek7RecoveryBestId,
+          state: cleanCandidateState,
+        });
+        if (
+          !cleanedSummary.qualifies
+          || cleanedSummary.latestContentWeek > 7
+          || Number(cleanCandidateState.currentSeason) !== 4
+          || Number(cleanCandidateState.currentWeek) !== 8
+        ) {
+          throw new Error('DynastyHQ could not isolate a clean through-Week-7 recovery state. Nothing was changed.');
+        }
+
         const currentRaw = mainSnapshot.data();
         const revision = Math.max(
           Number(currentRaw?._sync?.revision) || 0,
@@ -1775,7 +1790,7 @@ const handleSaveGameClick = () => {
         ) + 1;
         const restoredAt = new Date().toISOString();
         restoredState = stripUndefinedDeep({
-          ...candidateState,
+          ...cleanCandidateState,
           _sync: {
             revision,
             deviceId: SAVE_DEVICE_ID,
@@ -1790,7 +1805,7 @@ const handleSaveGameClick = () => {
             },
           },
         });
-        restoredSummary = candidateSummary;
+        restoredSummary = cleanedSummary;
 
         transaction.set(backupRef, stripUndefinedDeep({
           ...currentRaw,
@@ -5527,7 +5542,7 @@ const handleSaveGameClick = () => {
                ) : null}
 
                <p className="mt-4 text-xs font-bold leading-relaxed text-amber-300">
-                 Restore creates a fresh backup of the current Ohio State Week 1 master save first. Your unfinished Week 8 local draft will be cleared so it cannot immediately overwrite the restored career; Week 8 can then be uploaded again safely.
+                 Restore creates a fresh backup of the current Ohio State Week 1 master save first. Because Week 8 never successfully published, DynastyHQ will restore this candidate only through verified Week 7, remove any partial Week 8 publication fragments, keep the career positioned at Season 4 · Week 8 vs Ohio State, and clear the unfinished local Week 8 draft.
                </p>
 
                <div className="mt-6 flex flex-col gap-3 sm:flex-row">

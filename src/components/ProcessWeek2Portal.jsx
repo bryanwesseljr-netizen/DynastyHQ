@@ -431,50 +431,39 @@ const ProcessWeek2Portal = () => {
     });
   };
 
-  const publish = () => {
+  const publish = async () => {
     setError('');
-    const button = [...document.querySelectorAll('.dhq-weekly-agenda-workspace button')].find((entry) => (
-      /publish verified week|save & process weekly agenda|process completed game week|update game log/i.test(clean(entry.textContent))
-      && !entry.dataset.processWeek2
-    ));
-    if (!button) {
-      setError('DynastyHQ could not find the verified Publish Week action. Open Weekly Agenda and try again.');
-      return;
-    }
-    if (button.disabled) {
-      setError('The underlying week still has a required verification item before it can be published.');
-      return;
-    }
-
     setPublishBusy(true);
     try { window.sessionStorage?.setItem('dhq-process-week2-publishing', publicationId); } catch { /* session hint only */ }
-    button.click();
 
-    // The legacy agenda may open its optional roleplay press-conference step instead of actually
-    // publishing. Process Week already presented the user with the final confirmation, so bypass
-    // that legacy interstitial and commit the verified week without a fabricated quote.
-    window.setTimeout(() => {
-      const roleplayBypass = [...document.querySelectorAll('button')].find((entry) => (
-        /publish without a roleplay quote/i.test(clean(entry.textContent))
-      ));
-      roleplayBypass?.click();
-    }, 80);
+    try {
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (callback) => (value) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timeoutId);
+          callback(value);
+        };
+        const timeoutId = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new Error('The protected Week publisher did not answer. Refresh LIVE DynastyHQ once and retry.'));
+        }, 20000);
 
-    window.setTimeout(() => {
-      const continueButton = document.querySelector('.dhq-session-import__complete-actions .is-primary');
-      continueButton?.click();
-    }, 160);
-
-    // Do not silently return to an apparently idle Publish Week button. If the cloud snapshot
-    // has not produced the published weekly entry, surface a concrete retry message.
-    window.setTimeout(() => {
-      let pending = '';
-      try { pending = window.sessionStorage?.getItem('dhq-process-week2-publishing') || ''; } catch { /* no-op */ }
-      if (pending === publicationId) {
-        setPublishBusy(false);
-        setError('Publish did not complete and no cloud error was returned. Your verified draft is still safe. Refresh LIVE DynastyHQ once, then retry Publish Week.');
-      }
-    }, 12000);
+        window.dispatchEvent(new CustomEvent('dynastyhq:process-week-publish-request', {
+          detail: {
+            publicationId,
+            resolve: finish(resolve),
+            reject: finish((message) => reject(new Error(message))),
+          },
+        }));
+      });
+    } catch (error) {
+      try { window.sessionStorage?.removeItem('dhq-process-week2-publishing'); } catch { /* no-op */ }
+      setPublishBusy(false);
+      setError(`${error?.message || 'Publish did not complete.'} Your verified draft is still safe.`);
+    }
   };
 
   if (!career) return null;

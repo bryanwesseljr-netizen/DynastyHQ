@@ -47,12 +47,19 @@ test('keeps a session in attention state if final result is absent', () => {
 });
 
 
-test('Process Week final publish bypasses the legacy roleplay interstitial', async () => {
-  const source = await import('node:fs/promises').then(({ readFile }) => (
-    readFile(new URL('../components/ProcessWeek2Portal.jsx', import.meta.url), 'utf8')
-  ));
-  assert.match(source, /publish without a roleplay quote/i);
-  assert.match(source, /Publish did not complete and no cloud error was returned/);
-  assert.match(source, /dynastyhq:cloud-save-error/);
-  assert.match(source, /estimatedBytes/);
+test('Process Week final publish uses the protected direct publisher instead of clicking legacy UI', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const [portal, app] = await Promise.all([
+    readFile(new URL('../components/ProcessWeek2Portal.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../App.jsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(portal, /dynastyhq:process-week-publish-request/);
+  assert.doesNotMatch(portal, /roleplayBypass/);
+  assert.doesNotMatch(portal, /button\.click\(\)/);
+  assert.match(portal, /protected Week publisher did not answer/i);
+  assert.match(app, /dynastyhq:process-week-publish-request/);
+  assert.match(app, /createPublishedWeek\(/);
+  assert.match(app, /persistCloudState\(/);
+  assert.match(app, /clearDraftAfterSave: true/);
 });

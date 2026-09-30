@@ -168,3 +168,12 @@ test('central master save strips undefined values and reports real cloud errors'
   assert.match(app, /publicationLocks\.delete/);
   assert.match(app, /estimatedBytes/);
 });
+
+
+test('master-save success is not blocked by the immutable checkpoint upload', async () => {
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.match(app, /void \(async \(\) => \{/);
+  assert.match(app, /Automatic immutable checkpoint after published career progress advanced/);
+  assert.match(app, /pendingCloudStateRef\.current = null/);
+});

@@ -264,6 +264,7 @@ const App = () => {
 
   const defaultState = DEFAULT_CAREER_STATE;
   const [appState, setAppState] = useState(defaultState);
+  const appStateRef = useRef(defaultState);
   const [newGame, setNewGame] = useState({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
   const [highSchoolEvaluation, setHighSchoolEvaluation] = useState(() => createEmptyHighSchoolEvaluation());
   const [rtgUpdate, setRtgUpdate] = useState(defaultState.rtg);
@@ -273,6 +274,10 @@ const App = () => {
   const [dragEnabledId, setDragEnabledId] = useState(null);
   const [bulkAddText, setBulkAddText] = useState("");
   const [tempInterests, setTempInterests] = useState({});
+
+  useEffect(() => {
+    appStateRef.current = appState;
+  }, [appState]);
 
   // --- FIREBASE AUTHENTICATION LOGIC ---
   useEffect(() => {
@@ -587,14 +592,19 @@ const App = () => {
   }, [appliedScanDraft, coachUpdate, isReadOnly, loadedOwnerId, newGame, rtgUpdate, scanDraft, userState]);
 
   const persistCloudState = useCallback((nextState, successMessage = null, isRetry = false, options = {}) => {
-    if (!userState || !db) return Promise.resolve();
-    const cloudState = { ...nextState };
+    if (!userState || !db) {
+      return Promise.resolve({ ok: false, code: 'NOT_CONNECTED', message: 'Cloud Database is not connected.' });
+    }
+    const cloudState = stripUndefinedDeep({ ...nextState });
     if (cloudState.podcastAudio && cloudState.podcastAudio.startsWith('data:audio')) {
       cloudState.podcastAudio = '';
       cloudState.hasCloudAudio = true;
     } else if (!cloudState.podcastAudio) {
       cloudState.hasCloudAudio = false;
     }
+    const estimatedBytes = (() => {
+      try { return new TextEncoder().encode(JSON.stringify(cloudState)).length; } catch { return 0; }
+    })();
     pendingCloudStateRef.current = { state: cloudState, options };
     setSaveStatus((current) => ({ ...current, state: isRetry ? 'retrying' : 'saving', message: '' }));
     const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
@@ -609,7 +619,7 @@ const App = () => {
           const remoteRevision = Number(remoteSync?.revision) || 0;
           const expectedRevision = cloudRevisionRef.current;
           if (remoteRevision > expectedRevision && remoteSync?.deviceId && remoteSync.deviceId !== SAVE_DEVICE_ID) {
-            const conflict = new Error('This save changed on another device. Reload before saving again.');
+            const conflict = new Error('This save changed moments ago through another DynastyHQ data lane. The current cloud version was preserved; retry from the refreshed state.');
             conflict.code = 'SAVE_CONFLICT';
             throw conflict;
           }
@@ -626,10 +636,10 @@ const App = () => {
           }
 
           const revision = Math.max(remoteRevision, expectedRevision) + 1;
-          checkpointState = {
+          checkpointState = stripUndefinedDeep({
             ...cloudState,
             _sync: { revision, deviceId: SAVE_DEVICE_ID, updatedAt: new Date().toISOString() },
-          };
+          });
           transaction.set(docRef, checkpointState);
           cloudRevisionRef.current = revision;
         });
@@ -639,7 +649,7 @@ const App = () => {
             const checkpointRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', checkpoint.id);
             const existingCheckpoint = await getDoc(checkpointRef);
             if (!existingCheckpoint.exists()) {
-              await setDoc(checkpointRef, {
+              await setDoc(checkpointRef, stripUndefinedDeep({
                 ...checkpointState,
                 _checkpoint: {
                   immutable: true,
@@ -648,7 +658,7 @@ const App = () => {
                   createdAt: new Date().toISOString(),
                   reason: 'Automatic immutable checkpoint after published career progress advanced.',
                 },
-              });
+              }));
             }
           } catch (checkpointError) {
             console.warn('Automatic career checkpoint could not be written.', checkpointError);
@@ -662,25 +672,50 @@ const App = () => {
         }
         const savedAt = new Date().toISOString();
         setSaveStatus({ state: 'saved', lastSavedAt: savedAt, message: '' });
+        const publicationId = options.publicationId || options.publicationTarget?.weekKey || '';
+        window.dispatchEvent(new CustomEvent('dynastyhq:cloud-save-success', {
+          detail: { publicationId, savedAt, estimatedBytes },
+        }));
         if (successMessage) {
           setMessageModal({ isOpen: true, text: successMessage, type: 'success' });
           setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 3000);
         }
+        return { ok: true, savedAt, estimatedBytes };
       } catch (error) {
         const conflict = error?.code === 'SAVE_CONFLICT';
         const regression = error?.code === 'CAREER_REGRESSION_BLOCKED';
+        const code = String(error?.code || 'CLOUD_SAVE_FAILED');
+        const firestoreMessage = error?.message || 'Cloud save failed. Your verified draft remains on this device.';
+        const likelyTooLarge = /too large|maximum size|1048576|1 mib|longer than.*bytes|exceeds.*size/i.test(firestoreMessage);
+        const message = likelyTooLarge
+          ? `The DynastyHQ master save is too large for one Firestore document (estimated JSON size: ${Math.round(estimatedBytes / 1024)} KB). Your verified draft is still safe and nothing was overwritten.`
+          : firestoreMessage;
+        const target = options.publicationTarget;
+        if (target?.weekKey) {
+          publicationLocks.delete(`${userState.uid || 'local'}:${target.weekKey}`);
+        }
+        const nonRetryable = conflict
+          || regression
+          || likelyTooLarge
+          || /invalid-argument|permission-denied|unauthenticated|failed-precondition|resource-exhausted/i.test(code);
+        if (nonRetryable) pendingCloudStateRef.current = null;
         setSaveStatus({
           state: conflict ? 'conflict' : 'error',
           lastSavedAt: null,
-          message: conflict || regression ? error.message : 'Cloud save failed. Your changes remain on this device.',
+          message,
         });
+        const publicationId = options.publicationId || target?.weekKey || '';
+        window.dispatchEvent(new CustomEvent('dynastyhq:cloud-save-error', {
+          detail: { publicationId, code, message, estimatedBytes },
+        }));
         if (regression) {
           setMessageModal({
             isOpen: true,
-            text: `${error.message} The more complete cloud career was preserved.`,
+            text: `${message} The more complete cloud career was preserved.`,
             type: 'error',
           });
         }
+        return { ok: false, code, message, estimatedBytes };
       }
     };
     cloudWriteQueueRef.current = cloudWriteQueueRef.current.then(task, task);
@@ -707,6 +742,8 @@ const App = () => {
       try {
         newState = typeof newStateOrUpdater === 'function' ? newStateOrUpdater(prev) : newStateOrUpdater;
       } catch (error) {
+        const target = saveOptions.publicationTarget;
+        if (target?.weekKey && userState) publicationLocks.delete(`${userState.uid}:${target.weekKey}`);
         const text = error.code === 'DUPLICATE_WEEK'
           ? 'That season and week has already been published. The duplicate was blocked.'
           : (error.code === 'DUPLICATE_MILESTONE'
@@ -726,28 +763,79 @@ const App = () => {
     });
   }, [persistCloudState, userState]);
 
-  // Coverage Data must never perform an independent whole-document Firestore write.
-  // Route it through the current in-memory career state and the protected central save queue.
+  // Supplemental data lanes must never perform independent whole-document Firestore writes.
+  // They update the current in-memory career and await the protected central save queue.
   useEffect(() => {
+    const commitSupplementalState = async (nextState, successMessage, detail) => {
+      appStateRef.current = nextState;
+      setAppState(nextState);
+      const result = await persistCloudState(nextState, successMessage, false, {
+        publicationId: detail.publicationId,
+      });
+      if (result?.ok) detail.resolve?.(result);
+      else detail.reject?.(result?.message || 'The protected career save did not complete.');
+    };
+
     const handleCoverageDataSave = (event) => {
       const detail = event?.detail || {};
       try {
         if (!detail.publicationId) throw new Error('Coverage Data is missing its week identity.');
-        updateAppState((prev) => replaceCoverageReferences(prev, {
+        const nextState = replaceCoverageReferences(appStateRef.current, {
           publicationId: detail.publicationId,
           season: detail.season,
           week: detail.week,
           facts: Array.isArray(detail.facts) ? detail.facts : [],
           sourceCount: detail.sourceCount,
-        }), `Coverage Data saved for Season ${detail.season} · Week ${detail.week}.`);
-        detail.resolve?.();
+        });
+        void commitSupplementalState(
+          nextState,
+          `Coverage Data saved for Season ${detail.season} · Week ${detail.week}.`,
+          detail,
+        );
       } catch (error) {
         detail.reject?.(error?.message || 'Coverage Data could not be queued safely.');
       }
     };
+
+    const handleRtgStatusSave = (event) => {
+      const detail = event?.detail || {};
+      try {
+        if (!detail.publicationId) throw new Error('RTG Status is missing its week identity.');
+        const current = appStateRef.current;
+        const nextState = {
+          ...current,
+          player: { ...(current.player || {}), ...(detail.playerPatch || {}) },
+          rtg: {
+            ...(current.rtg || {}),
+            ...(detail.rtgPatch || {}),
+            lastStatusScan: {
+              scannedAt: new Date().toISOString(),
+              publicationId: detail.publicationId,
+              season: detail.season,
+              week: detail.week,
+              screenTypes: Array.isArray(detail.screenTypes) ? detail.screenTypes : [],
+              factCount: Number(detail.factCount) || 0,
+            },
+          },
+        };
+        void commitSupplementalState(
+          nextState,
+          `RTG Status saved for Season ${detail.season} · Week ${detail.week}.`,
+          detail,
+        );
+      } catch (error) {
+        detail.reject?.(error?.message || 'RTG Status could not be queued safely.');
+      }
+    };
+
     window.addEventListener('dynastyhq:coverage-data-save', handleCoverageDataSave);
-    return () => window.removeEventListener('dynastyhq:coverage-data-save', handleCoverageDataSave);
-  }, [updateAppState]);
+    window.addEventListener('dynastyhq:rtg-status-save', handleRtgStatusSave);
+    return () => {
+      window.removeEventListener('dynastyhq:coverage-data-save', handleCoverageDataSave);
+      window.removeEventListener('dynastyhq:rtg-status-save', handleRtgStatusSave);
+    };
+  }, [persistCloudState]);
+
 
   // --- DERIVED STATS ---
   const isCoach = ['OC', 'HC', 'Retired'].includes(appState.careerPhase);
@@ -1254,7 +1342,10 @@ const handleSaveGameClick = () => {
           ...publicationTarget,
         });
         return { ...publishedState, rumors: updatedRumors };
-      }, appliedScanDraft ? "Verified weekly update published!" : "Agenda updates & rumors synced to the cloud!", { clearDraftAfterSave: Boolean(appliedScanDraft) });
+      }, appliedScanDraft ? "Verified weekly update published!" : "Agenda updates & rumors synced to the cloud!", {
+        clearDraftAfterSave: Boolean(appliedScanDraft),
+        ...(publicationTarget ? { publicationId: publicationTarget.weekKey, publicationTarget } : {}),
+      });
       if (!userState || !db) setAppliedScanDraft(null);
       setActiveTab('dashboard'); 
     }
@@ -1297,7 +1388,11 @@ const handleSaveGameClick = () => {
           ...target,
         });
         return { ...publishedState, rumors, weeklyAgendaDraft: null };
-      }, "Week published to stats, Fact Ledger, and Career Chronicle!", { clearDraftAfterSave: true });
+      }, "Week published to stats, Fact Ledger, and Career Chronicle!", {
+        clearDraftAfterSave: true,
+        publicationId: target.weekKey,
+        publicationTarget: target,
+      });
       
       if (game.stage === 'high-school' || game.evaluation) {
         const completed = normalizeHighSchoolEvaluation(game.evaluation || game);

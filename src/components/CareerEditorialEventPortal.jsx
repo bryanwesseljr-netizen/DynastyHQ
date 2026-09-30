@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { doc, runTransaction } from 'firebase/firestore';
+import { runTransaction } from 'firebase/firestore';
 import { appId, db } from '../firebase';
 import { buildCareerEventPublication } from '../domain/careerEventPublication.js';
+import {
+  readHydratedCareerInTransaction,
+  writeHydratedCareerInTransaction,
+} from '../services/careerStorageFirestore.js';
 import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || `career-editorial-${Date.now()}`;
@@ -29,22 +33,31 @@ const CareerEditorialEventPortal = () => {
 
     const publish = async () => {
       try {
-        const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
         await runTransaction(db, async (transaction) => {
-          const snapshot = await transaction.get(careerRef);
-          if (!snapshot.exists()) return;
-          const remote = snapshot.data();
+          const loaded = await readHydratedCareerInTransaction({
+            transaction,
+            db,
+            appId,
+            userId: user.uid,
+          });
+          if (!loaded) return;
+          const remote = loaded.state;
           const next = buildCareerEventPublication(remote);
           if (next === remote) return;
-          const revision = (Number(remote?._sync?.revision) || 0) + 1;
-          transaction.update(careerRef, {
-            rtg: next.rtg || remote.rtg || {},
-            factLedger: next.factLedger || remote.factLedger || [],
-            newsroomIssues: next.newsroomIssues || remote.newsroomIssues || [],
-            careerTracking: next.careerTracking || remote.careerTracking || {},
-            '_sync.revision': revision,
-            '_sync.deviceId': DEVICE_ID,
-            '_sync.updatedAt': new Date().toISOString(),
+          const revision = (Number(loaded.rawMain?._sync?.revision) || 0) + 1;
+          writeHydratedCareerInTransaction({
+            transaction,
+            db,
+            appId,
+            userId: user.uid,
+            state: {
+              ...next,
+              _sync: {
+                revision,
+                deviceId: DEVICE_ID,
+                updatedAt: new Date().toISOString(),
+              },
+            },
           });
         });
       } catch (error) {

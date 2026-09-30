@@ -96,7 +96,7 @@ test('direct Process Week publisher rebuilds its canonical game from verified dr
   const { readFile } = await import('node:fs/promises');
   const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
 
-  assert.match(app, /const verifiedGameFacts = new Map/);
+  assert.match(app, /const verifiedGameFacts = new globalThis\\.Map/);
   assert.match(app, /draft\.gamePatch\?\.opponent/);
   assert.match(app, /verifiedGameFacts\.get\('game\.opponent'\)/);
   assert.match(app, /currentState\.currentWeekSetup\?\.opponent/);

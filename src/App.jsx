@@ -645,24 +645,29 @@ const App = () => {
         });
 
         if (checkpoint && checkpointState) {
-          try {
-            const checkpointRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', checkpoint.id);
-            const existingCheckpoint = await getDoc(checkpointRef);
-            if (!existingCheckpoint.exists()) {
-              await setDoc(checkpointRef, stripUndefinedDeep({
-                ...checkpointState,
-                _checkpoint: {
-                  immutable: true,
-                  season: checkpoint.season,
-                  week: checkpoint.week,
-                  createdAt: new Date().toISOString(),
-                  reason: 'Automatic immutable checkpoint after published career progress advanced.',
-                },
-              }));
+          // The master career is already committed at this point. Preserve the immutable
+          // safety snapshot in the background so a large checkpoint cannot make Publish Week
+          // look frozen on mobile. Checkpoint failure remains non-destructive and is logged.
+          void (async () => {
+            try {
+              const checkpointRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', checkpoint.id);
+              const existingCheckpoint = await getDoc(checkpointRef);
+              if (!existingCheckpoint.exists()) {
+                await setDoc(checkpointRef, stripUndefinedDeep({
+                  ...checkpointState,
+                  _checkpoint: {
+                    immutable: true,
+                    season: checkpoint.season,
+                    week: checkpoint.week,
+                    createdAt: new Date().toISOString(),
+                    reason: 'Automatic immutable checkpoint after published career progress advanced.',
+                  },
+                }));
+              }
+            } catch (checkpointError) {
+              console.warn('Automatic career checkpoint could not be written.', checkpointError);
             }
-          } catch (checkpointError) {
-            console.warn('Automatic career checkpoint could not be written.', checkpointError);
-          }
+          })();
         }
 
         pendingCloudStateRef.current = null;

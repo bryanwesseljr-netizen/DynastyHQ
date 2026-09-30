@@ -287,6 +287,27 @@ const App = () => {
     appStateRef.current = appState;
   }, [appState]);
 
+  useEffect(() => {
+    if (
+      !repairSeason4Week7PostgameMode
+      || isPreviewDeployment
+      || !isLoaded
+      || !userState
+      || loadedOwnerId !== userState.uid
+      || week7PostgameInspection.needsRepair
+    ) return;
+
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('repairSeason4Week7Postgame');
+    window.history.replaceState({}, '', cleanUrl.toString());
+  }, [
+    isLoaded,
+    loadedOwnerId,
+    repairSeason4Week7PostgameMode,
+    userState,
+    week7PostgameInspection.needsRepair,
+  ]);
+
   // --- FIREBASE AUTHENTICATION LOGIC ---
   useEffect(() => {
     const handleNavigationRequest = (event) => {
@@ -5323,7 +5344,12 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
-       {!isPreviewDeployment && repairSeason4Week7PostgameMode && (
+       {!isPreviewDeployment
+         && repairSeason4Week7PostgameMode
+         && isLoaded
+         && userState
+         && loadedOwnerId === userState.uid
+         && week7PostgameInspection.needsRepair && (
            <div className="fixed inset-0 z-[290] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
              <div className="w-full max-w-xl rounded-2xl border border-amber-500/40 bg-slate-950 p-7 shadow-2xl">
                <ShieldCheck size={46} className="mx-auto text-amber-300" />

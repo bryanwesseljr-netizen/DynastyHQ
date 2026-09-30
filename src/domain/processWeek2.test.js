@@ -90,3 +90,30 @@ test('Process Week visibly reports an active master save and disables modal exit
   assert.match(portal, /disabled=\{busy\}/);
   assert.match(portal, /SAVE IN PROGRESS/);
 });
+
+
+test('direct Process Week publisher rebuilds its canonical game from verified draft facts and opens postgame Newsroom', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.match(app, /const verifiedGameFacts = new Map/);
+  assert.match(app, /draft\.gamePatch\?\.opponent/);
+  assert.match(app, /verifiedGameFacts\.get\('game\.opponent'\)/);
+  assert.match(app, /currentState\.currentWeekSetup\?\.opponent/);
+  assert.match(app, /game: publishGame/);
+  assert.match(app, /setNewsroomFocusId\(target\.weekKey\)/);
+  assert.match(app, /setPodcastFocusId\(target\.weekKey\)/);
+  assert.match(app, /setActiveTab\('newsroom'\)/);
+});
+
+test('LIVE Week 7 postgame repair is explicit and backed up before writing', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.match(app, /repairSeason4Week7Postgame=purdue|repairSeason4Week7Postgame/);
+  assert.match(app, /before-season4-week7-postgame-repair-/);
+  assert.match(app, /inspectSeason4Week7PostgameRepair/);
+  assert.match(app, /repairSeason4Week7Postgame\(remoteState\)/);
+  assert.match(app, /Backup \+ Rebuild Week 7 Postgame/);
+  assert.match(app, /Week 7 Purdue postgame record rebuilt from the verified Week 7 Fact Ledger/);
+});

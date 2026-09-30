@@ -1408,6 +1408,99 @@ const handleSaveGameClick = () => {
       setActiveTab('newsroom'); 
   };
 
+  useEffect(() => {
+    const handleProcessWeekPublishRequest = async (event) => {
+      const detail = event?.detail || {};
+      const draft = appliedScanDraft;
+      if (!draft) {
+        detail.reject?.('The verified Week draft is not loaded. Refresh LIVE DynastyHQ once so the saved draft can be recovered, then try Publish Week again.');
+        return;
+      }
+      if (!userState || !db) {
+        detail.reject?.('DynastyHQ is not connected to the signed-in cloud career.');
+        return;
+      }
+
+      const currentState = appStateRef.current;
+      const target = {
+        season: Number(draft.season || currentState.currentSeason || 1),
+        week: Number(draft.week ?? currentState.currentWeek ?? 1),
+        weekKey: draft.weekKey || draft.id || createWeekKey(
+          Number(draft.season || currentState.currentSeason || 1),
+          Number(draft.week ?? currentState.currentWeek ?? 1),
+        ),
+      };
+      const requestedPublicationId = String(detail.publicationId || '').trim();
+      if (requestedPublicationId && requestedPublicationId !== target.weekKey) {
+        detail.reject?.(`Process Week requested ${requestedPublicationId}, but the verified draft is ${target.weekKey}. Nothing was published.`);
+        return;
+      }
+
+      const existing = findPublishedWeekConflict(currentState, target);
+      if (existing) {
+        detail.resolve?.({ ok: true, alreadyPublished: true, publicationId: target.weekKey });
+        return;
+      }
+      if (!reservePublication(target)) {
+        detail.reject?.('DynastyHQ could not reserve this week for publishing. Refresh LIVE once and retry.');
+        return;
+      }
+
+      const updatedRumors = String(newRumor || '').trim()
+        ? [String(newRumor).trim(), ...(currentState.rumors || [])]
+        : [...(currentState.rumors || [])];
+
+      let nextState;
+      try {
+        const publishedState = createPublishedWeek({
+          state: currentState,
+          game: newGame,
+          rtg: rtgUpdate,
+          coach: coachUpdate,
+          recruitingPatches: draft.recruitingPatches || [],
+          playerRecruitingPatch: draft.playerRecruitingPatch || {},
+          retentionPatches: draft.retentionPatches || [],
+          quote: '',
+          facts: draft.facts || [],
+          sources: draft.sources || [],
+          weekType: draft.weekType,
+          ...target,
+        });
+        nextState = { ...publishedState, rumors: updatedRumors, weeklyAgendaDraft: null };
+      } catch (error) {
+        publicationLocks.delete(`${userState.uid || 'local'}:${target.weekKey}`);
+        detail.reject?.(error?.message || 'The verified week could not be assembled for publishing.');
+        return;
+      }
+
+      const result = await persistCloudState(
+        nextState,
+        'Week published to stats, Fact Ledger, and Career Chronicle!',
+        false,
+        {
+          clearDraftAfterSave: true,
+          publicationId: target.weekKey,
+          publicationTarget: target,
+        },
+      );
+
+      if (!result?.ok) {
+        detail.reject?.(result?.message || 'The verified week could not be saved to the cloud.');
+        return;
+      }
+
+      appStateRef.current = nextState;
+      setAppState(nextState);
+      setNewRumor('');
+      setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
+      setPressConference(null);
+      detail.resolve?.({ ...result, publicationId: target.weekKey });
+    };
+
+    window.addEventListener('dynastyhq:process-week-publish-request', handleProcessWeekPublishRequest);
+    return () => window.removeEventListener('dynastyhq:process-week-publish-request', handleProcessWeekPublishRequest);
+  }, [appliedScanDraft, coachUpdate, newGame, newRumor, persistCloudState, rtgUpdate, userState]);
+
   const handleEditGame = (index) => {
     const selectedGame = appState.gameLogs[index];
     setNewGame(selectedGame);

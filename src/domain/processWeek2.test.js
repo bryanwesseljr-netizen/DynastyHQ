@@ -117,3 +117,14 @@ test('LIVE Week 7 postgame repair is explicit and backed up before writing', asy
   assert.match(app, /Backup \+ Rebuild Week 7 Postgame/);
   assert.match(app, /Week 7 Purdue postgame record rebuilt from the verified Week 7 Fact Ledger/);
 });
+
+
+test('completed Week 7 repair URL clears itself and never reopens the repair splash', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.match(app, /week7PostgameInspection\.needsRepair/);
+  assert.match(app, /searchParams\.delete\('repairSeason4Week7Postgame'\)/);
+  assert.match(app, /loadedOwnerId === userState\.uid/);
+  assert.match(app, /repairSeason4Week7PostgameMode[\s\S]*week7PostgameInspection\.needsRepair && \(/);
+});

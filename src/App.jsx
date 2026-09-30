@@ -153,6 +153,10 @@ import { DYNASTYHQ_NAVIGATE_EVENT } from './domain/navigationBus';
 import { replaceCoverageReferences } from './domain/coverageReferences.js';
 import { hasCorruptedOhioStateWeek1, repairSeason4Week1Vanderbilt } from './domain/season4Week1Repair.js';
 import {
+  inspectSeason4Week7PostgameRepair,
+  repairSeason4Week7Postgame,
+} from './domain/season4Week7PostgameRepair.js';
+import {
   clearLegacyPodcastAudioLocal,
   loadLegacyPodcastAudioCloud,
   loadLegacyPodcastAudioLocal,
@@ -202,6 +206,7 @@ const App = () => {
   const previewRecoveryTarget = Math.max(0, Number(urlParams.get('recoverPreviewSeason')) || 0);
   const recoverSeason4Week7 = urlParams.get('recoverCheckpoint') === 'season-4-week-7';
   const repairSeason4Week1 = urlParams.get('repairSeason4Week1') === 'vanderbilt';
+  const repairSeason4Week7PostgameMode = urlParams.get('repairSeason4Week7Postgame') === 'purdue';
   const syncPreviewFromLive = urlParams.get('syncPreviewFromLive') === '1';
   const isReadOnly = !!viewId;
 
@@ -222,6 +227,8 @@ const App = () => {
   const [checkpointRecoverySummary, setCheckpointRecoverySummary] = useState('');
   const [week1RepairBusy, setWeek1RepairBusy] = useState(false);
   const [week1RepairError, setWeek1RepairError] = useState('');
+  const [week7PostgameRepairBusy, setWeek7PostgameRepairBusy] = useState(false);
+  const [week7PostgameRepairError, setWeek7PostgameRepairError] = useState('');
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ isOpen: false, index: null });
   const [shareLinkModal, setShareLinkModal] = useState({ isOpen: false, url: '' });
   const [pressConference, setPressConference] = useState(null); 
@@ -265,6 +272,7 @@ const App = () => {
   const defaultState = DEFAULT_CAREER_STATE;
   const [appState, setAppState] = useState(defaultState);
   const appStateRef = useRef(defaultState);
+  const week7PostgameInspection = inspectSeason4Week7PostgameRepair(appState);
   const [newGame, setNewGame] = useState({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
   const [highSchoolEvaluation, setHighSchoolEvaluation] = useState(() => createEmptyHighSchoolEvaluation());
   const [rtgUpdate, setRtgUpdate] = useState(defaultState.rtg);
@@ -1457,9 +1465,39 @@ const handleSaveGameClick = () => {
 
       let nextState;
       try {
+        const verifiedGameFacts = new Map(
+          (draft.facts || [])
+            .filter((entry) => String(entry?.key || '').startsWith('game.'))
+            .map((entry) => [String(entry.key), entry.value]),
+        );
+        const publishGame = {
+          ...newGame,
+          ...(draft.gamePatch || {}),
+          opponent: String(
+            draft.gamePatch?.opponent
+            || verifiedGameFacts.get('game.opponent')
+            || newGame.opponent
+            || currentState.currentWeekSetup?.opponent
+            || '',
+          ).trim(),
+          result: String(
+            draft.gamePatch?.result
+            || verifiedGameFacts.get('game.result')
+            || newGame.result
+            || '',
+          ).trim().toUpperCase(),
+          homeScore: draft.gamePatch?.homeScore ?? verifiedGameFacts.get('game.homeScore') ?? newGame.homeScore,
+          awayScore: draft.gamePatch?.awayScore ?? verifiedGameFacts.get('game.awayScore') ?? newGame.awayScore,
+          passYds: draft.gamePatch?.passYds ?? verifiedGameFacts.get('game.passYds') ?? newGame.passYds,
+          passTD: draft.gamePatch?.passTD ?? verifiedGameFacts.get('game.passTD') ?? newGame.passTD,
+          rushYds: draft.gamePatch?.rushYds ?? verifiedGameFacts.get('game.rushYds') ?? newGame.rushYds,
+          rushTD: draft.gamePatch?.rushTD ?? verifiedGameFacts.get('game.rushTD') ?? newGame.rushTD,
+          int: draft.gamePatch?.int ?? verifiedGameFacts.get('game.int') ?? newGame.int,
+        };
+
         const publishedState = createPublishedWeek({
           state: currentState,
-          game: newGame,
+          game: publishGame,
           rtg: rtgUpdate,
           coach: coachUpdate,
           recruitingPatches: draft.recruitingPatches || [],
@@ -1499,6 +1537,9 @@ const handleSaveGameClick = () => {
       setNewRumor('');
       setNewGame({ opponent: '', result: 'W', homeScore: '', awayScore: '', passYds: '', passTD: '', rushYds: '', rushTD: '', int: '' });
       setPressConference(null);
+      setNewsroomFocusId(target.weekKey);
+      setPodcastFocusId(target.weekKey);
+      setActiveTab('newsroom');
       detail.resolve?.({ ...result, publicationId: target.weekKey });
     };
 
@@ -1622,6 +1663,81 @@ const handleSaveGameClick = () => {
     } catch (error) {
       setPreviewRecoveryError(error?.message || 'Preview recovery failed. The live production save was not changed.');
       setIsRecoveringPreviewCareer(false);
+    }
+  };
+
+  const handleRepairSeason4Week7Postgame = async () => {
+    if (!repairSeason4Week7PostgameMode || !userState || !db || week7PostgameRepairBusy) return;
+    setWeek7PostgameRepairBusy(true);
+    setWeek7PostgameRepairError('');
+    try {
+      if (isPreviewDeployment) {
+        throw new Error('This repair must be run from LIVE DynastyHQ so it fixes the production career only.');
+      }
+
+      const mainRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
+      const backupRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', `before-season4-week7-postgame-repair-${Date.now()}`);
+      let repairedState = null;
+
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(mainRef);
+        if (!snapshot.exists()) throw new Error('Your LIVE DynastyHQ career could not be loaded.');
+
+        const remoteRaw = snapshot.data();
+        const remoteState = migrateCareerState(remoteRaw, defaultState);
+        const inspection = inspectSeason4Week7PostgameRepair(remoteState);
+        if (!inspection.updateExists) {
+          throw new Error('Season 4 Week 7 is not published in this LIVE career. Nothing was changed.');
+        }
+        if (!inspection.needsRepair) {
+          throw new Error('Season 4 Week 7 already has its game record and Newsroom archive. Nothing was changed.');
+        }
+        if (!inspection.coreComplete) {
+          throw new Error('The saved Week 7 Fact Ledger is missing a required Purdue game fact, so DynastyHQ blocked automatic reconstruction.');
+        }
+
+        const repaired = repairSeason4Week7Postgame(remoteState);
+        const revision = Math.max(Number(remoteRaw?._sync?.revision) || 0, cloudRevisionRef.current) + 1;
+        const repairedAt = new Date().toISOString();
+        repairedState = stripUndefinedDeep({
+          ...repaired,
+          _sync: { revision, deviceId: SAVE_DEVICE_ID, updatedAt: repairedAt },
+        });
+
+        transaction.set(backupRef, stripUndefinedDeep({
+          ...remoteRaw,
+          _repairBackup: {
+            createdAt: repairedAt,
+            reason: 'Before reconstructing Season 4 Week 7 Purdue postgame game/newsroom data from the already-published verified Fact Ledger.',
+          },
+        }));
+        transaction.set(mainRef, repairedState);
+      });
+
+      if (!repairedState) throw new Error('The Week 7 repair did not produce a restored career.');
+      cloudRevisionRef.current = Number(repairedState?._sync?.revision) || cloudRevisionRef.current;
+      appStateRef.current = repairedState;
+      setAppState(repairedState);
+      setRtgUpdate(repairedState.rtg || defaultState.rtg);
+      setCoachUpdate(repairedState.coach || defaultState.coach);
+      setNewsroomFocusId('season-4-week-7');
+      setPodcastFocusId('season-4-week-7');
+      setActiveTab('newsroom');
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('repairSeason4Week7Postgame');
+      window.history.replaceState({}, '', cleanUrl.toString());
+
+      setMessageModal({
+        isOpen: true,
+        text: 'Week 7 Purdue postgame record rebuilt from the verified Week 7 Fact Ledger. Opening Newsroom so the immersive edition can generate.',
+        type: 'success',
+      });
+      window.setTimeout(() => setMessageModal({ isOpen: false, text: '', type: 'success' }), 5000);
+      setWeek7PostgameRepairBusy(false);
+    } catch (error) {
+      setWeek7PostgameRepairError(error?.message || 'Season 4 Week 7 postgame data could not be repaired. Nothing was changed.');
+      setWeek7PostgameRepairBusy(false);
     }
   };
 
@@ -5207,6 +5323,40 @@ const handleSaveGameClick = () => {
            </div>
        )}
        
+       {!isPreviewDeployment && repairSeason4Week7PostgameMode && (
+           <div className="fixed inset-0 z-[290] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
+             <div className="w-full max-w-xl rounded-2xl border border-amber-500/40 bg-slate-950 p-7 shadow-2xl">
+               <ShieldCheck size={46} className="mx-auto text-amber-300" />
+               <h2 className="mt-4 text-center text-2xl font-black uppercase text-white">Repair Week 7 Purdue Postgame</h2>
+               <p className="mt-3 text-center text-sm leading-relaxed text-slate-300">
+                 DynastyHQ found a published Season 4 Week 7 record, but its canonical game/Newsroom handoff is incomplete. This repair rebuilds those missing postgame records from the verified Week 7 Fact Ledger already saved in your career.
+               </p>
+               <div className="mt-5 grid grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-900/70 p-4 text-xs">
+                 <span className="text-slate-500">Opponent</span><strong className="text-right text-white">{week7PostgameInspection.game.opponent || 'Missing'}</strong>
+                 <span className="text-slate-500">Result</span><strong className="text-right text-white">{week7PostgameInspection.game.result || 'Missing'}</strong>
+                 <span className="text-slate-500">Score</span><strong className="text-right text-white">{week7PostgameInspection.game.homeScore !== '' && week7PostgameInspection.game.awayScore !== '' ? `${week7PostgameInspection.game.homeScore}-${week7PostgameInspection.game.awayScore}` : 'Missing'}</strong>
+                 <span className="text-slate-500">Bryan</span><strong className="text-right text-white">{week7PostgameInspection.game.passYds || '—'} pass · {week7PostgameInspection.game.passTD || 0} pass TD · {week7PostgameInspection.game.rushYds || '—'} rush · {week7PostgameInspection.game.rushTD || 0} rush TD</strong>
+                 <span className="text-slate-500">Game record</span><strong className={`text-right ${week7PostgameInspection.gameLogExists ? 'text-emerald-300' : 'text-amber-300'}`}>{week7PostgameInspection.gameLogExists ? 'Present' : 'Missing'}</strong>
+                 <span className="text-slate-500">Newsroom Week 7</span><strong className={`text-right ${week7PostgameInspection.newsroomExists ? 'text-emerald-300' : 'text-amber-300'}`}>{week7PostgameInspection.newsroomExists ? 'Present' : 'Missing'}</strong>
+               </div>
+               <p className="mt-3 text-xs font-bold leading-relaxed text-amber-300">A full LIVE backup is created first. Weeks 1–5, the Week 6 bye, prior Newsroom/Podcast history, and Week 8+ schedule are preserved.</p>
+               {week7PostgameRepairError ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/30 p-3 text-xs font-bold leading-relaxed text-red-300">{week7PostgameRepairError}</p> : null}
+               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                 <button type="button" disabled={week7PostgameRepairBusy || !week7PostgameInspection.coreComplete} onClick={handleRepairSeason4Week7Postgame} className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50">
+                   {week7PostgameRepairBusy ? 'Backing Up + Rebuilding…' : 'Backup + Rebuild Week 7 Postgame'}
+                 </button>
+                 <button type="button" disabled={week7PostgameRepairBusy} onClick={() => {
+                   const cleanUrl = new URL(window.location.href);
+                   cleanUrl.searchParams.delete('repairSeason4Week7Postgame');
+                   window.location.replace(cleanUrl.toString());
+                 }} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300">
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+       )}
+
        {!isPreviewDeployment && repairSeason4Week1 && (
            <div className="fixed inset-0 z-[285] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md">
              <div className="w-full max-w-xl rounded-2xl border border-red-500/40 bg-slate-950 p-7 text-center shadow-2xl">

@@ -182,6 +182,25 @@ const InboxCard = ({ inbox, onProcess, onReview, compact = false, error = '' }) 
 );
 
 const ConfirmPublish = ({ career, analyses, inbox, onClose, onConfirm, busy, error }) => {
+  const pointerPublishRef = useRef(0);
+  const publishFromPointer = (event) => {
+    if (busy) return;
+    pointerPublishRef.current = Date.now();
+    event.preventDefault();
+    event.stopPropagation();
+    onConfirm?.();
+  };
+  const publishFromClick = (event) => {
+    if (busy) return;
+    event.stopPropagation();
+    // Android Chrome can emit a synthetic click after pointerup. Ignore that duplicate,
+    // while still keeping keyboard/assistive click activation available.
+    if (Date.now() - pointerPublishRef.current < 900) {
+      event.preventDefault();
+      return;
+    }
+    onConfirm?.();
+  };
   const season = Number(career.currentSeason || 1);
   const week = Number(career.currentWeek ?? 1);
   const opponent = clean(career.currentWeekSetup?.opponent) || 'Current opponent';
@@ -215,7 +234,15 @@ const ConfirmPublish = ({ career, analyses, inbox, onClose, onConfirm, busy, err
         {error ? <div className="dhq-process2-inbox__error"><AlertTriangle size={13} /> {error}</div> : null}
         <div className="dhq-process2-confirm__actions">
           <button type="button" className="is-secondary" onClick={onClose}>KEEP REVIEWING</button>
-          <button type="button" className="is-primary" disabled={busy} onClick={onConfirm}>{busy ? 'PUBLISHING…' : 'PUBLISH WEEK'} <ArrowRight size={14} /></button>
+          <button
+            type="button"
+            className="is-primary"
+            data-dhq-publish-week="true"
+            disabled={busy}
+            onPointerUp={publishFromPointer}
+            onClick={publishFromClick}
+            style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}
+          >{busy ? 'PUBLISHING…' : 'PUBLISH WEEK'} <ArrowRight size={14} /></button>
         </div>
       </section>
     </div>,

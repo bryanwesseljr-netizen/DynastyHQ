@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, FileText, Loader2, RefreshCw, Sparkles, Volume2 } from 'lucide-react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, runTransaction } from 'firebase/firestore';
-import { appId, auth, db } from '../firebase';
+import { runTransaction } from 'firebase/firestore';
+import { appId, db } from '../firebase';
 import { generateHumanizedPodcastMix, generatePodcastScript } from '../services/podcastClient';
 import { savePodcastAudioCloud, savePodcastAudioLocal } from '../services/podcastAudioStorage';
 import { buildPodcastGenerationPayload, listPodcastProductionIssues, normalizeGeneratedPodcast } from '../domain/podcastEngine';
 import { PODCAST_SHOW } from '../domain/podcastShow';
+import {
+  loadHydratedCareer,
+  readHydratedCareerInTransaction,
+  writeHydratedCareerInTransaction,
+} from '../services/careerStorageFirestore.js';
+import { useOwnerCareer } from './OwnerCareerContext.jsx';
 
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'podcast-humanized-audio-v3';
 const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -49,8 +54,7 @@ const issueChronology = (left = {}, right = {}) => (
 );
 
   const PodcastHumanizedAudioPortal = () => {
-  const [user, setUser] = useState(auth.currentUser || null);
-  const [career, setCareer] = useState(null);
+  const { user, career } = useOwnerCareer();
   const [visible, setVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [selectedPublicationId, setSelectedPublicationId] = useState('');
@@ -64,7 +68,6 @@ const issueChronology = (left = {}, right = {}) => (
   const transcriptBusy = operation === 'transcript';
   const audioBusy = operation === 'audio';
 
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   useEffect(() => {
     const check = () => {
@@ -99,15 +102,6 @@ const issueChronology = (left = {}, right = {}) => (
     return () => window.removeEventListener('dynastyhq:podcast-script-generated', capture);
   }, []);
 
-  useEffect(() => {
-    if (!user || !db) {
-      setCareer(null);
-      return undefined;
-    }
-    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-    return onSnapshot(ref, (snapshot) => setCareer(snapshot.exists() ? snapshot.data() : null));
-  }, [user]);
-
   const issues = useMemo(() => listPodcastProductionIssues(career || {})
     .filter((issue) => publicationIdFor(issue))
     .sort(issueChronology), [career]);
@@ -139,16 +133,15 @@ const issueChronology = (left = {}, right = {}) => (
 
   const waitForLatestCommittedEpisode = async (publicationId) => {
     if (!user || !db) return null;
-    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     const baselineRevision = Number(career?._sync?.revision) || 0;
     let latestEpisode = selectedEpisode;
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const snapshot = await getDoc(ref);
-      if (snapshot.exists()) {
-        const state = snapshot.data();
+      const loaded = await loadHydratedCareer({ db, appId, userId: user.uid });
+      if (loaded) {
+        const state = loaded.state;
         const candidate = (state.podcastEpisodes || []).find((episode) => episode.publicationId === publicationId) || null;
         if (candidate && episodeTimestamp(candidate) >= episodeTimestamp(latestEpisode)) latestEpisode = candidate;
-        const revision = Number(state?._sync?.revision) || 0;
+        const revision = Number(loaded.rawMain?._sync?.revision) || 0;
         if (revision > baselineRevision) return latestEpisode;
       }
       if (attempt < 4) await sleep(300);
@@ -158,20 +151,30 @@ const issueChronology = (left = {}, right = {}) => (
 
   const patchEpisodeStatus = async (publicationId, patch) => {
     if (!user || !db) return null;
-    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     return runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(ref);
-      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
-      const state = snapshot.data();
-      const episodesNow = state.podcastEpisodes || [];
+      const loaded = await readHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+      });
+      if (!loaded) throw new Error('Your DynastyHQ career could not be loaded.');
+      const episodesNow = loaded.state.podcastEpisodes || [];
       const currentEpisode = episodesNow.find((episode) => episode.publicationId === publicationId);
       if (!currentEpisode) throw new Error('That podcast episode is no longer available.');
       const patchedEpisode = { ...currentEpisode, ...patch };
-      const revision = (Number(state?._sync?.revision) || 0) + 1;
-      transaction.set(ref, {
-        ...state,
+      const revision = (Number(loaded.rawMain?._sync?.revision) || 0) + 1;
+      const nextState = {
+        ...loaded.state,
         podcastEpisodes: episodesNow.map((episode) => episode.publicationId === publicationId ? patchedEpisode : episode),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: new Date().toISOString() },
+      };
+      writeHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+        state: nextState,
       });
       return patchedEpisode;
     });
@@ -179,25 +182,36 @@ const issueChronology = (left = {}, right = {}) => (
 
   const replaceEpisodeTranscript = async (publicationId, nextEpisode) => {
     if (!user || !db) return null;
-    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     return runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(ref);
-      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
-      const state = snapshot.data();
+      const loaded = await readHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+      });
+      if (!loaded) throw new Error('Your DynastyHQ career could not be loaded.');
+      const state = loaded.state;
       const episodesNow = state.podcastEpisodes || [];
       const existingIndex = episodesNow.findIndex((episode) => episode.publicationId === publicationId);
       const nextEpisodes = existingIndex >= 0
         ? episodesNow.map((episode, index) => index === existingIndex ? nextEpisode : episode)
         : [...episodesNow, nextEpisode];
       const now = new Date().toISOString();
-      const revision = (Number(state?._sync?.revision) || 0) + 1;
-      transaction.set(ref, {
+      const revision = (Number(loaded.rawMain?._sync?.revision) || 0) + 1;
+      const nextState = {
         ...state,
         podcastEpisodes: nextEpisodes,
         newsroomIssues: (state.newsroomIssues || []).map((issue) => matchesPublication(issue, publicationId)
           ? { ...issue, podcastCoverageStatus: 'scripted', podcastCoverageReason: '', podcastCoverageAt: now }
           : issue),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: now },
+      };
+      writeHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+        state: nextState,
       });
       return nextEpisode;
     });
@@ -205,20 +219,31 @@ const issueChronology = (left = {}, right = {}) => (
 
   const markNoEpisode = async (publicationId, reason) => {
     if (!user || !db) return;
-    const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     await runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(ref);
-      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
-      const state = snapshot.data();
-      const revision = (Number(state?._sync?.revision) || 0) + 1;
+      const loaded = await readHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+      });
+      if (!loaded) throw new Error('Your DynastyHQ career could not be loaded.');
+      const state = loaded.state;
+      const revision = (Number(loaded.rawMain?._sync?.revision) || 0) + 1;
       const now = new Date().toISOString();
-      transaction.set(ref, {
+      const nextState = {
         ...state,
         podcastEpisodes: (state.podcastEpisodes || []).filter((episode) => episode.publicationId !== publicationId),
         newsroomIssues: (state.newsroomIssues || []).map((issue) => matchesPublication(issue, publicationId)
           ? { ...issue, podcastCoverageStatus: 'no-episode', podcastCoverageReason: reason, podcastCoverageAt: now }
           : issue),
         _sync: { revision, deviceId: DEVICE_ID, updatedAt: now },
+      };
+      writeHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId,
+        userId: user.uid,
+        state: nextState,
       });
     });
   };
@@ -236,11 +261,9 @@ const issueChronology = (left = {}, right = {}) => (
     setMessageType('success');
     setMessage('Checking whether this week deserves a show…');
     try {
-      const ref = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-      const snapshot = await getDoc(ref);
-      if (!snapshot.exists()) throw new Error('Your DynastyHQ career could not be loaded.');
-      const latestState = snapshot.data();
-      const payload = buildPodcastGenerationPayload(latestState, publicationId);
+      const loaded = await loadHydratedCareer({ db, appId, userId: user.uid });
+      if (!loaded) throw new Error('Your DynastyHQ career could not be loaded.');
+      const payload = buildPodcastGenerationPayload(loaded.state, publicationId);
       setMessage('Writing a fresh grounded transcript…');
       const idToken = await user.getIdToken();
       const generated = await generatePodcastScript({ idToken, payload, prepareAudio: false });

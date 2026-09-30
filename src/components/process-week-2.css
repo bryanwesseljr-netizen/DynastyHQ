@@ -114,6 +114,29 @@
   margin-top: 13px;
 }
 
+.dhq-process2-confirm,
+.dhq-process2-confirm > section,
+.dhq-process2-confirm__actions,
+.dhq-process2-confirm__actions button {
+  pointer-events: auto;
+}
+
+.dhq-process2-confirm > section {
+  isolation: isolate;
+}
+
+.dhq-process2-confirm__actions {
+  position: relative;
+  z-index: 4;
+}
+
+.dhq-process2-confirm__actions button {
+  position: relative;
+  z-index: 5;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255,255,255,.10);
+}
+
 .dhq-process2-inbox button,
 .dhq-process2-confirm button,
 .dhq-postgame-premiere button {

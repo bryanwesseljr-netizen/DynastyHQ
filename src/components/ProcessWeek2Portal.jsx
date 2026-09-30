@@ -396,6 +396,25 @@ const ProcessWeek2Portal = () => {
     window.dispatchEvent(new CustomEvent('dynastyhq:process-week-published', { detail: { publicationId: wanted } }));
   }, [career]);
 
+  useEffect(() => {
+    const onCloudSaveError = (event) => {
+      const detail = event?.detail || {};
+      let pending = '';
+      try { pending = window.sessionStorage?.getItem('dhq-process-week2-publishing') || ''; } catch { /* no-op */ }
+      if (!pending) return;
+      if (detail.publicationId && clean(detail.publicationId) !== clean(pending)) return;
+      try { window.sessionStorage?.removeItem('dhq-process-week2-publishing'); } catch { /* no-op */ }
+      setPublishBusy(false);
+      const sizeNote = detail.estimatedBytes
+        ? ` · save size ~${Math.round(Number(detail.estimatedBytes) / 1024)} KB`
+        : '';
+      setError(`${detail.message || 'The cloud save did not complete.'}${sizeNote} Your verified draft is still safe.`);
+    };
+
+    window.addEventListener('dynastyhq:cloud-save-error', onCloudSaveError);
+    return () => window.removeEventListener('dynastyhq:cloud-save-error', onCloudSaveError);
+  }, []);
+
   const reviewFlags = () => {
     setConfirmOpen(false);
     window.dispatchEvent(new CustomEvent('dynastyhq:review-game-data'));
@@ -453,7 +472,7 @@ const ProcessWeek2Portal = () => {
       try { pending = window.sessionStorage?.getItem('dhq-process-week2-publishing') || ''; } catch { /* no-op */ }
       if (pending === publicationId) {
         setPublishBusy(false);
-        setError('Publish did not complete. Your verified draft is still safe. Try Publish Week again; if it repeats, refresh this preview before retrying.');
+        setError('Publish did not complete and no cloud error was returned. Your verified draft is still safe. Refresh LIVE DynastyHQ once, then retry Publish Week.');
       }
     }, 12000);
   };

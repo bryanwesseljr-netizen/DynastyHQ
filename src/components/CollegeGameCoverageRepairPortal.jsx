@@ -30,13 +30,12 @@ const CollegeGameCoverageRepairPortal = () => {
           if (!hasCollegeGameCoverageRepairWork(remote)) return;
           const cleaned = removeNoAppearanceCoverageIssues(remote);
           const repaired = addMissingCollegeGameCoverageIssues(cleaned);
-          transaction.set(ref, {
-            ...repaired,
-            _sync: {
-              revision: (Number(remote?._sync?.revision) || 0) + 1,
-              deviceId: DEVICE_ID,
-              updatedAt: new Date().toISOString(),
-            },
+          const revision = (Number(remote?._sync?.revision) || 0) + 1;
+          transaction.update(ref, {
+            newsroomIssues: repaired.newsroomIssues || [],
+            '_sync.revision': revision,
+            '_sync.deviceId': DEVICE_ID,
+            '_sync.updatedAt': new Date().toISOString(),
           });
         });
       } catch (error) {

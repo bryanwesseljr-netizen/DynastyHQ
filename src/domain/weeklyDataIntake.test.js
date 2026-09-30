@@ -49,7 +49,10 @@ test('RTG Status uses its dedicated analyzer and records which weekly intake it 
 
   assert.match(rtg, /analyzeRtgStatusScreenshot/);
   assert.match(rtg, /Apply Verified RTG Facts/);
-  assert.match(rtg, /lastStatusScan/);
+  assert.match(rtg, /dynastyhq:rtg-status-save/);
+  assert.doesNotMatch(rtg, /runTransaction/);
+  assert.doesNotMatch(rtg, /transaction\.set\(/);
+  assert.doesNotMatch(rtg, /hq_data['"],\s*['"]main/);
   assert.match(rtg, /publicationId: work\.publicationId/);
   assert.match(rtg, /season: work\.season/);
   assert.match(rtg, /week: work\.week/);
@@ -130,7 +133,7 @@ test('Coverage Data cannot write the master career document independently', asyn
   assert.doesNotMatch(coverage, /hq_data['"],\s*['"]main/);
   assert.match(coverage, /dynastyhq:coverage-data-save/);
   assert.match(app, /dynastyhq:coverage-data-save/);
-  assert.match(app, /replaceCoverageReferences\(prev/);
+  assert.match(app, /replaceCoverageReferences\(appStateRef\.current/);
   assert.match(app, /persistCloudState/);
 });
 
@@ -141,4 +144,27 @@ test('Coverage Data save button does not depend on a removed local Firestore db 
   assert.doesNotMatch(coverage, /if \(!user \|\| !db \|\| busy\) return;/);
   assert.match(coverage, /if \(!user \|\| busy\) return;/);
   assert.match(coverage, /dynastyhq:coverage-data-save/);
+});
+
+
+test('RTG Status cannot independently replace the master career document', async () => {
+  const rtg = await readFile(rtgUrl, 'utf8');
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(rtg, /runTransaction/);
+  assert.doesNotMatch(rtg, /transaction\.set\(/);
+  assert.match(rtg, /dynastyhq:rtg-status-save/);
+  assert.match(app, /dynastyhq:rtg-status-save/);
+  assert.match(app, /lastStatusScan/);
+  assert.match(app, /persistCloudState/);
+});
+
+test('central master save strips undefined values and reports real cloud errors', async () => {
+  const app = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+
+  assert.match(app, /const cloudState = stripUndefinedDeep\(\{ \.\.\.nextState \}\)/);
+  assert.match(app, /dynastyhq:cloud-save-error/);
+  assert.match(app, /dynastyhq:cloud-save-success/);
+  assert.match(app, /publicationLocks\.delete/);
+  assert.match(app, /estimatedBytes/);
 });

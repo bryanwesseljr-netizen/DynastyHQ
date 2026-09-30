@@ -175,6 +175,10 @@ import {
   saveLegacyPodcastAudioCloud,
   saveLegacyPodcastAudioLocal,
 } from './services/legacyPodcastAudioStorage';
+import {
+  readHydratedCareerInTransaction,
+  writeHydratedCareerInTransaction,
+} from './services/careerStorageFirestore.js';
 
 const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));
 const GroundedNewsroom = lazy(() => import('./components/GroundedNewsroom'));
@@ -2860,15 +2864,19 @@ const handleSaveGameClick = () => {
       // Save the generated edition against the latest cloud document, not a potentially stale
       // React snapshot. This prevents a successful 200 response from being visually applied and
       // then immediately replaced by the older scaffold during Firestore synchronization.
-      const docRef = doc(db, 'artifacts', appId, 'users', userState.uid, 'hq_data', 'main');
       let committedState = null;
       let committedRevision = cloudRevisionRef.current;
 
       const persistGeneratedEdition = async () => runTransaction(db, async (transaction) => {
-        const remoteSnapshot = await transaction.get(docRef);
-        if (!remoteSnapshot.exists()) throw new Error('The DynastyHQ master save could not be found.');
+        const loaded = await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId,
+          userId: userState.uid,
+        });
+        if (!loaded) throw new Error('The DynastyHQ master save could not be found.');
 
-        const remoteState = migrateCareerState(remoteSnapshot.data(), defaultState);
+        const remoteState = migrateCareerState(loaded.state, defaultState);
         let nextState = applyGeneratedNewsroomEdition(remoteState, publicationId, edition);
         if (remoteState.newsroomMediaSettings?.autoAssignLibrary !== false) {
           nextState = {
@@ -2895,7 +2903,7 @@ const handleSaveGameClick = () => {
           throw new Error('The generated Newsroom edition could not be attached to the selected archive.');
         }
 
-        const remoteRevision = Number(remoteSnapshot.data()?._sync?.revision) || 0;
+        const remoteRevision = Number(loaded.rawMain?._sync?.revision) || 0;
         committedRevision = Math.max(remoteRevision, cloudRevisionRef.current) + 1;
         committedState = stripUndefinedDeep({
           ...nextState,
@@ -2905,7 +2913,13 @@ const handleSaveGameClick = () => {
             updatedAt: new Date().toISOString(),
           },
         });
-        transaction.set(docRef, committedState);
+        writeHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId,
+          userId: userState.uid,
+          state: committedState,
+        });
       });
 
       // Join the same serialized cloud-write queue used by the rest of DynastyHQ.

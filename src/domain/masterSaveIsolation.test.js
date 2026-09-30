@@ -11,18 +11,17 @@ test('automatic Official Coverage sidecar never replaces the whole master career
   assert.match(text, /eaSportsNetworkArticles: articles/);
 });
 
-test('automatic college coverage repair only patches Newsroom', async () => {
+test('automatic college coverage repair updates the hydrated archive-aware career', async () => {
   const text = await source('../components/CollegeGameCoverageRepairPortal.jsx');
-  assert.match(text, /transaction\.update\(ref/);
-  assert.doesNotMatch(text, /transaction\.set\(ref/);
-  assert.match(text, /newsroomIssues: repaired\.newsroomIssues/);
+  assert.match(text, /readHydratedCareerInTransaction/);
+  assert.match(text, /writeHydratedCareerInTransaction/);
+  assert.doesNotMatch(text, /transaction\.update\(ref/);
 });
 
-test('automatic career editorial sidecar only patches the fields it owns', async () => {
+test('automatic career editorial sidecar updates the hydrated archive-aware career', async () => {
   const text = await source('../components/CareerEditorialEventPortal.jsx');
-  assert.match(text, /transaction\.update\(careerRef/);
-  assert.doesNotMatch(text, /transaction\.set\(careerRef/);
-  assert.match(text, /factLedger: next\.factLedger/);
-  assert.match(text, /newsroomIssues: next\.newsroomIssues/);
-  assert.match(text, /careerTracking: next\.careerTracking/);
+  assert.match(text, /readHydratedCareerInTransaction/);
+  assert.match(text, /writeHydratedCareerInTransaction/);
+  assert.doesNotMatch(text, /transaction\.update\(careerRef/);
+  assert.match(text, /buildCareerEventPublication\(remote\)/);
 });

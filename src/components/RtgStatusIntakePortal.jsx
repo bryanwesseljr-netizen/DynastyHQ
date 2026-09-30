@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, Loader2, UploadCloud } from 'lucide-react';
-import { doc, runTransaction } from 'firebase/firestore';
-import { appId, db } from '../firebase';
 import { resolveWeeklyWorkContext } from '../domain/weeklyWorkContext.js';
 import { compressImage } from '../services/imageCompression';
 import { analyzeRtgStatusScreenshot } from '../services/rtgStatusScannerClient';
@@ -147,7 +145,7 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
   const updateRow = (key, patch) => setRows((current) => current.map((row) => row.key === key ? { ...row, ...patch } : row));
 
   const applyFacts = async () => {
-    if (!user || !db || busy) return;
+    if (!user || busy) return;
     const approved = rows.filter((row) => row.selected && valuePresent(row.value));
     if (!approved.length) {
       setMessage({ type: 'error', text: 'Select at least one verified RTG fact before saving.' });
@@ -156,44 +154,49 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
     setBusy(true);
     setMessage(null);
     try {
-      const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(careerRef);
-        if (!snapshot.exists()) throw new Error('Career save was not found. Reload DynastyHQ and try again.');
-        const remote = snapshot.data();
-        const rtgPatch = {};
-        const playerPatch = {};
-        approved.forEach((row) => {
-          const value = normalizeFactValue(row.key, row.value);
-          if (!valuePresent(value)) return;
-          if (row.key === 'player.overall') playerPatch.overall = value;
-          else if (row.key.startsWith('rtg.')) rtgPatch[row.key.slice(4)] = value;
-        });
-        transaction.set(careerRef, {
-          ...remote,
-          player: { ...(remote.player || {}), ...playerPatch },
-          rtg: {
-            ...(remote.rtg || {}),
-            ...rtgPatch,
-            lastStatusScan: {
-              scannedAt: new Date().toISOString(),
-              publicationId: work.publicationId,
-              season: work.season,
-              week: work.week,
-              screenTypes: [...new Set(screens.map((entry) => entry.screenType).filter((type) => TARGET_SCREENS.includes(type)))],
-              factCount: approved.length,
-            },
-          },
-          _sync: {
-            revision: (Number(remote?._sync?.revision) || 0) + 1,
-            deviceId: 'rtg-status-intake',
-            updatedAt: new Date().toISOString(),
-          },
-        });
+      const rtgPatch = {};
+      const playerPatch = {};
+      approved.forEach((row) => {
+        const value = normalizeFactValue(row.key, row.value);
+        if (!valuePresent(value)) return;
+        if (row.key === 'player.overall') playerPatch.overall = value;
+        else if (row.key.startsWith('rtg.')) rtgPatch[row.key.slice(4)] = value;
       });
+      const screenTypes = [...new Set(
+        screens.map((entry) => entry.screenType).filter((type) => TARGET_SCREENS.includes(type)),
+      )];
+
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (callback) => (value) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timeoutId);
+          callback(value);
+        };
+        const timeoutId = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new Error('DynastyHQ could not reach the protected RTG save handler. Nothing was written.'));
+        }, 12000);
+        window.dispatchEvent(new CustomEvent('dynastyhq:rtg-status-save', {
+          detail: {
+            publicationId: work.publicationId,
+            season: work.season,
+            week: work.week,
+            rtgPatch,
+            playerPatch,
+            screenTypes,
+            factCount: approved.length,
+            resolve: finish(resolve),
+            reject: finish((message) => reject(new Error(message))),
+          },
+        }));
+      });
+
       setRows([]);
       setScreens([]);
-      setMessage({ type: 'success', text: `${approved.length} verified RTG facts saved for Season ${work.season} · Week ${work.week}.` });
+      setMessage({ type: 'success', text: `${approved.length} verified RTG facts saved for Season ${work.season} · Week ${work.week} through the protected master-save path.` });
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'The verified RTG facts could not be saved.' });
     } finally {

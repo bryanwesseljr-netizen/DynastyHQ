@@ -79,3 +79,14 @@ test('Process Week publish button has a mobile pointer-release fallback without 
   assert.match(styles, /\.dhq-process2-confirm__actions button[\s\S]*pointer-events: auto/);
   assert.match(styles, /touch-action: manipulation/);
 });
+
+
+test('Process Week visibly reports an active master save and disables modal exit while saving', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const portal = await readFile(new URL('../components/ProcessWeek2Portal.jsx', import.meta.url), 'utf8');
+
+  assert.match(portal, /Saving the verified week to your career/);
+  assert.match(portal, /master save is being committed first/);
+  assert.match(portal, /disabled=\{busy\}/);
+  assert.match(portal, /SAVE IN PROGRESS/);
+});

@@ -1,7 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { appId, auth, db } from '../firebase';
+import {
+  CAREER_ARCHIVE_COLLECTION,
+  hydrateCareerStateFromArchives,
+  storageArchiveIds,
+} from '../domain/careerStorage.js';
 
 const OwnerCareerContext = createContext({
   user: null,
@@ -34,8 +39,34 @@ export const OwnerCareerProvider = ({ children }) => {
     const careerRef = doc(db, 'artifacts', appId, 'users', user.uid, 'hq_data', 'main');
     return onSnapshot(
       careerRef,
-      (snapshot) => {
-        setCareer(snapshot.exists() ? snapshot.data() : null);
+      async (snapshot) => {
+        if (!snapshot.exists()) {
+          setCareer(null);
+          setReady(true);
+          return;
+        }
+
+        try {
+          const raw = snapshot.data();
+          const archiveIds = storageArchiveIds(raw);
+          if (!archiveIds.length) {
+            setCareer(raw);
+            setReady(true);
+            return;
+          }
+
+          const archiveSnapshots = await Promise.all(
+            archiveIds.map((archiveId) => getDoc(
+              doc(db, 'artifacts', appId, 'users', user.uid, CAREER_ARCHIVE_COLLECTION, archiveId),
+            )),
+          );
+          setCareer(hydrateCareerStateFromArchives(
+            raw,
+            archiveSnapshots.filter((entry) => entry.exists()).map((entry) => entry.data()),
+          ));
+        } catch {
+          setCareer(snapshot.data());
+        }
         setReady(true);
       },
       () => {

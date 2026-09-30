@@ -52,5 +52,7 @@ test('Process Week final publish bypasses the legacy roleplay interstitial', asy
     readFile(new URL('../components/ProcessWeek2Portal.jsx', import.meta.url), 'utf8')
   ));
   assert.match(source, /publish without a roleplay quote/i);
-  assert.match(source, /Publish did not complete\. Your verified draft is still safe/);
+  assert.match(source, /Publish did not complete and no cloud error was returned/);
+  assert.match(source, /dynastyhq:cloud-save-error/);
+  assert.match(source, /estimatedBytes/);
 });

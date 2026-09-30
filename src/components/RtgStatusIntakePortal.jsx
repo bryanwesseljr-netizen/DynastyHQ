@@ -168,17 +168,15 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
 
       await new Promise((resolve, reject) => {
         let settled = false;
+        let acknowledged = false;
         const finish = (callback) => (value) => {
           if (settled) return;
           settled = true;
-          window.clearTimeout(timeoutId);
           callback(value);
         };
-        const timeoutId = window.setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          reject(new Error('DynastyHQ could not reach the protected RTG save handler. Nothing was written.'));
-        }, 12000);
+        const acknowledge = () => {
+          acknowledged = true;
+        };
         window.dispatchEvent(new CustomEvent('dynastyhq:rtg-status-save', {
           detail: {
             publicationId: work.publicationId,
@@ -188,10 +186,15 @@ const RtgStatusIntakeScanner = ({ user, career }) => {
             playerPatch,
             screenTypes,
             factCount: approved.length,
+            acknowledge,
             resolve: finish(resolve),
             reject: finish((message) => reject(new Error(message))),
           },
         }));
+        if (!acknowledged && !settled) {
+          settled = true;
+          reject(new Error('DynastyHQ could not reach the protected RTG save handler. Nothing was written.'));
+        }
       });
 
       setRows([]);

@@ -78,17 +78,15 @@ const CoverageDataScanner = ({ user, career }) => {
     try {
       await new Promise((resolve, reject) => {
         let settled = false;
+        let acknowledged = false;
         const finish = (callback) => (value) => {
           if (settled) return;
           settled = true;
-          window.clearTimeout(timeoutId);
           callback(value);
         };
-        const timeoutId = window.setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          reject(new Error('DynastyHQ could not reach the protected career save handler. Nothing was written.'));
-        }, 5000);
+        const acknowledge = () => {
+          acknowledged = true;
+        };
         window.dispatchEvent(new CustomEvent('dynastyhq:coverage-data-save', {
           detail: {
             publicationId: context.publicationId,
@@ -96,10 +94,15 @@ const CoverageDataScanner = ({ user, career }) => {
             week: context.week,
             facts: selectedFacts,
             sourceCount,
+            acknowledge,
             resolve: finish(resolve),
             reject: finish((message) => reject(new Error(message))),
           },
         }));
+        if (!acknowledged && !settled) {
+          settled = true;
+          reject(new Error('DynastyHQ could not reach the protected career save handler. Nothing was written.'));
+        }
       });
       setFacts([]);
       setSourceCount(0);

@@ -984,6 +984,7 @@ const App = () => {
 
     const handleCoverageDataSave = (event) => {
       const detail = event?.detail || {};
+      detail.acknowledge?.();
       try {
         if (!detail.publicationId) throw new Error('Coverage Data is missing its week identity.');
         const nextState = replaceCoverageReferences(appStateRef.current, {
@@ -1005,6 +1006,7 @@ const App = () => {
 
     const handleRtgStatusSave = (event) => {
       const detail = event?.detail || {};
+      detail.acknowledge?.();
       try {
         if (!detail.publicationId) throw new Error('RTG Status is missing its week identity.');
         const current = appStateRef.current;

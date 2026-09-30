@@ -25,3 +25,25 @@ test('automatic career editorial sidecar updates the hydrated archive-aware care
   assert.doesNotMatch(text, /transaction\.update\(careerRef/);
   assert.match(text, /buildCareerEventPublication\(remote\)/);
 });
+
+
+test('supplemental data lanes acknowledge the protected save handler before waiting on archive persistence', async () => {
+  const [app, coverage, rtg] = await Promise.all([
+    source('../App.jsx'),
+    source('../components/CoverageDataIntakePortal.jsx'),
+    source('../components/RtgStatusIntakePortal.jsx'),
+  ]);
+
+  assert.match(app, /const handleCoverageDataSave = \(event\) => \{\s+const detail = event\?\.detail \|\| \{\};\s+detail\.acknowledge\?\.\(\);/);
+  assert.match(app, /const handleRtgStatusSave = \(event\) => \{\s+const detail = event\?\.detail \|\| \{\};\s+detail\.acknowledge\?\.\(\);/);
+
+  assert.match(coverage, /let acknowledged = false;/);
+  assert.match(coverage, /acknowledge,/);
+  assert.match(coverage, /if \(!acknowledged && !settled\)/);
+  assert.doesNotMatch(coverage, /5000/);
+
+  assert.match(rtg, /let acknowledged = false;/);
+  assert.match(rtg, /acknowledge,/);
+  assert.match(rtg, /if \(!acknowledged && !settled\)/);
+  assert.doesNotMatch(rtg, /12000/);
+});

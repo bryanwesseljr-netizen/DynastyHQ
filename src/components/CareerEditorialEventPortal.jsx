@@ -36,14 +36,15 @@ const CareerEditorialEventPortal = () => {
           const remote = snapshot.data();
           const next = buildCareerEventPublication(remote);
           if (next === remote) return;
-          transaction.set(careerRef, {
-            ...next,
-            _sync: {
-              ...(remote._sync || {}),
-              revision: (Number(remote?._sync?.revision) || 0) + 1,
-              deviceId: DEVICE_ID,
-              updatedAt: new Date().toISOString(),
-            },
+          const revision = (Number(remote?._sync?.revision) || 0) + 1;
+          transaction.update(careerRef, {
+            rtg: next.rtg || remote.rtg || {},
+            factLedger: next.factLedger || remote.factLedger || [],
+            newsroomIssues: next.newsroomIssues || remote.newsroomIssues || [],
+            careerTracking: next.careerTracking || remote.careerTracking || {},
+            '_sync.revision': revision,
+            '_sync.deviceId': DEVICE_ID,
+            '_sync.updatedAt': new Date().toISOString(),
           });
         });
       } catch (error) {

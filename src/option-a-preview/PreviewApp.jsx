@@ -37,7 +37,10 @@ const PREVIEW_VIEW_STORAGE_KEY = 'dynastyhq-preview-view-v1';
 const loadPreviewViewState = () => {
   if (typeof window === 'undefined') return {};
   try {
-    const saved=JSON.parse(window.sessionStorage.getItem(PREVIEW_VIEW_STORAGE_KEY) || '{}');
+    const raw=window.localStorage.getItem(PREVIEW_VIEW_STORAGE_KEY)
+      || window.sessionStorage.getItem(PREVIEW_VIEW_STORAGE_KEY)
+      || '{}';
+    const saved=JSON.parse(raw);
     return saved && typeof saved === 'object' ? saved : {};
   } catch {
     return {};
@@ -46,8 +49,14 @@ const loadPreviewViewState = () => {
 
 const savePreviewViewState = (state) => {
   if (typeof window === 'undefined') return;
+  const serialized=JSON.stringify(state);
   try {
-    window.sessionStorage.setItem(PREVIEW_VIEW_STORAGE_KEY,JSON.stringify(state));
+    window.localStorage.setItem(PREVIEW_VIEW_STORAGE_KEY,serialized);
+  } catch {
+    // Fall back to session storage if persistent storage is unavailable.
+  }
+  try {
+    window.sessionStorage.setItem(PREVIEW_VIEW_STORAGE_KEY,serialized);
   } catch {
     // View persistence is convenience-only; never interrupt the site if storage is unavailable.
   }
@@ -169,8 +178,12 @@ function App(){
   const [page,setPage] = useState(validPage);
   const [mobileMenu,setMobileMenu] = useState(false);
   const [mobileMoreOpen,setMobileMoreOpen] = useState(false);
-  const [season,setSeason] = useState(Number(restoredView.season)||4);
-  const [week,setWeek] = useState(Number(restoredView.week)||10);
+  const restoredSeason=Number(restoredView.season);
+  const restoredWeek=Number(restoredView.week);
+  const hasRestoredSeason=Number.isFinite(restoredSeason) && restoredSeason>0;
+  const hasRestoredWeek=Number.isFinite(restoredWeek) && restoredWeek>=0;
+  const [season,setSeason] = useState(hasRestoredSeason?restoredSeason:4);
+  const [week,setWeek] = useState(hasRestoredWeek?restoredWeek:10);
   const [articleOpen,setArticleOpen] = useState(Boolean(restoredView.articleOpen && validPage==='newsroom'));
   const [selectedArticleId,setSelectedArticleId] = useState(restoredView.selectedArticleId || '');
   const [statsTab,setStatsTab] = useState(restoredView.statsTab || 'player');
@@ -185,7 +198,7 @@ function App(){
   const [visualTarget,setVisualTarget] = useState('home');
   const [visualBusy,setVisualBusy] = useState(false);
   const [processingOpen,setProcessingOpen] = useState(false);
-  const restoredSelectionRef=useRef(Boolean(restoredView.season && restoredView.week));
+  const restoredSelectionRef=useRef(Boolean(restoredView.hasSelection || (hasRestoredSeason && hasRestoredWeek)));
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
   const scrollRestoredRef=useRef(false);
   const live = useReadOnlyLiveCareer();
@@ -222,6 +235,7 @@ function App(){
       page,
       season,
       week,
+      hasSelection:true,
       articleOpen,
       selectedArticleId,
       statsTab,
@@ -242,6 +256,7 @@ function App(){
           page,
           season,
           week,
+          hasSelection:true,
           articleOpen,
           selectedArticleId,
           statsTab,
@@ -278,6 +293,35 @@ function App(){
   const seasonOptions=data.navigation?.seasons?.length ? data.navigation.seasons : [season];
   const weekOptions=data.navigation?.weeks?.length ? data.navigation.weeks : [week];
 
+  const persistSelection = (nextSeason,nextWeek) => {
+    const current=loadPreviewViewState();
+    savePreviewViewState({
+      ...current,
+      page,
+      season:Number(nextSeason),
+      week:Number(nextWeek),
+      hasSelection:true,
+      articleOpen,
+      selectedArticleId,
+      statsTab,
+      podcastTab,
+      scrollY:Math.round(window.scrollY),
+    });
+    restoredSelectionRef.current=true;
+  };
+
+  const chooseSeason = (value) => {
+    const nextSeason=Number(value);
+    setSeason(nextSeason);
+    persistSelection(nextSeason,week);
+  };
+
+  const chooseWeek = (value) => {
+    const nextWeek=Number(value);
+    setWeek(nextWeek);
+    persistSelection(season,nextWeek);
+  };
+
   const pageTitle = useMemo(()=>pages.find(p=>p[0]===page)?.[1] || 'Home',[page]);
   const go = (next) => { setPage(next); if(next!=='newsroom') setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const openNewsArticle = (articleId='') => {
@@ -290,8 +334,11 @@ function App(){
   };
   const openPodcast = (tab='episode') => { setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const openArchiveMoment = (targetSeason,targetWeek,target='gamehub',tab='episode') => {
-    setSeason(Number(targetSeason));
-    setWeek(Number(targetWeek));
+    const nextSeason=Number(targetSeason);
+    const nextWeek=Number(targetWeek);
+    setSeason(nextSeason);
+    setWeek(nextWeek);
+    persistSelection(nextSeason,nextWeek);
     setMobileMenu(false);
     setMobileMoreOpen(false);
     setArticleOpen(target==='newsroom');
@@ -413,12 +460,12 @@ function App(){
         <div className="career-copy"><b>ROAD TO GLORY</b><i/>{data.player.name} #{data.player.number}<i/>{data.player.school}</div>
         <div className="selectors">
           <label>SEASON
-            <select value={season} onChange={e=>setSeason(Number(e.target.value))}>
+            <select value={season} onChange={e=>chooseSeason(e.target.value)}>
               {seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}
             </select><ChevronDown size={13}/>
           </label>
           <label>WEEK
-            <select value={week} onChange={e=>setWeek(Number(e.target.value))}>
+            <select value={week} onChange={e=>chooseWeek(e.target.value)}>
               {weekOptions.map(value=><option key={value} value={value}>{value}</option>)}
             </select><ChevronDown size={13}/>
           </label>
@@ -427,8 +474,8 @@ function App(){
       </div>
 
       <div className="mobile-context-row" aria-label="Career archive controls">
-        <label><span>SEASON</span><select value={season} onChange={e=>setSeason(Number(e.target.value))}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
-        <label><span>WEEK</span><select value={week} onChange={e=>setWeek(Number(e.target.value))}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label><span>SEASON</span><select value={season} onChange={e=>chooseSeason(e.target.value)}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label><span>WEEK</span><select value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
         <button onClick={()=>setMobileMoreOpen(true)}><Menu/><span>MORE</span></button>
       </div>
 

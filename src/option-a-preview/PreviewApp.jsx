@@ -2293,8 +2293,109 @@ function PodcastPage({
     <section className="pod-show-shell" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="pod-network-bar">
         <span><Mic2/>DYNASTYHQ SPORTS NETWORK</span>
-        <b>{episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
+        <div className="pod-network-actions">
+          <b>{episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
+          <button type="button" className={studioOpen?'active':''} onClick={()=>setStudioOpen(value=>!value)} aria-expanded={studioOpen}>
+            <LockKeyhole/>STUDIO<ChevronDown/>
+          </button>
+        </div>
       </div>
+
+      <section className={'pod-owner-drawer '+(studioOpen?'open':'')} aria-hidden={!studioOpen}>
+        <div className="pod-studio-title">
+          <span><LockKeyhole/>OWNER STUDIO</span>
+          <button type="button" className="pod-owner-close" onClick={()=>setStudioOpen(false)} aria-label="Close owner studio"><X/></button>
+        </div>
+
+        <div className="pod-artwork-controls">
+          <div className="pod-artwork-heading">
+            <span><ImageIcon/>PODCAST ARTWORK</span>
+            <small>Show default + optional weekly override</small>
+          </div>
+
+          <div className="pod-artwork-grid">
+            <article className="pod-artwork-card">
+              <img src={showCover || podcastCover} alt="Default show cover"/>
+              <div>
+                <small>DEFAULT SHOW COVER</small>
+                <b>The Huddle</b>
+                <em>{showCoverStatus}</em>
+              </div>
+              <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>showCoverInputRef.current?.click()}>
+                <Camera/>{podcastArtBusy==='show'?'PREPARING…':showCoverIsPreviewOverride?'REPLACE':'CHOOSE COVER'}
+              </button>
+              {(showCoverIsPreviewOverride || episode.showCoverUrl) && <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy)} onClick={onResetShowCover}>RESET</button>}
+              <input
+                ref={showCoverInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={(event)=>{
+                  const file=event.target.files?.[0];
+                  event.target.value='';
+                  if(file) onUploadShowCover(file);
+                }}
+              />
+            </article>
+
+            <article className="pod-artwork-card">
+              <img src={episodeCover || showCover || podcastCover} alt="Episode cover"/>
+              <div>
+                <small>WEEK {game.week} EPISODE COVER</small>
+                <b>{episode.title || ('Week '+game.week+' Recap')}</b>
+                <em>{episodeCoverStatus}</em>
+              </div>
+              <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>episodeCoverInputRef.current?.click()}>
+                <ImageIcon/>{podcastArtBusy==='episode'?'PREPARING…':episodeCoverIsPreviewOverride?'REPLACE OVERRIDE':'ADD OVERRIDE'}
+              </button>
+              <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy) || episodeUsesShowCover} onClick={onUseShowCover}>USE SHOW COVER</button>
+              <input
+                ref={episodeCoverInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={(event)=>{
+                  const file=event.target.files?.[0];
+                  event.target.value='';
+                  if(file) onUploadEpisodeCover(file);
+                }}
+              />
+            </article>
+          </div>
+        </div>
+
+        <div className="pod-master-status">
+          <div className={isNotebookMaster?'ready':''}><Headphones/></div>
+          <span>
+            <small>MASTER EPISODE AUDIO</small>
+            <b>{isNotebookMaster?'NotebookLM master attached':episode.audioReady?'Saved episode audio attached':'No master audio attached'}</b>
+            <em>{masterFileName ? `${masterFileName}${masterSize?` · ${masterSize}`:''}` : (hasTranscript?'Ready for final audio':'Generate transcript first')}</em>
+          </span>
+        </div>
+        <div className="pod-studio-actions">
+          <button onClick={()=>jumpToTab('notebook')}><FileText/>NOTEBOOKLM SOURCE PACK</button>
+          <button
+            className={isNotebookMaster?'replace-master':'attach-master'}
+            disabled={masterBusy}
+            onClick={()=>hasTranscript ? masterInputRef.current?.click() : notify('Generate this week’s transcript before attaching master audio.')}
+          >
+            <Upload/>{masterBusy?'ATTACHING…':hasTranscript?(isNotebookMaster?'REPLACE MASTER AUDIO':'ATTACH MASTER AUDIO'):'GENERATE TRANSCRIPT FIRST'}
+          </button>
+          <input
+            ref={masterInputRef}
+            className="pod-master-file-input"
+            type="file"
+            accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,audio/aac,audio/ogg,.mp3,.m4a,.wav,.aac,.ogg"
+            onChange={(event)=>{
+              const file=event.target.files?.[0];
+              event.target.value='';
+              if(file) uploadMasterAudio(file);
+            }}
+          />
+        </div>
+        {masterMessage && <p className="pod-studio-message" data-type={masterMessageType}>{masterMessage}</p>}
+        <p className="pod-owner-note">MP3 · M4A · WAV · AAC · OGG · up to 30 MB. Audio attaches only to Season {data.season}, Week {game.week} when you choose a file.</p>
+      </section>
 
       <div className="pod-show-overview">
         <div className="pod-show-cover">
@@ -2335,14 +2436,31 @@ function PodcastPage({
         </button>
         <div className="pod-embed-progress">
           <div className="pod-embed-wave" aria-hidden="true">{Array.from({length:42}).map((_,i)=><i key={i}/>)}</div>
-          <div><span>{episode.audioReady?(audioLoading?'LOADING':playing?'PLAYING':'AUDIO READY'):'SCRIPT ONLY'}</span><b>{episode.duration || '—'}</b></div>
+          {episode.audioReady && <input
+            className="pod-audio-scrubber"
+            type="range"
+            min="0"
+            max={Math.max(0,audioDuration||0)}
+            step="0.1"
+            value={Math.min(audioCurrentTime,audioDuration||0)}
+            disabled={!audioUrl || !audioDuration}
+            onChange={(event)=>seekEpisode(event.target.value)}
+            aria-label="Podcast playback position"
+          />}
+          <div>
+            <span>{episode.audioReady?(audioLoading?'LOADING':playing?'PLAYING':'AUDIO READY'):'SCRIPT ONLY'}</span>
+            <b>{episode.audioReady && audioDuration ? `${formatPreviewClock(audioCurrentTime)} / ${formatPreviewClock(audioDuration)}` : (episode.duration || '—')}</b>
+          </div>
         </div>
         {audioUrl && <audio
           ref={audioRef}
           src={audioUrl}
           onPlay={()=>setPlaying(true)}
           onPause={()=>setPlaying(false)}
-          onEnded={()=>setPlaying(false)}
+          onEnded={()=>{setPlaying(false);setAudioCurrentTime(audioDuration)}}
+          onLoadedMetadata={(event)=>setAudioDuration(Number(event.currentTarget.duration)||0)}
+          onDurationChange={(event)=>setAudioDuration(Number(event.currentTarget.duration)||0)}
+          onTimeUpdate={(event)=>setAudioCurrentTime(Number(event.currentTarget.currentTime)||0)}
           hidden
         />}
       </section>
@@ -2392,92 +2510,10 @@ function PodcastPage({
             <div><Check/><b>{developmentFacts.length}</b><small>development references</small></div>
           </section>
 
-          <section className="pod-studio-controls">
-            <div className="pod-studio-title">
-              <span><LockKeyhole/>OWNER STUDIO</span>
-              <b>Studio Controls</b>
-            </div>
-
-            <div className="pod-artwork-controls">
-              <div className="pod-artwork-heading">
-                <span><ImageIcon/>PODCAST ARTWORK</span>
-                <small>Default show cover + optional episode override</small>
-              </div>
-
-              <div className="pod-artwork-grid">
-                <article className="pod-artwork-card">
-                  <img src={showCover || podcastCover} alt="Default show cover"/>
-                  <div>
-                    <small>DEFAULT SHOW COVER</small>
-                    <b>The Huddle</b>
-                    <em>{showCoverStatus}</em>
-                  </div>
-                  <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>showCoverInputRef.current?.click()}>
-                    <Camera/>{podcastArtBusy==='show'?'PREPARING…':showCoverIsPreviewOverride?'REPLACE':'CHOOSE COVER'}
-                  </button>
-                  {(showCoverIsPreviewOverride || episode.showCoverUrl) && <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy)} onClick={onResetShowCover}>RESET</button>}
-                  <input
-                    ref={showCoverInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    hidden
-                    onChange={(event)=>{
-                      const file=event.target.files?.[0];
-                      event.target.value='';
-                      if(file) onUploadShowCover(file);
-                    }}
-                  />
-                </article>
-
-                <article className="pod-artwork-card">
-                  <img src={episodeCover || showCover || podcastCover} alt="Episode cover"/>
-                  <div>
-                    <small>WEEK {game.week} EPISODE COVER</small>
-                    <b>{episode.title || ('Week '+game.week+' Recap')}</b>
-                    <em>{episodeCoverStatus}</em>
-                  </div>
-                  <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>episodeCoverInputRef.current?.click()}>
-                    <ImageIcon/>{podcastArtBusy==='episode'?'PREPARING…':episodeCoverIsPreviewOverride?'REPLACE OVERRIDE':'ADD OVERRIDE'}
-                  </button>
-                  <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy) || episodeUsesShowCover} onClick={onUseShowCover}>USE SHOW COVER</button>
-                  <input
-                    ref={episodeCoverInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    hidden
-                    onChange={(event)=>{
-                      const file=event.target.files?.[0];
-                      event.target.value='';
-                      if(file) onUploadEpisodeCover(file);
-                    }}
-                  />
-                </article>
-              </div>
-
-              <p>Square artwork is recommended. The default cover follows the show; an episode override only affects Season {data.season}, Week {game.week}. Preview artwork is browser-only until the write/action pass.</p>
-            </div>
-
-            <div className="pod-master-status">
-              <div className={isNotebookMaster?'ready':''}><Headphones/></div>
-              <span>
-                <small>MASTER EPISODE AUDIO</small>
-                <b>{isNotebookMaster?'NotebookLM master attached':episode.audioReady?'Saved episode audio attached':'No master audio attached'}</b>
-                <em>{masterFileName ? `${masterFileName}${masterSize?` · ${masterSize}`:''}` : (hasTranscript?'Ready for final audio':'Generate transcript first')}</em>
-              </span>
-            </div>
-            <div className="pod-studio-actions">
-              <button onClick={()=>jumpToTab('notebook')}><FileText/>NOTEBOOKLM SOURCE PACK</button>
-              <button
-                className={isNotebookMaster?'replace-master':'attach-master'}
-                onClick={()=>notify(hasTranscript
-                  ? 'Master audio upload is locked in this read-only preview. The existing DynastyHQ uploader will be connected here when safe write testing is enabled.'
-                  : 'Generate this week’s transcript before attaching master audio.')}
-              >
-                <Upload/>{hasTranscript?(isNotebookMaster?'REPLACE MASTER AUDIO':'ATTACH MASTER AUDIO'):'GENERATE TRANSCRIPT FIRST'}
-              </button>
-            </div>
-            {masterMessage && <p className="pod-studio-message" data-type={masterMessageType}>{masterMessage}</p>}
-            <p>MP3 · M4A · WAV · AAC · OGG · up to 30 MB. This preview shows the correct selected-week control, but attaching/replacing audio stays locked until safe write testing is enabled.</p>
+          <section className="pod-owner-shortcut">
+            <LockKeyhole/>
+            <span><b>OWNER TOOLS</b><small>Audio, NotebookLM and artwork live in the Studio menu at the top of the Podcast page.</small></span>
+            <button onClick={()=>{setStudioOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>OPEN STUDIO<ChevronRight/></button>
           </section>
 
           <section className="pod-related-v2">

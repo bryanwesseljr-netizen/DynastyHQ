@@ -233,6 +233,54 @@ const episodeTranscriptSections = (episode = {}) => {
     }));
 };
 
+
+const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
+  const library = Array.isArray(state.newsroomMediaLibrary) ? state.newsroomMediaLibrary : [];
+  if (!library.length || !issue) return null;
+  const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
+
+  const directIds = [
+    article?.mediaAssetId,
+    ...(issue.articles || []).map((entry) => entry?.mediaAssetId),
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+
+  for (const assetId of directIds) {
+    const asset = byId.get(assetId);
+    if (asset?.downloadUrl && !asset?.isReference) {
+      return {
+        id: clean(asset.id),
+        url: clean(asset.downloadUrl),
+        fileName: clean(asset.fileName, 'Weekly game photo'),
+        photoType: clean(asset.photoType, 'general'),
+        source: 'assigned-newsroom-photo',
+      };
+    }
+  }
+
+  const publicationId = publicationIdFor(issue);
+  const generated = library
+    .filter((asset) => (
+      asset
+      && !asset.isReference
+      && clean(asset.downloadUrl)
+      && publicationId
+      && clean(asset.generatedFrom?.publicationId) === publicationId
+    ))
+    .sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))[0];
+
+  if (generated) {
+    return {
+      id: clean(generated.id),
+      url: clean(generated.downloadUrl),
+      fileName: clean(generated.fileName, 'Weekly game photo'),
+      photoType: clean(generated.photoType, 'general'),
+      source: 'edition-photo',
+    };
+  }
+
+  return null;
+};
+
 const factsForPublication = (state, publicationId, season, week) => (state.factLedger || []).filter((fact) => (
   fact?.verified
   && (
@@ -337,6 +385,7 @@ export const derivePreviewData = (state, selection = {}) => {
     ? exactEpisodeFor(state, issue, season, week)
     : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
+  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, article);
   const facts = factsForPublication(state, publicationId, season, week);
   const coverageFacts = facts.filter((fact) => fact?.sourceType === 'coverage-reference' || fact?.editorialOnly === true);
   const scoringFacts = coverageFacts.filter((fact) => (
@@ -433,6 +482,7 @@ export const derivePreviewData = (state, selection = {}) => {
       paragraphs: Array.isArray(article?.paragraphs) ? article.paragraphs.filter((entry) => clean(entry)).slice(0, 10) : [],
       photoCaption: clean(article?.photoCaption || article?.dek),
       articles: Array.isArray(issue?.articles) ? issue.articles : [],
+      weeklyPhoto,
     },
     podcast: {
       episode,

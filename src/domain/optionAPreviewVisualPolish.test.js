@@ -24,15 +24,13 @@ test('newsroom photo provenance uses week-game wording instead of the misleading
   assert.match(source, /Week Game Photo/);
 });
 
-test('opened select menus use readable paper/dark contrast and desktop display headlines use a lighter condensed stack', async () => {
+test('opened select menus use readable paper/dark contrast without overriding the original desktop display typography', async () => {
   const css = await readFile(previewCssUrl, 'utf8');
 
   assert.match(css, /select option\{/);
   assert.match(css, /background:#f4f1e8!important/);
   assert.match(css, /color:#0a2119!important/);
-  assert.match(css, /@media\(min-width:701px\)/);
-  assert.match(css, /--display:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed",sans-serif/);
-  assert.match(css, /font-weight:700!important/);
+  assert.doesNotMatch(css, /--display:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed",sans-serif/);
 });
 
 

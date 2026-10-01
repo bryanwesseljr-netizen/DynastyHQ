@@ -12037,3 +12037,139 @@ button:active{transform:translateY(1px)}
     font-size:10.5px!important;
   }
 }
+
+
+/* Precision match pass v39 — Podcast owner Studio Controls */
+.pod-studio-controls{
+  overflow:hidden;
+  border:1px solid #345f53;
+  border-radius:8px;
+  background:linear-gradient(145deg,#0a2a23,#071d18);
+}
+.pod-studio-title{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 12px;
+  border-bottom:1px solid #294d43;
+}
+.pod-studio-title>span{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  color:#72d4ae;
+  font-size:5.5px;
+  font-weight:950;
+  letter-spacing:.85px;
+}
+.pod-studio-title>span svg{
+  width:12px;
+}
+.pod-studio-title>b{
+  font-family:var(--condensed);
+  font-size:14px;
+}
+.pod-master-status{
+  display:grid;
+  grid-template-columns:42px 1fr;
+  gap:9px;
+  align-items:center;
+  padding:12px;
+}
+.pod-master-status>div{
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  border:1px solid #3c655a;
+  border-radius:9px;
+  background:#0b352b;
+  color:#84b9a6;
+}
+.pod-master-status>div.ready{
+  border-color:#348c6d;
+  background:#0d4a39;
+  color:#7be0b4;
+}
+.pod-master-status>div svg{
+  width:18px;
+}
+.pod-master-status>span{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.pod-master-status small{
+  color:#6f887f;
+  font-size:5px;
+  font-weight:950;
+  letter-spacing:.8px;
+}
+.pod-master-status b{
+  overflow:hidden;
+  color:#f3f7f5;
+  font-size:7.4px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pod-master-status em{
+  overflow:hidden;
+  color:#83968f;
+  font-size:5.7px;
+  font-style:normal;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pod-studio-actions{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:6px;
+  padding:0 12px 12px;
+}
+.pod-studio-actions button{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  border:1px solid #3d675b;
+  border-radius:5px;
+  background:#0b332a;
+  color:#d7e2de;
+  font-size:5.8px;
+  font-weight:950;
+  letter-spacing:.35px;
+}
+.pod-studio-actions button svg{
+  width:12px;
+}
+.pod-studio-actions .attach-master,
+.pod-studio-actions .replace-master{
+  border-color:#b69d00;
+  background:var(--yellow);
+  color:#06130f;
+}
+.pod-studio-controls>p{
+  margin:0;
+  padding:9px 12px 10px;
+  border-top:1px solid #294d43;
+  color:#71887f;
+  font-size:5.4px;
+  line-height:1.45;
+}
+@media(max-width:700px){
+  .pod-studio-controls{
+    margin-top:8px;
+  }
+  .pod-studio-title{
+    min-height:44px;
+  }
+  .pod-studio-title>b{
+    font-size:13px;
+  }
+  .pod-studio-actions button{
+    min-height:38px;
+  }
+}

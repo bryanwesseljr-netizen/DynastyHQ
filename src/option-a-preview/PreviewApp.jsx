@@ -1565,88 +1565,200 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
           ? 'FILM · NUMBERS · PERFORMANCE'
           : `${data.player.school} FOOTBALL`;
 
+  const outletSwitcher=<nav className="article-outlet-switcher" aria-label="This week's Newsroom articles">
+    {(articles || []).map((entry)=><button key={entry.id} className={entry.id===selected.id?'active':''} onClick={()=>onSelectStory(entry)}>
+      <span>{entry.audience==='local'?'LOCAL':entry.audience?.startsWith('national')?'NATIONAL':entry.audience==='regional'?'REGIONAL':entry.audience==='analysis'?'FILM':'STORY'}</span>
+      <b>{entry.outletName}</b>
+    </button>)}
+  </nav>;
+
+  const publicationBanner=<header className="article-publication-banner">
+    <div className="article-publication-mark" aria-hidden="true">
+      {skin==='national' ? <span>N</span> : skin==='regional' ? <span>PNW</span> : skin==='analysis' ? <BarChart3/> : <Newspaper/>}
+    </div>
+    <div className="article-publication-copy">
+      <small>{publicationDeck}</small>
+      <strong>{publicationName}</strong>
+    </div>
+    <div className="article-publication-meta">
+      <span>Season {data.season}</span>
+      <b>Week {news.week || game.week}</b>
+    </div>
+  </header>;
+
+  const relatedCard=<section className="related-card">
+    <span>RELATED COVERAGE</span>
+    <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
+    <button onClick={()=>openPodcast('episode')}><Headphones/><b>The Huddle</b><small>{data.podcast.title} · {data.podcast.duration}</small><ChevronRight/></button>
+    <button onClick={()=>go('chronicle')}><Archive/><b>Career File</b><small>Follow the preserved career story</small><ChevronRight/></button>
+  </section>;
+
+  const storyParagraphs=(className='')=><>
+    {paragraphs.map((paragraph,index)=><p key={index} className={(index===0?'digital-lede ':'')+className}>{paragraph}</p>)}
+    <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>View verified game data<ChevronRight/></button>
+  </>;
+
   return <article className={`newsroom-article digital-feature article-skin-${skin}`} data-audience={skin}>
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
       <span>{audienceLabel} • WEEK {news.week || game.week}</span>
     </div>
 
-    <nav className="article-outlet-switcher" aria-label="This week's Newsroom articles">
-      {(articles || []).map((entry)=><button key={entry.id} className={entry.id===selected.id?'active':''} onClick={()=>onSelectStory(entry)}>
-        <span>{entry.audience==='local'?'LOCAL':entry.audience?.startsWith('national')?'NATIONAL':entry.audience==='regional'?'REGIONAL':entry.audience==='analysis'?'FILM':'STORY'}</span>
-        <b>{entry.outletName}</b>
-      </button>)}
-    </nav>
+    {outletSwitcher}
+    {publicationBanner}
 
-    <header className="article-publication-banner">
-      <div className="article-publication-mark" aria-hidden="true">
-        {skin==='national' ? <span>N</span> : skin==='regional' ? <span>PNW</span> : skin==='analysis' ? <BarChart3/> : <Newspaper/>}
-      </div>
-      <div className="article-publication-copy">
-        <small>{publicationDeck}</small>
-        <strong>{publicationName}</strong>
-      </div>
-      <div className="article-publication-meta">
-        <span>Season {data.season}</span>
-        <b>Week {news.week || game.week}</b>
-      </div>
-    </header>
-
-    <section className="digital-feature-top">
-      <header className="digital-feature-head">
-        <span className="digital-kicker">{selected.kicker || news.kicker || 'GAME RECAP'}</span>
+    {skin==='local' ? <>
+      <section className="local-article-head">
+        <span className="local-article-slug">{selected.kicker || 'DUCKS FOOTBALL'}</span>
         <h1>{selected.headline || news.headline}</h1>
-        <p className="digital-deck">{selected.dek || news.dek}</p>
-        <div className="digital-byline">
-          <span>By <b>{selected.byline || 'DynastyHQ Staff'}</b> · {selected.outletName || news.outlet || 'DynastyHQ Sports'}</span>
-          {published && <time>{published}</time>}
+        <p>{selected.dek || news.dek}</p>
+        <div className="local-article-meta">
+          <span>By <b>{selected.byline || 'DynastyHQ Staff'}</b></span>
+          {published && <time>Published {published}</time>}
         </div>
-      </header>
+      </section>
 
-      <figure className="digital-hero-figure">
-        <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
-        <figcaption>
-          <span>{selected.photoCaption || selected.dek || news.photoCaption || news.dek}</span>
-          <em>{selected.photo ? 'Career Photo Library' : 'Default hero fallback'}</em>
-        </figcaption>
+      <figure className="local-article-photo">
+        <div style={{backgroundImage:`url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
+        <figcaption><span>{selected.photoCaption || selected.dek || news.dek}</span><em>{selected.photo?'Career Photo Library':'Default hero fallback'}</em></figcaption>
       </figure>
-    </section>
 
-    <section className="digital-scorebar">
-      <div className="digital-team"><Logo team={data.player.school}/><span><b>{data.player.school}</b><strong>{game.us}</strong></span></div>
-      <em>FINAL</em>
-      <div className="digital-team away"><span><strong>{game.them}</strong><b>{game.opponent}</b></span><Logo team={game.opponent}/></div>
-      <i/>
-      <div className="digital-stat"><strong>{game.pass}</strong><small>PASS YDS</small></div>
-      <div className="digital-stat"><strong>{game.rush}</strong><small>RUSH YDS</small></div>
-      <div className="digital-stat"><strong>{game.total}</strong><small>TOTAL YARDS</small></div>
-      <div className="digital-stat"><strong>{game.td}</strong><small>TOTAL TD</small></div>
-    </section>
+      <div className="local-article-body">
+        <main className="local-copy">
+          <div className="article-section-label"><span>LOCAL BEAT</span><b>{publicationName}</b></div>
+          {storyParagraphs('local-paragraph')}
+        </main>
+        <aside className="local-paper-rail">
+          <section className="local-boxscore">
+            <header>GAME AT A GLANCE</header>
+            <div><Logo team={data.player.school}/><span><b>{data.player.school}</b><strong>{game.us}</strong></span></div>
+            <i>FINAL</i>
+            <div><Logo team={game.opponent}/><span><b>{game.opponent}</b><strong>{game.them}</strong></span></div>
+            <dl>
+              <div><dt>{lastName}</dt><dd>{game.total} total yds</dd></div>
+              <div><dt>Passing</dt><dd>{game.pass} yds · {game.passTD} TD</dd></div>
+              <div><dt>Rushing</dt><dd>{game.rush} yds · {game.rushTD} TD</dd></div>
+            </dl>
+          </section>
+          {relatedCard}
+        </aside>
+      </div>
+    </> : skin==='regional' ? <>
+      <section className="regional-article-splash">
+        <header className="regional-article-head">
+          <span>{selected.kicker || 'NORTHWEST FOOTBALL'}</span>
+          <h1>{selected.headline || news.headline}</h1>
+          <p>{selected.dek || news.dek}</p>
+          <div><b>{selected.byline || 'DynastyHQ Staff'}</b>{published&&<time>{published}</time>}</div>
+        </header>
+        <figure className="regional-article-photo">
+          <div style={{backgroundImage:`linear-gradient(0deg,rgba(13,33,32,.12),transparent 55%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
+          <figcaption>{selected.photoCaption || selected.dek || news.dek}</figcaption>
+        </figure>
+      </section>
 
-    <div className="digital-story-layout">
-      <main className="digital-story-copy">
-        <div className="article-section-label"><span>{audienceLabel}</span><b>{publicationName}</b></div>
-        {paragraphs.map((paragraph,index)=><p key={index} className={index===0?'digital-lede':undefined}>{paragraph}</p>)}
-        <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>View verified game data<ChevronRight/></button>
-      </main>
+      <section className="regional-context-band">
+        <div><small>FINAL</small><strong>{data.player.school} {game.us}–{game.them} {game.opponent}</strong></div>
+        <div><small>TOTAL YARDS</small><strong>{game.total}</strong></div>
+        <div><small>TOTAL TD</small><strong>{game.td}</strong></div>
+        <div><small>NEXT</small><strong>W{data.next.week} · {data.next.opponent}</strong></div>
+      </section>
 
-      <aside className="digital-story-rail">
-        <section className="snapshot-card">
-          <div className="snapshot-head">GAME SNAPSHOT</div>
-          <div className="snapshot-row"><span>Final</span><b>{data.player.school} {game.us}, {game.opponent} {game.them}</b></div>
-          <div className="snapshot-row"><span>Passing</span><b>{game.pass} yards, {game.passTD} TD</b></div>
-          <div className="snapshot-row"><span>Rushing</span><b>{game.rush} yards, {game.rushTD} TD</b></div>
-          <div className="snapshot-row"><span>{lastName}</span><b>{game.total} total yards, {game.td} TD</b></div>
-        </section>
+      <div className="regional-article-body">
+        <main className="regional-copy">
+          <div className="article-section-label"><span>REGIONAL DESK</span><b>{publicationName}</b></div>
+          {paragraphs.map((paragraph,index)=><React.Fragment key={index}>
+            {index===2 && <blockquote className="regional-pullquote"><span>THE NORTHWEST VIEW</span>{selected.dek || news.dek}</blockquote>}
+            <p className={index===0?'digital-lede':''}>{paragraph}</p>
+          </React.Fragment>)}
+          <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>Open full game data<ChevronRight/></button>
+        </main>
+        <aside className="regional-rail">
+          <section className="regional-score-card">
+            <header>NORTHWEST SCOREBOARD</header>
+            <div><Logo team={data.player.school}/><b>{data.player.school}</b><strong>{game.us}</strong></div>
+            <div><Logo team={game.opponent}/><b>{game.opponent}</b><strong>{game.them}</strong></div>
+            <footer><span>{lastName}</span><b>{game.pass} PASS · {game.rush} RUSH</b></footer>
+          </section>
+          {relatedCard}
+        </aside>
+      </div>
+    </> : skin==='national' ? <>
+      <figure className="national-article-hero">
+        <div style={{backgroundImage:`linear-gradient(0deg,rgba(0,0,0,.30),transparent 52%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 25%`}}/>
+        <figcaption><span>{selected.photoCaption || selected.dek || news.dek}</span><em>{selected.photo?'Career Photo Library':'DynastyHQ image'}</em></figcaption>
+      </figure>
 
-        <section className="related-card">
-          <span>RELATED COVERAGE</span>
-          <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
-          <button onClick={()=>openPodcast('episode')}><Headphones/><b>The Huddle</b><small>{data.podcast.title} · {data.podcast.duration}</small><ChevronRight/></button>
-          <button onClick={()=>go('chronicle')}><Archive/><b>Career File</b><small>Follow the preserved career story</small><ChevronRight/></button>
-        </section>
-      </aside>
-    </div>
+      <section className="national-headline-block">
+        <span>{selected.kicker || 'COLLEGE FOOTBALL'}</span>
+        <h1>{selected.headline || news.headline}</h1>
+        <p>{selected.dek || news.dek}</p>
+        <div className="national-byline"><b>{selected.byline || 'DynastyHQ Staff'}</b>{published&&<time>{published}</time>}<span>National Desk</span></div>
+      </section>
+
+      <section className="national-game-strip">
+        <div className="national-matchup"><Logo team={data.player.school}/><b>{data.player.school}</b><strong>{game.us}</strong><i>FINAL</i><strong>{game.them}</strong><b>{game.opponent}</b><Logo team={game.opponent}/></div>
+        <div><small>PASS</small><strong>{game.pass}</strong></div>
+        <div><small>RUSH</small><strong>{game.rush}</strong></div>
+        <div><small>TOTAL</small><strong>{game.total}</strong></div>
+        <div><small>TD</small><strong>{game.td}</strong></div>
+      </section>
+
+      <div className="national-article-body">
+        <main className="national-copy">
+          <div className="article-section-label"><span>NATIONAL</span><b>{publicationName}</b></div>
+          {storyParagraphs('national-paragraph')}
+        </main>
+        <aside className="national-rail">
+          <section className="national-gamecenter">
+            <header><span>GAMECENTER</span><b>Week {game.week}</b></header>
+            <div><small>QB</small><strong>{data.player.name}</strong></div>
+            <div><small>Total offense</small><strong>{game.total} YDS</strong></div>
+            <div><small>Total TD</small><strong>{game.td}</strong></div>
+            <div><small>Next opponent</small><strong>{data.next.opponent}</strong></div>
+          </section>
+          {relatedCard}
+        </aside>
+      </div>
+    </> : <>
+      <section className="digital-feature-top">
+        <header className="digital-feature-head">
+          <span className="digital-kicker">{selected.kicker || news.kicker || 'GAME RECAP'}</span>
+          <h1>{selected.headline || news.headline}</h1>
+          <p className="digital-deck">{selected.dek || news.dek}</p>
+          <div className="digital-byline"><span>By <b>{selected.byline || 'DynastyHQ Staff'}</b> · {publicationName}</span>{published && <time>{published}</time>}</div>
+        </header>
+        <figure className="digital-hero-figure">
+          <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
+          <figcaption><span>{selected.photoCaption || selected.dek || news.photoCaption || news.dek}</span><em>{selected.photo ? 'Career Photo Library' : 'Default hero fallback'}</em></figcaption>
+        </figure>
+      </section>
+
+      <section className="digital-scorebar">
+        <div className="digital-team"><Logo team={data.player.school}/><span><b>{data.player.school}</b><strong>{game.us}</strong></span></div>
+        <em>FINAL</em>
+        <div className="digital-team away"><span><strong>{game.them}</strong><b>{game.opponent}</b></span><Logo team={game.opponent}/></div>
+        <i/>
+        <div className="digital-stat"><strong>{game.pass}</strong><small>PASS YDS</small></div>
+        <div className="digital-stat"><strong>{game.rush}</strong><small>RUSH YDS</small></div>
+        <div className="digital-stat"><strong>{game.total}</strong><small>TOTAL YARDS</small></div>
+        <div className="digital-stat"><strong>{game.td}</strong><small>TOTAL TD</small></div>
+      </section>
+
+      <div className="digital-story-layout">
+        <main className="digital-story-copy"><div className="article-section-label"><span>{audienceLabel}</span><b>{publicationName}</b></div>{storyParagraphs()}</main>
+        <aside className="digital-story-rail">
+          <section className="snapshot-card">
+            <div className="snapshot-head">GAME SNAPSHOT</div>
+            <div className="snapshot-row"><span>Final</span><b>{data.player.school} {game.us}, {game.opponent} {game.them}</b></div>
+            <div className="snapshot-row"><span>Passing</span><b>{game.pass} yards, {game.passTD} TD</b></div>
+            <div className="snapshot-row"><span>Rushing</span><b>{game.rush} yards, {game.rushTD} TD</b></div>
+            <div className="snapshot-row"><span>{lastName}</span><b>{game.total} total yards, {game.td} TD</b></div>
+          </section>
+          {relatedCard}
+        </aside>
+      </div>
+    </>}
 
     <section className="digital-related-strip">
       <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the verified numbers</b></span><ChevronRight/></button>

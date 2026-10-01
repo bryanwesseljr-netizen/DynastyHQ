@@ -37,6 +37,7 @@ const pages = [
 
 
 const PAGE_VISUAL_STORAGE_KEY = 'dynastyhq-preview-page-visuals-v1';
+const PROFILE_PHOTO_STORAGE_KEY = 'dynastyhq-preview-career-profile-photos-v1';
 
 const PREVIEW_VIEW_STORAGE_KEY = 'dynastyhq-preview-view-v1';
 
@@ -93,6 +94,16 @@ const loadPageVisuals = () => {
   if (typeof window === 'undefined') return {};
   try {
     const saved=JSON.parse(window.localStorage.getItem(PAGE_VISUAL_STORAGE_KEY) || '{}');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    return {};
+  }
+};
+
+const loadProfilePhotos = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved=JSON.parse(window.localStorage.getItem(PROFILE_PHOTO_STORAGE_KEY) || '{}');
     return saved && typeof saved === 'object' ? saved : {};
   } catch {
     return {};
@@ -205,6 +216,9 @@ function App(){
   const [visualEditorOpen,setVisualEditorOpen] = useState(false);
   const [visualTarget,setVisualTarget] = useState('home');
   const [visualBusy,setVisualBusy] = useState(false);
+  const [profilePhotos,setProfilePhotos] = useState(()=>loadProfilePhotos());
+  const [profileEditorOpen,setProfileEditorOpen] = useState(false);
+  const [profileBusy,setProfileBusy] = useState(false);
   const [processingOpen,setProcessingOpen] = useState(false);
   const restoredSelectionRef=useRef(Boolean(restoredView.hasSelection || (hasRestoredSeason && hasRestoredWeek)));
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
@@ -216,6 +230,11 @@ function App(){
       : fallbackData,
     [live.career,live.data,season,week],
   );
+  const profilePhotoKey = useMemo(() => [
+    live.user?.uid || 'sample-career',
+    data.player?.name || 'player',
+    data.player?.pos || 'position',
+  ].map((value)=>String(value).trim().toLowerCase()).join('::'), [live.user?.uid,data.player?.name,data.player?.pos]);
 
   useEffect(() => {
     if (!live.data || restoredSelectionRef.current) return;
@@ -385,6 +404,16 @@ function App(){
       return false;
     }
   };
+  const persistProfilePhotos = (next) => {
+    setProfilePhotos(next);
+    try {
+      window.localStorage.setItem(PROFILE_PHOTO_STORAGE_KEY,JSON.stringify(next));
+      return true;
+    } catch {
+      notify('That profile photo is too large for browser-only preview storage. Try a smaller image.');
+      return false;
+    }
+  };
   const openVisualEditor = (id=page) => {
     setVisualTarget(id);
     setVisualEditorOpen(true);
@@ -429,6 +458,40 @@ function App(){
     });
     persistVisuals(next);
     notify(storedCurrent.image ? 'That photo is now used across all page heroes in this browser.' : 'That photo focus is now used across all page heroes in this browser.');
+  };
+  const storedProfilePhoto=profilePhotos[profilePhotoKey] || {};
+  const profileVisual={
+    image:storedProfilePhoto.image || data.player?.headshot || visualFor('gamehub').image || playerPhoto,
+    position:storedProfilePhoto.position || '50%',
+    custom:Boolean(storedProfilePhoto.image),
+  };
+  const openProfilePhotoEditor = () => {
+    setProfileEditorOpen(true);
+    setMobileMenu(false);
+    setMobileMoreOpen(false);
+  };
+  const updateProfilePhoto = (patch) => {
+    const current=profilePhotos[profilePhotoKey] || {};
+    persistProfilePhotos({...profilePhotos,[profilePhotoKey]:{...current,...patch}});
+  };
+  const uploadProfilePhoto = async (file) => {
+    if(!file) return;
+    setProfileBusy(true);
+    try {
+      const image=await compressPagePhoto(file);
+      updateProfilePhoto({image});
+      notify('Career profile photo updated across player identity cards in this preview.');
+    } catch(error) {
+      notify(error?.message || 'The profile photo could not be added.');
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+  const resetProfilePhoto = () => {
+    const next={...profilePhotos};
+    delete next[profilePhotoKey];
+    persistProfilePhotos(next);
+    notify('Career profile photo reset to the saved/default player image.');
   };
   const connectLiveCareer = async (event) => {
     event.preventDefault();
@@ -504,11 +567,11 @@ function App(){
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
       {page==='home' && <HomePage data={data} visual={visualFor('home')} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
-      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
-      {page==='career' && <CareerPage data={data} visual={visualFor('career')} go={go} openArchiveMoment={openArchiveMoment}/>} 
+      {page==='career' && <CareerPage data={data} visual={visualFor('career')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openArchiveMoment={openArchiveMoment}/>} 
       {page==='chronicle' && <ChroniclePage data={data} visual={visualFor('chronicle')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
     </main>
 
@@ -555,6 +618,17 @@ function App(){
       onMode={(mode)=>setVisualMode(visualTarget,mode)}
       onPosition={(position)=>updateVisual(visualTarget,{position})}
       onApplyAll={applyVisualToAll}
+    />
+
+    <ProfilePhotoEditor
+      open={profileEditorOpen}
+      name={data.player.name}
+      visual={profileVisual}
+      busy={profileBusy}
+      onClose={()=>setProfileEditorOpen(false)}
+      onUpload={uploadProfilePhoto}
+      onReset={resetProfilePhoto}
+      onPosition={(position)=>updateProfilePhoto({position})}
     />
 
     {toast && <div className="toast" role="status">{toast}</div>}
@@ -1240,6 +1314,35 @@ function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,on
   </div>;
 }
 
+function ProfilePhotoEditor({open,name,visual,busy,onClose,onUpload,onReset,onPosition}){
+  if(!open) return null;
+  const positions=[['30%','Left'],['50%','Center'],['70%','Right']];
+  return <div className="visual-editor-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget) onClose()}}>
+    <section className="visual-editor profile-photo-editor" role="dialog" aria-modal="true" aria-label="Career profile photo settings">
+      <header>
+        <div><span>CAREER IDENTITY</span><h2>{name || 'Player'} profile photo</h2></div>
+        <button onClick={onClose} aria-label="Close profile photo settings"><X/></button>
+      </header>
+
+      <div className="profile-photo-preview" style={{'--preview-photo':`url(${visual.image})`,'--photo-x':visual.position}}><div/></div>
+
+      <p className="profile-photo-explainer">One profile photo follows this career across player-identity surfaces like Verified Game Data, the Newsroom Career File, and the Career page. Weekly article and hero photos stay separate.</p>
+
+      <div className="visual-position-row">
+        <span>Photo focus</span>
+        <div>{positions.map(([position,text])=><button key={position} className={visual.position===position?'active':''} onClick={()=>onPosition(position)}>{text}</button>)}</div>
+      </div>
+
+      <div className="visual-editor-actions">
+        <label className="visual-upload"><Upload/>{busy?'Preparing…':'Choose profile photo'}<input type="file" accept="image/*" disabled={busy} onChange={(event)=>{const file=event.target.files?.[0];event.target.value='';onUpload(file)}}/></label>
+        <button onClick={onReset}>Reset profile photo</button>
+      </div>
+
+      <p><ShieldCheck/>Saved only in this browser’s redesign preview for this career. It does not change live career data yet.</p>
+    </section>
+  </div>;
+}
+
 function LiveDataBar({live,open,setOpen,email,setEmail,password,setPassword,onConnect}){
   const connected=live.status==='connected';
   return <section className={'live-data-bar '+(connected?'is-connected':'')}>
@@ -1622,7 +1725,7 @@ function HomePage({data,visual,go,openArticle,openPodcast,notify}){
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,visual,go,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
+function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
   const team=data.game.team || {};
@@ -1656,7 +1759,10 @@ function GameHub({data,visual,go,openPodcast,openProcessing,statsTab,setStatsTab
           </div>
 
           <div className="player-summary">
-            <div className="player-photo"><div className="fake-player photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,24,18,.10),rgba(0,24,18,.05)),url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/></div>
+            <div className="player-photo">
+              <div className="fake-player photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,24,18,.10),rgba(0,24,18,.05)),url(${profileVisual.image})`,backgroundPosition:`${profileVisual.position} 29%`}}/>
+              <button className="profile-photo-change" onClick={openProfilePhoto} aria-label="Change career profile photo" title="Change career profile photo"><Camera/></button>
+            </div>
             <div className="player-copy"><div className="player-name"><Logo team={data.player.school}/><div><h3>{data.player.name}</h3><p>#{data.player.number} &nbsp; | &nbsp; {data.player.pos} &nbsp; | &nbsp; {data.player.school}</p></div></div>
               <div className="stat-grid">{statContent.map(([v,l])=><div key={l}><strong>{v}</strong><span>{l}</span></div>)}</div>
             </div>
@@ -2128,7 +2234,7 @@ function OffseasonPage({data,visual,go,openPodcast,openArticle,notify}){
   </div>;
 }
 
-function CareerPage({data,visual,go,openArchiveMoment}){
+function CareerPage({data,visual,profileVisual,openProfilePhoto,go,openArchiveMoment}){
   const c=data.career || {};
   const totals=c.totals || data.totals || {};
   const profile=c.profile || {};
@@ -2140,7 +2246,7 @@ function CareerPage({data,visual,go,openArchiveMoment}){
 
   return <div className="page career-page">
     <section className="career-hero-redesign">
-      <div className="career-portrait" style={{backgroundImage:`linear-gradient(0deg,rgba(0,23,17,.18),rgba(0,23,17,.04)),url(${visual.image})`,backgroundPosition:`${visual.position} 25%`}}/>
+      <div className="career-portrait" style={{backgroundImage:`linear-gradient(0deg,rgba(0,23,17,.18),rgba(0,23,17,.04)),url(${profileVisual.image})`,backgroundPosition:`${profileVisual.position} 25%`}}/>
       <div className="career-identity">
         <span className="career-kicker"><Sparkles/>CAREER OVERVIEW</span>
         <h1>{data.player.name.split(' ')[0] || 'PLAYER'}<br/><em>{lastName}</em></h1>
@@ -2178,6 +2284,7 @@ function CareerPage({data,visual,go,openArchiveMoment}){
             <div><dt>GPA</dt><dd>{profile.gpa || 'Not captured'}</dd></div>
             <div><dt>NIL / Followers</dt><dd>{(profile.valuation||0).toLocaleString()} / {(profile.followers||0).toLocaleString()}</dd></div>
           </dl>
+          <button className="career-profile-photo-button" onClick={openProfilePhoto}><Camera/>CHANGE PROFILE PHOTO</button>
         </article>
         <article className="career-panel career-current-panel">
           <div className="career-panel-head"><div><span>CURRENT CHAPTER</span><h2>{c.stage || 'Road to Glory'}</h2></div><TrendingUp/></div>
@@ -2387,7 +2494,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,profileVisual,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
@@ -2456,7 +2563,7 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,selectedArticleId,setS
               <button className="yellow" onClick={()=>openSavedStory(leadStory,'lead')}>Read full story<ChevronRight/></button>
             </div>
             <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${leadPhoto})`,backgroundPosition:`${visual.position} 29%`}}>
-              <div className="journal-photo-credit"><span>{leadStory?.photo ? 'CAREER PHOTO LIBRARY' : 'HERO FALLBACK'}</span><small>{leadPhotoCaption}</small></div>
+              <div className="journal-photo-credit"><span>{leadStory?.photo ? 'WEEK GAME PHOTO' : 'PAGE HERO'}</span><small>{leadPhotoCaption}</small></div>
             </div>
           </section>
 
@@ -2498,7 +2605,7 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,selectedArticleId,setS
 
             <article className="journal-box career-file reference-journal-box">
               <CardHeader title="THE CAREER FILE" light/>
-              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${leadPhoto})`}}><span>{lastName}</span><b>{data.player.number}</b></div><div><h3>From the early chapters<br/>to the current spotlight.</h3><p>Follow {data.player.name}’s preserved career story, milestones, and defining weeks.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
+              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${profileVisual.image})`,backgroundPosition:`${profileVisual.position} 37%`}}><button className="profile-photo-change compact" onClick={openProfilePhoto} aria-label="Change career profile photo" title="Change career profile photo"><Camera/></button><span>{lastName}</span><b>{data.player.number}</b></div><div><h3>From the early chapters<br/>to the current spotlight.</h3><p>Follow {data.player.name}’s preserved career story, milestones, and defining weeks.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
             </article>
           </section>
         </>
@@ -2599,7 +2706,7 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
 
       <figure className="local-article-photo">
         <div style={{backgroundImage:`url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
-        <figcaption><span>{selected.photoCaption || selected.dek || news.dek}</span><em>{selected.photo?'Career Photo Library':'Default hero fallback'}</em></figcaption>
+        <figcaption><span>{selected.photoCaption || selected.dek || news.dek}</span><em>{selected.photo?'Week Game Photo':'Default hero fallback'}</em></figcaption>
       </figure>
 
       <div className="local-article-body">
@@ -2665,7 +2772,7 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
     </> : skin==='national' ? <>
       <figure className="national-article-hero">
         <div style={{backgroundImage:`linear-gradient(0deg,rgba(0,0,0,.30),transparent 52%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 25%`}}/>
-        <figcaption><span>{selected.photoCaption || selected.dek || news.dek}</span><em>{selected.photo?'Career Photo Library':'DynastyHQ image'}</em></figcaption>
+        <figcaption><span>{selected.photoCaption || selected.dek || news.dek}</span><em>{selected.photo?'Week Game Photo':'DynastyHQ image'}</em></figcaption>
       </figure>
 
       <section className="national-headline-block">
@@ -2709,7 +2816,7 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
         </header>
         <figure className="digital-hero-figure">
           <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
-          <figcaption><span>{selected.photoCaption || selected.dek || news.photoCaption || news.dek}</span><em>{selected.photo ? 'Career Photo Library' : 'Default hero fallback'}</em></figcaption>
+          <figcaption><span>{selected.photoCaption || selected.dek || news.photoCaption || news.dek}</span><em>{selected.photo ? 'Week Game Photo' : 'Default hero fallback'}</em></figcaption>
         </figure>
       </section>
 

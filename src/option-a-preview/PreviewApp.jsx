@@ -1544,9 +1544,28 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   })();
   const articlePhoto=selected.photo?.url || news.weeklyPhoto?.url || visual.image;
-  const audienceLabel=selected.audience==='local'?'Local Beat':selected.audience?.startsWith('national')?'National Desk':selected.audience==='regional'?'Regional Desk':selected.audience==='analysis'?'Film Room':selected.category || 'Coverage';
+  const skin=selected.audience==='local'
+    ? 'local'
+    : selected.audience==='regional'
+      ? 'regional'
+      : selected.audience?.startsWith('national')
+        ? 'national'
+        : selected.audience==='analysis'
+          ? 'analysis'
+          : 'school';
+  const audienceLabel=skin==='local'?'Local Beat':skin==='national'?'National Desk':skin==='regional'?'Regional Desk':skin==='analysis'?'Film Room':selected.category || 'Coverage';
+  const publicationName=selected.outletName || news.outlet || 'DynastyHQ Sports';
+  const publicationDeck=skin==='local'
+    ? `EUGENE · ${data.player.school} FOOTBALL`
+    : skin==='regional'
+      ? 'PACIFIC NORTHWEST COLLEGE FOOTBALL'
+      : skin==='national'
+        ? 'NATIONAL COLLEGE FOOTBALL'
+        : skin==='analysis'
+          ? 'FILM · NUMBERS · PERFORMANCE'
+          : `${data.player.school} FOOTBALL`;
 
-  return <article className="newsroom-article digital-feature">
+  return <article className={`newsroom-article digital-feature article-skin-${skin}`} data-audience={skin}>
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
       <span>{audienceLabel} • WEEK {news.week || game.week}</span>
@@ -1558,6 +1577,20 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
         <b>{entry.outletName}</b>
       </button>)}
     </nav>
+
+    <header className="article-publication-banner">
+      <div className="article-publication-mark" aria-hidden="true">
+        {skin==='national' ? <span>N</span> : skin==='regional' ? <span>PNW</span> : skin==='analysis' ? <BarChart3/> : <Newspaper/>}
+      </div>
+      <div className="article-publication-copy">
+        <small>{publicationDeck}</small>
+        <strong>{publicationName}</strong>
+      </div>
+      <div className="article-publication-meta">
+        <span>Season {data.season}</span>
+        <b>Week {news.week || game.week}</b>
+      </div>
+    </header>
 
     <section className="digital-feature-top">
       <header className="digital-feature-head">
@@ -1592,6 +1625,7 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
 
     <div className="digital-story-layout">
       <main className="digital-story-copy">
+        <div className="article-section-label"><span>{audienceLabel}</span><b>{publicationName}</b></div>
         {paragraphs.map((paragraph,index)=><p key={index} className={index===0?'digital-lede':undefined}>{paragraph}</p>)}
         <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>View verified game data<ChevronRight/></button>
       </main>

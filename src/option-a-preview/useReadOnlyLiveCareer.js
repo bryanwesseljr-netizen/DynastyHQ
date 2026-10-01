@@ -8,6 +8,7 @@ import { podcastTranscriptText } from '../domain/podcastEngine.js';
 import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
 import { buildCareerChronicle2 } from '../domain/careerChronicle2.js';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
+import { resolveNewsroomPresentation } from '../domain/newsroomPresentation.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
   hydrateCareerStateFromArchives,
@@ -234,6 +235,40 @@ const episodeTranscriptSections = (episode = {}) => {
 };
 
 
+
+const newsroomArticleViews = (state = {}, issue = null) => {
+  if (!issue || !Array.isArray(issue.articles)) return [];
+  const library = Array.isArray(state.newsroomMediaLibrary) ? state.newsroomMediaLibrary : [];
+  const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
+
+  return issue.articles.map((article,index) => {
+    const presentation = resolveNewsroomPresentation(article || {});
+    const asset = byId.get(String(article?.mediaAssetId || '')) || null;
+    return {
+      ...article,
+      id: clean(article?.id || article?.outletId, `article-${index + 1}`),
+      audience: clean(presentation?.audience, clean(article?.audience, 'school')),
+      layout: clean(presentation?.layout, 'classic'),
+      category: clean(presentation?.category, 'College Football'),
+      outletId: clean(article?.outletId || article?.theme, `outlet-${index + 1}`),
+      outletName: clean(article?.outletName, article?.outletId === 'national' ? 'College Football Central' : 'DynastyHQ Sports'),
+      headline: clean(article?.headline || article?.title, 'Saved DynastyHQ story'),
+      dek: clean(article?.dek || article?.summary, ''),
+      kicker: clean(article?.kicker, ''),
+      byline: clean(article?.byline, 'DynastyHQ Staff'),
+      paragraphs: Array.isArray(article?.paragraphs) ? article.paragraphs.filter((entry) => clean(entry)).slice(0, 12) : [],
+      photoCaption: clean(article?.photoCaption || article?.dek),
+      photo: asset?.downloadUrl ? {
+        id: clean(asset.id),
+        url: clean(asset.downloadUrl),
+        fileName: clean(asset.fileName, 'Newsroom photo'),
+        photoType: clean(asset.photoType, 'general'),
+        source: clean(asset.origin, 'upload'),
+      } : null,
+    };
+  });
+};
+
 const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
   const library = Array.isArray(state.newsroomMediaLibrary) ? state.newsroomMediaLibrary : [];
   if (!library.length || !issue) return null;
@@ -380,12 +415,20 @@ export const derivePreviewData = (state, selection = {}) => {
   const issue = isExplicitSelection
     ? exactIssueFor(state, season, week)
     : issueForGame(state, game, season, week);
-  const article = issue?.articles?.find((entry) => entry?.headline || entry?.title) || issue?.articles?.[0] || null;
+  const rawArticle = issue?.articles?.find((entry) => entry?.headline || entry?.title) || issue?.articles?.[0] || null;
+  const articleViews = newsroomArticleViews(state, issue);
+  const article = articleViews.find((entry) => entry.id === rawArticle?.id || entry.outletId === rawArticle?.outletId) || articleViews[0] || null;
+  const localArticle = articleViews.find((entry) => entry.audience === 'local')
+    || articleViews.find((entry) => entry.audience === 'regional')
+    || null;
+  const nationalArticle = articleViews.find((entry) => entry.audience === 'national-lead')
+    || articleViews.find((entry) => entry.audience === 'national')
+    || null;
   const episode = isExplicitSelection
     ? exactEpisodeFor(state, issue, season, week)
     : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
-  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, article);
+  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle);
   const facts = factsForPublication(state, publicationId, season, week);
   const coverageFacts = facts.filter((fact) => fact?.sourceType === 'coverage-reference' || fact?.editorialOnly === true);
   const scoringFacts = coverageFacts.filter((fact) => (
@@ -481,7 +524,11 @@ export const derivePreviewData = (state, selection = {}) => {
       publishedAt: clean(issue?.publishedAt || issue?.editorialGeneratedAt),
       paragraphs: Array.isArray(article?.paragraphs) ? article.paragraphs.filter((entry) => clean(entry)).slice(0, 10) : [],
       photoCaption: clean(article?.photoCaption || article?.dek),
-      articles: Array.isArray(issue?.articles) ? issue.articles : [],
+      articles: articleViews,
+      localArticleId: localArticle?.id || '',
+      nationalArticleId: nationalArticle?.id || '',
+      localArticle,
+      nationalArticle,
       weeklyPhoto,
     },
     podcast: {

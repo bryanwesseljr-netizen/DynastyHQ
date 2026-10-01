@@ -31,6 +31,28 @@ const pages = [
 
 
 const PAGE_VISUAL_STORAGE_KEY = 'dynastyhq-preview-page-visuals-v1';
+
+const PREVIEW_VIEW_STORAGE_KEY = 'dynastyhq-preview-view-v1';
+
+const loadPreviewViewState = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved=JSON.parse(window.sessionStorage.getItem(PREVIEW_VIEW_STORAGE_KEY) || '{}');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    return {};
+  }
+};
+
+const savePreviewViewState = (state) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(PREVIEW_VIEW_STORAGE_KEY,JSON.stringify(state));
+  } catch {
+    // View persistence is convenience-only; never interrupt the site if storage is unavailable.
+  }
+};
+
 const PAGE_VISUAL_POSITIONS = {
   home:'59%',
   gamehub:'52%',
@@ -142,17 +164,19 @@ function Logo({team='Oregon', type=''}) {
 }
 
 function App(){
-  const [page,setPage] = useState('home');
+  const [restoredView] = useState(()=>loadPreviewViewState());
+  const validPage=pages.some(([id])=>id===restoredView.page) ? restoredView.page : 'home';
+  const [page,setPage] = useState(validPage);
   const [mobileMenu,setMobileMenu] = useState(false);
   const [mobileMoreOpen,setMobileMoreOpen] = useState(false);
-  const [season,setSeason] = useState(4);
-  const [week,setWeek] = useState(10);
-  const [articleOpen,setArticleOpen] = useState(false);
-  const [selectedArticleId,setSelectedArticleId] = useState('');
-  const [statsTab,setStatsTab] = useState('player');
+  const [season,setSeason] = useState(Number(restoredView.season)||4);
+  const [week,setWeek] = useState(Number(restoredView.week)||10);
+  const [articleOpen,setArticleOpen] = useState(Boolean(restoredView.articleOpen && validPage==='newsroom'));
+  const [selectedArticleId,setSelectedArticleId] = useState(restoredView.selectedArticleId || '');
+  const [statsTab,setStatsTab] = useState(restoredView.statsTab || 'player');
   const [toast,setToast] = useState('');
   const [playing,setPlaying] = useState(false);
-  const [podcastTab,setPodcastTab] = useState('episode');
+  const [podcastTab,setPodcastTab] = useState(restoredView.podcastTab || 'episode');
   const [liveAuthOpen,setLiveAuthOpen] = useState(false);
   const [liveEmail,setLiveEmail] = useState('');
   const [livePassword,setLivePassword] = useState('');
@@ -161,6 +185,9 @@ function App(){
   const [visualTarget,setVisualTarget] = useState('home');
   const [visualBusy,setVisualBusy] = useState(false);
   const [processingOpen,setProcessingOpen] = useState(false);
+  const restoredSelectionRef=useRef(Boolean(restoredView.season && restoredView.week));
+  const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
+  const scrollRestoredRef=useRef(false);
   const live = useReadOnlyLiveCareer();
   const data = useMemo(
     () => live.career
@@ -170,7 +197,7 @@ function App(){
   );
 
   useEffect(() => {
-    if (!live.data) return;
+    if (!live.data || restoredSelectionRef.current) return;
     setSeason(live.data.season);
     setWeek(live.data.week);
   }, [live.data?.season, live.data?.week]);
@@ -183,12 +210,70 @@ function App(){
   }, [season,live.career]);
 
   useEffect(()=>{
-    if(!selectedArticleId) return;
+    if(!live.career || !selectedArticleId) return;
     if(!(data.news?.articles || []).some((article)=>article.id===selectedArticleId)){
       setSelectedArticleId('');
       setArticleOpen(false);
     }
-  },[season,week,data.news?.publicationId,selectedArticleId]);
+  },[live.career,season,week,data.news?.publicationId,selectedArticleId]);
+
+  useEffect(()=>{
+    savePreviewViewState({
+      page,
+      season,
+      week,
+      articleOpen,
+      selectedArticleId,
+      statsTab,
+      podcastTab,
+      scrollY:typeof window!=='undefined' ? Math.round(window.scrollY) : 0,
+    });
+  },[page,season,week,articleOpen,selectedArticleId,statsTab,podcastTab]);
+
+  useEffect(()=>{
+    let frame=0;
+    const rememberScroll=()=>{
+      if(frame) return;
+      frame=window.requestAnimationFrame(()=>{
+        frame=0;
+        const current=loadPreviewViewState();
+        savePreviewViewState({
+          ...current,
+          page,
+          season,
+          week,
+          articleOpen,
+          selectedArticleId,
+          statsTab,
+          podcastTab,
+          scrollY:Math.round(window.scrollY),
+        });
+      });
+    };
+    window.addEventListener('scroll',rememberScroll,{passive:true});
+    window.addEventListener('pagehide',rememberScroll);
+    return ()=>{
+      window.removeEventListener('scroll',rememberScroll);
+      window.removeEventListener('pagehide',rememberScroll);
+      if(frame) window.cancelAnimationFrame(frame);
+    };
+  },[page,season,week,articleOpen,selectedArticleId,statsTab,podcastTab]);
+
+  useEffect(()=>{
+    if(scrollRestoredRef.current) return;
+    const target=pendingScrollRestoreRef.current;
+    if(!target){
+      scrollRestoredRef.current=true;
+      return;
+    }
+
+    const timers=[60,220,650].map((delay,index)=>window.setTimeout(()=>{
+      window.scrollTo({top:target,left:0,behavior:'auto'});
+      if(index===2) scrollRestoredRef.current=true;
+    },delay));
+
+    return ()=>timers.forEach((timer)=>window.clearTimeout(timer));
+  },[page,season,week,articleOpen,selectedArticleId,data.news?.publicationId,live.career]);
 
   const seasonOptions=data.navigation?.seasons?.length ? data.navigation.seasons : [season];
   const weekOptions=data.navigation?.weeks?.length ? data.navigation.weeks : [week];

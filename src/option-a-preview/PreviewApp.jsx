@@ -91,6 +91,86 @@ const formatPreviewClock = (seconds) => {
   return mins+':'+String(secs).padStart(2,'0');
 };
 
+const downloadPreviewText = (contentValue,fileName,type='text/plain') => {
+  const blob=new Blob([String(contentValue || '')],{type});
+  const url=URL.createObjectURL(blob);
+  const anchor=document.createElement('a');
+  anchor.href=url;
+  anchor.download=fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+
+const notebookSourcePackText = ({data,episode,facts,scoringFacts,developmentFacts}) => {
+  const game=data.game || {};
+  const team=game.team || {};
+  const rtg=data.rtg || {};
+  const transcript=episode.transcript || '';
+  const factLines=(facts || []).map((fact,index)=>{
+    const label=String(fact?.label || fact?.key || ('Fact '+(index+1)));
+    const value=fact?.value ?? fact?.displayValue ?? fact?.text ?? '';
+    const evidence=String(fact?.evidence || fact?.sourceName || fact?.sourceType || '');
+    return '- '+label+': '+String(value)+(evidence ? ' | Evidence: '+evidence : '');
+  });
+  const scoringLines=(scoringFacts || []).map((fact,index)=>'- '+String(fact?.label || fact?.key || ('Scoring reference '+(index+1)))+': '+String(fact?.value ?? fact?.displayValue ?? fact?.evidence ?? ''));
+  const developmentLines=(developmentFacts || []).map((fact,index)=>'- '+String(fact?.label || fact?.key || ('Development reference '+(index+1)))+': '+String(fact?.value ?? fact?.displayValue ?? fact?.evidence ?? ''));
+  const chapterLines=(episode.chapters || []).map((chapter,index)=>String(index+1)+'. '+String(chapter?.title || ('Chapter '+(index+1)))+(chapter?.summary ? ' — '+chapter.summary : ''));
+
+  return [
+    'DYNASTYHQ · THE HUDDLE · NOTEBOOKLM SOURCE PACK',
+    'Season '+data.season+' · Week '+game.week+' · '+data.player.school+' vs. '+game.opponent,
+    '',
+    'EPISODE',
+    String(episode.title || ('Week '+game.week+' Recap')),
+    String(episode.summary || ''),
+    '',
+    'GAME RESULT',
+    data.player.school+' '+game.us+' — '+game.them+' '+game.opponent,
+    '',
+    'PLAYER STAT LINE',
+    'Passing: '+String(game.pass ?? '—')+' yards · '+String(game.passTD ?? '—')+' TD',
+    'Rushing: '+String(game.rush ?? '—')+' yards · '+String(game.rushTD ?? '—')+' TD',
+    'Total offense: '+String(game.total ?? '—')+' yards',
+    'Total touchdowns: '+String(game.td ?? '—'),
+    'Interceptions: '+String(game.interceptions ?? '—'),
+    '',
+    'TEAM CONTEXT',
+    'Points: '+String(team.points ?? '—'),
+    'Total offense: '+String(team.totalYards ?? '—'),
+    'Passing yards: '+String(team.passYards ?? '—'),
+    'Rushing yards: '+String(team.rushYards ?? '—'),
+    'First downs: '+String(team.firstDowns ?? '—'),
+    'Turnovers: '+String(team.turnovers ?? '—'),
+    '',
+    'CURRENT RTG STATUS',
+    'Overall: '+String(data.player.overall ?? '—'),
+    'Depth-chart role: '+String(rtg.rank || '—'),
+    'Coach trust: '+String(rtg.coachTrust ?? '—')+(rtg.trustToNext!==undefined ? ' / '+String(rtg.trustToNext) : ''),
+    'Skill points: '+String(rtg.skillPoints ?? '—'),
+    'Energy: '+String(rtg.energy ?? '—'),
+    'GPA: '+String(rtg.gpa ?? '—'),
+    '',
+    'EPISODE CHAPTERS',
+    ...(chapterLines.length ? chapterLines : ['No saved chapter list.']),
+    '',
+    'VERIFIED SOURCE FACTS',
+    ...(factLines.length ? factLines : ['No verified source facts are saved for this selected week.']),
+    '',
+    'SCORING REFERENCES',
+    ...(scoringLines.length ? scoringLines : ['No separate scoring references are saved.']),
+    '',
+    'PLAYER DEVELOPMENT REFERENCES',
+    ...(developmentLines.length ? developmentLines : ['No separate development references are saved.']),
+    '',
+    'FULL PODCAST TRANSCRIPT',
+    transcript || 'No generated transcript is saved for this selected week.',
+    '',
+    'END SOURCE PACK',
+  ].join('\n');
+};
+
 const loadPreviewViewState = () => {
   if (typeof window === 'undefined') return {};
   try {

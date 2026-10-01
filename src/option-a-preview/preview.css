@@ -12364,3 +12364,179 @@ select optgroup{
     height:200px;
   }
 }
+
+
+/* Precision match pass v42 — podcast show cover + episode override controls */
+.pod-show-cover{
+  position:relative;
+}
+.pod-show-cover-change{
+  position:absolute;
+  left:10px;
+  right:10px;
+  bottom:10px;
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  border:1px solid rgba(255,255,255,.34);
+  border-radius:6px;
+  background:rgba(0,24,18,.88);
+  color:#fff;
+  font-size:6px;
+  font-weight:900;
+  letter-spacing:.55px;
+  backdrop-filter:blur(7px);
+}
+.pod-show-cover-change svg{
+  width:13px;
+  height:13px;
+}
+.pod-show-cover-change:disabled{
+  cursor:wait;
+  opacity:.65;
+}
+
+.pod-artwork-controls{
+  padding:11px 12px 12px;
+  border-bottom:1px solid #294d43;
+  background:rgba(4,29,23,.56);
+}
+.pod-artwork-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+.pod-artwork-heading>span{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  color:#8bd6ba;
+  font-size:5.6px;
+  font-weight:950;
+  letter-spacing:.8px;
+}
+.pod-artwork-heading>span svg{
+  width:12px;
+  height:12px;
+}
+.pod-artwork-heading>small{
+  color:#6f8b80;
+  font-size:5px;
+}
+.pod-artwork-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:7px;
+}
+.pod-artwork-card{
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr) auto;
+  grid-template-rows:auto auto;
+  gap:5px 8px;
+  align-items:center;
+  padding:8px;
+  border:1px solid #31584e;
+  border-radius:7px;
+  background:#08251e;
+}
+.pod-artwork-card>img{
+  grid-row:1/3;
+  width:52px;
+  height:52px;
+  display:block;
+  object-fit:cover;
+  border:1px solid #3f655b;
+  border-radius:6px;
+  background:#031711;
+}
+.pod-artwork-card>div{
+  min-width:0;
+  display:grid;
+  gap:1px;
+}
+.pod-artwork-card>div small{
+  color:#6f8b80;
+  font-size:4.8px;
+  font-weight:950;
+  letter-spacing:.65px;
+}
+.pod-artwork-card>div b{
+  overflow:hidden;
+  color:#edf5f1;
+  font-size:7px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pod-artwork-card>div em{
+  overflow:hidden;
+  color:#86ad9d;
+  font-size:5.2px;
+  font-style:normal;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pod-artwork-card>button{
+  min-height:29px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:0 8px;
+  border:1px solid #b39c00;
+  border-radius:5px;
+  background:var(--yellow);
+  color:#07150f;
+  font-size:5px;
+  font-weight:950;
+  letter-spacing:.3px;
+}
+.pod-artwork-card>button svg{
+  width:11px;
+  height:11px;
+}
+.pod-artwork-card>button:disabled{
+  cursor:not-allowed;
+  opacity:.48;
+}
+.pod-artwork-card>.pod-artwork-secondary{
+  grid-column:3;
+  min-height:24px;
+  border-color:#3c665a;
+  background:#0b332a;
+  color:#a9bdb5;
+  font-size:4.7px;
+}
+.pod-artwork-controls>p{
+  margin:9px 0 0;
+  color:#728c82;
+  font-size:5.2px;
+  line-height:1.45;
+}
+.pod-artwork-controls + .pod-master-status{
+  border-top:0;
+}
+
+@media(max-width:700px){
+  .pod-show-cover-change{
+    min-height:38px;
+    font-size:6.5px;
+  }
+  .pod-artwork-card{
+    grid-template-columns:48px minmax(0,1fr);
+  }
+  .pod-artwork-card>img{
+    width:48px;
+    height:48px;
+  }
+  .pod-artwork-card>button{
+    grid-column:1/3;
+    min-height:35px;
+  }
+  .pod-artwork-card>.pod-artwork-secondary{
+    grid-column:1/3;
+  }
+}

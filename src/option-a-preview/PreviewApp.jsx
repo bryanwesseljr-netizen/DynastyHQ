@@ -488,25 +488,38 @@ function PodcastPage({data,go,playing,setPlaying,podcastTab,setPodcastTab,notify
   </div>;
 }
 
-function OffseasonPage({go,openPodcast,openArticle,notify}){
+function OffseasonPage({data,go,openPodcast,openArticle,notify}){
+  const o=data.offseason || {};
+  const record=o.teamRecord || {wins:0,losses:0};
+  const line=o.playerLine || {};
+  const status=o.currentStatus || {};
+  const decision=o.decision || {};
+  const remaining=o.schedule?.remaining?.length || 0;
+  const awards=Array.isArray(o.awards)?o.awards:[];
+  const movement=Array.isArray(o.movement)?o.movement:[];
+  const seasonComplete=Boolean(o.seasonComplete);
+  const decisionComplete=Boolean(decision.complete);
   const phases = [
-    ['01','Season Review','done'],
-    ['02','Career Decision','waiting'],
-    ['03','Development','waiting'],
-    ['04','Next Chapter','waiting'],
+    ['01','Season Review',seasonComplete?'done':'current'],
+    ['02','Career Decision',decisionComplete?'done':seasonComplete?'current':'waiting'],
+    ['03','Development',decisionComplete?'current':'waiting'],
+    ['04','Next Chapter',o.nextSeasonReady?'current':'waiting'],
   ];
+  const peak=o.peakPassing;
+  const td=(line.passTD||0)+(line.rushTD||0);
+
   return <div className="page offseason-page">
     <section className="offseason-hero-redesign">
       <div className="offseason-hero-copy">
         <span className="offseason-kicker"><Target/>END OF SEASON · OFFSEASON MODE</span>
-        <small>SEASON 4 · OREGON</small>
-        <h1>FINISH THE YEAR.<br/><em>BUILD WHAT’S NEXT.</em></h1>
-        <p>Review the season, make the stay-or-transfer decision, capture offseason development, and preserve the year before the next chapter begins.</p>
+        <small>SEASON {o.season || data.season} · {o.school || data.player.school}</small>
+        <h1>{seasonComplete?'THE YEAR IS DONE.':'FINISH THE YEAR.'}<br/><em>{seasonComplete?'BUILD WHAT’S NEXT.':'THE NEXT CHAPTER WAITS.'}</em></h1>
+        <p>{o.dek || 'DynastyHQ is reading the real saved season state and will unlock the next steps only when the verified year is complete.'}</p>
         <div className="offseason-facts">
-          <div><strong>5–3</strong><span>TEAM RECORD</span></div>
-          <div><strong>4</strong><span>STARTS / APPS</span></div>
-          <div><strong>QB1</strong><span>CURRENT ROLE</span></div>
-          <div><strong>LIVE</strong><span>SEASON STATUS</span></div>
+          <div><strong>{record.wins||0}–{record.losses||0}</strong><span>TEAM RECORD</span></div>
+          <div><strong>{line.appearances||0}</strong><span>PLAYER APPEARANCES</span></div>
+          <div><strong>{status.role || data.rtg?.rank || '—'}</strong><span>CURRENT ROLE</span></div>
+          <div><strong>{seasonComplete?'DONE':'LIVE'}</strong><span>SEASON STATUS</span></div>
         </div>
       </div>
       <div className="offseason-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(0,24,18,.15),rgba(0,24,18,.02)),url(${playerPhoto})`}}/>
@@ -517,61 +530,61 @@ function OffseasonPage({go,openPodcast,openArticle,notify}){
     </section>
 
     <section className="offseason-waiting">
-      <div><CalendarDays/><span><small>THE SEASON IS STILL LIVE</small><strong>Offseason decisions stay locked until the schedule closes.</strong></span></div>
-      <p>This mockup shows the full Offseason workspace now, but the connected version will keep career decisions and next-season controls gated until the verified season is actually complete.</p>
+      <div><CalendarDays/><span><small>{seasonComplete?'SEASON COMPLETE':'THE SEASON IS STILL LIVE'}</small><strong>{o.headline || (seasonComplete?'The offseason is ready.':'Offseason decisions stay locked until the schedule closes.')}</strong></span></div>
+      <p>{seasonComplete ? (decision.detail || 'Your verified season is complete. Career decision and development data can now become the next chapter.') : (remaining ? `${remaining} scheduled game${remaining===1?'':'s'} remain before the real offseason flow opens.` : 'Keep processing the active season; DynastyHQ will not guess that the year is over.')}</p>
       <button onClick={()=>go('gamehub')}>BACK TO GAME HUB<ChevronRight/></button>
     </section>
 
     <section className="offseason-section offseason-review">
       <div className="offseason-section-head"><div><span>01 · SEASON REVIEW</span><h2>What the season became</h2></div><Trophy/></div>
       <div className="offseason-review-grid">
-        <article><span>TEAM SEASON</span><strong>5–3</strong><p>Current verified sample record through Week 10.</p></article>
-        <article className="offseason-line-card"><span>YOUR SEASON</span><strong>STARTER CHAPTER</strong><div><b>2,846<small>PASS YDS</small></b><b>37<small>TOTAL TD</small></b><b>742<small>RUSH YDS</small></b><b>8<small>INT</small></b></div></article>
-        <article><span>WHERE YOU STAND</span><strong>QB1</strong><p>76 OVR · Oregon starter · preview data</p></article>
+        <article><span>TEAM SEASON</span><strong>{record.wins||0}–{record.losses||0}</strong><p>Verified record for Season {o.season || data.season}.</p></article>
+        <article className="offseason-line-card"><span>YOUR SEASON</span><strong>{data.player.name}</strong><div><b>{line.passYds||0}<small>PASS YDS</small></b><b>{td}<small>TOTAL TD</small></b><b>{line.rushYds||0}<small>RUSH YDS</small></b><b>{line.interceptions||0}<small>INT</small></b></div></article>
+        <article><span>WHERE YOU STAND</span><strong>{status.role || '—'}</strong><p>{status.overall ?? data.player.overall} OVR · {o.school || data.player.school}</p></article>
       </div>
       <div className="offseason-season-notes">
-        <div><span><TrendingUp/>HIGH-WATER MARK</span><strong>410 total yards vs Illinois</strong><small>Week 10 · 7 total touchdowns</small></div>
-        <div><span><Award/>SEASON STORY</span><strong>Named starter → first start → signature game</strong><small>The major career beats already preserved in Chronicle.</small></div>
+        <div><span><TrendingUp/>HIGH-WATER MARK</span><strong>{peak ? `${peak.yards} passing yards vs ${peak.opponent}` : 'Season peak builds from verified games'}</strong><small>{peak ? `Week ${peak.week} · ${peak.result || 'game'}` : 'No qualifying peak game saved yet.'}</small></div>
+        <div><span><Award/>SEASON MOVEMENT</span><strong>{movement.length} tracked development change{movement.length===1?'':'s'} · {awards.length} award{awards.length===1?'':'s'}</strong><small>Derived from saved RTG snapshots and season achievements.</small></div>
       </div>
     </section>
 
     <section className="offseason-section offseason-decision">
-      <div className="offseason-section-head"><div><span>02 · CAREER DECISION</span><h2>Stay or write a new chapter?</h2></div><Archive/></div>
-      <p className="offseason-lead">When the season ends, this becomes the decision desk. Returning to Oregon keeps the current chapter going; entering the portal opens a new branch without rewriting the season you just finished.</p>
+      <div className="offseason-section-head"><div><span>02 · CAREER DECISION</span><h2>{decision.headline || 'Stay or write a new chapter?'}</h2></div><Archive/></div>
+      <p className="offseason-lead">{decision.detail || 'No offseason decision has been recorded yet.'}</p>
       <div className="offseason-choice-grid">
-        <article><UserRound/><span>RETURN</span><strong>OREGON</strong><p>Carry the starter chapter into the next season.</p></article>
-        <article><Target/><span>TRANSFER PORTAL</span><strong>EXPLORE OPTIONS</strong><p>Compare schools, fit, role, and the next career opportunity.</p></article>
+        <article><UserRound/><span>RETURN</span><strong>{o.school || data.player.school}</strong><p>{decision.state==='stay'?'Recorded as your next-season decision.':'Keep the current program chapter going.'}</p></article>
+        <article><Target/><span>TRANSFER PORTAL</span><strong>{decision.state==='transfer'?(decision.destination || 'NEW PROGRAM'):decision.state==='exploring'?'EXPLORING':'NOT SELECTED'}</strong><p>{decision.state==='transfer'?'A transfer destination is saved.':decision.state==='exploring'?'Your real transfer board is active.':'Portal decision has not been recorded.'}</p></article>
       </div>
-      <button className="offseason-primary" onClick={()=>notify('The transfer decision desk will reconnect to your existing recruiting/portal workflow when we wire in real functionality.')}>PREVIEW DECISION DESK<ChevronRight/></button>
+      <button className="offseason-primary" onClick={()=>notify(seasonComplete?'Decision controls will reconnect to your existing transfer workflow during the action pass.':'Career decisions remain locked until the verified season closes.')}><Target/>DECISION WORKFLOW STATUS<ChevronRight/></button>
     </section>
 
     <section className="offseason-section offseason-development">
       <div className="offseason-section-head"><div><span>03 · OFFSEASON DEVELOPMENT</span><h2>Build the next version of your player</h2></div><Sparkles/></div>
-      <p className="offseason-lead">DynastyHQ should compare your next RTG status capture against the player who finished this season. It won’t invent rating jumps—the changes come from what you upload.</p>
+      <p className="offseason-lead">These values come from your current saved RTG status. When we reconnect uploads, the page will compare the next offseason capture against this baseline instead of inventing progression.</p>
       <div className="offseason-development-grid">
-        <div><span>OVERALL</span><strong>76</strong><small>Current saved rating</small></div>
-        <div><span>ROLE</span><strong>QB1</strong><small>Current depth-chart spot</small></div>
-        <div><span>SKILL POINTS</span><strong>—</strong><small>Captured from RTG status</small></div>
-        <div><span>FOLLOWERS</span><strong>—</strong><small>Captured when available</small></div>
+        <div><span>OVERALL</span><strong>{status.overall ?? data.player.overall ?? '—'}</strong><small>Current saved rating</small></div>
+        <div><span>ROLE</span><strong>{status.role || '—'}</strong><small>Current depth-chart spot</small></div>
+        <div><span>SKILL POINTS</span><strong>{status.skillPoints ?? '—'}</strong><small>Saved RTG status</small></div>
+        <div><span>FOLLOWERS</span><strong>{status.followers ?? '—'}</strong><small>Saved RTG status</small></div>
       </div>
-      <button className="offseason-secondary" onClick={()=>go('gamehub')}>CAPTURE OFFSEASON UPDATE<ChevronRight/></button>
+      <button className="offseason-secondary" onClick={()=>notify('Offseason RTG capture stays disabled in this read-only stage.')}><Upload/>CAPTURE OFFSEASON UPDATE<ChevronRight/></button>
     </section>
 
     <section className="offseason-section offseason-coverage">
       <div className="offseason-section-head"><div><span>SEASON COVERAGE</span><h2>How the season was told</h2></div><Newspaper/></div>
       <div className="offseason-coverage-grid">
-        <article><Newspaper/><span>NEWSROOM · WEEK 10</span><strong>Wessel Wins the Shootout</strong><p>The Illinois story stays part of the season archive.</p><button onClick={openArticle}>READ COVERAGE<ChevronRight/></button></article>
-        <article><Headphones/><span>THE HUDDLE · WEEK 10</span><strong>The Illinois Shootout</strong><p>Episode, transcript, and source pack are preserved with the year.</p><button onClick={()=>openPodcast('episode')}>OPEN THE HUDDLE<ChevronRight/></button></article>
-        <article><BookOpen/><span>CAREER CHRONICLE</span><strong>The Starter Chapter</strong><p>Season moments remain attached to the timeline.</p><button onClick={()=>go('chronicle')}>OPEN CHRONICLE<ChevronRight/></button></article>
+        <article><Newspaper/><span>NEWSROOM · WEEK {data.news.week || data.game.week}</span><strong>{data.news.headline}</strong><p>{data.news.dek}</p><button onClick={openArticle}>READ COVERAGE<ChevronRight/></button></article>
+        <article><Headphones/><span>THE HUDDLE · WEEK {data.game.week}</span><strong>{data.podcast.title}</strong><p>{data.podcast.summary}</p><button onClick={()=>openPodcast('episode')}>OPEN THE HUDDLE<ChevronRight/></button></article>
+        <article><BookOpen/><span>CAREER CHRONICLE</span><strong>Season {o.season || data.season} Archive</strong><p>{data.chronicle?.latestSeason?.entries?.length || 0} saved Chronicle entries are attached to the current season.</p><button onClick={()=>go('chronicle')}>OPEN CHRONICLE<ChevronRight/></button></article>
       </div>
     </section>
 
     <section className="offseason-next">
-      <div><span>04 · NEXT CHAPTER</span><h2>The next season stays behind the curtain for now.</h2><p>Finish Season 4, record the stay-or-transfer decision, capture development, then advance. Season 4 remains archived exactly as it happened.</p></div>
+      <div><span>04 · NEXT CHAPTER</span><h2>{o.nextSeasonReady?'The next chapter is ready to be prepared.':'The next season stays behind the curtain for now.'}</h2><p>{o.nextSeasonReady?'The verified season and career decision are complete. Advancing will remain disabled until the preview write/action stage.':'Finish the current requirements first; DynastyHQ will preserve this season exactly as it happened.'}</p></div>
       <div><button onClick={()=>go('career')}><UserRound/>REVIEW CAREER</button><button onClick={()=>go('chronicle')}><BookOpen/>VIEW SEASON ARCHIVE</button></div>
     </section>
 
-    <footer className="offseason-footer"><BookOpen/><p><strong>Nothing from Season 4 gets rewritten.</strong> Results, player stats, coverage, and career moments remain preserved when the next season begins.</p></footer>
+    <footer className="offseason-footer"><BookOpen/><p><strong>Read-only real career view.</strong> Season results, development, decisions, and media shown here are pulled from your saved DynastyHQ data without writing anything back.</p></footer>
   </div>;
 }
 

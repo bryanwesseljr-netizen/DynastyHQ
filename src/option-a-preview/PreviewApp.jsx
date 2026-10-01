@@ -1722,6 +1722,10 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
   const facts=episode.sourceFacts || [];
   const scoringFacts=facts.filter((fact)=>/scor|drive|touchdown|field goal/i.test(`${fact?.key||''} ${fact?.label||''}`));
   const developmentFacts=facts.filter((fact)=>String(fact?.key||'').startsWith('rtg.') || String(fact?.key||'').includes('overall') || String(fact?.key||'').includes('development'));
+  const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
+  const hasTranscript=Boolean(episode.segments?.length);
+  const masterFileName=episode.masterAudioFileName || '';
+  const masterSize=episode.masterAudioSizeBytes ? `${(episode.masterAudioSizeBytes/1024/1024).toFixed(1)} MB` : '';
   const prior=episode.previous || [];
   const archiveEpisodes=episode.archive?.length ? episode.archive : prior;
   const scrollArchive=(direction)=>{
@@ -1832,6 +1836,33 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
             <div><Check/><b>{episode.segments?.length || 0}</b><small>transcript segments</small></div>
             <div><Check/><b>{scoringFacts.length}</b><small>scoring references</small></div>
             <div><Check/><b>{developmentFacts.length}</b><small>development references</small></div>
+          </section>
+
+          <section className="pod-studio-controls">
+            <div className="pod-studio-title">
+              <span><LockKeyhole/>OWNER STUDIO</span>
+              <b>Studio Controls</b>
+            </div>
+            <div className="pod-master-status">
+              <div className={isNotebookMaster?'ready':''}><Headphones/></div>
+              <span>
+                <small>MASTER EPISODE AUDIO</small>
+                <b>{isNotebookMaster?'NotebookLM master attached':episode.audioReady?'Saved episode audio attached':'No master audio attached'}</b>
+                <em>{masterFileName ? `${masterFileName}${masterSize?` · ${masterSize}`:''}` : (hasTranscript?'Ready for final audio':'Generate transcript first')}</em>
+              </span>
+            </div>
+            <div className="pod-studio-actions">
+              <button onClick={()=>jumpToTab('notebook')}><FileText/>NOTEBOOKLM SOURCE PACK</button>
+              <button
+                className={isNotebookMaster?'replace-master':'attach-master'}
+                onClick={()=>notify(hasTranscript
+                  ? 'Master audio upload is intentionally locked in this read-only preview. This control will use the existing DynastyHQ uploader when safe write testing is enabled.'
+                  : 'Generate this week’s transcript before attaching master audio.')}
+              >
+                <Upload/>{hasTranscript?(isNotebookMaster?'REPLACE MASTER AUDIO':'ATTACH MASTER AUDIO'):'GENERATE TRANSCRIPT FIRST'}
+              </button>
+            </div>
+            <p>MP3 · M4A · WAV · AAC · OGG · up to 30 MB. The final upload will attach to Season {data.season}, Week {game.week}.</p>
           </section>
 
           <section className="pod-related-v2">

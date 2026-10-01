@@ -1771,6 +1771,17 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           weekKey:targetPublicationId,
         });
 
+        if(conflict && !hasSavedGame){
+          const error=new Error('This week was published after you opened Week Processing. DynastyHQ preserved the newer cloud version. Close the processor, refresh the week, and review it before making any correction.');
+          error.code='SAVE_CONFLICT';
+          throw error;
+        }
+        if(!conflict && hasSavedGame){
+          const error=new Error('The selected week changed in the cloud after you opened Week Processing. DynastyHQ blocked the write so a stale screen cannot recreate or overwrite it.');
+          error.code='SAVE_CONFLICT';
+          throw error;
+        }
+
         let nextState=remote;
         let action='published';
 
@@ -2022,7 +2033,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   };
 
   const closeSafe=()=>{
-    if(scanning || rtgScanning || coverageScanning) return;
+    if(scanning || rtgScanning || coverageScanning || publishing) return;
     revokeFiles(files);
     onClose();
   };
@@ -2042,7 +2053,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
         <nav className="processing-steps" aria-label="Processing steps">
           {steps.map(([id,label,Icon],index)=><React.Fragment key={id}>
-            <button className={(phase===id?'current ':'')+(index<phaseIndex?'complete':'')} onClick={()=>index<=phaseIndex && setPhase(id)} disabled={index>phaseIndex}>
+            <button className={(phase===id?'current ':'')+(index<phaseIndex?'complete':'')} onClick={()=>index<=phaseIndex && !publishing && setPhase(id)} disabled={publishing || index>phaseIndex}>
               <i>{index<phaseIndex?<Check/>:<Icon/>}</i>
               <span><small>STEP {index+1}</small><b>{label}</b></span>
             </button>

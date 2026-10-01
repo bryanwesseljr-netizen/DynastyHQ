@@ -361,36 +361,242 @@ function LiveDataBar({live,open,setOpen,email,setEmail,password,setPassword,onCo
   </section>;
 }
 
+const HERO_HEADLINE_BANKS = {
+  monster:[
+    ['A NIGHT TO','REMEMBER'],
+    ['ONE FOR','THE BOOKS'],
+    ['WESSEL','UNLEASHED'],
+    ['PUT ON','A SHOW'],
+    ['ABSOLUTE','MASTERCLASS'],
+    ['CAREER','DEFINING'],
+    ['NO ANSWERS','FOR #6'],
+    ['LIGHTS','TOO BRIGHT'],
+    ['NUMBERS','DON’T LIE'],
+    ['QB1','TAKES OVER'],
+    ['ALL GAS','NO BRAKES'],
+    ['THE SHOW','BELONGS TO #6'],
+  ],
+  dominant:[
+    ['STATEMENT','MADE'],
+    ['MESSAGE','SENT'],
+    ['NO DOUBT','ABOUT IT'],
+    ['CONTROL','FROM START'],
+    ['GAME','OWNED'],
+    ['ALL','OREGON'],
+    ['FULL','COMMAND'],
+    ['NEVER IN','DOUBT'],
+    ['TOOK OVER','EARLY'],
+    ['ROLLING','ALL NIGHT'],
+    ['BUSINESS','HANDLED'],
+    ['FROM KICK','TO FINISH'],
+  ],
+  closeWin:[
+    ['SURVIVE &','ADVANCE'],
+    ['FOUND A','WAY'],
+    ['ESCAPE','SECURED'],
+    ['DOWN TO','THE WIRE'],
+    ['CLUTCH','WHEN IT COUNTED'],
+    ['LATE','HEROICS'],
+    ['ONE SCORE','ENOUGH'],
+    ['HOLD ON','OREGON'],
+    ['BREATHE','AGAIN'],
+    ['FINISH','THE JOB'],
+    ['FOURTH QUARTER','GRIT'],
+    ['JUST','ENOUGH'],
+  ],
+  bigWin:[
+    ['WESSEL','DELIVERS'],
+    ['#6','SETS THE TONE'],
+    ['THE OFFENSE','RUNS THROUGH #6'],
+    ['ARM + LEGS','TOO MUCH'],
+    ['WESSEL','LEADS THE WAY'],
+    ['QB1','IN COMMAND'],
+    ['THE DRIVER’S','SEAT'],
+    ['WESSEL','AT THE CENTER'],
+    ['OFFENSE','ON HIS SHOULDERS'],
+    ['#6','MAKES IT GO'],
+    ['WESSEL','SETS THE PACE'],
+    ['THE ENGINE','IS #6'],
+  ],
+  win:[
+    ['JOB','DONE'],
+    ['WIN','SECURED'],
+    ['TAKE CARE','OF BUSINESS'],
+    ['ONWARD','OREGON'],
+    ['ONE MORE','IN THE BOOKS'],
+    ['MISSION','COMPLETE'],
+    ['HANDLE IT','MOVE ON'],
+    ['ANOTHER','STEP FORWARD'],
+    ['KEEP IT','ROLLING'],
+    ['SATURDAY','SECURED'],
+    ['GOOD TEAMS','FIND A WAY'],
+    ['THE RESULT','THAT MATTERS'],
+  ],
+  closeLoss:[
+    ['HEARTBREAK','LATE'],
+    ['ONE PLAY','SHORT'],
+    ['SLIPPED','AWAY'],
+    ['SO CLOSE','SO TOUGH'],
+    ['PAIN AT','THE FINISH'],
+    ['DOWN TO','THE LAST'],
+    ['FOUR QUARTERS','NOT ENOUGH'],
+    ['A TOUGH','ONE TO SWALLOW'],
+    ['RIGHT THERE','AT THE END'],
+    ['THE EDGE','WAS THIN'],
+    ['JUST OUT','OF REACH'],
+    ['LAST DRIVE','HEARTBREAK'],
+  ],
+  bigLoss:[
+    ['BIG NIGHT','TOUGH END'],
+    ['NUMBERS','WITHOUT THE WIN'],
+    ['BRIGHT SPOTS','BITTER END'],
+    ['EFFORT','UNREWARDED'],
+    ['STATS','CAN’T SAVE IT'],
+    ['WESSEL','KEEPS FIGHTING'],
+    ['OFFENSE','SHOWS LIFE'],
+    ['THE FIGHT','WAS THERE'],
+    ['GOOD NIGHT','BAD RESULT'],
+    ['PRODUCTION','WITHOUT PAYOFF'],
+    ['#6','KEEPS PUSHING'],
+    ['PLENTY THERE','EXCEPT THE WIN'],
+  ],
+  loss:[
+    ['BACK TO','WORK'],
+    ['RESET','REQUIRED'],
+    ['LESSONS','LEARNED'],
+    ['TOUGH','SATURDAY'],
+    ['ANSWER','NEXT WEEK'],
+    ['REGROUP','RELOAD'],
+    ['TURN THE','PAGE'],
+    ['NOT OUR','NIGHT'],
+    ['TIME TO','RESPOND'],
+    ['NEXT ONE','MATTERS'],
+    ['TAKE IT','LEARN FROM IT'],
+    ['THE RESPONSE','STARTS NOW'],
+  ],
+};
+
+const stableHeroHash=(value)=>{
+  let hash=2166136261;
+  for(const char of String(value||'')){
+    hash^=char.charCodeAt(0);
+    hash=Math.imul(hash,16777619);
+  }
+  return Math.abs(hash>>>0);
+};
+
+const heroRawScores=(game={})=>{
+  if(game.teamScore!==undefined && game.teamScore!=='' && game.opponentScore!==undefined && game.opponentScore!==''){
+    return {us:Number(game.teamScore)||0,them:Number(game.opponentScore)||0};
+  }
+  const home=Number(game.homeScore);
+  const away=Number(game.awayScore);
+  if(!Number.isFinite(home)||!Number.isFinite(away)) return {us:0,them:0};
+  return String(game.homeAway||'').toLowerCase()==='away' ? {us:away,them:home} : {us:home,them:away};
+};
+
+const heroCategoryForGame=(game={})=>{
+  const scores=heroRawScores(game);
+  const result=String(game.result||'').toUpperCase();
+  const won=result==='W' || scores.us>scores.them;
+  const lost=result==='L' || scores.us<scores.them;
+  const margin=Math.abs(scores.us-scores.them);
+  const total=(Number(game.passYds)||0)+(Number(game.rushYds)||0);
+  const touchdowns=(Number(game.passTD)||0)+(Number(game.rushTD)||0);
+
+  if(won && (touchdowns>=5 || total>=400)) return 'monster';
+  if(won && margin>=17) return 'dominant';
+  if(won && margin<=7) return 'closeWin';
+  if(won && total>=300) return 'bigWin';
+  if(won) return 'win';
+  if(lost && margin<=7) return 'closeLoss';
+  if(lost && total>=350) return 'bigLoss';
+  return 'loss';
+};
+
+const uniqueHeroHeadlineForGame=(data,currentGame)=>{
+  const season=Number(data.season)||1;
+  const currentWeek=Number(currentGame?.week ?? data.game?.week ?? 0);
+  const currentOpponent=String(currentGame?.opponent || data.game?.opponent || 'OPPONENT').toUpperCase();
+
+  const completed=(data.state?.gameLogs || [])
+    .filter((game)=>(
+      game
+      && game.didPlay!==false
+      && game.stage!=='high-school'
+      && !game.evaluation
+      && Number(game.season||season)===season
+      && String(game.opponent||'').trim()
+    ))
+    .sort((a,b)=>(Number(a.week)||0)-(Number(b.week)||0));
+
+  const used=new Set();
+  let selected=null;
+
+  for(const raw of completed){
+    const category=heroCategoryForGame(raw);
+    const bank=HERO_HEADLINE_BANKS[category] || HERO_HEADLINE_BANKS.win;
+    const rawWeek=Number(raw.week)||0;
+    const opponent=String(raw.opponent||'OPPONENT').toUpperCase();
+    const startIndex=stableHeroHash(`${season}|${rawWeek}|${opponent}|${category}`) % bank.length;
+    let candidate=null;
+
+    for(let offset=0;offset<bank.length;offset+=1){
+      const base=bank[(startIndex+offset)%bank.length];
+      const key=`${base[0]}|${base[1]}`;
+      if(!used.has(key)){
+        candidate=base;
+        break;
+      }
+    }
+
+    // A full category bank should be rare in one season. This fallback stays
+    // unique because it uses the actual opponent rather than repeating a slogan.
+    if(!candidate){
+      const won=heroCategoryForGame(raw).includes('Win') || ['monster','dominant','bigWin','win'].includes(category);
+      candidate=won ? ['PAST',opponent] : ['NEXT AFTER',opponent];
+    }
+
+    used.add(`${candidate[0]}|${candidate[1]}`);
+    if(rawWeek===currentWeek && opponent===currentOpponent) selected=candidate;
+  }
+
+  if(selected) return selected;
+
+  const category=heroCategoryForGame(currentGame || {});
+  const bank=HERO_HEADLINE_BANKS[category] || HERO_HEADLINE_BANKS.win;
+  const index=stableHeroHash(`${season}|${currentWeek}|${currentOpponent}|${category}`) % bank.length;
+  return bank[index];
+};
+
 function homeHeroStory(data){
   const game=data.game || {};
   const opponent=game.opponent || 'NEXT OPPONENT';
   const hasGame=Boolean(data.selection?.hasGame);
+
   if(!hasGame){
+    const pregameOptions=[
+      ['NEXT UP',opponent],
+      ['THE NEXT','TEST'],
+      ['EYES ON',opponent],
+      ['WEEK '+game.week,'ON DECK'],
+      ['GAME WEEK',opponent],
+      ['THE ROAD','CONTINUES'],
+      ['READY FOR',opponent],
+      ['UP NEXT',opponent],
+    ];
+    const pick=pregameOptions[stableHeroHash(`${data.season}|${game.week}|${opponent}|pregame`) % pregameOptions.length];
     return {
       state:'pregame',
       status:data.selection?.isCurrent?'UPCOMING':'SCHEDULED',
-      line1:opponent,
-      line2:'AWAITS',
+      line1:pick[0],
+      line2:pick[1],
       deck:`Week ${game.week} is still ahead. The page will flip to its postgame story after the result is uploaded and archived.`,
     };
   }
 
-  const result=String(game.result||'').toUpperCase();
-  const won=result==='W' || Number(game.us)>Number(game.them);
-  const lost=result==='L' || Number(game.us)<Number(game.them);
-  const margin=Math.abs(Number(game.us||0)-Number(game.them||0));
-  const total=Number(game.total||0);
-  const touchdowns=Number(game.td||0);
-  const lastName=String(data.player?.name||'PLAYER').split(' ').at(-1);
-
-  if(won && (touchdowns>=5 || total>=400)) return {state:'postgame',status:'FINAL',line1:'A NIGHT TO',line2:'REMEMBER'};
-  if(won && margin>=17) return {state:'postgame',status:'FINAL',line1:'STATEMENT',line2:'MADE'};
-  if(won && margin<=7) return {state:'postgame',status:'FINAL',line1:'SURVIVE &',line2:'ADVANCE'};
-  if(won && total>=300) return {state:'postgame',status:'FINAL',line1:lastName,line2:'DELIVERS'};
-  if(won) return {state:'postgame',status:'FINAL',line1:'JOB',line2:'DONE'};
-  if(lost && margin<=7) return {state:'postgame',status:'FINAL',line1:'HEARTBREAK',line2:'LATE'};
-  if(lost && total>=350) return {state:'postgame',status:'FINAL',line1:'BIG NIGHT',line2:'TOUGH END'};
-  return {state:'postgame',status:'FINAL',line1:'BACK TO',line2:'WORK'};
+  const [line1,line2]=uniqueHeroHeadlineForGame(data,game.raw || game);
+  return {state:'postgame',status:'FINAL',line1,line2};
 }
 
 function ScoreRibbon({data}){

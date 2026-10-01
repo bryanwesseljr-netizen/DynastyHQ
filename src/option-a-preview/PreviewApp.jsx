@@ -134,7 +134,7 @@ function App(){
       {page==='podcast' && <PodcastPage data={data} go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage data={data} go={go}/>}
-      {page==='chronicle' && <ChroniclePage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle}/>} 
+      {page==='chronicle' && <ChroniclePage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>} 
     </main>
 
     <nav className="mobile-bottom">
@@ -670,92 +670,150 @@ function CareerPage({data,go}){
   </div>;
 }
 
-function ChroniclePage({go,openPodcast,openArticle}){
-  const [season,setSeason] = useState(4);
-  const [moment,setMoment] = useState('illinois');
+function ChroniclePage({data,go,openPodcast,openArticle,notify}){
+  const chron=data.chronicle || {};
+  const seasons=Array.isArray(chron.seasons)?chron.seasons:[];
+  const initialSeason=seasons[0]?.season || data.season;
+  const [season,setSeason] = useState(initialSeason);
+  const [moment,setMoment] = useState('');
   const [museumTab,setMuseumTab] = useState('signatures');
-  const moments = {
-    illinois:{week:'W10',label:'SIGNATURE GAME',title:'W vs Illinois',score:'54–48',copy:'A seven-touchdown performance turns a shootout into one of the defining games of the season.',pass:'286',td:'7',int:'2'},
-    michigan:{week:'W9',label:'ROAD TEST',title:'Michigan',score:'SEASON 4',copy:'A major road chapter preserved as the first season as starter kept building.',pass:'—',td:'—',int:'—'},
-    ohio:{week:'W8',label:'NATIONAL STAGE',title:'Ohio State',score:'SEASON 4',copy:'A spotlight week with the game, coverage, and podcast preserved together.',pass:'—',td:'—',int:'—'},
-    vandy:{week:'W1',label:'FIRST START',title:'Vanderbilt',score:'SEASON 4',copy:'The week the career changed from backup context to a verified college start.',pass:'—',td:'—',int:'—'},
+
+  useEffect(()=>{
+    if(!seasons.length) return;
+    if(!seasons.some((item)=>Number(item.season)===Number(season))) setSeason(seasons[0].season);
+  },[data.chronicle,season]);
+
+  const activeSeason=seasons.find((item)=>Number(item.season)===Number(season)) || seasons[0] || {
+    season:data.season,school:data.player.school,role:data.rtg?.rank||'',record:{wins:0,losses:0},entries:[],signatureGames:[],appearances:0,passYds:0,passTD:0,rushYds:0,rushTD:0,totalTD:0,mediaCount:0,
   };
-  const active=moments[moment];
+  const entries=Array.isArray(activeSeason.entries)?activeSeason.entries:[];
+  const signatures=Array.isArray(activeSeason.signatureGames)?activeSeason.signatureGames:[];
+  useEffect(()=>{
+    const candidates=signatures.length?signatures:entries;
+    if(!candidates.length){ setMoment(''); return; }
+    if(!candidates.some((entry)=>String(entry.id||entry.publicationId)===String(moment))){
+      setMoment(String(candidates[0].id||candidates[0].publicationId||''));
+    }
+  },[season,data.chronicle]);
+
+  const active=entries.find((entry)=>String(entry.id||entry.publicationId)===String(moment))
+    || signatures.find((entry)=>String(entry.id||entry.publicationId)===String(moment))
+    || entries[0]
+    || null;
+  const game=active?.game || null;
+  const totalTD=(Number(game?.passTD)||0)+(Number(game?.rushTD)||0);
+  const totalYds=(Number(game?.passYds)||0)+(Number(game?.rushYds)||0);
+  const scores=(()=>{
+    if(!game) return {us:'—',them:'—'};
+    if(game.teamScore!==undefined && game.opponentScore!==undefined) return {us:game.teamScore,them:game.opponentScore};
+    const home=game.homeScore, away=game.awayScore;
+    if(home===''||home===undefined||away===''||away===undefined) return {us:'—',them:'—'};
+    return String(game.homeAway||'').toLowerCase()==='away' ? {us:away,them:home} : {us:home,them:away};
+  })();
+  const entryTitle=(entry)=>{
+    if(!entry) return 'Career chapter';
+    if(entry.title) return entry.title;
+    if(entry.game) return `${entry.game.result || ''} vs ${entry.game.opponent || 'Opponent'}`.trim();
+    return entry.type ? String(entry.type).replaceAll('-',' ') : 'Career moment';
+  };
+  const entrySummary=(entry)=>{
+    if(!entry) return '';
+    if(entry.summary) return entry.summary;
+    if(entry.signatureReasons?.length) return entry.signatureReasons.join(' · ');
+    if(entry.game) return `${Number(entry.game.passYds)||0} pass yds · ${Number(entry.game.rushYds)||0} rush yds · ${(Number(entry.game.passTD)||0)+(Number(entry.game.rushTD)||0)} total TD`;
+    return 'Preserved career event.';
+  };
+  const record=activeSeason.record || {wins:0,losses:0};
+  const allEntries=Array.isArray(chron.entries)?chron.entries:[];
+  const allGames=allEntries.filter((entry)=>entry?.game && entry.game.didPlay!==false);
+  const careerHigh=(selector)=>allGames.reduce((best,entry)=>{
+    const value=selector(entry.game);
+    return value>(best.value||0)?{value,entry}:best;
+  },{value:0,entry:null});
+  const highTotal=careerHigh((g)=>(Number(g.passYds)||0)+(Number(g.rushYds)||0));
+  const highTD=careerHigh((g)=>(Number(g.passTD)||0)+(Number(g.rushTD)||0));
+  const highRush=careerHigh((g)=>Number(g.rushYds)||0);
+  const programs=[...new Set(seasons.map((item)=>item.school).filter(Boolean))];
+  const mediaCount=seasons.reduce((sum,item)=>sum+(Number(item.mediaCount)||0),0);
+  const currentPublication=String(data.news?.publicationId||'');
+  const activePublication=String(active?.media?.newsroom?.publicationId || active?.publicationId || '');
+
   return <div className="page chronicle-page">
     <section className="chronicle-hero-redesign">
       <div>
         <span><Sparkles/>CAREER CHRONICLE</span>
         <h1>THE FILM OF<br/><em>THE CAREER</em></h1>
-        <p>Seasons become chapters. Signature games, stories, shows, photos, and defining career moments stay attached to the week where they happened.</p>
+        <p>Every verified season, signature game, milestone, article, episode, and preserved career moment comes from the same DynastyHQ history you have already built.</p>
       </div>
       <aside>
-        <div><strong>4</strong><span>SEASONS</span></div>
-        <div><strong>S4</strong><span>CURRENT</span></div>
-        <div><strong>3</strong><span>SIGNATURES</span></div>
-        <div><strong>MEDIA</strong><span>LINKED</span></div>
+        <div><strong>{seasons.length}</strong><span>SEASONS</span></div>
+        <div><strong>S{data.season}</strong><span>CURRENT</span></div>
+        <div><strong>{chron.signatureGames?.length || 0}</strong><span>SIGNATURES</span></div>
+        <div><strong>{mediaCount}</strong><span>MEDIA LINKS</span></div>
       </aside>
     </section>
 
     <nav className="chronicle-season-nav" aria-label="Career seasons">
-      {[1,2,3,4].map(s=><button key={s} className={season===s?'active':''} onClick={()=>setSeason(s)}><span>SEASON {s}</span><strong>{s===4?'OREGON':'CAREER CHAPTER'}</strong><small>{s===4?'5–3 · QB':'Archived chapter'}</small></button>)}
+      {(seasons.length?seasons:[activeSeason]).map((s)=><button key={s.season} className={Number(season)===Number(s.season)?'active':''} onClick={()=>setSeason(s.season)}><span>SEASON {s.season}</span><strong>{s.school || 'CAREER CHAPTER'}</strong><small>{s.record ? `${s.record.wins||0}–${s.record.losses||0} · ${s.role || data.player.pos}` : 'Archived chapter'}</small></button>)}
     </nav>
 
-    {season===4 ? <>
-      <section className="chronicle-chapter">
-        <div><span><CalendarDays/>SEASON 4 · OREGON</span><h2>THE STARTER CHAPTER</h2><p>A season that began with winning the job and is now producing nationally visible moments.</p></div>
-        <div className="chronicle-season-line">
-          <div><strong>5–3</strong><span>RECORD</span></div>
-          <div><strong>W10</strong><span>CURRENT</span></div>
-          <div><strong>4</strong><span>PRESERVED WEEKS</span></div>
-          <div><strong>3</strong><span>SIGNATURES</span></div>
-        </div>
-      </section>
+    <section className="chronicle-chapter">
+      <div><span><CalendarDays/>SEASON {activeSeason.season} · {activeSeason.school || data.player.school}</span><h2>{activeSeason.role ? `${activeSeason.role} CHAPTER` : 'CAREER CHAPTER'}</h2><p>{activeSeason.appearances||0} verified appearance{activeSeason.appearances===1?'':'s'} · {(activeSeason.passYds||0).toLocaleString()} passing yards · {(activeSeason.totalTD||0)} total touchdowns.</p></div>
+      <div className="chronicle-season-line">
+        <div><strong>{record.wins||0}–{record.losses||0}</strong><span>RECORD</span></div>
+        <div><strong>{activeSeason.appearances||0}</strong><span>APPEARANCES</span></div>
+        <div><strong>{entries.length}</strong><span>PRESERVED ENTRIES</span></div>
+        <div><strong>{signatures.length}</strong><span>SIGNATURES</span></div>
+      </div>
+    </section>
 
-      <section className="chronicle-signatures">
-        <header><div><span><Trophy/>SIGNATURE GAMES</span><h2>The weeks worth remembering</h2></div><small>Selected from verified career history</small></header>
-        <div className="chronicle-signature-grid">
-          <button className={moment==='illinois'?'active':''} onClick={()=>setMoment('illinois')}><span>WEEK 10 · SIGNATURE GAME</span><strong>W vs Illinois</strong><p>54–48 · 286 pass yds · 7 TD</p><small>Seven touchdowns · 410 total yards</small><ChevronRight/></button>
-          <button className={moment==='ohio'?'active':''} onClick={()=>setMoment('ohio')}><span>WEEK 8 · NATIONAL STAGE</span><strong>Ohio State</strong><p>Major spotlight week</p><small>Newsroom + Huddle preserved</small><ChevronRight/></button>
-          <button className={moment==='vandy'?'active':''} onClick={()=>setMoment('vandy')}><span>WEEK 1 · FIRST START</span><strong>Vanderbilt</strong><p>The beginning of the starter chapter</p><small>Career turning point</small><ChevronRight/></button>
-        </div>
-      </section>
+    <section className="chronicle-signatures">
+      <header><div><span><Trophy/>SIGNATURE GAMES</span><h2>The weeks worth remembering</h2></div><small>Detected from verified career history</small></header>
+      <div className="chronicle-signature-grid">
+        {signatures.length ? signatures.slice(0,3).map((entry)=>{
+          const g=entry.game||{};
+          const id=String(entry.id||entry.publicationId||'');
+          const td=(Number(g.passTD)||0)+(Number(g.rushTD)||0);
+          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>WEEK {entry.week} · {entry.signatureLabel || 'SIGNATURE GAME'}</span><strong>{g.result || ''} vs {g.opponent || 'Opponent'}</strong><p>{Number(g.passYds)||0} pass yds · {td} TD</p><small>{entry.signatureReasons?.join(' · ') || 'Verified signature game'}</small><ChevronRight/></button>;
+        }) : <div className="chronicle-empty-state">No signature games have been detected in this season yet. Chronicle will promote them automatically as the verified history grows.</div>}
+      </div>
+    </section>
 
-      <section className="chronicle-moment">
-        <div className="chronicle-moment-main">
-          <span>{active.label} · SEASON 4 · {active.week}</span>
-          <h2>{active.title}</h2>
-          <p>{active.copy}</p>
-          <div className="chronicle-moment-stats">
-            <div><strong>{active.score}</strong><span>SCORE / CONTEXT</span></div>
-            <div><strong>{active.pass}</strong><span>PASS YDS</span></div>
-            <div><strong>{active.td}</strong><span>TOTAL TD</span></div>
-            <div><strong>{active.int}</strong><span>INT</span></div>
-          </div>
-          <div className="chronicle-why"><span>WHY DYNASTYHQ KEPT THIS ONE</span><p>{active.copy}</p></div>
-          <div className="chronicle-media-actions">
-            <button onClick={openArticle}><Newspaper/>READ NEWSROOM</button>
-            <button onClick={()=>openPodcast('episode')}><Headphones/>PLAY THE HUDDLE</button>
-            <button onClick={()=>go('gamehub')}><BarChart3/>OPEN GAME DATA</button>
-          </div>
+    <section className="chronicle-moment">
+      <div className="chronicle-moment-main">
+        <span>{active?.signatureLabel || (game?'VERIFIED GAME':'CAREER MOMENT')} · SEASON {activeSeason.season}{active?.week!==undefined?` · W${active.week}`:''}</span>
+        <h2>{entryTitle(active)}</h2>
+        <p>{entrySummary(active)}</p>
+        <div className="chronicle-moment-stats">
+          <div><strong>{game ? `${scores.us}–${scores.them}` : '—'}</strong><span>SCORE / CONTEXT</span></div>
+          <div><strong>{game ? Number(game.passYds)||0 : '—'}</strong><span>PASS YDS</span></div>
+          <div><strong>{game ? totalTD : '—'}</strong><span>TOTAL TD</span></div>
+          <div><strong>{game ? Number(game.int)||0 : '—'}</strong><span>INT</span></div>
         </div>
-        <aside className="chronicle-memory-stack">
-          <span>MEMORY STACK</span>
-          <article><Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>Wessel Leads Oregon Past Illinois</strong><p>The complete editorial recap stays attached to Week 10.</p></div></article>
-          <article><Headphones/><div><small>THE HUDDLE</small><strong>The Illinois Shootout</strong><p>Episode, transcript, and NotebookLM source pack preserved with the week.</p></div></article>
-          <article><ImageIcon/><div><small>PHOTO LIBRARY</small><strong>Game imagery</strong><p>Visual memories remain tied to the career moment.</p></div></article>
-        </aside>
-      </section>
+        <div className="chronicle-why"><span>WHY DYNASTYHQ KEPT THIS ONE</span><p>{active?.signatureReasons?.join(' · ') || entrySummary(active)}</p></div>
+        <div className="chronicle-media-actions">
+          <button onClick={()=>active?.media?.newsroom ? (activePublication===currentPublication?openArticle():notify('That historical Newsroom edition is real and linked; archive-specific opening will be wired in the interaction pass.')) : notify('No Newsroom edition is attached to this career entry.')}><Newspaper/>READ NEWSROOM</button>
+          <button onClick={()=>active?.media?.podcast ? (activePublication===currentPublication?openPodcast('episode'):notify('That historical Huddle episode is real and linked; archive-specific opening will be wired in the interaction pass.')) : notify('No podcast episode is attached to this career entry.')}><Headphones/>PLAY THE HUDDLE</button>
+          <button onClick={()=>go('gamehub')}><BarChart3/>OPEN GAME DATA</button>
+        </div>
+      </div>
+      <aside className="chronicle-memory-stack">
+        <span>MEMORY STACK</span>
+        <article><Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>{active?.media?.newsroom?.headline || 'No article attached'}</strong><p>{active?.media?.newsroom?.dek || 'Newsroom coverage will appear when it exists for this entry.'}</p></div></article>
+        <article><Headphones/><div><small>THE HUDDLE</small><strong>{active?.media?.podcast?.title || 'No episode attached'}</strong><p>{active?.media?.podcast ? (active.media.podcast.finished?'Saved episode with audio ready.':'Saved episode/script attached to this week.') : 'Podcast coverage will appear when it exists for this entry.'}</p></div></article>
+        <article><ImageIcon/><div><small>PHOTO LIBRARY</small><strong>{active?.media?.photos?.length || 0} linked image{active?.media?.photos?.length===1?'':'s'}</strong><p>Career photos remain attached to the week where they were used.</p></div></article>
+      </aside>
+    </section>
 
-      <section className="chronicle-timeline">
-        <header><div><span><BookOpen/>SEASON TIMELINE</span><h2>Every verified chapter</h2></div><small>4 preserved entries</small></header>
-        <div>
-          <button className={moment==='illinois'?'active':''} onClick={()=>setMoment('illinois')}><span>W10</span><strong>Illinois Shootout</strong><small>W · 54–48 · signature game</small><Newspaper/><Headphones/><ChevronRight/></button>
-          <button className={moment==='michigan'?'active':''} onClick={()=>setMoment('michigan')}><span>W9</span><strong>Michigan Road Test</strong><small>Season 4 career chapter</small><Newspaper/><ChevronRight/></button>
-          <button className={moment==='ohio'?'active':''} onClick={()=>setMoment('ohio')}><span>W8</span><strong>Ohio State Under the Lights</strong><small>National-stage week</small><Headphones/><ChevronRight/></button>
-          <button className={moment==='vandy'?'active':''} onClick={()=>setMoment('vandy')}><span>W1</span><strong>First Start vs Vanderbilt</strong><small>Starter chapter begins</small><ChevronRight/></button>
-        </div>
-      </section>
-    </> : <section className="chronicle-archived-season"><Archive/><span>SEASON {season}</span><h2>Archived Career Chapter</h2><p>This preview keeps earlier seasons intentionally compact. In the connected build, verified games, milestones, media, and stats for this season populate here automatically.</p></section>}
+    <section className="chronicle-timeline">
+      <header><div><span><BookOpen/>SEASON TIMELINE</span><h2>Every verified chapter</h2></div><small>{entries.length} preserved entr{entries.length===1?'y':'ies'}</small></header>
+      <div>
+        {entries.length ? entries.map((entry,index)=>{
+          const id=String(entry.id||entry.publicationId||`entry-${index}`);
+          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>W{entry.week ?? 0}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}<ChevronRight/></button>;
+        }) : <div className="chronicle-empty-state">No Chronicle entries are saved for this season yet.</div>}
+      </div>
+    </section>
 
     <section className="chronicle-museum">
       <header><div><span><Trophy/>CAREER MUSEUM</span><h2>The Legacy So Far</h2></div><small>Built automatically from preserved history</small></header>
@@ -763,10 +821,23 @@ function ChroniclePage({go,openPodcast,openArticle}){
         {[['signatures','SIGNATURE GAMES'],['records','RECORD BOOK'],['media','MEDIA VAULT'],['stops','CAREER STOPS']].map(([id,label])=><button key={id} className={museumTab===id?'active':''} onClick={()=>setMuseumTab(id)}>{label}</button>)}
       </nav>
       <div className="museum-content">
-        {museumTab==='signatures' && <div className="museum-signature-grid"><article><span>S4 · W10</span><strong>ILLINOIS SHOOTOUT</strong><p>410 total yards · 7 TD</p></article><article><span>S4 · W8</span><strong>OHIO STATE</strong><p>National-stage career week</p></article><article><span>S4 · W1</span><strong>FIRST START</strong><p>Vanderbilt · starter chapter begins</p></article></div>}
-        {museumTab==='records' && <div className="museum-record-grid"><article><strong>410</strong><span>TOTAL YARDS</span><small>Career high · S4 W10</small></article><article><strong>7</strong><span>TOTAL TD</span><small>Career high · S4 W10</small></article><article><strong>124</strong><span>RUSH YDS</span><small>Signature game · S4 W10</small></article></div>}
-        {museumTab==='media' && <div className="museum-record-grid"><article><Newspaper/><strong>Newsroom</strong><small>Stories preserved with career weeks</small></article><article><Headphones/><strong>The Huddle</strong><small>Episodes + transcripts archived</small></article><article><Camera/><strong>Game Photos</strong><small>Visual memories linked to moments</small></article></div>}
-        {museumTab==='stops' && <div className="museum-stop"><Logo/><span><small>CAREER STOP</small><strong>OREGON</strong><p>Season 4 · Road to Glory Player · current program</p></span></div>}
+        {museumTab==='signatures' && <div className="museum-signature-grid">
+          {(chron.signatureGames||[]).slice(0,6).map((entry,index)=><article key={entry.id||index}><span>S{entry.season} · W{entry.week}</span><strong>{entry.signatureLabel || entryTitle(entry)}</strong><p>{entry.game?.opponent || 'Career moment'} · {entry.signatureReasons?.[0] || 'Verified signature'}</p></article>)}
+          {!(chron.signatureGames||[]).length && <div className="chronicle-empty-state">Signature games will appear here automatically.</div>}
+        </div>}
+        {museumTab==='records' && <div className="museum-record-grid">
+          <article><strong>{highTotal.value||0}</strong><span>TOTAL YARDS</span><small>{highTotal.entry ? `Career high · S${highTotal.entry.season} W${highTotal.entry.week}` : 'No games yet'}</small></article>
+          <article><strong>{highTD.value||0}</strong><span>TOTAL TD</span><small>{highTD.entry ? `Career high · S${highTD.entry.season} W${highTD.entry.week}` : 'No games yet'}</small></article>
+          <article><strong>{highRush.value||0}</strong><span>RUSH YDS</span><small>{highRush.entry ? `Career high · S${highRush.entry.season} W${highRush.entry.week}` : 'No games yet'}</small></article>
+        </div>}
+        {museumTab==='media' && <div className="museum-record-grid">
+          <article><Newspaper/><strong>{(data.state?.newsroomIssues||[]).length || data.news?.articles?.length || 0}</strong><span>NEWSROOM EDITIONS</span><small>Saved career coverage</small></article>
+          <article><Headphones/><strong>{(data.state?.podcastEpisodes||[]).length || 0}</strong><span>HUDDLE EPISODES</span><small>Saved scripts and shows</small></article>
+          <article><Camera/><strong>{mediaCount}</strong><span>LINKED MEDIA</span><small>Coverage + photos across Chronicle</small></article>
+        </div>}
+        {museumTab==='stops' && <div className="museum-signature-grid">
+          {programs.length ? programs.map((school,index)=><article key={school}><span>CAREER STOP {index+1}</span><strong>{school}</strong><p>{seasons.filter((s)=>s.school===school).map((s)=>`Season ${s.season}`).join(' · ')}</p></article>) : <div className="chronicle-empty-state">Career programs will collect here as the journey grows.</div>}
+        </div>}
       </div>
     </section>
   </div>;

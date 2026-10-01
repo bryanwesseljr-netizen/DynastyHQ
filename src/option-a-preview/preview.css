@@ -2734,3 +2734,32 @@ button:active{transform:translateY(1px)}
     box-shadow:0 8px 24px rgba(0,0,0,.12)!important;
   }
 }
+
+
+/* Precision match pass v12 — prevent Newsroom lower-card clipping */
+@media(min-width:701px){
+  .newsroom-page .reference-journal-box{
+    height:198px!important;
+    min-height:198px!important;
+    padding-bottom:14px!important;
+    overflow:visible!important;
+  }
+  .newsroom-page .huddle-actions{
+    margin-top:8px!important;
+    padding-bottom:2px!important;
+  }
+  .newsroom-page .career-grid{
+    padding-bottom:2px!important;
+  }
+  .newsroom-page .career-grid button{
+    margin-top:6px!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:1000px){
+  .newsroom-page .reference-journal-box{
+    height:188px!important;
+    min-height:188px!important;
+    padding-bottom:12px!important;
+  }
+}

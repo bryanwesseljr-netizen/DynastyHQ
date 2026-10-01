@@ -214,7 +214,7 @@ function GameHub({go,statsTab,setStatsTab,notify}){
     <section className="hub-grid">
       <div className="left-stack">
         <article className="paper-panel verified reference-verified">
-          <div className="panel-head"><h2>VERIFIED GAME DATA</h2>
+          <div className="panel-head"><h2 className="verified-title"><span className="desktop-label">VERIFIED GAME DATA</span><span className="mobile-label">PLAYER STATS</span></h2>
             <div className="tabs">
               <button className={statsTab==='team'?'active':''} onClick={()=>setStatsTab('team')}>Team stats</button>
               <button className={statsTab==='player'?'active':''} onClick={()=>setStatsTab('player')}>Player stats</button>

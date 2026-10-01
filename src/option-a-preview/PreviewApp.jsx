@@ -2204,6 +2204,66 @@ function PodcastPage({
               <span><LockKeyhole/>OWNER STUDIO</span>
               <b>Studio Controls</b>
             </div>
+
+            <div className="pod-artwork-controls">
+              <div className="pod-artwork-heading">
+                <span><ImageIcon/>PODCAST ARTWORK</span>
+                <small>Default show cover + optional episode override</small>
+              </div>
+
+              <div className="pod-artwork-grid">
+                <article className="pod-artwork-card">
+                  <img src={showCover || podcastCover} alt="Default show cover"/>
+                  <div>
+                    <small>DEFAULT SHOW COVER</small>
+                    <b>The Huddle</b>
+                    <em>{showCoverStatus}</em>
+                  </div>
+                  <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>showCoverInputRef.current?.click()}>
+                    <Camera/>{podcastArtBusy==='show'?'PREPARING…':showCoverIsPreviewOverride?'REPLACE':'CHOOSE COVER'}
+                  </button>
+                  {(showCoverIsPreviewOverride || episode.showCoverUrl) && <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy)} onClick={onResetShowCover}>RESET</button>}
+                  <input
+                    ref={showCoverInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={(event)=>{
+                      const file=event.target.files?.[0];
+                      event.target.value='';
+                      if(file) onUploadShowCover(file);
+                    }}
+                  />
+                </article>
+
+                <article className="pod-artwork-card">
+                  <img src={episodeCover || showCover || podcastCover} alt="Episode cover"/>
+                  <div>
+                    <small>WEEK {game.week} EPISODE COVER</small>
+                    <b>{episode.title || ('Week '+game.week+' Recap')}</b>
+                    <em>{episodeCoverStatus}</em>
+                  </div>
+                  <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>episodeCoverInputRef.current?.click()}>
+                    <ImageIcon/>{podcastArtBusy==='episode'?'PREPARING…':episodeCoverIsPreviewOverride?'REPLACE OVERRIDE':'ADD OVERRIDE'}
+                  </button>
+                  <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy) || episodeUsesShowCover} onClick={onUseShowCover}>USE SHOW COVER</button>
+                  <input
+                    ref={episodeCoverInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={(event)=>{
+                      const file=event.target.files?.[0];
+                      event.target.value='';
+                      if(file) onUploadEpisodeCover(file);
+                    }}
+                  />
+                </article>
+              </div>
+
+              <p>Square artwork is recommended. The default cover follows the show; an episode override only affects Season {data.season}, Week {game.week}. Preview artwork is browser-only until the write/action pass.</p>
+            </div>
+
             <div className="pod-master-status">
               <div className={isNotebookMaster?'ready':''}><Headphones/></div>
               <span>
@@ -2289,12 +2349,12 @@ function PodcastPage({
       </div>
       <div ref={archiveRef} className={showAllEpisodes?'episode-cards episode-archive-all pod-episode-cards-v2':'episode-cards episode-carousel pod-episode-cards-v2'}>
         {archiveEpisodes.length ? archiveEpisodes.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}>
-          <img src={podcastCover} alt=""/>
+          <img src={podcastCoverForPublication(item.publicationId,item.coverUrl)} alt=""/>
           <span>SEASON {item.season} • {item.week? `WEEK ${item.week}`:'ARCHIVE'}</span>
           <b>{item.title}</b>
           <small>{item.duration} • {item.audioReady?'Audio ready':'Transcript available'}</small>
           <Play/>
-        </button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><img src={podcastCover} alt=""/><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
+        </button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><img src={showCover || podcastCover} alt=""/><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
       </div>
     </section>
   </div>;

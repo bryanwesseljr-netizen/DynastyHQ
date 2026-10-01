@@ -122,9 +122,9 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const compPct = state.rtg?.completionPct || state.rtg?.compPct || model.totals?.completionPct;
   const gameDate = formatDate(latestGame?.publishedAt || latestGame?.date || latestGame?.occurredAt);
   const stageLabel = model.stage === 'OC' ? 'OFFENSIVE COORDINATOR' : model.stage === 'HC' ? 'HEAD COACH' : model.stage === 'Retired' ? 'LEGACY' : display(player.pos, 'PLAYER');
-  const open = (target) => {
-    if (requestNavigation(target)) return;
-    onNavigate?.(target);
+  const open = (target, detail = {}) => {
+    if (requestNavigation(target, detail)) return;
+    onNavigate?.(target, detail);
   };
   const upcomingSiteLabel = immersion.upcomingGame?.homeAway === 'home'
     ? 'HOME'
@@ -185,6 +185,13 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
     : immersion.primaryTarget;
   const heroSecondaryLabel = useForwardHero ? 'VIEW LAST GAME' : (immersion.secondaryLabel || 'VIEW WEEK HUB');
   const heroSecondaryTarget = useForwardHero ? 'gameHub' : (immersion.secondaryTarget || 'gameHub');
+  const heroSecondaryDetail = useForwardHero && latestGame
+    ? {
+        season: numberValue(latestGame.season, immersion.currentSeason || 1),
+        week: numberValue(latestGame.week, 0),
+        publicationId: `season-${numberValue(latestGame.season, immersion.currentSeason || 1)}-week-${numberValue(latestGame.week, 0)}`,
+      }
+    : {};
 
   return (
     <div
@@ -239,7 +246,7 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
                 {heroPrimaryLabel}
                 {heroPrimaryTarget === 'importSession' ? <CloudUpload size={16} /> : heroPrimaryTarget === 'gameHub' && useForwardHero ? <Play size={15} /> : immersion.mode === 'pregame' ? <Play size={15} /> : <ChevronRight size={17} />}
               </button>
-              <button type="button" className="dhq-broadcast-secondary" onClick={() => open(heroSecondaryTarget)}>
+              <button type="button" className="dhq-broadcast-secondary" onClick={() => open(heroSecondaryTarget, heroSecondaryDetail)}>
                 {heroSecondaryLabel}
                 {heroSecondaryTarget === 'importSession' ? <CloudUpload size={16} /> : <ChevronRight size={17} />}
               </button>

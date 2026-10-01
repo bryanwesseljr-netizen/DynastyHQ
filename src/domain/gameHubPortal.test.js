@@ -91,3 +91,12 @@ test('backup season mode is exposed from Game Hub only for saved backup roles', 
   assert.match(backupPortal, /Skip the weekly homework/);
   assert.match(backupPortal, /Record several games now — or do them later/);
 });
+
+
+test('Game Hub navigation can target a specific completed week while normal Game Hub navigation still opens current week', async () => {
+  const source = await readFile(new URL('../components/GameHubPortal.jsx', import.meta.url), 'utf8');
+  assert.match(source, /requestedPublicationId/);
+  assert.match(source, /requestedSeason > 0 && requestedWeek > 0 \? publicationIdFor\(requestedSeason, requestedWeek\) : 'current'/);
+  assert.match(source, /setSelection\(requestedSelection\)/);
+  assert.match(source, /setSelection\('current'\)/);
+});

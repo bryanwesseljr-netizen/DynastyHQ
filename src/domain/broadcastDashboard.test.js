@@ -25,7 +25,8 @@ test('broadcast dashboard uses the approved reference proportions and real workf
   assert.match(source, /const useForwardHero = Boolean\(forwardOpponent\)/);
   assert.match(source, /data-home-focus=\{useForwardHero \? 'forward' : 'current'\}/);
   assert.match(source, /open\(heroPrimaryTarget\)/);
-  assert.match(source, /open\(heroSecondaryTarget\)/);
+  assert.match(source, /open\(heroSecondaryTarget, heroSecondaryDetail\)/);
+  assert.match(source, /publicationId: \`season-\$\{numberValue\(latestGame\.season/);
   assert.match(source, /CONTINUE TO WEEK/);
   assert.match(source, /dhq-gameweek-immersion/);
   assert.match(source, /import '\.\/broadcast-reference\.css';/);

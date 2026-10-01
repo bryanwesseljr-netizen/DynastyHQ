@@ -163,7 +163,12 @@ const GameHubPortal = () => {
       const target = String(event?.detail?.target || '').trim();
       if (!target) return;
       if (target === 'gameHub') {
-        setSelection('current');
+        const requestedPublicationId = clean(event?.detail?.publicationId);
+        const requestedSeason = numberOf(event?.detail?.season);
+        const requestedWeek = numberOf(event?.detail?.week);
+        const requestedSelection = requestedPublicationId
+          || (requestedSeason > 0 && requestedWeek > 0 ? publicationIdFor(requestedSeason, requestedWeek) : 'current');
+        setSelection(requestedSelection);
         setOpen(true);
         document.querySelectorAll('.dhq-primary-nav button, #mobile-primary-navigation button').forEach((button) => {
           if (clean(button.textContent).toUpperCase() === 'GAME HUB') button.classList.add('dhq-game-hub-active');

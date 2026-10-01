@@ -1396,6 +1396,10 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [coverageScreens,setCoverageScreens]=useState([]);
   const [coverageError,setCoverageError]=useState('');
   const [coverageSkipped,setCoverageSkipped]=useState(false);
+  const [publishConfirm,setPublishConfirm]=useState(false);
+  const [publishing,setPublishing]=useState(false);
+  const [publishError,setPublishError]=useState('');
+  const [publishResult,setPublishResult]=useState(null);
 
   const game=data.game || {};
   const team=game.team || {};
@@ -1443,6 +1447,10 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setCoverageScreens([]);
     setCoverageError('');
     setCoverageSkipped(false);
+    setPublishConfirm(false);
+    setPublishing(false);
+    setPublishError('');
+    setPublishResult(null);
   },[open,data.season,data.week]);
 
   useEffect(()=>()=>revokeFiles(files),[]);

@@ -11950,3 +11950,42 @@ button:active{transform:translateY(1px)}
     font-weight:850!important;
   }
 }
+
+
+/* Precision match pass v37 — visibly larger desktop navigation */
+@media(min-width:1001px){
+  .desktop-nav{
+    gap:clamp(12px,1.55vw,24px)!important;
+  }
+  .desktop-nav button{
+    font-size:13px!important;
+    font-weight:900!important;
+    letter-spacing:.22px!important;
+  }
+  .desktop-nav button.active:after{
+    height:3px!important;
+    bottom:5px!important;
+  }
+}
+
+@media(min-width:861px) and (max-width:1000px){
+  .desktop-nav{
+    gap:9px!important;
+  }
+  .desktop-nav button{
+    font-size:11px!important;
+    font-weight:900!important;
+    letter-spacing:.15px!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:860px){
+  .desktop-nav{
+    gap:7px!important;
+  }
+  .desktop-nav button{
+    font-size:9.5px!important;
+    font-weight:900!important;
+    letter-spacing:.1px!important;
+  }
+}

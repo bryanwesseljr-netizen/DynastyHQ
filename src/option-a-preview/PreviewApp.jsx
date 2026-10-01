@@ -393,6 +393,8 @@ function Logo({team='Oregon', type=''}) {
 }
 
 function App(){
+  const [followerViewId] = useState(()=>followerViewIdFromLocation());
+  const followerView=useFollowerSnapshot(followerViewId);
   const [restoredView] = useState(()=>loadPreviewViewState());
   const validPage=pages.some(([id])=>id===restoredView.page) ? restoredView.page : 'home';
   const [page,setPage] = useState(validPage);
@@ -422,6 +424,11 @@ function App(){
   const [profileBusy,setProfileBusy] = useState(false);
   const [podcastArtwork,setPodcastArtwork] = useState(()=>loadPodcastArtwork());
   const [podcastArtBusy,setPodcastArtBusy] = useState('');
+  const [shareOpen,setShareOpen] = useState(false);
+  const [shareBusy,setShareBusy] = useState(false);
+  const [shareUrl,setShareUrl] = useState('');
+  const [shareEnabled,setShareEnabled] = useState(false);
+  const [shareLastSynced,setShareLastSynced] = useState('');
   const [processingOpen,setProcessingOpen] = useState(false);
   const restoredSelectionRef=useRef(Boolean(restoredView.hasSelection || (hasRestoredSeason && hasRestoredWeek)));
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
@@ -438,6 +445,30 @@ function App(){
     data.player?.name || 'player',
     data.player?.pos || 'position',
   ].map((value)=>String(value).trim().toLowerCase()).join('::'), [live.user?.uid,data.player?.name,data.player?.pos]);
+
+  useEffect(()=>{
+    if(!live.user?.uid || typeof window==='undefined') return;
+    const enabled=window.localStorage.getItem('dynastyhq-redesign-follow-share-'+live.user.uid)==='1';
+    setShareEnabled(enabled);
+    if(enabled){
+      const base=window.location.origin+window.location.pathname;
+      setShareUrl(base+'?follow='+encodeURIComponent(live.user.uid));
+    }
+  },[live.user?.uid]);
+
+  useEffect(()=>{
+    if(!shareEnabled || !live.user?.uid || !live.data || !db || followerViewId) return undefined;
+    const timer=window.setTimeout(async()=>{
+      try{
+        const publicRef=doc(db,'artifacts',productionAppId,'public','data','shared_dynasties',live.user.uid);
+        await setDoc(publicRef,{redesignFollower:buildFollowerSnapshot(live.data)},{merge:true});
+        setShareLastSynced(new Date().toISOString());
+      }catch(error){
+        console.warn('DynastyHQ follower share auto-sync failed',error);
+      }
+    },1200);
+    return ()=>window.clearTimeout(timer);
+  },[shareEnabled,live.user?.uid,live.data,followerViewId]);
 
   useEffect(() => {
     if (!live.data || restoredSelectionRef.current) return;
@@ -578,6 +609,37 @@ function App(){
     window.scrollTo({top:0,behavior:'smooth'});
   };
   const notify = (message) => { setToast(message); window.setTimeout(()=>setToast(''),2200); };
+  const publishFollowerShare=async()=>{
+    if(!live.user?.uid || !live.data || !db){
+      notify('Connect your real DynastyHQ career before creating a follower link.');
+      return;
+    }
+    setShareBusy(true);
+    try{
+      const publicRef=doc(db,'artifacts',productionAppId,'public','data','shared_dynasties',live.user.uid);
+      await setDoc(publicRef,{redesignFollower:buildFollowerSnapshot(live.data)},{merge:true});
+      const base=window.location.origin+window.location.pathname;
+      const url=base+'?follow='+encodeURIComponent(live.user.uid);
+      setShareUrl(url);
+      setShareEnabled(true);
+      setShareLastSynced(new Date().toISOString());
+      window.localStorage.setItem('dynastyhq-redesign-follow-share-'+live.user.uid,'1');
+      notify('Read-only career follow link is ready.');
+    }catch(error){
+      notify(error?.message || 'DynastyHQ could not create the follower link.');
+    }finally{
+      setShareBusy(false);
+    }
+  };
+  const copyFollowerShare=async()=>{
+    if(!shareUrl) return;
+    try{
+      await navigator.clipboard.writeText(shareUrl);
+      notify('Share link copied.');
+    }catch{
+      notify('Copy failed. Select the link manually.');
+    }
+  };
   const visualFor = (id) => {
     const base=defaultPageVisual(id);
     const stored=pageVisuals[id] || {};

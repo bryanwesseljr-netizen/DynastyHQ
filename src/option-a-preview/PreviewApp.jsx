@@ -124,7 +124,7 @@ function HomePage({go,openArticle,notify}){
       <div className="hero-overlay"/>
       <div className="hero-copy">
         <span className="eyebrow">WEEK 10 <i/> FINAL</span>
-        <h1>A NIGHT TO <em>REMEMBER</em></h1>
+        <h1><span>A NIGHT TO</span><em>REMEMBER</em></h1>
         <div className="hero-score">
           <div><Logo/><strong>54</strong><small>OREGON</small></div>
           <span>FINAL</span>
@@ -149,7 +149,7 @@ function HomePage({go,openArticle,notify}){
     </section>
 
     <section className="home-cards">
-      <article className="dark-card next-week">
+      <article className="dark-card next-week reference-next-week">
         <CardHeader title="YOUR NEXT WEEK"/>
         <div className="next-body">
           <Logo team="M" type="maryland big"/>
@@ -159,7 +159,7 @@ function HomePage({go,openArticle,notify}){
         <button className="yellow" onClick={()=>notify('Next-week preparation is sample-only in this preview.')}><CalendarDays/>Prepare next week<ChevronRight/></button>
       </article>
 
-      <article className="dark-card wrap-card">
+      <article className="dark-card wrap-card reference-wrap">
         <CardHeader title="WEEK 10 WRAP-UP"/>
         <CheckRow title="Game stats reviewed" sub="Player and team performance updated"/>
         <CheckRow title="Coverage ready" sub="Article, media, and highlights available"/>
@@ -167,7 +167,7 @@ function HomePage({go,openArticle,notify}){
         <button className="outline full" onClick={()=>go('gamehub')}><BarChart3/>Open Game Hub<ChevronRight/></button>
       </article>
 
-      <article className="paper-card newsroom-card">
+      <article className="paper-card newsroom-card reference-newsroom-card">
         <CardHeader title="FROM THE NEWSROOM" light/>
         <div className="news-flex">
           <div><h3>Wessel leads Oregon past Illinois</h3><p>Oregon secures a 54–48 victory behind 286 passing yards, 124 rush yards and 7 total TD from Bryan Wessel.</p></div>
@@ -211,7 +211,7 @@ function GameHub({go,statsTab,setStatsTab,notify}){
 
     <section className="hub-grid">
       <div className="left-stack">
-        <article className="paper-panel verified">
+        <article className="paper-panel verified reference-verified">
           <div className="panel-head"><h2>VERIFIED GAME DATA</h2>
             <div className="tabs">
               <button className={statsTab==='team'?'active':''} onClick={()=>setStatsTab('team')}>Team stats</button>
@@ -232,7 +232,7 @@ function GameHub({go,statsTab,setStatsTab,notify}){
           </div>
         </article>
 
-        <article className="paper-panel material">
+        <article className="paper-panel material reference-material">
           <h2>GAME MATERIAL</h2>
           <div className="material-grid">
             <Material icon={FileText} title="Box score" sub="Game statistics and team totals attached."/>
@@ -243,7 +243,7 @@ function GameHub({go,statsTab,setStatsTab,notify}){
       </div>
 
       <div className="right-stack">
-        <article className="paper-panel coverage">
+        <article className="paper-panel coverage reference-coverage">
           <h2>WEEKLY COVERAGE</h2>
           <CoverageRow icon={Newspaper} title="Newsroom edition" sub="Game recap and analysis." onClick={()=>go('newsroom')}/>
           <CoverageRow icon={Mic2} title="Podcast transcript" sub="Full episode transcript." onClick={()=>go('newsroom')}/>
@@ -251,7 +251,7 @@ function GameHub({go,statsTab,setStatsTab,notify}){
           <button className="yellow full" onClick={()=>go('newsroom')}><Zap/>OPEN COVERAGE<ChevronRight/></button>
         </article>
 
-        <article className="paper-panel development">
+        <article className="paper-panel development reference-development">
           <h2>PLAYER DEVELOPMENT</h2>
           <SimpleRow icon={BarChart3} title="Attribute changes" sub="See how this week impacted your player."/>
           <SimpleRow icon={UserRound} title="Coach trust" sub="Build your role and earn opportunities."/>
@@ -299,13 +299,13 @@ function Newsroom({openArticle,go,playing,setPlaying}){
       </section>
 
       <section className="journal-lower">
-        <article className="journal-box inside">
+        <article className="journal-box inside reference-journal-box">
           <CardHeader title="INSIDE THE GAME" light/>
           <p>The numbers behind the win.</p>
           <div className="inside-grid"><div className="tiny-photo photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/><div><button onClick={()=>go('gamehub')}><ClipboardList/>Player stats<ChevronRight/></button><button onClick={()=>go('gamehub')}><BarChart3/>Scoring drives<ChevronRight/></button></div></div>
         </article>
 
-        <article className="journal-box huddle">
+        <article className="journal-box huddle reference-journal-box">
           <CardHeader title="THE HUDDLE" light/>
           <div className="huddle-grid">
             <button className="cover-play" onClick={()=>setPlaying(v=>!v)}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
@@ -315,7 +315,7 @@ function Newsroom({openArticle,go,playing,setPlaying}){
           {playing && <div className="now-playing">▶ Playing preview audio…</div>}
         </article>
 
-        <article className="journal-box career-file">
+        <article className="journal-box career-file reference-journal-box">
           <CardHeader title="THE CAREER FILE" light/>
           <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>WESSEL</span><b>6</b></div><div><h3>From first start<br/>to the spotlight.</h3><p>Revisit the early chapters of Bryan Wessel’s journey and how he became the face of this program.</p><button onClick={()=>go('gamehub')}>Explore Chronicle<ChevronRight/></button></div></div>
         </article>

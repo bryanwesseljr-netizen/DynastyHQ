@@ -2432,3 +2432,305 @@ button:active{transform:translateY(1px)}
     height:285px!important;
   }
 }
+
+
+/* Precision match pass v11 — cross-page fidelity polish */
+:root{
+  --module-gap:10px;
+  --module-radius:7px;
+  --module-edge:rgba(255,255,255,.10);
+  --paper-edge:#cec8bb;
+}
+
+/* ---------- HOME ---------- */
+@media(min-width:701px){
+  .home-page{
+    padding-bottom:26px!important;
+  }
+  .home-page .hero{
+    border-bottom-left-radius:0!important;
+    border-bottom-right-radius:0!important;
+  }
+  .home-page .home-cards{
+    gap:var(--module-gap)!important;
+    margin-top:6px!important;
+    align-items:stretch!important;
+  }
+  .home-page .dark-card,
+  .home-page .paper-card{
+    border-radius:var(--module-radius)!important;
+    box-shadow:0 5px 18px rgba(0,0,0,.08)!important;
+  }
+  .home-page .reference-next-week,
+  .home-page .reference-wrap,
+  .home-page .reference-newsroom-card{
+    height:238px!important;
+    min-height:238px!important;
+  }
+  .home-page .reference-next-week .next-body{
+    flex-basis:76px!important;
+  }
+  .home-page .reference-wrap .check-row{
+    margin:8px 4px!important;
+  }
+  .home-page .reference-newsroom-card .news-flex{
+    flex-basis:104px!important;
+  }
+  .home-page .journey-strip{
+    margin-top:8px!important;
+    border-radius:var(--module-radius)!important;
+    box-shadow:0 5px 18px rgba(0,0,0,.08)!important;
+  }
+  .home-page .journey-strip>div{
+    min-height:70px!important;
+  }
+}
+
+/* ---------- GAME HUB ---------- */
+@media(min-width:701px){
+  .gamehub-page{
+    padding-bottom:26px!important;
+  }
+  .gamehub-page .complete-strip{
+    margin-top:8px!important;
+    border-radius:var(--module-radius)!important;
+    box-shadow:0 5px 18px rgba(0,0,0,.08)!important;
+  }
+  .gamehub-page .hub-grid{
+    gap:var(--module-gap)!important;
+    margin-top:8px!important;
+    align-items:stretch!important;
+  }
+  .gamehub-page .left-stack,
+  .gamehub-page .right-stack{
+    gap:var(--module-gap)!important;
+    align-content:stretch!important;
+  }
+  .gamehub-page .paper-panel{
+    border-radius:var(--module-radius)!important;
+    box-shadow:0 5px 18px rgba(0,0,0,.08)!important;
+    border:1px solid #d7d1c5!important;
+  }
+  .gamehub-page .reference-verified{
+    min-height:292px!important;
+  }
+  .gamehub-page .reference-material{
+    min-height:154px!important;
+  }
+  .gamehub-page .reference-coverage{
+    min-height:238px!important;
+  }
+  .gamehub-page .reference-development{
+    min-height:208px!important;
+  }
+  .gamehub-page .hub-bottom{
+    margin-top:8px!important;
+    gap:var(--module-gap)!important;
+  }
+  .gamehub-page .hub-bottom>div,
+  .gamehub-page .hub-bottom>.yellow{
+    height:66px!important;
+    min-height:66px!important;
+    border-radius:var(--module-radius)!important;
+    box-shadow:0 5px 18px rgba(0,0,0,.08)!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child{
+    justify-content:flex-start!important;
+  }
+  .gamehub-page .hub-bottom>.yellow{
+    width:100%!important;
+    justify-content:center!important;
+  }
+  .gamehub-page .future{
+    justify-content:flex-start!important;
+  }
+  .gamehub-page .future em{
+    margin-left:auto!important;
+  }
+}
+
+/* ---------- NEWSROOM FRONT PAGE ---------- */
+@media(min-width:701px){
+  .newsroom-page{
+    padding-bottom:26px!important;
+  }
+  .newsroom-page .journal{
+    border-radius:var(--module-radius)!important;
+  }
+  .newsroom-page .journal-lower{
+    grid-template-columns:1fr 1.08fr 1fr!important;
+    gap:var(--module-gap)!important;
+    margin-top:8px!important;
+    align-items:stretch!important;
+  }
+  .newsroom-page .reference-journal-box{
+    height:184px!important;
+    min-height:184px!important;
+    border-radius:6px!important;
+    border-color:var(--paper-edge)!important;
+    overflow:hidden!important;
+  }
+  .newsroom-page .reference-journal-box .card-title{
+    height:36px!important;
+  }
+  .newsroom-page .inside-grid{
+    height:118px!important;
+  }
+  .newsroom-page .tiny-photo.photo-tile{
+    height:112px!important;
+    min-height:112px!important;
+  }
+  .newsroom-page .huddle-grid{
+    min-height:98px!important;
+    align-items:center!important;
+  }
+  .newsroom-page .career-grid{
+    min-height:118px!important;
+    align-items:center!important;
+  }
+  .newsroom-page .back-photo.photo-tile{
+    height:112px!important;
+    min-height:112px!important;
+  }
+}
+
+/* ---------- MID-WIDTH DESKTOP / "DESKTOP SITE" ON PHONE ---------- */
+@media(min-width:701px) and (max-width:1000px){
+  .home-page .reference-next-week,
+  .home-page .reference-wrap,
+  .home-page .reference-newsroom-card{
+    height:214px!important;
+    min-height:214px!important;
+  }
+  .home-page .reference-newsroom-card .pod-mini{
+    grid-template-columns:58px 1fr 54px 32px!important;
+  }
+
+  .gamehub-page .reference-verified{min-height:274px!important}
+  .gamehub-page .reference-material{min-height:145px!important}
+  .gamehub-page .reference-coverage{min-height:224px!important}
+  .gamehub-page .reference-development{min-height:198px!important}
+
+  .newsroom-page .reference-journal-box{
+    height:174px!important;
+    min-height:174px!important;
+  }
+  .newsroom-page .inside-grid{
+    grid-template-columns:92px 1fr!important;
+    height:108px!important;
+  }
+  .newsroom-page .tiny-photo.photo-tile{
+    height:102px!important;
+    min-height:102px!important;
+  }
+  .newsroom-page .huddle-grid{
+    min-height:90px!important;
+  }
+  .newsroom-page .career-grid{
+    min-height:106px!important;
+  }
+  .newsroom-page .back-photo.photo-tile{
+    height:100px!important;
+    min-height:100px!important;
+  }
+}
+
+/* ---------- TRUE MOBILE ---------- */
+@media(max-width:700px){
+  .site-header{
+    border-bottom-color:#0b4e3d!important;
+  }
+  .career-row{
+    background:#002c22!important;
+  }
+  .score-ribbon{
+    background:#001c16!important;
+  }
+
+  .home-page .hero{
+    min-height:500px!important;
+    height:500px!important;
+  }
+  .home-page .home-cards{
+    gap:7px!important;
+    margin-top:7px!important;
+  }
+  .home-page .reference-next-week{
+    border-radius:7px!important;
+  }
+  .home-page .reference-newsroom-card{
+    border-radius:7px!important;
+  }
+
+  .gamehub-page .complete-strip,
+  .gamehub-page .paper-panel{
+    border-radius:7px!important;
+  }
+  .gamehub-page .reference-verified{
+    margin-bottom:7px!important;
+  }
+  .gamehub-page .reference-coverage{
+    margin-bottom:7px!important;
+  }
+  .gamehub-page .hub-bottom{
+    margin-top:7px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child{
+    min-height:58px!important;
+    height:58px!important;
+    border-radius:7px!important;
+  }
+
+  /* Match the approved mobile Newsroom: lead story, score, then Huddle. */
+  .newsroom-page .journal-lower{
+    display:block!important;
+    margin:7px!important;
+  }
+  .newsroom-page .inside,
+  .newsroom-page .career-file{
+    display:none!important;
+  }
+  .newsroom-page .huddle{
+    min-height:142px!important;
+    height:auto!important;
+    border-radius:7px!important;
+  }
+  .newsroom-page .huddle-grid{
+    grid-template-columns:96px 1fr!important;
+    gap:9px!important;
+  }
+  .newsroom-page .cover-play img{
+    width:96px!important;
+    height:72px!important;
+  }
+  .newsroom-page .huddle-actions{
+    margin-top:7px!important;
+  }
+
+  .mobile-bottom{
+    border-top-color:#0a4b3a!important;
+  }
+  .mobile-bottom button{
+    min-width:0;
+  }
+  .mobile-bottom button.active{
+    background:linear-gradient(0deg,rgba(255,228,0,.055),transparent 80%);
+  }
+}
+
+/* Small interaction polish */
+@media(hover:hover){
+  .home-page .dark-card,
+  .home-page .paper-card,
+  .gamehub-page .paper-panel,
+  .newsroom-page .journal-box{
+    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+  }
+  .home-page .dark-card:hover,
+  .home-page .paper-card:hover,
+  .gamehub-page .paper-panel:hover,
+  .newsroom-page .journal-box:hover{
+    transform:translateY(-1px);
+    box-shadow:0 8px 24px rgba(0,0,0,.12)!important;
+  }
+}

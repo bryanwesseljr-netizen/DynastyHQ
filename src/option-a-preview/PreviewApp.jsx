@@ -1934,8 +1934,16 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
         const beforeStorage=splitCareerStateForStorage(remote,savedAt);
         const beforeTargetArchive=beforeStorage.archives.find((archive)=>archive.archiveId===targetPublicationId) || null;
+        const checkpointArchiveId=beforeTargetArchive ? `${checkpointId}-target` : '';
+        const checkpointArchiveIds=beforeStorage.archives.map((archive)=>(
+          beforeTargetArchive && archive.archiveId===targetPublicationId ? checkpointArchiveId : archive.archiveId
+        ));
         const checkpointMain={
           ...beforeStorage.mainState,
+          _storage:{
+            ...(beforeStorage.mainState._storage || {}),
+            archiveIds:checkpointArchiveIds,
+          },
           _checkpoint:{
             immutable:true,
             createdAt:savedAt,
@@ -1943,7 +1951,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             targetPublicationId,
             action,
             originalArchiveIds:beforeStorage.archives.map((archive)=>archive.archiveId),
-            targetArchiveBackupDocument:beforeTargetArchive ? `${checkpointId}-target-archive` : '',
+            targetArchiveBackupId:checkpointArchiveId,
           },
         };
         if(estimatedJsonBytes(checkpointMain)>=950*1024){
@@ -1954,19 +1962,27 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           checkpointMain,
         );
         if(beforeTargetArchive){
-          if(estimatedJsonBytes(beforeTargetArchive)>=950*1024){
+          const checkpointArchive={
+            ...beforeTargetArchive,
+            archiveId:checkpointArchiveId,
+            _checkpointArchive:{
+              immutable:true,
+              createdAt:savedAt,
+              targetPublicationId,
+              originalArchiveId:beforeTargetArchive.archiveId,
+            },
+          };
+          if(estimatedJsonBytes(checkpointArchive)>=950*1024){
             throw new Error('The existing week is too large to checkpoint safely, so DynastyHQ blocked the update.');
           }
           transaction.set(
-            doc(db,'artifacts',productionAppId,'users',signedInUser.uid,'hq_data',`${checkpointId}-target-archive`),
-            {
-              ...beforeTargetArchive,
-              _checkpointArchive:{
-                immutable:true,
-                createdAt:savedAt,
-                targetPublicationId,
-              },
-            },
+            careerArchiveRef({
+              db,
+              appId:productionAppId,
+              userId:signedInUser.uid,
+              archiveId:checkpointArchiveId,
+            }),
+            checkpointArchive,
           );
         }
 

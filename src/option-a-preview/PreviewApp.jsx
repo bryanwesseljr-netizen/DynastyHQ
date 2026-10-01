@@ -15,6 +15,7 @@ const pages = [
   ['home','Home',Home],
   ['gamehub','Game Hub',CalendarDays],
   ['newsroom','Newsroom',Newspaper],
+  ['podcast','Podcast',Headphones],
 ];
 
 const sample = {
@@ -39,6 +40,7 @@ function App(){
   const [statsTab,setStatsTab] = useState('player');
   const [toast,setToast] = useState('');
   const [playing,setPlaying] = useState(false);
+  const [podcastTab,setPodcastTab] = useState('episode');
 
   const pageTitle = useMemo(()=>pages.find(p=>p[0]===page)?.[1] || 'Home',[page]);
   const go = (next) => { setPage(next); if(next!=='newsroom') setArticleOpen(false); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
@@ -93,12 +95,13 @@ function App(){
       {page==='home' && <HomePage go={go} openArticle={openNewsArticle} notify={notify}/>}
       {page==='gamehub' && <GameHub go={go} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>}
       {page==='newsroom' && <Newsroom articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} go={go} playing={playing} setPlaying={setPlaying}/>}
+      {page==='podcast' && <PodcastPage go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>}
     </main>
 
     <nav className="mobile-bottom">
       <button className={page==='home'?'active':''} onClick={()=>go('home')}><Home/><span>Home</span></button>
       <button className={page==='gamehub'?'active':''} onClick={()=>go('gamehub')}><CalendarDays/><span>Week</span></button>
-      <button className={page==='newsroom'?'active':''} onClick={()=>go('newsroom')}><Play/><span>Media</span></button>
+      <button className={page==='podcast'||page==='newsroom'?'active':''} onClick={()=>go('podcast')}><Play/><span>Media</span></button>
       <button onClick={()=>notify('Career preview coming after the three approved screens.')}><BarChart3/><span>Career</span></button>
       <button onClick={()=>setMobileMenu(v=>!v)}><MoreHorizontal/><span>More</span></button>
     </nav>
@@ -173,7 +176,7 @@ function HomePage({go,openArticle,notify}){
           <div><h3>Wessel leads Oregon past Illinois</h3><p>Oregon secures a 54–48 victory behind 286 passing yards, 124 rush yards and 7 total TD from Bryan Wessel.</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/>
         </div>
-        <button className="pod-mini" onClick={()=>go('newsroom')}>
+        <button className="pod-mini" onClick={()=>go('podcast')}>
           <img src={podcastCover} alt="The Huddle"/>
           <span className="pod-copy"><b>THE HUDDLE</b><small>Illinois recap</small><em>28:14</em></span>
           <span className="pod-wave" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></span>
@@ -275,6 +278,139 @@ function Material({icon:Icon,title,sub}){ return <button className="material-car
 function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub}){ return <button className="coverage-row simple"><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
+function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
+  const transcript = [
+    ['OPENING','Oregon and Illinois just traded blows for four quarters, and when it finally stopped, Bryan Wessel had accounted for 410 total yards and seven touchdowns in a 54–48 Ducks win.'],
+    ['THE GAME','The story was pressure and response. Illinois kept forcing Oregon to answer, and Wessel repeatedly created the next explosive play—six touchdowns through the air, another on the ground, and 124 rushing yards when the pocket broke down.'],
+    ['THE TURNING POINT','The defining stretch came late, when Oregon needed offense without giving Illinois a short field. Wessel extended drives with his legs and the Ducks finally created enough separation to survive the final Illinois push.'],
+    ['WHAT IT MEANS','This is the kind of performance that changes the tone of a season. Oregon moves forward with momentum, while Wessel adds the most complete statistical game of his young career.'],
+    ['UP NEXT','Maryland is next in Week 11. The challenge shifts from surviving a shootout to proving this level of production can carry from one week to the next.']
+  ];
+
+  return <div className="page podcast-page">
+    <section className="podcast-hero">
+      <div className="podcast-hero-art">
+        <img src={podcastCover} alt="The Huddle podcast cover"/>
+        <button className="podcast-main-play" onClick={()=>setPlaying(v=>!v)}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
+      </div>
+      <div className="podcast-hero-copy">
+        <span className="podcast-kicker">THE HUDDLE • WEEK 10</span>
+        <h1>THE ILLINOIS<br/><em>SHOOTOUT</em></h1>
+        <p>Game breakdown, key plays, player development, and what comes next after Oregon’s 54–48 win.</p>
+        <div className="podcast-meta"><span>28:14</span><i/><span>Season 4</span><i/><span>Week 10</span></div>
+
+        <div className="audio-console">
+          <button className="audio-play" onClick={()=>setPlaying(v=>!v)}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
+          <div className="audio-track">
+            <div className="audio-wave" aria-hidden="true">{Array.from({length:34}).map((_,i)=><i key={i}/>)}</div>
+            <div className="audio-time"><span>{playing?'08:42':'00:00'}</span><b>28:14</b></div>
+          </div>
+        </div>
+
+        <div className="podcast-actions">
+          <button className="yellow" onClick={()=>{setPodcastTab('transcript');setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth'}),50)}}><FileText/>OPEN TRANSCRIPT</button>
+          <button className="outline" onClick={()=>{setPodcastTab('notebook');setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth'}),50)}}><Zap/>NOTEBOOKLM PACK</button>
+        </div>
+      </div>
+    </section>
+
+    <section className="podcast-context-strip">
+      <div><small>FINAL</small><strong>OREGON 54–48 ILLINOIS</strong></div>
+      <i/>
+      <div><small>WESSEL</small><strong>410 TOTAL YARDS</strong></div>
+      <div><small>TOUCHDOWNS</small><strong>7 TOTAL TD</strong></div>
+      <button onClick={()=>go('gamehub')}>VIEW GAME DATA<ChevronRight/></button>
+    </section>
+
+    <section className="podcast-workspace">
+      <div className="podcast-tabs">
+        <button className={podcastTab==='episode'?'active':''} onClick={()=>setPodcastTab('episode')}>Episode</button>
+        <button className={podcastTab==='transcript'?'active':''} onClick={()=>setPodcastTab('transcript')}>Transcript</button>
+        <button className={podcastTab==='notebook'?'active':''} onClick={()=>setPodcastTab('notebook')}>NotebookLM</button>
+      </div>
+
+      {podcastTab==='episode' && <div className="episode-layout">
+        <article className="episode-story">
+          <span className="section-kicker">EPISODE BRIEF</span>
+          <h2>One game. Seven touchdowns. A whole lot to unpack.</h2>
+          <p>The Huddle treats each week like a real postgame show—using the uploaded game data, verified player stats, scoring summary, and career context to tell the story behind the result.</p>
+          <div className="episode-chapters">
+            <div><b>00:00</b><span><strong>Opening Drive</strong><small>The 54–48 final and why this game mattered.</small></span></div>
+            <div><b>04:18</b><span><strong>Wessel’s Night</strong><small>286 passing, 124 rushing, seven total touchdowns.</small></span></div>
+            <div><b>12:46</b><span><strong>How Oregon Survived</strong><small>The scoring swings and high-leverage moments.</small></span></div>
+            <div><b>21:05</b><span><strong>What Changes Now</strong><small>Player development and the Week 11 Maryland setup.</small></span></div>
+          </div>
+        </article>
+        <aside className="episode-side">
+          <section>
+            <span>THIS EPISODE USES</span>
+            <div><Check/>Verified player stats</div>
+            <div><Check/>Team statistics</div>
+            <div><Check/>Scoring drives</div>
+            <div><Check/>Career progression</div>
+          </section>
+          <section>
+            <span>RELATED</span>
+            <button onClick={()=>go('newsroom')}><Newspaper/><b>Read the game story</b><ChevronRight/></button>
+            <button onClick={()=>go('gamehub')}><BarChart3/><b>Open Game Hub</b><ChevronRight/></button>
+          </section>
+        </aside>
+      </div>}
+
+      {podcastTab==='transcript' && <div className="transcript-layout">
+        <article className="transcript-paper">
+          <div className="transcript-head">
+            <div><span>THE HUDDLE • OFFICIAL TRANSCRIPT</span><h2>The Illinois Shootout</h2><p>Season 4 • Week 10 • Oregon 54, Illinois 48</p></div>
+            <button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button>
+          </div>
+          {transcript.map(([title,body])=><section key={title}><h3>{title}</h3><p>{body}</p></section>)}
+          <div className="transcript-note">Preview transcript excerpt. The connected DynastyHQ version will use the complete generated episode transcript for the selected week.</div>
+        </article>
+        <aside className="transcript-sidebar">
+          <span>GAME REFERENCES</span>
+          <div><small>Passing</small><b>286 YDS • 6 TD</b></div>
+          <div><small>Rushing</small><b>124 YDS • 1 TD</b></div>
+          <div><small>Total offense</small><b>410 YDS</b></div>
+          <div><small>Final score</small><b>ORE 54 • ILL 48</b></div>
+          <button onClick={()=>go('gamehub')}>VERIFY IN GAME HUB<ChevronRight/></button>
+        </aside>
+      </div>}
+
+      {podcastTab==='notebook' && <div className="notebook-layout">
+        <article className="notebook-card">
+          <div className="notebook-icon"><Zap/></div>
+          <span className="section-kicker">NOTEBOOKLM SOURCE PACK</span>
+          <h2>Week 10 • Illinois</h2>
+          <p>A clean source bundle built for generating an expanded audio conversation in NotebookLM.</p>
+          <div className="source-list">
+            <div><Check/><span><b>Game overview</b><small>Final score, opponent, week context, season record.</small></span></div>
+            <div><Check/><span><b>Verified statistics</b><small>Player and team stats from the selected game.</small></span></div>
+            <div><Check/><span><b>Scoring summary</b><small>Drive-by-drive scoring context and turning points.</small></span></div>
+            <div><Check/><span><b>Player development</b><small>Progression, regression, milestones, and career context.</small></span></div>
+            <div><Check/><span><b>Podcast transcript</b><small>The complete DynastyHQ episode script included as source material.</small></span></div>
+          </div>
+          <button className="yellow" onClick={()=>notify('NotebookLM export is sample-only in this visual preview.')}><Zap/>OPEN SOURCE PACK<ChevronRight/></button>
+        </article>
+        <aside className="notebook-tip">
+          <BookOpen/>
+          <span>WHY IT EXISTS</span>
+          <h3>Take the same verified week data into a deeper conversation.</h3>
+          <p>DynastyHQ creates the structured source material; NotebookLM can then turn that package into a longer-form discussion without losing the game context.</p>
+        </aside>
+      </div>}
+    </section>
+
+    <section className="previous-episodes">
+      <div className="previous-head"><div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div><button onClick={()=>notify('Full podcast archive is sample-only in this preview.')}>View all episodes<ChevronRight/></button></div>
+      <div className="episode-cards">
+        <button><span>WEEK 9</span><b>Michigan: The Road Test</b><small>24:38 • Postgame</small><Play/></button>
+        <button><span>WEEK 8</span><b>Ohio State: Under the Lights</b><small>31:06 • Postgame</small><Play/></button>
+        <button><span>PRESEASON</span><b>Named the Starter</b><small>18:22 • Career Special</small><Play/></button>
+      </div>
+    </section>
+  </div>;
+}
+
 function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}){
   return <div className="page newsroom-page">
     <section className="journal">
@@ -317,10 +453,10 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}
             <article className="journal-box huddle reference-journal-box">
               <CardHeader title="THE HUDDLE" light/>
               <div className="huddle-grid">
-                <button className="cover-play" onClick={()=>setPlaying(v=>!v)}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
+                <button className="cover-play" onClick={()=>go('podcast')}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
                 <div><small>Week 10</small><h3>The Illinois Shootout</h3><p>Game breakdown, key plays, and what’s next for Wessel and the Ducks.</p><b>28:14</b></div>
               </div>
-              <div className="huddle-actions"><button><FileText/>Print transcript</button><button><Zap/>NotebookLM pack</button></div>
+              <div className="huddle-actions"><button onClick={()=>go('podcast')}><FileText/>Print transcript</button><button onClick={()=>go('podcast')}><Zap/>NotebookLM pack</button></div>
               {playing && <div className="now-playing">▶ Playing preview audio…</div>}
             </article>
 
@@ -410,7 +546,7 @@ function NewsroomArticle({onBack,go}){
         <section className="related-card">
           <span>RELATED COVERAGE</span>
           <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
-          <button><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
+          <button onClick={()=>go('podcast')}><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
           <button><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
         </section>
       </aside>
@@ -418,7 +554,7 @@ function NewsroomArticle({onBack,go}){
 
     <section className="digital-related-strip">
       <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the numbers behind the win</b></span><ChevronRight/></button>
-      <button><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
+      <button onClick={()=>go('podcast')}><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
       <button><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
     </section>
   </article>;

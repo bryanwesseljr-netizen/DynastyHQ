@@ -183,6 +183,159 @@ const notebookSourcePackText = ({data,episode,facts,scoringFacts,developmentFact
   ].join('\n');
 };
 
+const PREVIEW_NUMERIC_GAME_FIELDS = new Set([
+  'homeScore','awayScore','teamRank','opponentRank','passYds','passTD','rushYds','rushTD','int',
+  'teamTotalYards','opponentTotalYards','teamFirstDowns','opponentFirstDowns','teamTurnovers','opponentTurnovers',
+  'teamRushYds','opponentRushYds','teamPassYds','opponentPassYds',
+]);
+
+const previewCleanFact = (fact) => {
+  const { selected, ...rest } = fact || {};
+  return { ...rest };
+};
+
+const previewTypedValue = (key,value) => {
+  if(value===null || value===undefined) return '';
+  const field=String(key || '').replace(/^game\./,'');
+  if(PREVIEW_NUMERIC_GAME_FIELDS.has(field) || /^rtg\.(?:gpa|energy|coachTrust|trustToNext|skillPoints|followers|valuation|weeklyPoints|examWeeks|nextFanMilestone|nilWeeklyCost|openNilSlots)$/.test(String(key || ''))){
+    const parsed=Number(String(value).replace(/[$,%]/g,''));
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return typeof value==='string' ? value.trim() : value;
+};
+
+const previewGameFromFacts = ({baseGame={},facts=[],fallbackOpponent=''}) => {
+  const nextGame={...baseGame};
+  if(!nextGame.opponent && fallbackOpponent) nextGame.opponent=fallbackOpponent;
+  facts.forEach((fact)=>{
+    const key=String(fact?.key || '');
+    if(!key.startsWith('game.')) return;
+    nextGame[key.slice(5)]=previewTypedValue(key,fact.value);
+  });
+  return nextGame;
+};
+
+const previewRtgFromFacts = (baseRtg={},facts=[]) => {
+  const nextRtg={...baseRtg,wear:{...(baseRtg?.wear || {})}};
+  facts.forEach((fact)=>{
+    const key=String(fact?.key || '');
+    if(!key.startsWith('rtg.')) return;
+    const field=key.slice(4);
+    if(field.startsWith('wear.')){
+      const part=field.slice(5);
+      if(part) nextRtg.wear[part]=previewTypedValue(key,fact.value);
+      return;
+    }
+    nextRtg[field]=previewTypedValue(key,fact.value);
+  });
+  return nextRtg;
+};
+
+const previewMatchesPublication = (entry,publicationId,season,week) => (
+  entry?.publicationId===publicationId
+  || entry?.id===publicationId
+  || entry?.weekKey===publicationId
+  || (Number(entry?.season || 1)===Number(season) && Number(entry?.week)===Number(week))
+);
+
+const mergeVerifiedPublicationFacts = (state,publicationId,facts=[]) => {
+  if(!facts.length) return state;
+  const existing=(state.factLedger || []).filter((entry)=>entry?.publicationId===publicationId && entry?.editorialOnly!==true);
+  const map=new Map(existing.map((entry)=>[entry.key,entry]));
+  facts.forEach((fact,index)=>{
+    const cleanFact=previewCleanFact(fact);
+    const key=String(cleanFact.key || '').trim();
+    if(!key) return;
+    map.set(key,{
+      ...(map.get(key)||{}),
+      ...cleanFact,
+      id:cleanFact.id || map.get(key)?.id || `${publicationId}:preview-${index}`,
+      key,
+      value:previewTypedValue(key,cleanFact.value),
+      verified:true,
+      userVerified:true,
+      publicationId,
+      correctedAt:new Date().toISOString(),
+    });
+  });
+  const preserved=(state.factLedger || []).filter((entry)=>entry?.publicationId!==publicationId || entry?.editorialOnly===true);
+  return {...state,factLedger:[...preserved,...map.values()]};
+};
+
+const applyCorrectedRtgSnapshot = (state,{publicationId,season,week,facts=[]}) => {
+  if(!facts.length) return state;
+  const weeklyUpdates=[...(state.weeklyUpdates || [])];
+  const targetIndex=weeklyUpdates.findIndex((entry)=>previewMatchesPublication(entry,publicationId,season,week));
+  if(targetIndex<0) return mergeVerifiedPublicationFacts(state,publicationId,facts);
+
+  const previousSnapshot=[...weeklyUpdates]
+    .slice(0,targetIndex)
+    .reverse()
+    .find((entry)=>hasRtgSnapshot(entry?.rtgSnapshot || {}))?.rtgSnapshot || {};
+  const currentSnapshot=hasRtgSnapshot(weeklyUpdates[targetIndex]?.rtgSnapshot || {})
+    ? weeklyUpdates[targetIndex].rtgSnapshot
+    : previousSnapshot;
+  const patchedSnapshot=createRtgSnapshot(previewRtgFromFacts(currentSnapshot,facts));
+  weeklyUpdates[targetIndex]={
+    ...weeklyUpdates[targetIndex],
+    rtgSnapshot:patchedSnapshot,
+    rtgChanges:diffRtgSnapshots(patchedSnapshot,previousSnapshot),
+    correctedAt:new Date().toISOString(),
+  };
+
+  const hasLaterSnapshot=weeklyUpdates.slice(targetIndex+1).some((entry)=>hasRtgSnapshot(entry?.rtgSnapshot || {}));
+  const changedAt=new Date().toISOString();
+  const next={
+    ...state,
+    weeklyUpdates,
+    ...(hasLaterSnapshot ? {} : {rtg:{...(state.rtg || {}),...patchedSnapshot,wear:{...(state.rtg?.wear || {}),...(patchedSnapshot.wear || {})}}}),
+    newsroomIssues:(state.newsroomIssues || []).map((issue)=>previewMatchesPublication(issue,publicationId,season,week)
+      ? {...issue,...(issue.editorialStatus==='generated'?{editorialStatus:'needs-regeneration'}:{}),rtgCorrectedAt:changedAt}
+      : issue),
+    podcastEpisodes:(state.podcastEpisodes || []).map((episode)=>previewMatchesPublication(episode,publicationId,season,week)
+      ? {
+          ...episode,
+          ...(['scripted','ready','published'].includes(episode.status)?{status:'needs-regeneration'}:{}),
+          ...(episode.audioStatus==='ready'?{audioStatus:'stale'}:{}),
+          rtgCorrectedAt:changedAt,
+        }
+      : episode),
+  };
+  return mergeVerifiedPublicationFacts(next,publicationId,facts);
+};
+
+const appendOfficialNetworkArticles = (state,{publicationId,season,week,articles=[]}) => {
+  if(!articles.length) return state;
+  const current=[...(state.eaSportsNetworkArticles || [])];
+  const signatures=new Set(current.map((entry)=>[
+    entry?.publicationId || '',
+    String(entry?.headline || '').trim().toLowerCase(),
+    String(entry?.body || '').trim().slice(0,160).toLowerCase(),
+  ].join('|')));
+  const additions=articles.flatMap((article,index)=>{
+    const signature=[
+      publicationId,
+      String(article?.headline || '').trim().toLowerCase(),
+      String(article?.body || '').trim().slice(0,160).toLowerCase(),
+    ].join('|');
+    if(signatures.has(signature)) return [];
+    signatures.add(signature);
+    return [{
+      id:`${publicationId}-ea-network-${Date.now()}-${index}`,
+      publicationId,
+      season:Number(season)||1,
+      week:Number(week)||0,
+      headline:String(article?.headline || 'EA SPORTS Network article').trim(),
+      body:String(article?.body || '').trim(),
+      byline:String(article?.byline || '').trim(),
+      pageLabel:String(article?.pageLabel || '').trim(),
+      sourceFileName:String(article?.fileName || '').trim(),
+      capturedAt:new Date().toISOString(),
+    }];
+  });
+  return additions.length ? {...state,eaSportsNetworkArticles:[...current,...additions]} : state;
+};
+
 const loadPreviewViewState = () => {
   if (typeof window === 'undefined') return {};
   try {

@@ -6540,3 +6540,31 @@ button:active{transform:translateY(1px)}
     font-size:clamp(27px,9.5vw,35px)!important;
   }
 }
+
+
+/* Precision match pass v22 — real Career/Chronicle empty states */
+.career-empty-copy,
+.chronicle-empty-state{
+  min-height:74px;
+  display:grid;
+  place-items:center;
+  padding:14px;
+  border:1px dashed #c7cec8;
+  background:#f8f6ef;
+  color:#6d7771;
+  font-family:Georgia,serif;
+  font-size:9px;
+  line-height:1.45;
+  text-align:center;
+}
+.chronicle-signature-grid>.chronicle-empty-state,
+.museum-signature-grid>.chronicle-empty-state{
+  grid-column:1/-1;
+}
+@media(max-width:700px){
+  .career-empty-copy,
+  .chronicle-empty-state{
+    min-height:62px;
+    font-size:8px;
+  }
+}

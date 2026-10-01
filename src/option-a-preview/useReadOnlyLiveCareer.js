@@ -268,7 +268,7 @@ const navigationFor = (state = {}, selectedSeason = null) => {
   (state.careerChronicle || []).forEach(addWeek);
   scheduleEntries(state, season).forEach((entry)=>{
     const week = numeric(entry?.week, -1);
-    if (week >= 0 && !entry?.isBye) weekSet.add(week);
+    if (week >= 0 && !entry?.isBye && entry?.completed) weekSet.add(week);
   });
   if (season === numeric(state.currentSeason, season)) weekSet.add(numeric(state.currentWeek, 0));
 

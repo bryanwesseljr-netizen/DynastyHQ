@@ -9806,3 +9806,153 @@ button:active{transform:translateY(1px)}
     min-height:110px!important;
   }
 }
+
+
+/* Precision match pass v32 — mobile score alignment + overflow containment */
+@media(max-width:700px){
+  /* Keep score team labels physically inside the score card. */
+  .home-page .hero-score{
+    height:74px!important;
+    min-height:74px!important;
+    padding:8px 9px!important;
+    align-items:center!important;
+    overflow:hidden!important;
+  }
+  .home-page .hero-score-team{
+    height:52px!important;
+    min-height:52px!important;
+    align-self:center!important;
+    grid-template-rows:34px 12px!important;
+    align-content:center!important;
+    overflow:hidden!important;
+  }
+  .home-page .hero-score-team .team-logo{
+    align-self:center!important;
+  }
+  .home-page .hero-score-team strong{
+    align-self:end!important;
+    line-height:.92!important;
+  }
+  .home-page .hero-score-team small{
+    position:static!important;
+    align-self:start!important;
+    margin:0!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .home-page .home-team small{
+    text-align:left!important;
+  }
+  .home-page .away-team small{
+    text-align:right!important;
+  }
+  .home-page .hero-final{
+    align-self:center!important;
+    margin:0!important;
+  }
+  .home-page .hero-stats{
+    position:relative;
+    z-index:4;
+    margin-top:9px!important;
+  }
+
+  /* Score ribbon: every segment may shrink, but nothing may cross the viewport edge. */
+  .score-ribbon{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:52px!important;
+    padding:0 10px!important;
+    gap:5px!important;
+    overflow:hidden!important;
+  }
+  .score-ribbon>div:first-child{
+    flex:0 0 auto!important;
+    min-width:0!important;
+    gap:5px!important;
+    white-space:nowrap!important;
+  }
+  .score-ribbon .score-team{
+    flex:0 1 auto!important;
+    min-width:0!important;
+    gap:4px!important;
+    white-space:nowrap!important;
+  }
+  .score-ribbon .score-team .team-logo{
+    flex:0 0 30px!important;
+    width:30px!important;
+    height:30px!important;
+  }
+  .score-ribbon .score-team strong{
+    flex:0 0 auto!important;
+    font-size:19px!important;
+  }
+  .score-ribbon .dash{
+    flex:0 0 auto!important;
+    margin:0 1px!important;
+  }
+  .score-ribbon .score-sep{
+    flex:0 0 1px!important;
+    margin:0 2px!important;
+  }
+  .score-ribbon .upnext{
+    flex:1 1 0!important;
+    min-width:0!important;
+    max-width:118px!important;
+    justify-content:flex-end!important;
+    gap:4px!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+  }
+  .score-ribbon .upnext>span{
+    flex:0 0 auto!important;
+  }
+  .score-ribbon .upnext .team-logo{
+    flex:0 0 28px!important;
+    width:28px!important;
+    height:28px!important;
+  }
+  .score-ribbon .upnext strong{
+    min-width:0!important;
+    max-width:58px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:7px!important;
+    letter-spacing:.45px!important;
+  }
+
+  /* Narrow phones get one extra notch of breathing room. */
+  @media(max-width:420px){
+    .score-ribbon{
+      padding-left:7px!important;
+      padding-right:7px!important;
+      gap:4px!important;
+    }
+    .score-ribbon>div:first-child{
+      font-size:6.3px!important;
+    }
+    .score-ribbon .score-team .team-logo{
+      flex-basis:27px!important;
+      width:27px!important;
+      height:27px!important;
+    }
+    .score-ribbon .score-team strong{
+      font-size:17px!important;
+    }
+    .score-ribbon .upnext{
+      max-width:104px!important;
+    }
+    .score-ribbon .upnext .team-logo{
+      flex-basis:26px!important;
+      width:26px!important;
+      height:26px!important;
+    }
+    .score-ribbon .upnext strong{
+      max-width:50px!important;
+      font-size:6.5px!important;
+    }
+  }
+}

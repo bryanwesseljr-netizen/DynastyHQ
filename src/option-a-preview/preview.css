@@ -7059,3 +7059,176 @@ button:active{transform:translateY(1px)}
     grid-template-columns:1fr 1fr;
   }
 }
+
+
+/* Precision match pass v25 — true pregame state + dynamic weekly hero */
+.home-page .pregame-headline{
+  font-size:clamp(70px,6.4vw,104px)!important;
+}
+.home-page .pregame-score .hero-score-team{
+  min-width:145px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+}
+.home-page .pregame-score .hero-score-team small{
+  position:static!important;
+  margin:0!important;
+  font-size:8px!important;
+  letter-spacing:1px;
+}
+.home-page .pregame-score .hero-score-team .team-logo{
+  width:39px;
+  height:39px;
+  font-size:24px;
+}
+.home-page .pregame-score .hero-final{
+  min-width:74px;
+  font-size:10px!important;
+  letter-spacing:2px;
+}
+.home-page.pregame-home .hero-stats span{
+  font-size:5.8px!important;
+}
+.home-page .check-row.pending>span{
+  background:#25483f!important;
+  color:#b2c1bb!important;
+  border-color:#41675c!important;
+}
+.home-page .check-row.pending>span svg{
+  width:13px;
+  height:13px;
+}
+.home-page .check-row.pending b{
+  color:#d5dfdb!important;
+}
+.home-page .check-row.pending small{
+  color:#7f958c!important;
+}
+.home-page .pending-media{
+  opacity:.82;
+}
+.home-page .pending-media .pod-play{
+  background:#234c40!important;
+}
+.home-page .pending-media .pod-play svg{
+  width:13px;
+  height:13px;
+}
+
+/* Top score strip: current unplayed week is a matchup, never a fake 0–0 final. */
+.score-ribbon.pregame-ribbon .score-team{
+  min-width:125px;
+}
+.score-ribbon .pregame-team strong{
+  display:none;
+}
+.score-ribbon .pregame-team{
+  gap:8px;
+}
+.score-ribbon .pregame-team.away{
+  flex-direction:row;
+}
+.score-ribbon .matchup-vs{
+  flex:0 0 auto;
+  color:#789289;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:1.5px;
+}
+.score-ribbon.pregame-ribbon>div:first-child b{
+  color:var(--yellow);
+}
+
+/* Game Hub should match the same state language. */
+.complete-strip.pregame-strip{
+  border-color:#486e62!important;
+  background:linear-gradient(90deg,#062b22,#07362b)!important;
+}
+.complete-strip.pregame-strip h2{
+  color:#fff!important;
+}
+.complete-strip.pregame-strip p{
+  color:#95aaa2!important;
+}
+.flow-step.pending{
+  color:#91a69e!important;
+}
+.flow-step.pending i{
+  background:#244a3f!important;
+  border-color:#41695e!important;
+  color:#c5d2cd!important;
+}
+.flow-step.pending i svg{
+  width:11px;
+  height:11px;
+}
+.flow-step.pending i span{
+  font-size:6px;
+  font-weight:950;
+}
+.complete-strip.pregame-strip .flow>b{
+  background:#315b50!important;
+}
+.material-card.pending,
+.coverage-row.pending{
+  opacity:.72;
+}
+.material-card.pending>span{
+  background:#d8ddd9!important;
+  color:#718078!important;
+}
+.material-card.pending>span svg{
+  width:11px;
+}
+.coverage-row.pending em{
+  color:#8a7464!important;
+  background:#ece5db!important;
+  border-color:#d7ccbf!important;
+}
+
+/* Long opponent names still keep the broadcast headline readable. */
+@media(max-width:1000px) and (min-width:701px){
+  .home-page .pregame-headline{
+    font-size:clamp(59px,6.5vw,82px)!important;
+  }
+}
+
+@media(max-width:700px){
+  .home-page .pregame-headline{
+    font-size:clamp(43px,12vw,58px)!important;
+    line-height:.80!important;
+  }
+  .home-page .pregame-score{
+    grid-template-columns:1fr 64px 1fr!important;
+  }
+  .home-page .pregame-score .hero-score-team{
+    min-width:0;
+    gap:5px;
+  }
+  .home-page .pregame-score .hero-score-team .team-logo{
+    width:32px;
+    height:32px;
+    font-size:19px;
+  }
+  .home-page .pregame-score .hero-score-team small{
+    font-size:6px!important;
+  }
+  .home-page .pregame-score .hero-final{
+    min-width:0;
+    font-size:8px!important;
+  }
+  .home-page.pregame-home .hero-stats strong{
+    font-size:20px!important;
+  }
+  .home-page.pregame-home .hero-stats span{
+    font-size:5px!important;
+  }
+  .score-ribbon.pregame-ribbon .score-team{
+    min-width:0;
+  }
+  .score-ribbon .matchup-vs{
+    font-size:6px;
+  }
+}

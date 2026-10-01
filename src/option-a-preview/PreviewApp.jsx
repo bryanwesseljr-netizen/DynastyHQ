@@ -38,6 +38,9 @@ const defaultPageVisual = (pageId) => ({
   image:playerPhoto,
   position:PAGE_VISUAL_POSITIONS[pageId] || '50%',
   custom:false,
+  mode:pageId==='home'?'auto':'manual',
+  autoAvailable:false,
+  sourceLabel:'Default player photo',
 });
 
 const loadPageVisuals = () => {
@@ -152,7 +155,25 @@ function App(){
     window.scrollTo({top:0,behavior:'smooth'});
   };
   const notify = (message) => { setToast(message); window.setTimeout(()=>setToast(''),2200); };
-  const visualFor = (id) => ({...defaultPageVisual(id),...(pageVisuals[id] || {})});
+  const visualFor = (id) => {
+    const base=defaultPageVisual(id);
+    const stored=pageVisuals[id] || {};
+    const weeklyPhoto=data.news?.weeklyPhoto || null;
+    const mode=stored.mode || (stored.image ? 'manual' : base.mode);
+    const autoImage=weeklyPhoto?.url || base.image;
+    const image=mode==='auto' ? autoImage : (stored.image || base.image);
+    return {
+      ...base,
+      ...stored,
+      mode,
+      image,
+      autoAvailable:Boolean(weeklyPhoto?.url),
+      autoPhoto:weeklyPhoto,
+      sourceLabel:mode==='auto'
+        ? (weeklyPhoto?.url ? `Week ${data.week} · ${weeklyPhoto.fileName || 'Newsroom game photo'}` : `Week ${data.week} · default fallback`)
+        : (stored.image ? 'Manual browser override' : 'Default player photo'),
+    };
+  };
   const persistVisuals = (next) => {
     setPageVisuals(next);
     try {
@@ -172,6 +193,10 @@ function App(){
     const stored=pageVisuals[id] || {};
     persistVisuals({...pageVisuals,[id]:{...stored,...patch,custom:true}});
   };
+  const setVisualMode = (id,mode) => {
+    const stored=pageVisuals[id] || {};
+    persistVisuals({...pageVisuals,[id]:{...stored,mode,custom:true}});
+  };
   const resetVisual = (id) => {
     const next={...pageVisuals};
     delete next[id];
@@ -182,7 +207,7 @@ function App(){
     setVisualBusy(true);
     try {
       const image=await compressPagePhoto(file);
-      updateVisual(visualTarget,{image});
+      updateVisual(visualTarget,{image,mode:'manual'});
     } catch(error) {
       notify(error?.message || 'The photo could not be added.');
     } finally {
@@ -195,8 +220,9 @@ function App(){
     const next={...pageVisuals};
     pages.forEach(([id])=>{
       next[id]={
-        ...(storedCurrent.image ? {image:storedCurrent.image} : {}),
+        ...(storedCurrent.image ? {image:storedCurrent.image} : {image:current.image}),
         position:current.position,
+        mode:'manual',
         custom:true,
       };
     });
@@ -296,6 +322,7 @@ function App(){
       onClose={()=>setVisualEditorOpen(false)}
       onUpload={uploadVisual}
       onReset={()=>resetVisual(visualTarget)}
+      onMode={(mode)=>setVisualMode(visualTarget,mode)}
       onPosition={(position)=>updateVisual(visualTarget,{position})}
       onApplyAll={applyVisualToAll}
     />
@@ -304,7 +331,7 @@ function App(){
   </div>;
 }
 
-function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,onReset,onPosition,onApplyAll}){
+function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,onReset,onMode,onPosition,onApplyAll}){
   if(!open) return null;
   const label=pages.find(([id])=>id===target)?.[1] || 'Page';
   const positions=[['30%','Left'],['50%','Center'],['70%','Right']];
@@ -325,6 +352,19 @@ function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,on
           {pages.map(([id,pageLabel])=><option key={id} value={id}>{pageLabel}</option>)}
         </select>
       </label>
+
+      <div className="visual-source-row">
+        <span>Photo source</span>
+        <div>
+          <button className={visual.mode==='auto'?'active':''} onClick={()=>onMode('auto')}><Sparkles/>Auto weekly photo</button>
+          <button className={visual.mode==='manual'?'active':''} onClick={()=>onMode('manual')}><Camera/>Manual override</button>
+        </div>
+        <small className={visual.mode==='auto' && !visual.autoAvailable ? 'fallback' : ''}>
+          {visual.mode==='auto'
+            ? (visual.autoAvailable ? `Using ${visual.sourceLabel}` : 'No assigned game photo for this selected week; using the default until one exists.')
+            : visual.sourceLabel}
+        </small>
+      </div>
 
       <div className="visual-position-row">
         <span>Photo focus</span>

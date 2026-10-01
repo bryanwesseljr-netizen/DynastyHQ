@@ -336,46 +336,89 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}
 }
 
 function NewsroomArticle({onBack,go}){
-  return <article className="newsroom-article">
+  return <article className="newsroom-article digital-feature">
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
       <span>GAME RECAP • WEEK 10</span>
     </div>
 
-    <div className="newsroom-article-hero" style={{backgroundImage:`linear-gradient(90deg,rgba(244,240,230,.98) 0%,rgba(244,240,230,.80) 31%,rgba(244,240,230,.08) 62%,transparent 100%),linear-gradient(0deg,rgba(0,28,20,.12),transparent 45%),url(${playerPhoto})`}}>
-      <div className="article-headline">
-        <small>THE FOOTBALL JOURNAL</small>
-        <span>GAME RECAP</span>
-        <h1>WESSEL WINS<br/>THE SHOOTOUT.</h1>
-        <p>Oregon survives Illinois, 54–48, as Bryan Wessel accounts for 410 total yards and seven touchdowns.</p>
+    <header className="digital-feature-head">
+      <span className="digital-kicker">GAME RECAP</span>
+      <h1>Wessel Leads Oregon Past No. 20 Illinois in Shootout</h1>
+      <p className="digital-deck">Oregon survives a 54–48 thriller behind 410 total yards and seven touchdowns from Bryan Wessel.</p>
+      <div className="digital-byline">
+        <span>By <b>Rachel Monroe</b> · Campus Beat Writer</span>
+        <time>September 2026</time>
       </div>
-    </div>
+    </header>
 
-    <div className="article-scoreline">
-      <div><Logo/><span><b>OREGON</b><strong>54</strong></span></div>
+    <figure className="digital-hero-figure">
+      <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(0deg,rgba(0,20,14,.28),transparent 45%),url(${playerPhoto})`}}/>
+      <figcaption>
+        <span>A career-best performance from the quarterback secures a critical win for the Ducks.</span>
+        <em>Career Photo Library</em>
+      </figcaption>
+    </figure>
+
+    <section className="digital-scorebar">
+      <div className="digital-team"><Logo/><span><b>OREGON</b><strong>54</strong></span></div>
       <em>FINAL</em>
-      <div><span><strong>48</strong><b>ILLINOIS</b></span><Logo team="I" type="illinois"/></div>
+      <div className="digital-team away"><span><strong>48</strong><b>ILLINOIS</b></span><Logo team="I" type="illinois"/></div>
       <i/>
-      <div className="article-stat"><strong>410</strong><small>TOTAL YARDS</small></div>
-      <div className="article-stat"><strong>7</strong><small>TOTAL TD</small></div>
-    </div>
+      <div className="digital-stat"><strong>286</strong><small>PASS YDS</small></div>
+      <div className="digital-stat"><strong>124</strong><small>RUSH YDS</small></div>
+      <div className="digital-stat"><strong>410</strong><small>TOTAL YARDS</small></div>
+      <div className="digital-stat"><strong>7</strong><small>TOTAL TD</small></div>
+    </section>
 
-    <div className="article-content-grid">
-      <div className="article-copy">
-        <p className="article-lede">A back-and-forth night turned into one of the defining games of the season, with Wessel driving Oregon’s offense through the air and on the ground.</p>
-        <p>This is sample editorial copy for the interactive preview, but the layout is now designed to behave like a real internal Newsroom article rather than a modal. The finished version could populate this section from the verified weekly game packet.</p>
-        <h2>The game changed fast.</h2>
-        <p>Oregon’s offense kept answering every Illinois push. The article body can carry the full game narrative, scoring context, player performance, and career implications while the Newsroom navigation remains visible above it.</p>
-        <h2>Wessel’s night by the numbers</h2>
-        <p>286 passing yards, 124 rushing yards, 410 total yards and seven total touchdowns headline the week. Supporting game data can stay one click away without interrupting the reading experience.</p>
+    <div className="digital-story-layout">
+      <main className="digital-story-copy">
+        <p className="digital-lede">Oregon secured a hard-fought 54–48 victory over No. 20 Illinois on Saturday, leaning on a high-octane offense to survive one of the season’s most dramatic games.</p>
+
+        <p>The Ducks moved to 5–3 on the season and extended their winning streak to two games in a contest that saw both teams trade momentum deep into the fourth quarter.</p>
+
+        <h2>Offensive Fireworks</h2>
+        <p>Quarterback Bryan Wessel was the catalyst for the Oregon attack, accounting for 410 total yards and seven touchdowns. He completed 27 of 37 passes for 286 yards and six scores through the air while adding 124 yards and a touchdown on the ground.</p>
+
+        <aside className="digital-pullquote">
+          <span>THE MOMENT</span>
+          <blockquote>“Every time Illinois answered, Oregon found another way to push the game back in its favor.”</blockquote>
+        </aside>
+
+        <p>Despite two interceptions, Wessel’s ability to extend drives and create outside structure helped Oregon keep pressure on Illinois for four quarters. The receiving corps benefited from his efficiency, led by E. Toledo’s nine receptions for 77 yards and four touchdowns.</p>
+
+        <h2>Defensive Resilience</h2>
+        <p>Oregon’s defense surrendered yardage, but made enough high-leverage plays to preserve the six-point margin. M. Matlock anchored the unit with seven total tackles and 0.5 sacks, while D. Senshaw added a critical interception return.</p>
+
+        <h2>Looking Ahead</h2>
+        <p>The win gives Oregon momentum heading into Week 11 against Maryland. More importantly for Wessel’s career arc, the performance adds another defining chapter to a season that has quickly moved from opportunity to spotlight.</p>
+
         <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>View verified game data<ChevronRight/></button>
-      </div>
+      </main>
 
-      <aside className="article-sidebar">
-        <div><span>BY THE NUMBERS</span><strong>286</strong><small>PASS YDS</small><strong>124</strong><small>RUSH YDS</small><strong>7</strong><small>TOTAL TD</small></div>
-        <div><span>RELATED</span><b>The Illinois Shootout</b><small>The Huddle • 28:14</small></div>
+      <aside className="digital-story-rail">
+        <section className="snapshot-card">
+          <div className="snapshot-head">GAME SNAPSHOT</div>
+          <div className="snapshot-row"><span>Final</span><b>Oregon 54, Illinois 48</b></div>
+          <div className="snapshot-row"><span>Total offense</span><b>Oregon 610, Illinois 528</b></div>
+          <div className="snapshot-row"><span>First downs</span><b>Oregon 32, Illinois 24</b></div>
+          <div className="snapshot-row"><span>Wessel</span><b>410 total yards, 7 TD</b></div>
+        </section>
+
+        <section className="related-card">
+          <span>RELATED COVERAGE</span>
+          <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
+          <button><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
+          <button><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
+        </section>
       </aside>
     </div>
+
+    <section className="digital-related-strip">
+      <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the numbers behind the win</b></span><ChevronRight/></button>
+      <button><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
+      <button><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
+    </section>
   </article>;
 }
 

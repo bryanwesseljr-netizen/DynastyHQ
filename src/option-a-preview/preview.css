@@ -12173,3 +12173,33 @@ button:active{transform:translateY(1px)}
     min-height:38px;
   }
 }
+
+
+/* Precision match pass v40 — functional Podcast master-audio feedback */
+.pod-master-file-input{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  overflow:hidden!important;
+  clip:rect(0 0 0 0)!important;
+  clip-path:inset(50%)!important;
+  white-space:nowrap!important;
+}
+.pod-studio-actions button:disabled{
+  cursor:wait;
+  opacity:.68;
+}
+.pod-studio-message{
+  margin:0!important;
+  padding:9px 12px!important;
+  border-top:1px solid #294d43!important;
+  background:#0a241e;
+  color:#8bcdb5!important;
+  font-size:5.8px!important;
+  font-weight:800;
+  line-height:1.5!important;
+}
+.pod-studio-message[data-type="error"]{
+  background:#2a1414;
+  color:#f3aaa3!important;
+}

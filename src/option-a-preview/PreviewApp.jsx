@@ -367,9 +367,9 @@ function ScoreRibbon({data}){
   </div>;
 }
 
-function HomePage({data,go,openArticle,openPodcast,notify}){
+function HomePage({data,visual,go,openArticle,openPodcast,notify}){
   return <div className="page home-page">
-    <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${playerPhoto})`}}>
+    <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="hero-overlay"/>
       <div className="hero-copy">
         <span className="eyebrow">WEEK {data.game.week} <i/> FINAL</span>
@@ -443,7 +443,7 @@ function HomePage({data,go,openArticle,openPodcast,notify}){
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub}){ return <div className="check-row"><span><Check/></span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,go,openPodcast,statsTab,setStatsTab,notify}){
+function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const team=data.game.team || {};
   const scoring=data.game.scoring || {};
@@ -453,7 +453,7 @@ function GameHub({data,go,openPodcast,statsTab,setStatsTab,notify}){
       ? [[showStat(team.points),'POINTS'],[showStat(team.totalYards),'TOTAL OFFENSE'],[showStat(team.firstDowns),'FIRST DOWNS'],[showStat(team.turnovers),'TURNOVERS']]
       : [[showStat(scoring.playCount),'SCORING PLAYS'],[showStat(scoring.passTD),'PASS TD'],[showStat(scoring.rushTD),'RUSH TD'],[showStat(scoring.opponentPoints),'OPP PTS']];
   return <div className="page gamehub-page">
-    <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${playerPhoto})`}}>
+    <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / POSTGAME</p></div>
       <button className="yellow import" onClick={()=>notify('Screenshot import is disabled in this mockup preview.')}><Upload/>IMPORT SCREENSHOTS</button>
     </section>
@@ -475,7 +475,7 @@ function GameHub({data,go,openPodcast,statsTab,setStatsTab,notify}){
           </div>
 
           <div className="player-summary">
-            <div className="player-photo"><div className="fake-player photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,24,18,.10),rgba(0,24,18,.05)),url(${playerPhoto})`}}/></div>
+            <div className="player-photo"><div className="fake-player photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,24,18,.10),rgba(0,24,18,.05)),url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/></div>
             <div className="player-copy"><div className="player-name"><Logo team={data.player.school.slice(0,1)}/><div><h3>{data.player.name}</h3><p>#{data.player.number} &nbsp; | &nbsp; {data.player.pos} &nbsp; | &nbsp; {data.player.school}</p></div></div>
               <div className="stat-grid">{statContent.map(([v,l])=><div key={l}><strong>{v}</strong><span>{l}</span></div>)}</div>
             </div>
@@ -527,7 +527,7 @@ function Material({icon:Icon,title,sub,onClick}){ return <button className="mate
 function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row simple" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
-function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,setPodcastTab,notify}){
+function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcastTab,setPodcastTab,notify}){
   const episode=data.podcast || {};
   const archiveRef=useRef(null);
   const [showAllEpisodes,setShowAllEpisodes]=useState(false);
@@ -563,7 +563,7 @@ function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,se
   };
 
   return <div className="page podcast-page">
-    <section className="podcast-hero">
+    <section className="podcast-hero" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="podcast-hero-art">
         <img src={podcastCover} alt="The Huddle podcast cover"/>
         <button className="podcast-main-play" onClick={playEpisode}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
@@ -688,7 +688,7 @@ function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,se
   </div>;
 }
 
-function OffseasonPage({data,go,openPodcast,openArticle,notify}){
+function OffseasonPage({data,visual,go,openPodcast,openArticle,notify}){
   const o=data.offseason || {};
   const record=o.teamRecord || {wins:0,losses:0};
   const line=o.playerLine || {};
@@ -722,7 +722,7 @@ function OffseasonPage({data,go,openPodcast,openArticle,notify}){
           <div><strong>{seasonComplete?'DONE':'LIVE'}</strong><span>SEASON STATUS</span></div>
         </div>
       </div>
-      <div className="offseason-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(0,24,18,.15),rgba(0,24,18,.02)),url(${playerPhoto})`}}/>
+      <div className="offseason-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(0,24,18,.15),rgba(0,24,18,.02)),url(${visual.image})`,backgroundPosition:`${visual.position} 26%`}}/>
     </section>
 
     <section className="offseason-phase-rail">
@@ -788,7 +788,7 @@ function OffseasonPage({data,go,openPodcast,openArticle,notify}){
   </div>;
 }
 
-function CareerPage({data,go,openArchiveMoment}){
+function CareerPage({data,visual,go,openArchiveMoment}){
   const c=data.career || {};
   const totals=c.totals || data.totals || {};
   const profile=c.profile || {};
@@ -800,7 +800,7 @@ function CareerPage({data,go,openArchiveMoment}){
 
   return <div className="page career-page">
     <section className="career-hero-redesign">
-      <div className="career-portrait" style={{backgroundImage:`linear-gradient(0deg,rgba(0,23,17,.18),rgba(0,23,17,.04)),url(${playerPhoto})`}}/>
+      <div className="career-portrait" style={{backgroundImage:`linear-gradient(0deg,rgba(0,23,17,.18),rgba(0,23,17,.04)),url(${visual.image})`,backgroundPosition:`${visual.position} 25%`}}/>
       <div className="career-identity">
         <span className="career-kicker"><Sparkles/>CAREER OVERVIEW</span>
         <h1>{data.player.name.split(' ')[0] || 'PLAYER'}<br/><em>{lastName}</em></h1>
@@ -870,7 +870,7 @@ function CareerPage({data,go,openArchiveMoment}){
   </div>;
 }
 
-function ChroniclePage({data,go,openPodcast,openArticle,openArchiveMoment,notify}){
+function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment,notify}){
   const chron=data.chronicle || {};
   const seasons=Array.isArray(chron.seasons)?chron.seasons:[];
   const initialSeason=seasons[0]?.season || data.season;
@@ -943,7 +943,7 @@ function ChroniclePage({data,go,openPodcast,openArticle,openArchiveMoment,notify
   const activeWeekNumber=Number(active?.week ?? data.week);
 
   return <div className="page chronicle-page">
-    <section className="chronicle-hero-redesign">
+    <section className="chronicle-hero-redesign" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div>
         <span><Sparkles/>CAREER CHRONICLE</span>
         <h1>THE FILM OF<br/><em>THE CAREER</em></h1>
@@ -1047,7 +1047,7 @@ function ChroniclePage({data,go,openPodcast,openArticle,openArchiveMoment,notify
   </div>;
 }
 
-function Newsroom({data,articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
@@ -1064,7 +1064,7 @@ function Newsroom({data,articleOpen,setArticleOpen,openArticle,openPodcast,go,pl
       </header>
 
       {articleOpen ? (
-        <NewsroomArticle data={data} onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go} openPodcast={openPodcast}/>
+        <NewsroomArticle data={data} visual={visual} onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go} openPodcast={openPodcast}/>
       ) : (
         <>
           <section className="lead-story">
@@ -1074,7 +1074,7 @@ function Newsroom({data,articleOpen,setArticleOpen,openArticle,openPodcast,go,pl
               <p>{news.dek}</p>
               <button className="yellow" onClick={openArticle}>Read full story<ChevronRight/></button>
             </div>
-            <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${playerPhoto})`}}>
+            <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}>
               <div className="journal-player"><span>{data.player.number}</span></div>
             </div>
           </section>
@@ -1112,7 +1112,7 @@ function Newsroom({data,articleOpen,setArticleOpen,openArticle,openPodcast,go,pl
   </div>;
 }
 
-function NewsroomArticle({data,onBack,go,openPodcast}){
+function NewsroomArticle({data,visual,onBack,go,openPodcast}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
@@ -1145,7 +1145,7 @@ function NewsroomArticle({data,onBack,go,openPodcast}){
       </header>
 
       <figure className="digital-hero-figure">
-        <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${playerPhoto})`}}/>
+        <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${visual.image})`,backgroundPosition:`${visual.position} 26%`}}/>
         <figcaption>
           <span>{news.photoCaption || news.dek}</span>
           <em>Career Photo Library</em>

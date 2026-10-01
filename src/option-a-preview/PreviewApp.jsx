@@ -2107,6 +2107,7 @@ function PodcastPage({
       <div className="pod-show-overview">
         <div className="pod-show-cover">
           <img src={showCover || podcastCover} alt="The Huddle podcast cover"/>
+          <button className="pod-show-cover-change" type="button" onClick={()=>showCoverInputRef.current?.click()} disabled={Boolean(podcastArtBusy)} title="Change default show cover" aria-label="Change default show cover"><Camera/><span>CHANGE COVER</span></button>
         </div>
         <div className="pod-show-identity">
           <span className="pod-show-category">COLLEGE FOOTBALL PODCAST</span>

@@ -2022,7 +2022,12 @@ function PodcastPage({
   const [masterMessageType,setMasterMessageType]=useState('success');
   const [audioUrl,setAudioUrl]=useState('');
   const [audioLoading,setAudioLoading]=useState(false);
+  const [audioCurrentTime,setAudioCurrentTime]=useState(0);
+  const [audioDuration,setAudioDuration]=useState(0);
+  const [masterBusy,setMasterBusy]=useState(false);
+  const [studioOpen,setStudioOpen]=useState(false);
   const audioRef=useRef(null);
+  const masterInputRef=useRef(null);
   const showCoverInputRef=useRef(null);
   const episodeCoverInputRef=useRef(null);
   const game=data.game || {};
@@ -2091,7 +2096,15 @@ function PodcastPage({
   };
   const jumpToTab=(tab)=>{
     setPodcastTab(tab);
+    setStudioOpen(false);
     setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
+  };
+  const seekEpisode=(nextValue)=>{
+    const audio=audioRef.current;
+    if(!audio || !Number.isFinite(Number(nextValue))) return;
+    const next=Math.max(0,Math.min(Number(nextValue),Number(audio.duration)||0));
+    audio.currentTime=next;
+    setAudioCurrentTime(next);
   };
 
   useEffect(()=>{
@@ -2100,6 +2113,8 @@ function PodcastPage({
     audioRef.current?.pause();
     setPlaying(false);
     setAudioUrl('');
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
     setMasterMessage('');
 
     if(!episode.audioReady || !episodeId || !ownerUser?.uid){
@@ -2143,6 +2158,136 @@ function PodcastPage({
       if(objectUrl) URL.revokeObjectURL(objectUrl);
     };
   },[episode.audioReady,episode.masterAudioUploadedAt,episodeId,ownerUser?.uid,setPlaying]);
+
+  const patchMasterEpisode=async(patch)=>{
+    const user=auth.currentUser;
+    if(!user || !db) throw new Error('Sign in to your DynastyHQ account before attaching master audio.');
+    if(user.isAnonymous) throw new Error('Use your normal DynastyHQ account before attaching master audio.');
+    if(!publicationId) throw new Error('DynastyHQ could not identify the selected podcast week.');
+
+    return runTransaction(db,async(transaction)=>{
+      const loaded=await readHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId:productionAppId,
+        userId:user.uid,
+      });
+      if(!loaded) throw new Error('Your DynastyHQ career could not be loaded.');
+
+      const episodesNow=loaded.state.podcastEpisodes || [];
+      const currentEpisode=episodesNow.find((entry)=>previewPublicationIdFor(entry)===publicationId);
+      if(!currentEpisode) throw new Error('Create this week’s transcript before attaching master audio.');
+
+      const patchedEpisode={...currentEpisode,...patch};
+      const revision=(Number(loaded.rawMain?._sync?.revision) || 0)+1;
+      const nextState={
+        ...loaded.state,
+        podcastEpisodes:episodesNow.map((entry)=>previewPublicationIdFor(entry)===publicationId ? patchedEpisode : entry),
+        _sync:{revision,deviceId:PREVIEW_MASTER_AUDIO_DEVICE_ID,updatedAt:new Date().toISOString()},
+      };
+
+      writeHydratedCareerInTransaction({
+        transaction,
+        db,
+        appId:productionAppId,
+        userId:user.uid,
+        state:nextState,
+      });
+      return patchedEpisode;
+    });
+  };
+
+  const uploadMasterAudio=async(file)=>{
+    if(!file || masterBusy) return;
+    if(!rawEpisode || !hasTranscript){
+      notify('Generate this week’s transcript before attaching master audio.');
+      return;
+    }
+    if(!previewAudioFileAllowed(file)){
+      setMasterMessageType('error');
+      setMasterMessage('Choose an MP3, M4A, WAV, AAC, or OGG audio file.');
+      return;
+    }
+    if(file.size>PREVIEW_MASTER_AUDIO_MAX_BYTES){
+      setMasterMessageType('error');
+      setMasterMessage('That file is over 30 MB. Export a smaller MP3/M4A version and try again.');
+      return;
+    }
+
+    const user=auth.currentUser;
+    if(!user || user.isAnonymous){
+      setMasterMessageType('error');
+      setMasterMessage('Sign in with your normal DynastyHQ account before attaching master audio.');
+      return;
+    }
+
+    const previousStatus=rawEpisode.audioStatus || 'not-generated';
+    const previousEngine=rawEpisode.audioEngine || '';
+    const previousModel=rawEpisode.audioModel || '';
+    const targetEpisodeId=rawEpisode.id || ('podcast-'+publicationId);
+    setMasterBusy(true);
+    setMasterMessageType('success');
+    setMasterMessage('Preparing NotebookLM master audio…');
+
+    try{
+      await patchMasterEpisode({audioStatus:'uploading-master'});
+      const dataBase64=await previewFileToBase64(file);
+      const mimeType=previewAudioMimeFor(file);
+      const piece={
+        index:0,
+        data:dataBase64,
+        mimeType,
+        hostId:'',
+        continuous:true,
+        source:'notebooklm',
+      };
+
+      setMasterMessage('Saving the master episode to DynastyHQ…');
+      await savePodcastAudioLocal(targetEpisodeId,[piece]);
+      await savePodcastAudioCloud({
+        db,
+        appId:productionAppId,
+        userId:user.uid,
+        episodeId:targetEpisodeId,
+        segments:[piece],
+      });
+
+      const savedAt=new Date().toISOString();
+      await patchMasterEpisode({
+        status:'published',
+        audioStatus:'ready',
+        audioModel:'notebooklm-audio-overview',
+        audioEngine:'notebooklm-master-upload',
+        audioSource:'notebooklm',
+        audioContinuous:true,
+        audioSegmentCount:1,
+        audioGeneratedAt:savedAt,
+        audioTranscriptFingerprint:'',
+        masterAudioFileName:file.name || 'NotebookLM Audio Overview',
+        masterAudioMimeType:mimeType,
+        masterAudioSizeBytes:file.size,
+        masterAudioUploadedAt:savedAt,
+      });
+
+      setMasterMessageType('success');
+      setMasterMessage('Master audio attached to Season '+data.season+', Week '+game.week+'.');
+      notify('NotebookLM master audio attached.');
+    }catch(error){
+      try{
+        await patchMasterEpisode({
+          audioStatus:previousStatus,
+          audioEngine:previousEngine,
+          audioModel:previousModel,
+        });
+      }catch{
+        // Preserve the useful upload error below even if status recovery fails.
+      }
+      setMasterMessageType('error');
+      setMasterMessage(error?.message || 'The NotebookLM audio could not be attached.');
+    }finally{
+      setMasterBusy(false);
+    }
+  };
 
   return <div className="page podcast-page podcast-page-v2">
     <section className="pod-show-shell" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>

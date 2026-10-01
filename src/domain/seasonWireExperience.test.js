@@ -18,6 +18,9 @@ test('site-wide season wire replaces the static score ticker with useful career 
   }
   assert.equal(wire.includes('verified official-coverage facts preserved'), false);
   assert.ok(styles.includes('.dhq-score-ticker[data-dhq-season-wire="true"]'));
+  assert.match(styles, /\.dhq-score-ticker\[data-dhq-season-wire="true"\][\s\S]*overflow-x: hidden !important/);
+  assert.match(styles, /\.dhq-score-ticker\[data-dhq-season-wire="true"\] > \.dhq-season-wire-host[\s\S]*position: absolute;[\s\S]*inset: 0;/);
+  assert.ok(wire.includes('ticker.scrollLeft = 0'));
   assert.ok(styles.includes('@keyframes dhq-season-wire-scroll'));
   assert.ok(styles.includes('prefers-reduced-motion'));
 });

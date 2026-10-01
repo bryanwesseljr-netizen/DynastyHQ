@@ -1,7 +1,16 @@
 .dhq-score-ticker[data-dhq-season-wire="true"] {
   position: relative;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
   min-height: 38px;
-  overflow: hidden;
+  padding: 0 !important;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  scroll-padding: 0 !important;
+  scroll-snap-type: none !important;
+  overscroll-behavior-x: none !important;
+  touch-action: pan-y !important;
 }
 
 .dhq-score-ticker[data-dhq-season-wire="true"] > :not(.dhq-season-wire-host) {
@@ -12,6 +21,21 @@
 .dhq-season-wire {
   width: 100%;
   min-width: 0;
+}
+
+.dhq-score-ticker[data-dhq-season-wire="true"] > .dhq-season-wire-host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: auto !important;
+  max-width: none !important;
+  height: 100%;
+  flex: none !important;
+  overflow: hidden;
+}
+
+.dhq-score-ticker[data-dhq-season-wire="true"] .dhq-season-wire {
+  height: 100%;
 }
 
 .dhq-season-wire {

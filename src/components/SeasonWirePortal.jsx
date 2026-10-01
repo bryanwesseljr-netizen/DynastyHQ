@@ -226,6 +226,11 @@ const SeasonWirePortal = () => {
         return;
       }
       ticker.dataset.dhqSeasonWire = 'true';
+      // The legacy score rail is horizontally scrollable on smaller/desktop-site
+      // Android viewports. Clear any preserved scroll offset before mounting the
+      // Season Wire, then pin the portal host to the ticker bounds with CSS.
+      ticker.scrollLeft = 0;
+      ticker.scrollTop = 0;
       if (!node?.isConnected) {
         node = document.createElement('div');
         node.className = 'dhq-season-wire-host';

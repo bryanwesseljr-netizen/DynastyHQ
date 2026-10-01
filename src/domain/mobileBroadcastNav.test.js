@@ -294,13 +294,15 @@ test('homepage setup-week action routes into the real Game Hub agenda instead of
 });
 
 
-test('Newsroom first entry always resolves to the Newsroom home even after refresh or sign-in hydration', async () => {
+test('Newsroom top-nav entry resolves to Front Page while a browser refresh can preserve the current Newsroom view', async () => {
   const source = await readFile(new URL('../components/NewsroomArticleExperiencePortal.jsx', import.meta.url), 'utf8');
 
   assert.match(source, /button\.dataset\?\.dhqNavTarget === 'newsroom'/);
   assert.match(source, /\/\^\(the \)\?newsroom\$\/i/);
   assert.match(source, /const newsroomActive = Boolean\(main\) \|\| newsroomNavButton\?\.getAttribute\('aria-current'\) === 'page';/);
-  assert.match(source, /if \(newsroomActive && !wasNewsroomActive\) forceNewsroomHome\(\);/);
+  assert.match(source, /hasObservedInitialRoute && newsroomActive && !wasNewsroomActive/);
+  assert.match(source, /findFrontPageButton/);
+  assert.match(source, /frontPageButton\.click\(\)/);
   assert.match(source, /const delays = \[0, 40, 120, 240, 450, 750, 1100, 1600, 2200, 3000\]/);
   assert.match(source, /const isNewsroomTopNavEvent = \(event\) =>/);
 });

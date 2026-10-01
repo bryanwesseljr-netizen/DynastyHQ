@@ -77,10 +77,11 @@ test('the podcast studio recovers from incomplete legacy episode data instead of
   assert.doesNotMatch(podcastSource, /archiveIssue\.podcastBrief\.title/);
 });
 
-test('the app opens on the command-center homepage with one responsive top navigation', async () => {
+test('the app uses one responsive top navigation and restores the last owner workspace on refresh', async () => {
   const appSource = await readFile(appSourceUrl, 'utf8');
 
-  assert.match(appSource, /useState\(frontPageParam \? 'newsroom' : 'dashboard'\)/);
+  assert.match(appSource, /RESTORABLE_APP_TABS\.has\(initialViewSession\.activeTab\)/);
+  assert.match(appSource, /useState\(frontPageParam \? 'newsroom' : restoredActiveTab\)/);
   assert.match(appSource, /<header className="fixed inset-x-0 top-0/);
   assert.match(appSource, /aria-label="Primary navigation"/);
   assert.match(appSource, /Dynasty <span className="text-amber-400">HQ<\/span>/);

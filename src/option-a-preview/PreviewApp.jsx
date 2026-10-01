@@ -1835,7 +1835,7 @@ function LiveDataBar({live,open,setOpen,email,setEmail,password,setPassword,onCo
   return <section className={'live-data-bar '+(connected?'is-connected':'')}>
     <div className="live-data-status">
       <ShieldCheck/>
-      <span><b>{connected?'REAL CAREER DATA · READ ONLY':'SAMPLE PREVIEW DATA'}</b><small>{connected?'Reading your current live DynastyHQ save. No production writes are enabled.':'Connect your DynastyHQ account to populate this redesign from your real career without changing live data.'}</small></span>
+      <span><b>{connected?'REAL CAREER DATA · SAFE PREVIEW':'SAMPLE PREVIEW DATA'}</b><small>{connected?'The redesign reads your live career. Only explicit owner actions such as attaching master audio or publishing the follower link write anything.':'Connect your DynastyHQ account to populate this redesign from your real career without changing live data.'}</small></span>
     </div>
     {connected
       ? <button className="live-data-action" onClick={live.disconnect}>Disconnect</button>

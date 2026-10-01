@@ -9956,3 +9956,106 @@ button:active{transform:translateY(1px)}
     }
   }
 }
+
+
+/* Precision match pass v33 — exact mirrored mobile hero scoreboard */
+@media(max-width:700px){
+  .home-page .hero-score:not(.pregame-score){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 58px minmax(0,1fr)!important;
+    align-items:stretch!important;
+    gap:0!important;
+    height:74px!important;
+    min-height:74px!important;
+    padding:8px 10px!important;
+  }
+
+  /* Both team zones are the exact same geometry. */
+  .home-page .hero-score:not(.pregame-score) .hero-score-team{
+    width:100%!important;
+    height:56px!important;
+    min-height:56px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    grid-template-rows:1fr!important;
+    align-items:center!important;
+    justify-items:center!important;
+    column-gap:0!important;
+    overflow:visible!important;
+  }
+
+  .home-page .hero-score:not(.pregame-score) .home-team .team-logo{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .home-page .hero-score:not(.pregame-score) .home-team strong{
+    grid-column:2!important;
+    grid-row:1!important;
+  }
+
+  .home-page .hero-score:not(.pregame-score) .away-team strong{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .home-page .hero-score:not(.pregame-score) .away-team .team-logo{
+    grid-column:2!important;
+    grid-row:1!important;
+  }
+
+  .home-page .hero-score:not(.pregame-score) .hero-score-team .team-logo{
+    width:48px!important;
+    height:48px!important;
+    margin:0!important;
+    align-self:center!important;
+    justify-self:center!important;
+  }
+  .home-page .hero-score:not(.pregame-score) .hero-score-team strong{
+    margin:0!important;
+    padding:0!important;
+    align-self:center!important;
+    justify-self:center!important;
+    font-size:34px!important;
+    line-height:1!important;
+    text-align:center!important;
+  }
+
+  /* Team names are redundant beside real logos on a phone and were distorting the grid. */
+  .home-page .hero-score:not(.pregame-score) .hero-score-team small{
+    display:none!important;
+  }
+
+  .home-page .hero-score:not(.pregame-score) .hero-final{
+    width:58px!important;
+    height:56px!important;
+    min-width:58px!important;
+    align-self:center!important;
+    display:grid!important;
+    place-items:center!important;
+    margin:0!important;
+    padding:0!important;
+    border-left:1px solid #54766d!important;
+    border-right:1px solid #54766d!important;
+    font-size:7px!important;
+    line-height:1!important;
+    text-align:center!important;
+  }
+
+  @media(max-width:420px){
+    .home-page .hero-score:not(.pregame-score){
+      grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr)!important;
+      padding-left:7px!important;
+      padding-right:7px!important;
+    }
+    .home-page .hero-score:not(.pregame-score) .hero-final{
+      width:52px!important;
+      min-width:52px!important;
+    }
+    .home-page .hero-score:not(.pregame-score) .hero-score-team .team-logo{
+      width:43px!important;
+      height:43px!important;
+    }
+    .home-page .hero-score:not(.pregame-score) .hero-score-team strong{
+      font-size:31px!important;
+    }
+  }
+}

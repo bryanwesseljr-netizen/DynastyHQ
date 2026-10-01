@@ -361,39 +361,100 @@ function LiveDataBar({live,open,setOpen,email,setEmail,password,setPassword,onCo
   </section>;
 }
 
+function homeHeroStory(data){
+  const game=data.game || {};
+  const opponent=game.opponent || 'NEXT OPPONENT';
+  const hasGame=Boolean(data.selection?.hasGame);
+  if(!hasGame){
+    return {
+      state:'pregame',
+      status:data.selection?.isCurrent?'UPCOMING':'SCHEDULED',
+      line1:opponent,
+      line2:'AWAITS',
+      deck:`Week ${game.week} is still ahead. The page will flip to its postgame story after the result is uploaded and archived.`,
+    };
+  }
+
+  const result=String(game.result||'').toUpperCase();
+  const won=result==='W' || Number(game.us)>Number(game.them);
+  const lost=result==='L' || Number(game.us)<Number(game.them);
+  const margin=Math.abs(Number(game.us||0)-Number(game.them||0));
+  const total=Number(game.total||0);
+  const touchdowns=Number(game.td||0);
+  const lastName=String(data.player?.name||'PLAYER').split(' ').at(-1);
+
+  if(won && (touchdowns>=5 || total>=400)) return {state:'postgame',status:'FINAL',line1:'A NIGHT TO',line2:'REMEMBER'};
+  if(won && margin>=17) return {state:'postgame',status:'FINAL',line1:'STATEMENT',line2:'MADE'};
+  if(won && margin<=7) return {state:'postgame',status:'FINAL',line1:'SURVIVE &',line2:'ADVANCE'};
+  if(won && total>=300) return {state:'postgame',status:'FINAL',line1:lastName,line2:'DELIVERS'};
+  if(won) return {state:'postgame',status:'FINAL',line1:'JOB',line2:'DONE'};
+  if(lost && margin<=7) return {state:'postgame',status:'FINAL',line1:'HEARTBREAK',line2:'LATE'};
+  if(lost && total>=350) return {state:'postgame',status:'FINAL',line1:'BIG NIGHT',line2:'TOUGH END'};
+  return {state:'postgame',status:'FINAL',line1:'BACK TO',line2:'WORK'};
+}
+
 function ScoreRibbon({data}){
   const game=data.game;
   const next=data.next;
-  return <div className="score-ribbon">
-    <div><span>W{game.week}</span><b>{data.selection?.hasGame?'FINAL':'ARCHIVE'}</b></div>
-    <div className="score-team"><Logo team={data.player.school.slice(0,1)}/><span>{data.player.school}</span><strong>{game.us}</strong></div>
-    <span className="dash">–</span>
-    <div className="score-team away"><strong>{game.them}</strong><Logo team={game.opponent.slice(0,1)}/><span>{game.opponent}</span></div>
+  const pregame=!data.selection?.hasGame;
+  return <div className={'score-ribbon '+(pregame?'pregame-ribbon':'')}>
+    <div><span>W{game.week}</span><b>{pregame?(data.selection?.isCurrent?'UPCOMING':'SCHEDULED'):'FINAL'}</b></div>
+    {pregame ? <>
+      <div className="score-team pregame-team"><Logo team={data.player.school.slice(0,1)}/><span>{data.player.school}</span></div>
+      <span className="matchup-vs">VS</span>
+      <div className="score-team away pregame-team"><Logo team={game.opponent.slice(0,1)}/><span>{game.opponent}</span></div>
+    </> : <>
+      <div className="score-team"><Logo team={data.player.school.slice(0,1)}/><span>{data.player.school}</span><strong>{game.us}</strong></div>
+      <span className="dash">–</span>
+      <div className="score-team away"><strong>{game.them}</strong><Logo team={game.opponent.slice(0,1)}/><span>{game.opponent}</span></div>
+    </>}
     <div className="score-sep"/>
-    <div className="upnext"><b>UP NEXT</b><span>W{next.week}</span><Logo team={next.opponent.slice(0,1)}/><strong>{next.opponent}</strong></div>
+    <div className="upnext"><b>{pregame?'ON DECK':'UP NEXT'}</b><span>W{next.week}</span><Logo team={next.opponent.slice(0,1)}/><strong>{next.opponent}</strong></div>
   </div>;
 }
 
 function HomePage({data,visual,go,openArticle,openPodcast,notify}){
-  return <div className="page home-page">
+  const story=homeHeroStory(data);
+  const pregame=story.state==='pregame';
+  const matchup=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
+  const seasonTD=(Number(data.totals?.passTD)||0)+(Number(data.totals?.rushTD)||0);
+  return <div className={'page home-page '+(pregame?'pregame-home':'postgame-home')}>
     <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="hero-overlay"/>
       <div className="hero-copy">
-        <span className="eyebrow">WEEK {data.game.week} <i/> FINAL</span>
-        <h1><span>A NIGHT TO</span><em>REMEMBER</em></h1>
-        <div className="hero-score">
+        <span className="eyebrow">WEEK {data.game.week} <i/> {story.status}</span>
+        <h1 className={pregame?'pregame-headline':''}><span>{story.line1}</span><em>{story.line2}</em></h1>
+
+        {pregame ? <div className="hero-score pregame-score">
+          <div className="hero-score-team home-team"><Logo team={data.player.school.slice(0,1)}/><small>{data.player.school}</small></div>
+          <span className="hero-final">VS</span>
+          <div className="hero-score-team away-team"><Logo team={data.game.opponent.slice(0,1)}/><small>{data.game.opponent}</small></div>
+        </div> : <div className="hero-score">
           <div className="hero-score-team home-team"><Logo team={data.player.school.slice(0,1)}/><strong>{data.game.us}</strong><small>{data.player.school}</small></div>
           <span className="hero-final">FINAL</span>
           <div className="hero-score-team away-team"><strong>{data.game.them}</strong><Logo team={data.game.opponent.slice(0,1)}/><small>{data.game.opponent}</small></div>
-        </div>
+        </div>}
+
         <div className="hero-stats">
-          <div><strong>{data.game.pass}</strong><span>PASS YDS</span></div>
-          <div><strong>{data.game.rush}</strong><span>RUSH YDS</span></div>
-          <div><strong>{data.game.td}</strong><span>TOTAL TD</span></div>
+          {pregame ? <>
+            <div><strong>{(Number(data.totals?.passYds)||0).toLocaleString()}</strong><span>SEASON PASS YDS</span></div>
+            <div><strong>{(Number(data.totals?.rushYds)||0).toLocaleString()}</strong><span>SEASON RUSH YDS</span></div>
+            <div><strong>{seasonTD}</strong><span>SEASON TOTAL TD</span></div>
+          </> : <>
+            <div><strong>{data.game.pass}</strong><span>PASS YDS</span></div>
+            <div><strong>{data.game.rush}</strong><span>RUSH YDS</span></div>
+            <div><strong>{data.game.td}</strong><span>TOTAL TD</span></div>
+          </>}
         </div>
+
         <div className="hero-actions">
-          <button className="yellow" onClick={openArticle}><CalendarDays/>Open game recap<ChevronRight/></button>
-          <button className="outline" onClick={()=>go('gamehub')}><BarChart3/>View verified stats</button>
+          {pregame ? <>
+            <button className="yellow" onClick={()=>go('gamehub')}><CalendarDays/>Open Week {data.game.week} Hub<ChevronRight/></button>
+            <button className="outline" onClick={()=>go('career')}><TrendingUp/>View season progress</button>
+          </> : <>
+            <button className="yellow" onClick={openArticle}><CalendarDays/>Open game recap<ChevronRight/></button>
+            <button className="outline" onClick={()=>go('gamehub')}><BarChart3/>View verified stats</button>
+          </>}
         </div>
       </div>
       <div className="player-standin" aria-hidden="true">
@@ -406,34 +467,40 @@ function HomePage({data,visual,go,openArticle,openPodcast,notify}){
 
     <section className="home-cards">
       <article className="dark-card next-week reference-next-week">
-        <CardHeader title="YOUR NEXT WEEK"/>
+        <CardHeader title={pregame?'THIS WEEK':'YOUR NEXT WEEK'}/>
         <div className="next-body">
-          <Logo team={data.next.opponent.slice(0,1)} type="big"/>
-          <div><small>WEEK {data.next.week}</small><h3>{data.next.opponent}</h3></div>
+          <Logo team={matchup.opponent.slice(0,1)} type="big"/>
+          <div><small>WEEK {matchup.week}</small><h3>{matchup.opponent}</h3></div>
         </div>
-        <p>Keep building. Prepare for your next opponent in your career journey.</p>
-        <button className="yellow" onClick={()=>notify('Next-week preparation is sample-only in this preview.')}><CalendarDays/>Prepare next week<ChevronRight/></button>
+        <p>{pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'Keep building. Prepare for your next opponent in your career journey.'}</p>
+        <button className="yellow" onClick={()=>go('gamehub')}><CalendarDays/>{pregame?'Open this week':'Prepare next week'}<ChevronRight/></button>
       </article>
 
       <article className="dark-card wrap-card reference-wrap">
-        <CardHeader title={`WEEK ${data.game.week} WRAP-UP`}/>
-        <CheckRow title="Game stats reviewed" sub="Player and team performance updated"/>
-        <CheckRow title="Coverage ready" sub="Article, media, and highlights available"/>
-        <CheckRow title="Career updated" sub="Progress, milestones, and records tracked"/>
+        <CardHeader title={pregame?`WEEK ${data.game.week} GAME PLAN`:`WEEK ${data.game.week} WRAP-UP`}/>
+        {pregame ? <>
+          <CheckRow title="Matchup ready" sub={`${data.player.school} vs. ${data.game.opponent}`}/>
+          <CheckRow title="Game data waiting" sub="Stats unlock after the game is uploaded" pending/>
+          <CheckRow title="Coverage after final" sub="Newsroom and Huddle generate from the completed week" pending/>
+        </> : <>
+          <CheckRow title="Game stats reviewed" sub="Player and team performance updated"/>
+          <CheckRow title="Coverage ready" sub="Article, media, and highlights available"/>
+          <CheckRow title="Career updated" sub="Progress, milestones, and records tracked"/>
+        </>}
         <button className="outline full" onClick={()=>go('gamehub')}><BarChart3/>Open Game Hub<ChevronRight/></button>
       </article>
 
       <article className="paper-card newsroom-card reference-newsroom-card">
-        <CardHeader title="FROM THE NEWSROOM" light/>
+        <CardHeader title={pregame?'POSTGAME COVERAGE':'FROM THE NEWSROOM'} light/>
         <div className="news-flex">
-          <div><h3>{data.news.headline}</h3><p>{data.news.dek}</p></div>
-          <div className="thumb photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/>
+          <div><h3>{pregame?`WEEK ${data.game.week} COVERAGE AWAITS`:data.news.headline}</h3><p>{pregame?'The Newsroom story and Huddle episode will populate after this game is completed and archived.':data.news.dek}</p></div>
+          <div className="thumb photo-tile" style={{backgroundImage:`url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/>
         </div>
-        <button className="pod-mini" onClick={()=>openPodcast('episode')}>
+        <button className={'pod-mini '+(pregame?'pending-media':'')} onClick={()=>pregame?notify('The Huddle will unlock after this week is completed.'):openPodcast('episode')}>
           <img src={podcastCover} alt="The Huddle"/>
-          <span className="pod-copy"><b>THE HUDDLE</b><small>{data.podcast.title}</small><em>{data.podcast.duration}</em></span>
+          <span className="pod-copy"><b>THE HUDDLE</b><small>{pregame?'Episode generates after the final':data.podcast.title}</small><em>{pregame?'WAITING':data.podcast.duration}</em></span>
           <span className="pod-wave" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></span>
-          <span className="pod-play"><Play/></span>
+          <span className="pod-play">{pregame?<LockKeyhole/>:<Play/>}</span>
         </button>
       </article>
     </section>
@@ -447,13 +514,16 @@ function HomePage({data,visual,go,openArticle,openPodcast,notify}){
   </div>;
 }
 
+
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
-function CheckRow({title,sub}){ return <div className="check-row"><span><Check/></span><div><b>{title}</b><small>{sub}</small></div></div>; }
+function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
 function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
+  const pregame=!data.selection?.hasGame;
   const team=data.game.team || {};
   const scoring=data.game.scoring || {};
+  const activeOpponent=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
   const statContent = statsTab==='player'
     ? [[showStat(data.game.pass),'PASSING YARDS'],[showStat(data.game.rush),'RUSHING YARDS'],[showStat(data.game.total),'TOTAL YARDS'],[showStat(data.game.td),'TOTAL TD']]
     : statsTab==='team'
@@ -461,19 +531,19 @@ function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
       : [[showStat(scoring.playCount),'SCORING PLAYS'],[showStat(scoring.passTD),'PASS TD'],[showStat(scoring.rushTD),'RUSH TD'],[showStat(scoring.opponentPoints),'OPP PTS']];
   return <div className="page gamehub-page">
     <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
-      <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / POSTGAME</p></div>
+      <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / {pregame?'PREGAME':'POSTGAME'}</p></div>
       <button className="yellow import" onClick={()=>notify('Screenshot import is disabled in this mockup preview.')}><Upload/>IMPORT SCREENSHOTS</button>
     </section>
 
-    <section className="complete-strip">
-      <div><h2>WEEK {data.game.week} COMPLETE</h2><p>All items belong to Season {data.season} • Week {data.game.week}</p></div>
-      <div className="flow">{['Import','Review','Coverage','Archive'].map(x=><React.Fragment key={x}><span className="flow-step"><i><Check/></i>{x}</span>{x!=='Archive'&&<b/>}</React.Fragment>)}</div>
+    <section className={'complete-strip '+(pregame?'pregame-strip':'')}>
+      <div><h2>{pregame?`WEEK ${data.game.week} AWAITS`:`WEEK ${data.game.week} COMPLETE`}</h2><p>{pregame?`No final game data is saved yet for ${data.player.school} vs. ${data.game.opponent}.`:`All items belong to Season ${data.season} • Week ${data.game.week}`}</p></div>
+      <div className="flow">{['Import','Review','Coverage','Archive'].map((x,index)=><React.Fragment key={x}><span className={'flow-step '+(pregame?'pending':'')}><i>{pregame?(index===0?<Upload/>:<span>{index+1}</span>):<Check/>}</i>{x}</span>{x!=='Archive'&&<b/>}</React.Fragment>)}</div>
     </section>
 
     <section className="hub-grid">
       <div className="left-stack">
         <article className="paper-panel verified reference-verified">
-          <div className="panel-head"><h2 className="verified-title"><span className="desktop-label">VERIFIED GAME DATA</span><span className="mobile-label">PLAYER STATS</span></h2>
+          <div className="panel-head"><h2 className="verified-title"><span className="desktop-label">{pregame?'WEEK GAME DATA':'VERIFIED GAME DATA'}</span><span className="mobile-label">{pregame?'PREGAME':'PLAYER STATS'}</span></h2>
             <div className="tabs">
               <button className={statsTab==='team'?'active':''} onClick={()=>setStatsTab('team')}>Team stats</button>
               <button className={statsTab==='player'?'active':''} onClick={()=>setStatsTab('player')}>Player stats</button>
@@ -496,9 +566,9 @@ function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
         <article className="paper-panel material reference-material">
           <h2>GAME MATERIAL</h2>
           <div className="material-grid">
-            <Material icon={FileText} title="Box score" sub="Game statistics and team totals attached." onClick={()=>notify('Box score detail is sample-only in this visual preview.')}/>
-            <Material icon={ClipboardList} title="Scoring summary" sub="All scoring drives attached to this game." onClick={()=>setStatsTab('drives')}/>
-            <Material icon={UserRound} title="Player ratings" sub="Individual player ratings attached." onClick={()=>notify('Player ratings detail is sample-only in this visual preview.')}/>
+            <Material icon={FileText} title="Box score" sub={pregame?'Available after the final.':'Game statistics and team totals attached.'} ready={!pregame} onClick={()=>pregame?notify('The box score will unlock after this game is completed.'):notify('Box score detail is sample-only in this visual preview.')}/>
+            <Material icon={ClipboardList} title="Scoring summary" sub={pregame?'Available after the final.':'All scoring drives attached to this game.'} ready={!pregame} onClick={()=>pregame?notify('Scoring drives will unlock after this game is completed.'):setStatsTab('drives')}/>
+            <Material icon={UserRound} title="Player ratings" sub={pregame?'Available after the final.':'Individual player ratings attached.'} ready={!pregame} onClick={()=>pregame?notify('Player ratings will unlock after this game is completed.'):notify('Player ratings detail is sample-only in this visual preview.')}/>
           </div>
         </article>
       </div>
@@ -506,10 +576,10 @@ function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
       <div className="right-stack">
         <article className="paper-panel coverage reference-coverage">
           <h2>WEEKLY COVERAGE</h2>
-          <CoverageRow icon={Newspaper} title="Newsroom edition" sub="Game recap and analysis." onClick={()=>go('newsroom')}/>
-          <CoverageRow icon={Mic2} title="Podcast transcript" sub="Full episode transcript." onClick={()=>openPodcast('transcript')}/>
-          <CoverageRow icon={BookOpen} title="NotebookLM pack" sub="Game files and key moments." onClick={()=>openPodcast('notebook')}/>
-          <button className="yellow full" onClick={()=>go('newsroom')}><Zap/>OPEN COVERAGE<ChevronRight/></button>
+          <CoverageRow icon={Newspaper} title="Newsroom edition" sub={pregame?'Generates after the completed week.':'Game recap and analysis.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Newsroom coverage will unlock after the game.'):go('newsroom')}/>
+          <CoverageRow icon={Mic2} title="Podcast transcript" sub={pregame?'Generates after the completed week.':'Full episode transcript.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Podcast coverage will unlock after the game.'):openPodcast('transcript')}/>
+          <CoverageRow icon={BookOpen} title="NotebookLM pack" sub={pregame?'Generates after the completed week.':'Game files and key moments.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('NotebookLM material will unlock after the game.'):openPodcast('notebook')}/>
+          <button className="yellow full" onClick={()=>pregame?notify('Coverage opens after the final is processed.'):go('newsroom')}><Zap/>{pregame?'COVERAGE AFTER GAME':'OPEN COVERAGE'}<ChevronRight/></button>
         </article>
 
         <article className="paper-panel development reference-development">
@@ -523,15 +593,15 @@ function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
     </section>
 
     <section className="hub-bottom">
-      <div><b>UP NEXT</b><span>• WEEK {data.next.week}</span><Logo team={data.next.opponent.slice(0,1)}/><strong>{data.next.opponent}</strong></div>
-      <button className="yellow" onClick={()=>notify(`Week ${data.next.week} preparation is still preview-only.`)}><CalendarDays/>PREPARE NEXT WEEK<ChevronRight/></button>
+      <div><b>{pregame?'THIS WEEK':'UP NEXT'}</b><span>• WEEK {activeOpponent.week}</span><Logo team={activeOpponent.opponent.slice(0,1)}/><strong>{activeOpponent.opponent}</strong></div>
+      <button className="yellow" onClick={()=>notify(`Week ${activeOpponent.week} preparation is still preview-only.`)}><CalendarDays/>{pregame?'PREPARE THIS WEEK':'PREPARE NEXT WEEK'}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
   </div>;
 }
 
-function Material({icon:Icon,title,sub,onClick}){ return <button className="material-card" onClick={onClick}><Icon/><div><b>{title}</b><small>{sub}</small></div><span><Check/></span><ChevronRight/></button>; }
-function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
+function Material({icon:Icon,title,sub,onClick,ready=true}){ return <button className={'material-card '+(!ready?'pending':'')} onClick={onClick}><Icon/><div><b>{title}</b><small>{sub}</small></div><span>{ready?<Check/>:<LockKeyhole/>}</span><ChevronRight/></button>; }
+function CoverageRow({icon:Icon,title,sub,onClick,status='READY'}){ return <button className={'coverage-row '+(status==='READY'?'':'pending')} onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>{status}</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row simple" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
 function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcastTab,setPodcastTab,notify}){

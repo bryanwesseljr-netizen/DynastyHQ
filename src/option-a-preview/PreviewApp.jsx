@@ -38,6 +38,7 @@ const pages = [
 
 const PAGE_VISUAL_STORAGE_KEY = 'dynastyhq-preview-page-visuals-v1';
 const PROFILE_PHOTO_STORAGE_KEY = 'dynastyhq-preview-career-profile-photos-v1';
+const PODCAST_ARTWORK_STORAGE_KEY = 'dynastyhq-preview-podcast-artwork-v1';
 
 const PREVIEW_VIEW_STORAGE_KEY = 'dynastyhq-preview-view-v1';
 
@@ -109,6 +110,47 @@ const loadProfilePhotos = () => {
     return {};
   }
 };
+
+const loadPodcastArtwork = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved=JSON.parse(window.localStorage.getItem(PODCAST_ARTWORK_STORAGE_KEY) || '{}');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    return {};
+  }
+};
+
+const compressSquareArtwork = (file) => new Promise((resolve,reject)=>{
+  if (!file?.type?.startsWith('image/')) {
+    reject(new Error('Choose a JPEG, PNG, or WebP image.'));
+    return;
+  }
+  const reader=new FileReader();
+  reader.onerror=()=>reject(new Error('The cover image could not be read.'));
+  reader.onload=()=>{
+    const image=new Image();
+    image.onerror=()=>reject(new Error('The cover image could not be opened.'));
+    image.onload=()=>{
+      const sourceWidth=image.naturalWidth||1;
+      const sourceHeight=image.naturalHeight||1;
+      const sourceSize=Math.min(sourceWidth,sourceHeight);
+      const sourceX=Math.max(0,(sourceWidth-sourceSize)/2);
+      const sourceY=Math.max(0,(sourceHeight-sourceSize)/2);
+      const outputSize=Math.min(1000,sourceSize);
+      const canvas=document.createElement('canvas');
+      canvas.width=outputSize;
+      canvas.height=outputSize;
+      const context=canvas.getContext('2d');
+      context.drawImage(image,sourceX,sourceY,sourceSize,sourceSize,0,0,outputSize,outputSize);
+      let dataUrl=canvas.toDataURL('image/webp',.78);
+      if (!dataUrl.startsWith('data:image/webp')) dataUrl=canvas.toDataURL('image/jpeg',.82);
+      resolve(dataUrl);
+    };
+    image.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+});
 
 const compressPagePhoto = (file) => new Promise((resolve,reject)=>{
   if (!file?.type?.startsWith('image/')) {
@@ -219,6 +261,8 @@ function App(){
   const [profilePhotos,setProfilePhotos] = useState(()=>loadProfilePhotos());
   const [profileEditorOpen,setProfileEditorOpen] = useState(false);
   const [profileBusy,setProfileBusy] = useState(false);
+  const [podcastArtwork,setPodcastArtwork] = useState(()=>loadPodcastArtwork());
+  const [podcastArtBusy,setPodcastArtBusy] = useState('');
   const [processingOpen,setProcessingOpen] = useState(false);
   const restoredSelectionRef=useRef(Boolean(restoredView.hasSelection || (hasRestoredSeason && hasRestoredWeek)));
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
@@ -414,6 +458,16 @@ function App(){
       return false;
     }
   };
+  const persistPodcastArtwork = (next) => {
+    setPodcastArtwork(next);
+    try {
+      window.localStorage.setItem(PODCAST_ARTWORK_STORAGE_KEY,JSON.stringify(next));
+      return true;
+    } catch {
+      notify('The cover art is too large for browser-only preview storage. Try a smaller image.');
+      return false;
+    }
+  };
   const openVisualEditor = (id=page) => {
     setVisualTarget(id);
     setVisualEditorOpen(true);
@@ -493,6 +547,86 @@ function App(){
     persistProfilePhotos(next);
     notify('Career profile photo reset to the saved/default player image.');
   };
+
+  const currentPodcastArtwork=podcastArtwork[profilePhotoKey] || {};
+  const currentPodcastPublicationId=String(data.podcast?.publicationId || `season-${data.season}-week-${data.week}`);
+  const showCoverImage=currentPodcastArtwork.show?.image || data.podcast?.showCoverUrl || podcastCover;
+  const currentEpisodeArtwork=currentPodcastArtwork.episodes?.[currentPodcastPublicationId] || {};
+  const currentEpisodeCoverImage=currentEpisodeArtwork.useShowCover
+    ? showCoverImage
+    : (currentEpisodeArtwork.image || data.podcast?.episodeCoverUrl || showCoverImage);
+  const podcastCoverForPublication=(targetPublicationId,savedCoverUrl='')=>{
+    const id=String(targetPublicationId || '');
+    const local=currentPodcastArtwork.episodes?.[id] || {};
+    if(local.useShowCover) return showCoverImage;
+    return local.image || savedCoverUrl || showCoverImage;
+  };
+  const updatePodcastCareerArtwork = (updater) => {
+    const current=podcastArtwork[profilePhotoKey] || {};
+    const nextCareer=typeof updater==='function' ? updater(current) : updater;
+    return persistPodcastArtwork({...podcastArtwork,[profilePhotoKey]:nextCareer});
+  };
+  const uploadPodcastShowCover = async (file) => {
+    if(!file) return;
+    setPodcastArtBusy('show');
+    try {
+      const image=await compressSquareArtwork(file);
+      updatePodcastCareerArtwork((current)=>({
+        ...current,
+        show:{image,fileName:file.name || 'Podcast cover',updatedAt:new Date().toISOString()},
+      }));
+      notify('Default show cover updated in this redesign preview.');
+    } catch(error) {
+      notify(error?.message || 'The show cover could not be added.');
+    } finally {
+      setPodcastArtBusy('');
+    }
+  };
+  const resetPodcastShowCover = () => {
+    updatePodcastCareerArtwork((current)=>{
+      const next={...current};
+      delete next.show;
+      return next;
+    });
+    notify('Default show cover reset to the saved DynastyHQ cover.');
+  };
+  const uploadPodcastEpisodeCover = async (file) => {
+    if(!file) return;
+    setPodcastArtBusy('episode');
+    try {
+      const image=await compressSquareArtwork(file);
+      updatePodcastCareerArtwork((current)=>({
+        ...current,
+        episodes:{
+          ...(current.episodes || {}),
+          [currentPodcastPublicationId]:{
+            image,
+            fileName:file.name || `Season ${data.season} Week ${data.week} cover`,
+            updatedAt:new Date().toISOString(),
+          },
+        },
+      }));
+      notify(`Season ${data.season}, Week ${data.week} episode cover updated in this preview.`);
+    } catch(error) {
+      notify(error?.message || 'The episode cover could not be added.');
+    } finally {
+      setPodcastArtBusy('');
+    }
+  };
+  const useShowCoverForCurrentEpisode = () => {
+    updatePodcastCareerArtwork((current)=>({
+      ...current,
+      episodes:{
+        ...(current.episodes || {}),
+        [currentPodcastPublicationId]:{
+          useShowCover:true,
+          updatedAt:new Date().toISOString(),
+        },
+      },
+    }));
+    notify(`Season ${data.season}, Week ${data.week} now uses the default show cover in this preview.`);
+  };
+
   const connectLiveCareer = async (event) => {
     event.preventDefault();
     const ok = await live.signIn(liveEmail,livePassword);
@@ -566,10 +700,10 @@ function App(){
 
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
-      {page==='home' && <HomePage data={data} visual={visualFor('home')} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
+      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
       {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
-      {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage data={data} visual={visualFor('career')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openArchiveMoment={openArchiveMoment}/>} 
       {page==='chronicle' && <ChroniclePage data={data} visual={visualFor('chronicle')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} openArchiveMoment={openArchiveMoment} notify={notify}/>} 

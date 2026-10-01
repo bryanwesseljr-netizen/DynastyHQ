@@ -6510,3 +6510,33 @@ button:active{transform:translateY(1px)}
     grid-column:1;
   }
 }
+
+
+/* Precision match pass v21 — real-content overflow guards */
+.podcast-live-title{
+  max-width:760px;
+  font-size:clamp(42px,5.2vw,70px)!important;
+  line-height:.84!important;
+  overflow-wrap:anywhere;
+}
+.newsroom-page .lead-copy h2,
+.digital-feature-head h1{
+  overflow-wrap:anywhere;
+}
+.newsroom-page .huddle-grid h3,
+.home-page .reference-newsroom-card .news-flex h3{
+  overflow-wrap:anywhere;
+}
+.transcript-paper>section p{
+  white-space:pre-wrap;
+}
+
+@media(max-width:700px){
+  .podcast-live-title{
+    font-size:clamp(34px,12vw,48px)!important;
+    line-height:.86!important;
+  }
+  .newsroom-page .lead-copy h2{
+    font-size:clamp(27px,9.5vw,35px)!important;
+  }
+}

@@ -336,7 +336,9 @@ const App = () => {
   }, [activeTab, frontPageParam, isReadOnly, newsTheme, newsroomFocusId, podcastFocusId]);
 
   useEffect(() => {
-    if (isReadOnly || frontPageParam) return undefined;
+    // Do not let initial auth/career hydration overwrite the pre-refresh scroll
+    // snapshot before the restoration effect has had a chance to use it.
+    if (isReadOnly || frontPageParam || !isLoaded) return undefined;
 
     const captureView = () => {
       const main = document.querySelector('main.dhq-page-main');
@@ -380,7 +382,7 @@ const App = () => {
       window.removeEventListener('beforeunload', captureView);
       window.clearTimeout(viewCaptureTimerRef.current);
     };
-  }, [activeTab, frontPageParam, isReadOnly, newsTheme, newsroomFocusId, podcastFocusId]);
+  }, [activeTab, frontPageParam, isLoaded, isReadOnly, newsTheme, newsroomFocusId, podcastFocusId]);
 
   useEffect(() => {
     if (isReadOnly || frontPageParam || !isLoaded || viewRestoreRef.current) return undefined;

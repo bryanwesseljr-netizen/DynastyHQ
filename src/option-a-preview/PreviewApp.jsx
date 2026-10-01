@@ -588,40 +588,42 @@ function OffseasonPage({data,go,openPodcast,openArticle,notify}){
   </div>;
 }
 
-function CareerPage({go}){
-  const timeline = [
-    ['S4 · W10','Illinois Shootout','410 total yards and seven touchdowns in a 54–48 Oregon win.'],
-    ['S4 · W9','Michigan Road Test','Another major chapter in the first season as Oregon’s starter.'],
-    ['S4 · W8','Ohio State Under the Lights','A national-stage week preserved across Game Hub, Newsroom, and The Huddle.'],
-    ['S4 · W1','First College Start','The Vanderbilt week that moved the career from waiting to playing.'],
-    ['PRESEASON','Named the Starter','The moment the Oregon quarterback job became Wessel’s.'],
-  ];
+function CareerPage({data,go}){
+  const c=data.career || {};
+  const totals=c.totals || data.totals || {};
+  const profile=c.profile || {};
+  const timeline=Array.isArray(c.timeline)?c.timeline:[];
+  const rivalries=Array.isArray(c.rivalries)?c.rivalries:[];
+  const honors=Array.isArray(c.honors)?c.honors:[];
+  const lastName=data.player.name.split(' ').at(-1);
+  const record=c.record || {wins:0,losses:0};
+
   return <div className="page career-page">
     <section className="career-hero-redesign">
       <div className="career-portrait" style={{backgroundImage:`linear-gradient(0deg,rgba(0,23,17,.18),rgba(0,23,17,.04)),url(${playerPhoto})`}}/>
       <div className="career-identity">
         <span className="career-kicker"><Sparkles/>CAREER OVERVIEW</span>
-        <h1>BRYAN<br/><em>WESSEL</em></h1>
-        <p>#6 · QB · OREGON</p>
+        <h1>{data.player.name.split(' ')[0] || 'PLAYER'}<br/><em>{lastName}</em></h1>
+        <p>#{data.player.number} · {data.player.pos} · {data.player.school}</p>
         <div className="career-chapter">
-          <div><small>CURRENT CHAPTER</small><strong>ROAD TO GLORY PLAYER</strong><span>Season 4 · Week 10</span></div>
-          <div><small>COLLEGE RECORD</small><strong>5–3</strong><span>Current sample season</span></div>
+          <div><small>CURRENT CHAPTER</small><strong>{c.stage || 'Road to Glory Player'}</strong><span>Season {data.season} · Week {data.week}</span></div>
+          <div><small>COLLEGE RECORD</small><strong>{record.wins||0}–{record.losses||0}</strong><span>{c.appearances||0} verified appearance{c.appearances===1?'':'s'}</span></div>
         </div>
       </div>
     </section>
 
     <section className="career-stat-row">
-      <article><TrendingUp/><span>CAREER PASSING</span><strong>2,846</strong><small>28 TD · 8 INT · preview data</small></article>
-      <article><Target/><span>CAREER RUSHING</span><strong>742</strong><small>9 rushing TD · preview data</small></article>
-      <article><Shield/><span>DEVELOPMENT</span><strong>76 OVR</strong><small>QB1 · Oregon</small></article>
-      <article><Trophy/><span>LEGACY</span><strong>6</strong><small>honors + milestones · preview</small></article>
+      <article><TrendingUp/><span>CAREER PASSING</span><strong>{(totals.passYds||0).toLocaleString()}</strong><small>{totals.passTD||0} TD · {totals.interceptions||0} INT</small></article>
+      <article><Target/><span>CAREER RUSHING</span><strong>{(totals.rushYds||0).toLocaleString()}</strong><small>{totals.rushTD||0} rushing TD</small></article>
+      <article><Shield/><span>DEVELOPMENT</span><strong>{profile.rank || (profile.overall && profile.overall!=='—'?`${profile.overall} OVR`:'Building')}</strong><small>{profile.coachTrust||0} coach trust · {profile.skillPoints||0} skill pts</small></article>
+      <article><Trophy/><span>LEGACY</span><strong>{c.legacyCount||0}</strong><small>{honors.length} honor{honors.length===1?'':'s'} · {(c.milestones||[]).length} milestone{(c.milestones||[]).length===1?'':'s'}</small></article>
     </section>
 
     <section className="career-content-grid">
       <article className="career-panel career-story-panel">
         <div className="career-panel-head"><div><span>CAREER STORY</span><h2>Timeline</h2></div><BookOpen/></div>
         <div className="career-timeline-list">
-          {timeline.map(([meta,title,body],index)=><button key={title} onClick={()=>index===0?go('chronicle'):go('chronicle')}><i/><span><small>{meta}</small><strong>{title}</strong><p>{body}</p></span><ChevronRight/></button>)}
+          {timeline.length ? timeline.map((entry)=><button key={entry.id} onClick={()=>go('chronicle')}><i/><span><small>SEASON {entry.season} · WEEK {entry.week}</small><strong>{entry.title}</strong><p>{entry.summary}</p></span><ChevronRight/></button>) : <div className="career-empty-copy">Your verified milestones and Chronicle events will collect here automatically.</div>}
         </div>
       </article>
 
@@ -629,17 +631,18 @@ function CareerPage({go}){
         <article className="career-panel">
           <div className="career-panel-head"><div><span>PLAYER PROFILE</span><h2>Current Snapshot</h2></div><UserRound/></div>
           <dl className="career-profile-list">
-            <div><dt>Position</dt><dd>QB</dd></div>
-            <div><dt>Program</dt><dd>Oregon</dd></div>
-            <div><dt>Overall</dt><dd>76</dd></div>
-            <div><dt>Depth Chart</dt><dd>QB1</dd></div>
-            <div><dt>Career Stage</dt><dd>College Player</dd></div>
+            <div><dt>Height / Weight</dt><dd>{profile.height || '—'} / {profile.weight || '—'}</dd></div>
+            <div><dt>Archetype</dt><dd>{profile.archetype || 'Not captured'}</dd></div>
+            <div><dt>Overall</dt><dd>{profile.overall || data.player.overall || '—'}</dd></div>
+            <div><dt>Depth Chart</dt><dd>{profile.rank || 'Not captured'}</dd></div>
+            <div><dt>GPA</dt><dd>{profile.gpa || 'Not captured'}</dd></div>
+            <div><dt>NIL / Followers</dt><dd>{(profile.valuation||0).toLocaleString()} / {(profile.followers||0).toLocaleString()}</dd></div>
           </dl>
         </article>
         <article className="career-panel career-current-panel">
-          <div className="career-panel-head"><div><span>CURRENT CHAPTER</span><h2>Road to Glory</h2></div><TrendingUp/></div>
-          <strong>Season 4</strong>
-          <p>The career has moved from earning the job to building a résumé as Oregon’s starter.</p>
+          <div className="career-panel-head"><div><span>CURRENT CHAPTER</span><h2>{c.stage || 'Road to Glory'}</h2></div><TrendingUp/></div>
+          <strong>Season {data.season}</strong>
+          <p>{c.appearances||0} verified college appearance{c.appearances===1?'':'s'} are already part of this career history, with the current saved role at {profile.rank || 'the captured depth-chart position'}.</p>
           <button onClick={()=>go('gamehub')}>OPEN GAME HUB<ChevronRight/></button>
         </article>
       </aside>
@@ -649,24 +652,19 @@ function CareerPage({go}){
       <article className="career-panel">
         <div className="career-panel-head"><div><span>HISTORY</span><h2>Rivalry Ledger</h2></div><ShieldCheck/></div>
         <div className="career-rivalries">
-          <div><span>Illinois</span><strong>1–0</strong><small>Last played S4</small></div>
-          <div><span>Michigan</span><strong>1 meeting</strong><small>Season 4</small></div>
-          <div><span>Ohio State</span><strong>1 meeting</strong><small>Season 4</small></div>
-          <div><span>Vanderbilt</span><strong>1 meeting</strong><small>First start</small></div>
+          {rivalries.length ? rivalries.map((r)=><div key={r.opponent}><span>{r.opponent}</span><strong>{r.wins}–{r.losses}</strong><small>Last played S{r.lastSeason}</small></div>) : <div className="career-empty-copy">Verified college opponents will build this ledger over time.</div>}
         </div>
       </article>
       <article className="career-panel">
         <div className="career-panel-head"><div><span>ACHIEVEMENTS</span><h2>Honors & Milestones</h2></div><Award/></div>
         <div className="career-honors">
-          <div><Trophy/><span><strong>Named Oregon Starter</strong><small>Preseason · Season 4</small></span></div>
-          <div><Trophy/><span><strong>First College Start</strong><small>Vanderbilt · Season 4</small></span></div>
-          <div><Trophy/><span><strong>Seven-TD Signature Game</strong><small>Illinois · Week 10</small></span></div>
+          {honors.length ? honors.map((honor)=><div key={honor.id}><Trophy/><span><strong>{honor.name}</strong><small>{honor.year}</small></span></div>) : <div className="career-empty-copy">Awards and championships will collect here as your career grows.</div>}
         </div>
       </article>
     </section>
 
     <footer className="career-footer-redesign">
-      <span>DynastyHQ Career · Your Career. Your Legacy. Your Dynasty.</span>
+      <span>DynastyHQ Career · {data.player.name} · {c.stage || 'Road to Glory'}</span>
       <button onClick={()=>go('chronicle')}>OPEN CAREER CHRONICLE<ChevronRight/></button>
     </footer>
   </div>;

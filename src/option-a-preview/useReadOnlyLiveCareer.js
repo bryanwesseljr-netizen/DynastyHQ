@@ -352,10 +352,10 @@ export const derivePreviewData = (state, selection = {}) => {
   const school = clean(player.college || player.school, 'PROGRAM');
   const scheduleEntry = scheduleEntries(state, season).find((entry)=>numeric(entry?.week,-1)===week) || null;
   const opponent = clean(game?.opponent || scheduleEntry?.opponent, 'NO GAME');
-  const pass = valueOr(game?.passYds);
-  const rush = valueOr(game?.rushYds);
-  const passTD = valueOr(game?.passTD);
-  const rushTD = valueOr(game?.rushTD);
+  const pass = game ? valueOr(game?.passYds) : null;
+  const rush = game ? valueOr(game?.rushYds) : null;
+  const passTD = game ? valueOr(game?.passTD) : null;
+  const rushTD = game ? valueOr(game?.rushTD) : null;
 
   return {
     state,
@@ -367,6 +367,7 @@ export const derivePreviewData = (state, selection = {}) => {
       hasNewsroom:Boolean(issue),
       hasPodcast:Boolean(episode),
       isCurrent:season===currentSeason && week===currentWeek,
+      isUpcoming:season===currentSeason && week===currentWeek && !game,
     },
     player: {
       name: clean(player.name, 'PLAYER').toUpperCase(),
@@ -387,11 +388,11 @@ export const derivePreviewData = (state, selection = {}) => {
       them: game ? scores.them : 0,
       pass,
       rush,
-      total: pass + rush,
+      total: game ? pass + rush : null,
       passTD,
       rushTD,
-      td: passTD + rushTD,
-      interceptions: valueOr(game?.int),
+      td: game ? passTD + rushTD : null,
+      interceptions: game ? valueOr(game?.int) : null,
       team: {
         points: game ? scores.us : null,
         totalYards: optionalNumber(game?.teamTotalYards),
@@ -405,8 +406,8 @@ export const derivePreviewData = (state, selection = {}) => {
       },
       scoring: {
         playCount: scoringFacts.length || null,
-        passTD,
-        rushTD,
+        passTD: game ? passTD : null,
+        rushTD: game ? rushTD : null,
         opponentPoints: game ? scores.them : null,
         facts: scoringFacts,
       },

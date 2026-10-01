@@ -906,6 +906,7 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
   const archiveRef=useRef(null);
   const [showAllEpisodes,setShowAllEpisodes]=useState(false);
   const game=data.game || {};
+  const lastName=data.player.name.split(' ').at(-1);
   const transcript = episode.segments?.length
     ? episode.segments.map((segment,index)=>[segment.speaker || `HOST ${index+1}`,segment.text])
     : [
@@ -913,10 +914,10 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
       ['GAME CONTEXT',`${data.player.school} ${game.us}–${game.them} ${game.opponent}. ${game.pass} passing yards, ${game.rush} rushing yards, ${game.td} total touchdowns.`],
     ];
   const chapters=episode.chapters?.length
-    ? episode.chapters.slice(0,6)
+    ? episode.chapters.slice(0,8)
     : [
       {title:'Opening Drive',summary:`The Week ${game.week} result and why it mattered.`},
-      {title:`${data.player.name.split(' ').at(-1)}’s Night`,summary:`${game.pass} passing, ${game.rush} rushing, ${game.td} total touchdowns.`},
+      {title:`${lastName}’s Night`,summary:`${game.pass} passing, ${game.rush} rushing, ${game.td} total touchdowns.`},
       {title:'What Comes Next',summary:`The Week ${data.next.week} setup against ${data.next.opponent}.`},
     ];
   const facts=episode.sourceFacts || [];
@@ -935,67 +936,106 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
       notify('This saved episode does not currently have ready audio attached. The transcript and source data are still available.');
     }
   };
+  const jumpToTab=(tab)=>{
+    setPodcastTab(tab);
+    setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
+  };
 
-  return <div className="page podcast-page">
-    <section className="podcast-hero" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
-      <div className="podcast-hero-art">
-        <img src={podcastCover} alt="The Huddle podcast cover"/>
-        <button className="podcast-main-play" onClick={playEpisode}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
+  return <div className="page podcast-page podcast-page-v2">
+    <section className="pod-show-shell" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
+      <div className="pod-network-bar">
+        <span><Mic2/>DYNASTYHQ SPORTS NETWORK</span>
+        <b>{episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
       </div>
-      <div className="podcast-hero-copy">
-        <span className="podcast-kicker">THE HUDDLE • WEEK {game.week}</span>
-        <h1 className="podcast-live-title">{episode.title || `WEEK ${game.week} RECAP`}</h1>
-        <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
-        <div className="podcast-meta"><span>{episode.duration || '—'}</span><i/><span>Season {data.season}</span><i/><span>Week {game.week}</span></div>
 
-        <div className="audio-console">
-          <button className="audio-play" onClick={playEpisode}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
-          <div className="audio-track">
-            <div className="audio-wave" aria-hidden="true">{Array.from({length:34}).map((_,i)=><i key={i}/>)}</div>
-            <div className="audio-time"><span>{episode.audioReady?(playing?'PLAYING':'SAVED AUDIO'):'SCRIPT ONLY'}</span><b>{episode.duration || '—'}</b></div>
+      <div className="pod-show-overview">
+        <div className="pod-show-cover">
+          <img src={podcastCover} alt="The Huddle podcast cover"/>
+        </div>
+        <div className="pod-show-identity">
+          <span className="pod-show-category">COLLEGE FOOTBALL PODCAST</span>
+          <h1>THE HUDDLE</h1>
+          <p>Postgame reaction, verified game context, player development and the story of the season — built from the selected DynastyHQ week.</p>
+          <div className="pod-show-meta">
+            <span>Season {data.season}</span><i/>
+            <span>Week {game.week}</span><i/>
+            <span>{data.player.school}</span>
+          </div>
+          <div className="pod-show-links">
+            <button onClick={()=>jumpToTab('episode')}><Headphones/>Latest episode</button>
+            <button onClick={()=>jumpToTab('transcript')}><FileText/>Transcript</button>
+            <button onClick={()=>jumpToTab('notebook')}><Zap/>NotebookLM</button>
           </div>
         </div>
+      </div>
 
-        <div className="podcast-actions">
-          <button className="yellow" onClick={()=>{setPodcastTab('transcript');setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth'}),50)}}><FileText/>OPEN TRANSCRIPT</button>
-          <button className="outline" onClick={()=>{setPodcastTab('notebook');setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth'}),50)}}><Zap/>NOTEBOOKLM PACK</button>
+      <section className="pod-embed-card">
+        <div className="pod-embed-art">
+          <img src={podcastCover} alt=""/>
         </div>
+        <div className="pod-embed-info">
+          <span>FEATURED EPISODE · WEEK {game.week}</span>
+          <h2>{episode.title || `Week ${game.week} Recap`}</h2>
+          <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
+          <div className="pod-embed-meta">
+            <b>{episode.duration || '—'}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
+          </div>
+        </div>
+        <button className="pod-embed-play" onClick={playEpisode} aria-label={playing?'Pause episode':'Play episode'}>
+          {playing?<span className="pause-bars"><i/><i/></span>:<Play/>}
+        </button>
+        <div className="pod-embed-progress">
+          <div className="pod-embed-wave" aria-hidden="true">{Array.from({length:42}).map((_,i)=><i key={i}/>)}</div>
+          <div><span>{episode.audioReady?(playing?'PLAYING':'AUDIO READY'):'SCRIPT ONLY'}</span><b>{episode.duration || '—'}</b></div>
+        </div>
+      </section>
+
+      <div className="pod-game-ribbon">
+        <div><small>FINAL</small><strong>{data.player.school} {game.us}–{game.them} {game.opponent}</strong></div>
+        <div><small>{lastName}</small><strong>{game.total} TOTAL YARDS</strong></div>
+        <div><small>TOUCHDOWNS</small><strong>{game.td} TOTAL TD</strong></div>
+        <button onClick={()=>go('gamehub')}>VIEW GAME DATA<ChevronRight/></button>
       </div>
     </section>
 
-    <section className="podcast-context-strip">
-      <div><small>FINAL</small><strong>{data.player.school} {game.us}–{game.them} {game.opponent}</strong></div>
-      <i/>
-      <div><small>{data.player.name.split(' ').at(-1)}</small><strong>{game.total} TOTAL YARDS</strong></div>
-      <div><small>TOUCHDOWNS</small><strong>{game.td} TOTAL TD</strong></div>
-      <button onClick={()=>go('gamehub')}>VIEW GAME DATA<ChevronRight/></button>
-    </section>
-
-    <section className="podcast-workspace">
+    <section className="podcast-workspace pod-workspace-v2">
       <div className="podcast-tabs">
         <button className={podcastTab==='episode'?'active':''} onClick={()=>setPodcastTab('episode')}>Episode</button>
         <button className={podcastTab==='transcript'?'active':''} onClick={()=>setPodcastTab('transcript')}>Transcript</button>
         <button className={podcastTab==='notebook'?'active':''} onClick={()=>setPodcastTab('notebook')}>NotebookLM</button>
       </div>
 
-      {podcastTab==='episode' && <div className="episode-layout">
-        <article className="episode-story">
-          <span className="section-kicker">EPISODE BRIEF</span>
+      {podcastTab==='episode' && <div className="pod-episode-layout-v2">
+        <article className="pod-episode-main">
+          <span className="section-kicker">EPISODE BREAKDOWN</span>
           <h2>{episode.title || `Week ${game.week} postgame show`}</h2>
-          <p>{episode.summary || 'The episode uses the saved verified game packet and career context for this week.'}</p>
-          <div className="episode-chapters">
-            {chapters.map((chapter,index)=><div key={chapter.id||chapter.title||index}><b>{String(index+1).padStart(2,'0')}</b><span><strong>{chapter.title || `Chapter ${index+1}`}</strong><small>{chapter.summary || 'Saved episode chapter.'}</small></span></div>)}
+          <p className="pod-episode-summary">{episode.summary || 'The episode uses the saved verified game packet and career context for this week.'}</p>
+
+          <div className="pod-chapter-list">
+            {chapters.map((chapter,index)=><button key={chapter.id||chapter.title||index} onClick={()=>notify(`Chapter ${index+1}: ${chapter.title || 'Episode chapter'}`)}>
+              <span className="pod-chapter-time">{String(index+1).padStart(2,'0')}</span>
+              <span className="pod-chapter-copy"><strong>{chapter.title || `Chapter ${index+1}`}</strong><small>{chapter.summary || 'Saved episode chapter.'}</small></span>
+              <Play/>
+            </button>)}
           </div>
         </article>
-        <aside className="episode-side">
-          <section>
-            <span>THIS SAVED EPISODE USES</span>
-            <div><Check/>{facts.length} verified source facts</div>
-            <div><Check/>{episode.segments?.length || 0} transcript segments</div>
-            <div><Check/>{scoringFacts.length} scoring/drive references</div>
-            <div><Check/>{developmentFacts.length} development references</div>
+
+        <aside className="pod-episode-rail-v2">
+          <section className="pod-about-show">
+            <span>ABOUT THE SHOW</span>
+            <div className="pod-about-heading"><img src={podcastCover} alt=""/><div><b>The Huddle</b><small>DynastyHQ Sports Network</small></div></div>
+            <p>Weekly college-football coverage built around your Road to Glory career, with game reaction, verified stats and season context.</p>
           </section>
-          <section>
+
+          <section className="pod-episode-facts">
+            <span>THIS EPISODE</span>
+            <div><Check/><b>{facts.length}</b><small>verified source facts</small></div>
+            <div><Check/><b>{episode.segments?.length || 0}</b><small>transcript segments</small></div>
+            <div><Check/><b>{scoringFacts.length}</b><small>scoring references</small></div>
+            <div><Check/><b>{developmentFacts.length}</b><small>development references</small></div>
+          </section>
+
+          <section className="pod-related-v2">
             <span>RELATED</span>
             <button onClick={()=>go('newsroom')}><Newspaper/><b>Read the game story</b><ChevronRight/></button>
             <button onClick={()=>go('gamehub')}><BarChart3/><b>Open Game Hub</b><ChevronRight/></button>
@@ -1027,7 +1067,7 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
           <div className="notebook-icon"><Zap/></div>
           <span className="section-kicker">NOTEBOOKLM SOURCE PACK</span>
           <h2>Week {game.week} • {game.opponent}</h2>
-          <p>This view is now grounded in the same saved facts and transcript attached to the real DynastyHQ week.</p>
+          <p>This view is grounded in the same saved facts and transcript attached to the real DynastyHQ week.</p>
           <div className="source-list">
             <div><Check/><span><b>Game overview</b><small>{data.player.school} {game.us}–{game.them} {game.opponent} · Season {data.season}, Week {game.week}.</small></span></div>
             <div><Check/><span><b>Verified source facts</b><small>{facts.length} saved verified facts are attached to this publication.</small></span></div>
@@ -1046,17 +1086,23 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
       </div>}
     </section>
 
-    <section className="previous-episodes">
+    <section className="previous-episodes pod-archive-v2">
       <div className="previous-head">
-        <div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div>
+        <div><span>LATEST FROM THE HUDDLE</span><h2>Previous Episodes</h2></div>
         <div className="previous-controls">
           <button className="archive-arrow" onClick={()=>scrollArchive(-1)} aria-label="Scroll previous episodes left"><ChevronLeft/></button>
           <button className="archive-arrow" onClick={()=>scrollArchive(1)} aria-label="Scroll previous episodes right"><ChevronRight/></button>
-          <button className="view-all-episodes" onClick={()=>setShowAllEpisodes(v=>!v)}>{showAllEpisodes?'Carousel view':'View all episodes'}<ChevronRight/></button>
+          <button className="view-all-episodes" onClick={()=>setShowAllEpisodes(v=>!v)}>{showAllEpisodes?'Carousel view':'All episodes'}<ChevronRight/></button>
         </div>
       </div>
-      <div ref={archiveRef} className={showAllEpisodes?'episode-cards episode-archive-all':'episode-cards episode-carousel'}>
-        {archiveEpisodes.length ? archiveEpisodes.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}><span>{item.week? `WEEK ${item.week}` : `SEASON ${item.season}`}</span><b>{item.title}</b><small>{item.duration} • {item.audioReady?'Audio ready':'Transcript'}</small><Play/></button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
+      <div ref={archiveRef} className={showAllEpisodes?'episode-cards episode-archive-all pod-episode-cards-v2':'episode-cards episode-carousel pod-episode-cards-v2'}>
+        {archiveEpisodes.length ? archiveEpisodes.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}>
+          <img src={podcastCover} alt=""/>
+          <span>SEASON {item.season} • {item.week? `WEEK ${item.week}`:'ARCHIVE'}</span>
+          <b>{item.title}</b>
+          <small>{item.duration} • {item.audioReady?'Audio ready':'Transcript available'}</small>
+          <Play/>
+        </button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><img src={podcastCover} alt=""/><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
       </div>
     </section>
   </div>;

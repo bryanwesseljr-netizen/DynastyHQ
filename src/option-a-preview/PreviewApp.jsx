@@ -16,7 +16,18 @@ import { analyzeRtgStatusScreenshot } from '../services/rtgStatusScannerClient.j
 import { analyzeCoverageReference } from '../services/coverageReferenceClient.js';
 import { compressImage } from '../services/imageCompression.js';
 import { createFailedScreenshotResult, normalizeScreenshotAnalysis as normalizeGameScreenshotAnalysis } from '../domain/screenshotAnalysis.js';
-import { createEmptyScanDraft, mergeScanResult } from '../domain/weeklyEngine.js';
+import {
+  correctPublishedWeek,
+  createEmptyScanDraft,
+  createPublishedWeek,
+  createWeekKey,
+  findPublishedWeekConflict,
+  mergeScanResult,
+} from '../domain/weeklyEngine.js';
+import { replaceCoverageReferences } from '../domain/coverageReferences.js';
+import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot } from '../domain/rtgProgress.js';
+import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
+import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
 import { auth, db, productionAppId } from '../firebase.js';
 import {
   loadPodcastAudioCloud,
@@ -54,6 +65,7 @@ const previewPublicationIdFor = (entry) => String(entry?.publicationId || entry?
 const PREVIEW_MASTER_AUDIO_MAX_BYTES = 30_000_000;
 const PREVIEW_MASTER_AUDIO_EXTENSIONS = new Set(['mp3','m4a','wav','aac','ogg']);
 const PREVIEW_MASTER_AUDIO_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'option-a-master-audio';
+const PREVIEW_WEEK_PROCESSOR_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'option-a-week-processor';
 
 const previewAudioMimeFor = (file) => {
   const supplied=String(file?.type || '').trim().toLowerCase();

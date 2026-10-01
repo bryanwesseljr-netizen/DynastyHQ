@@ -761,42 +761,47 @@ function ChroniclePage({go,openPodcast,openArticle}){
   </div>;
 }
 
-function Newsroom({articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
+function Newsroom({data,articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
+  const news=data.news || {};
+  const game=data.game || {};
+  const lastName=data.player.name.split(' ').at(-1);
   return <div className="page newsroom-page">
     <section className="journal">
       <header className="masthead">
-        <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>OREGON EDITION • SEASON 4 • WEEK 10</span></div>
+        <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
         <div className="journal-tabs">
           <button className={!articleOpen?'active':''} onClick={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
-          <button onClick={()=>notify('Local Beat is sample-only in this visual preview.')}>Local Beat</button><button onClick={()=>notify('National coverage is sample-only in this visual preview.')}>National</button><button onClick={()=>notify('Newsroom archive is sample-only in this visual preview.')}>Archive</button>
+          <button onClick={()=>notify(`${news.articles?.length || 0} real saved Newsroom stories are available for this week. Outlet switching is the next Newsroom interaction pass.`)}>Local Beat</button>
+          <button onClick={()=>notify('National outlet switching will reuse the real saved Newsroom articles during the workflow pass.')}>National</button>
+          <button onClick={()=>notify('The real Newsroom archive is connected in the data bridge; archive selection UI is next.')}>Archive</button>
         </div>
       </header>
 
       {articleOpen ? (
-        <NewsroomArticle onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go} openPodcast={openPodcast} notify={notify}/>
+        <NewsroomArticle data={data} onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go} openPodcast={openPodcast}/>
       ) : (
         <>
           <section className="lead-story">
             <div className="lead-copy">
-              <span>GAME RECAP</span>
-              <h2>WESSEL WINS<br/>THE SHOOTOUT.</h2>
-              <p>Oregon survives Illinois, 54–48.<br/>Revisit the game, the numbers, and<br/>the moments behind the result.</p>
+              <span>{news.kicker || 'GAME RECAP'}</span>
+              <h2>{news.headline}</h2>
+              <p>{news.dek}</p>
               <button className="yellow" onClick={openArticle}>Read full story<ChevronRight/></button>
             </div>
             <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${playerPhoto})`}}>
-              <div className="journal-player"><span>6</span></div>
+              <div className="journal-player"><span>{data.player.number}</span></div>
             </div>
           </section>
 
           <section className="journal-score">
-            <div><Logo/><b>OREGON</b><strong>54</strong></div><span>FINAL</span><div><strong>48</strong><Logo team="I" type="illinois"/><b>ILLINOIS</b></div><i/>
-            <div><b>WESSEL</b></div><div><strong>410</strong><small>TOTAL YARDS</small></div><div><strong>7</strong><small>TOTAL TD</small></div>
+            <div><Logo team={data.player.school.slice(0,1)}/><b>{data.player.school}</b><strong>{game.us}</strong></div><span>FINAL</span><div><strong>{game.them}</strong><Logo team={game.opponent.slice(0,1)}/><b>{game.opponent}</b></div><i/>
+            <div><b>{lastName}</b></div><div><strong>{game.total}</strong><small>TOTAL YARDS</small></div><div><strong>{game.td}</strong><small>TOTAL TD</small></div>
           </section>
 
           <section className="journal-lower">
             <article className="journal-box inside reference-journal-box">
               <CardHeader title="INSIDE THE GAME" light/>
-              <p>The numbers behind the win.</p>
+              <p>The verified numbers behind the latest saved game.</p>
               <div className="inside-grid"><div className="tiny-photo photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/><div><button onClick={()=>go('gamehub')}><ClipboardList/>Player stats<ChevronRight/></button><button onClick={()=>go('gamehub')}><BarChart3/>Scoring drives<ChevronRight/></button></div></div>
             </article>
 
@@ -804,15 +809,15 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,openPodcast,go,playing
               <CardHeader title="THE HUDDLE" light/>
               <div className="huddle-grid">
                 <button className="cover-play" onClick={()=>openPodcast('episode')}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
-                <div><small>Week 10</small><h3>The Illinois Shootout</h3><p>Game breakdown, key plays, and what’s next for Wessel and the Ducks.</p><b>28:14</b></div>
+                <div><small>Week {game.week}</small><h3>{data.podcast.title}</h3><p>{data.podcast.summary}</p><b>{data.podcast.duration}</b></div>
               </div>
               <div className="huddle-actions"><button onClick={()=>openPodcast('transcript')}><FileText/>Print transcript</button><button onClick={()=>openPodcast('notebook')}><Zap/>NotebookLM pack</button></div>
-              {playing && <div className="now-playing">▶ Playing preview audio…</div>}
+              {playing && <div className="now-playing">▶ Saved episode selected…</div>}
             </article>
 
             <article className="journal-box career-file reference-journal-box">
               <CardHeader title="THE CAREER FILE" light/>
-              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>WESSEL</span><b>6</b></div><div><h3>From first start<br/>to the spotlight.</h3><p>Revisit the early chapters of Bryan Wessel’s journey and how he became the face of this program.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
+              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>{lastName}</span><b>{data.player.number}</b></div><div><h3>From the early chapters<br/>to the current spotlight.</h3><p>Follow {data.player.name}’s preserved career story, milestones, and defining weeks.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
             </article>
           </section>
         </>
@@ -821,91 +826,86 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,openPodcast,go,playing
   </div>;
 }
 
-function NewsroomArticle({onBack,go,openPodcast,notify}){
+function NewsroomArticle({data,onBack,go,openPodcast}){
+  const news=data.news || {};
+  const game=data.game || {};
+  const lastName=data.player.name.split(' ').at(-1);
+  const paragraphs=news.paragraphs?.length ? news.paragraphs : [
+    news.dek || `${data.player.school} completed its latest verified game against ${game.opponent}.`,
+    `${data.player.name} finished with ${game.total} total yards and ${game.td} total touchdowns in the saved game record.`,
+    `The next scheduled opponent is ${data.next.opponent} in Week ${data.next.week}.`,
+  ];
+  const published=(()=>{
+    if(!news.publishedAt) return '';
+    const date=new Date(news.publishedAt);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  })();
+
   return <article className="newsroom-article digital-feature">
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
-      <span>GAME RECAP • WEEK 10</span>
+      <span>{news.kicker || 'GAME RECAP'} • WEEK {news.week || game.week}</span>
     </div>
 
     <section className="digital-feature-top">
       <header className="digital-feature-head">
-        <span className="digital-kicker">GAME RECAP</span>
-        <h1>Wessel Leads Oregon Past No. 20 Illinois in Shootout</h1>
-        <p className="digital-deck">Oregon survives a 54–48 thriller behind 410 total yards and seven touchdowns from Bryan Wessel.</p>
+        <span className="digital-kicker">{news.kicker || 'GAME RECAP'}</span>
+        <h1>{news.headline}</h1>
+        <p className="digital-deck">{news.dek}</p>
         <div className="digital-byline">
-          <span>By <b>Rachel Monroe</b> · Campus Beat Writer</span>
-          <time>September 2026</time>
+          <span>By <b>{news.byline || 'DynastyHQ Staff'}</b> · {news.outlet || 'DynastyHQ Sports'}</span>
+          {published && <time>{published}</time>}
         </div>
       </header>
 
       <figure className="digital-hero-figure">
         <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${playerPhoto})`}}/>
         <figcaption>
-          <span>A career-best performance from the quarterback secures a critical win for the Ducks.</span>
+          <span>{news.photoCaption || news.dek}</span>
           <em>Career Photo Library</em>
         </figcaption>
       </figure>
     </section>
 
     <section className="digital-scorebar">
-      <div className="digital-team"><Logo/><span><b>OREGON</b><strong>54</strong></span></div>
+      <div className="digital-team"><Logo team={data.player.school.slice(0,1)}/><span><b>{data.player.school}</b><strong>{game.us}</strong></span></div>
       <em>FINAL</em>
-      <div className="digital-team away"><span><strong>48</strong><b>ILLINOIS</b></span><Logo team="I" type="illinois"/></div>
+      <div className="digital-team away"><span><strong>{game.them}</strong><b>{game.opponent}</b></span><Logo team={game.opponent.slice(0,1)}/></div>
       <i/>
-      <div className="digital-stat"><strong>286</strong><small>PASS YDS</small></div>
-      <div className="digital-stat"><strong>124</strong><small>RUSH YDS</small></div>
-      <div className="digital-stat"><strong>410</strong><small>TOTAL YARDS</small></div>
-      <div className="digital-stat"><strong>7</strong><small>TOTAL TD</small></div>
+      <div className="digital-stat"><strong>{game.pass}</strong><small>PASS YDS</small></div>
+      <div className="digital-stat"><strong>{game.rush}</strong><small>RUSH YDS</small></div>
+      <div className="digital-stat"><strong>{game.total}</strong><small>TOTAL YARDS</small></div>
+      <div className="digital-stat"><strong>{game.td}</strong><small>TOTAL TD</small></div>
     </section>
 
     <div className="digital-story-layout">
       <main className="digital-story-copy">
-        <p className="digital-lede">Oregon secured a hard-fought 54–48 victory over No. 20 Illinois on Saturday, leaning on a high-octane offense to survive one of the season’s most dramatic games.</p>
-
-        <p>The Ducks moved to 5–3 on the season and extended their winning streak to two games in a contest that saw both teams trade momentum deep into the fourth quarter.</p>
-
-        <h2>Offensive Fireworks</h2>
-        <p>Quarterback Bryan Wessel was the catalyst for the Oregon attack, accounting for 410 total yards and seven touchdowns. He completed 27 of 37 passes for 286 yards and six scores through the air while adding 124 yards and a touchdown on the ground.</p>
-
-        <aside className="digital-pullquote">
-          <span>THE MOMENT</span>
-          <blockquote>“Every time Illinois answered, Oregon found another way to push the game back in its favor.”</blockquote>
-        </aside>
-
-        <p>Despite two interceptions, Wessel’s ability to extend drives and create outside structure helped Oregon keep pressure on Illinois for four quarters. The receiving corps benefited from his efficiency, led by E. Toledo’s nine receptions for 77 yards and four touchdowns.</p>
-
-        <h2>Defensive Resilience</h2>
-        <p>Oregon’s defense surrendered yardage, but made enough high-leverage plays to preserve the six-point margin. M. Matlock anchored the unit with seven total tackles and 0.5 sacks, while D. Senshaw added a critical interception return.</p>
-
-        <h2>Looking Ahead</h2>
-        <p>The win gives Oregon momentum heading into Week 11 against Maryland. More importantly for Wessel’s career arc, the performance adds another defining chapter to a season that has quickly moved from opportunity to spotlight.</p>
-
+        {paragraphs.map((paragraph,index)=><p key={index} className={index===0?'digital-lede':undefined}>{paragraph}</p>)}
         <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>View verified game data<ChevronRight/></button>
       </main>
 
       <aside className="digital-story-rail">
         <section className="snapshot-card">
           <div className="snapshot-head">GAME SNAPSHOT</div>
-          <div className="snapshot-row"><span>Final</span><b>Oregon 54, Illinois 48</b></div>
-          <div className="snapshot-row"><span>Total offense</span><b>Oregon 610, Illinois 528</b></div>
-          <div className="snapshot-row"><span>First downs</span><b>Oregon 32, Illinois 24</b></div>
-          <div className="snapshot-row"><span>Wessel</span><b>410 total yards, 7 TD</b></div>
+          <div className="snapshot-row"><span>Final</span><b>{data.player.school} {game.us}, {game.opponent} {game.them}</b></div>
+          <div className="snapshot-row"><span>Passing</span><b>{game.pass} yards, {game.passTD} TD</b></div>
+          <div className="snapshot-row"><span>Rushing</span><b>{game.rush} yards, {game.rushTD} TD</b></div>
+          <div className="snapshot-row"><span>{lastName}</span><b>{game.total} total yards, {game.td} TD</b></div>
         </section>
 
         <section className="related-card">
           <span>RELATED COVERAGE</span>
           <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
-          <button onClick={()=>openPodcast('episode')}><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
-          <button onClick={()=>go('chronicle')}><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
+          <button onClick={()=>openPodcast('episode')}><Headphones/><b>The Huddle</b><small>{data.podcast.title} · {data.podcast.duration}</small><ChevronRight/></button>
+          <button onClick={()=>go('chronicle')}><Archive/><b>Career File</b><small>Follow the preserved career story</small><ChevronRight/></button>
         </section>
       </aside>
     </div>
 
     <section className="digital-related-strip">
-      <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the numbers behind the win</b></span><ChevronRight/></button>
-      <button onClick={()=>openPodcast('episode')}><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
-      <button onClick={()=>go('chronicle')}><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
+      <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the verified numbers</b></span><ChevronRight/></button>
+      <button onClick={()=>openPodcast('episode')}><Headphones/><span><small>THE HUDDLE</small><b>{data.podcast.title}</b></span><ChevronRight/></button>
+      <button onClick={()=>go('chronicle')}><Archive/><span><small>CAREER FILE</small><b>Follow {lastName}’s season story</b></span><ChevronRight/></button>
     </section>
   </article>;
 }

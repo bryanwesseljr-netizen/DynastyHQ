@@ -421,20 +421,46 @@ function App(){
   </div>;
 }
 
-function WeekProcessingCenter({open,data,onClose,notify}){
+function WeekProcessingCenter({open,data,user,onClose,notify}){
   const inputRef=useRef(null);
+  const rtgInputRef=useRef(null);
+  const coverageInputRef=useRef(null);
   const [phase,setPhase]=useState('game');
   const [files,setFiles]=useState([]);
   const [dragging,setDragging]=useState(false);
+
   const [scanning,setScanning]=useState(false);
-  const [flaggedReviewed,setFlaggedReviewed]=useState(false);
-  const [rtgUpdated,setRtgUpdated]=useState(false);
-  const [coverageChoice,setCoverageChoice]=useState({scoring:false,teammates:false,opponent:false});
+  const [scanProgress,setScanProgress]=useState(0);
+  const [scanStatus,setScanStatus]=useState('');
+  const [scanError,setScanError]=useState('');
+  const [scanDraft,setScanDraft]=useState(null);
+  const [reviewRows,setReviewRows]=useState([]);
+  const [officialArticles,setOfficialArticles]=useState([]);
+
+  const [rtgScanning,setRtgScanning]=useState(false);
+  const [rtgProgress,setRtgProgress]=useState('');
+  const [rtgFacts,setRtgFacts]=useState([]);
+  const [rtgScreens,setRtgScreens]=useState([]);
+  const [rtgError,setRtgError]=useState('');
+  const [rtgSkipped,setRtgSkipped]=useState(false);
+
+  const [coverageScanning,setCoverageScanning]=useState(false);
+  const [coverageProgress,setCoverageProgress]=useState('');
+  const [coverageFacts,setCoverageFacts]=useState([]);
+  const [coverageScreens,setCoverageScreens]=useState([]);
+  const [coverageError,setCoverageError]=useState('');
   const [coverageSkipped,setCoverageSkipped]=useState(false);
 
   const game=data.game || {};
   const team=game.team || {};
+  const career=data.state || {};
   const hasSavedGame=Boolean(data.selection?.hasGame);
+  const publicationId=`season-${Number(data.season)||1}-week-${Number(data.week)||0}`;
+  const currentOfficialSaved=(career.eaSportsNetworkArticles || []).some((entry)=>(
+    entry?.publicationId===publicationId
+    || (Number(entry?.season||1)===Number(data.season) && Number(entry?.week)===Number(data.week))
+  ));
+
   const steps=[
     ['game','Game Data',Upload],
     ['review','Review',ShieldCheck],
@@ -444,34 +470,57 @@ function WeekProcessingCenter({open,data,onClose,notify}){
   ];
   const phaseIndex=Math.max(0,steps.findIndex(([id])=>id===phase));
 
+  const revokeFiles=(items)=>items.forEach((entry)=>entry?.url && URL.revokeObjectURL(entry.url));
+
   useEffect(()=>{
     if(!open) return;
     setPhase('game');
+    revokeFiles(files);
     setFiles([]);
     setDragging(false);
     setScanning(false);
-    setFlaggedReviewed(false);
-    setRtgUpdated(false);
-    setCoverageChoice({scoring:false,teammates:false,opponent:false});
+    setScanProgress(0);
+    setScanStatus('');
+    setScanError('');
+    setScanDraft(null);
+    setReviewRows([]);
+    setOfficialArticles([]);
+    setRtgScanning(false);
+    setRtgProgress('');
+    setRtgFacts([]);
+    setRtgScreens([]);
+    setRtgError('');
+    setRtgSkipped(false);
+    setCoverageScanning(false);
+    setCoverageProgress('');
+    setCoverageFacts([]);
+    setCoverageScreens([]);
+    setCoverageError('');
     setCoverageSkipped(false);
   },[open,data.season,data.week]);
 
-  useEffect(()=>()=>files.forEach((file)=>file.url && URL.revokeObjectURL(file.url)),[]);
+  useEffect(()=>()=>revokeFiles(files),[]);
 
   if(!open) return null;
 
   const addFiles=(fileList)=>{
-    const incoming=[...(fileList||[])].filter((file)=>file?.type?.startsWith('image/')).slice(0,12);
+    const incoming=[...(fileList||[])].filter((file)=>file?.type?.startsWith('image/')).slice(0,30);
     if(!incoming.length) return;
     const mapped=incoming.map((file,index)=>({
-      id:`${file.name}-${file.lastModified}-${index}`,
+      id:`${file.name}-${file.size}-${file.lastModified}-${index}`,
       name:file.name,
       size:file.size,
       url:URL.createObjectURL(file),
       label:'Game screenshot',
       virtual:false,
+      file,
     }));
-    setFiles((current)=>[...current,...mapped].slice(0,12));
+    setScanError('');
+    setFiles((current)=>{
+      const keyed=new Map(current.map((entry)=>[`${entry.name}:${entry.size}:${entry.file?.lastModified||entry.id}`,entry]));
+      mapped.forEach((entry)=>keyed.set(`${entry.name}:${entry.size}:${entry.file?.lastModified||entry.id}`,entry));
+      return [...keyed.values()].slice(0,30);
+    });
   };
 
   const removeFile=(id)=>{
@@ -488,49 +537,247 @@ function WeekProcessingCenter({open,data,onClose,notify}){
       ['player-stats','Player stats'],
       ['team-stats','Team stats'],
       ['scoring-summary','Scoring summary'],
-    ].map(([id,label])=>({id:`demo-${id}`,name:`${label}.png`,size:0,url:'',label,virtual:true}));
+    ].map(([id,label])=>({id:`demo-${id}`,name:`${label}.png`,size:0,url:'',label,virtual:true,file:null}));
+    const rows=[
+      ['game.result','Result',game.result],
+      ['game.homeScore','Team score',game.us],
+      ['game.awayScore','Opponent score',game.them],
+      ['game.passYds','Player passing yards',game.pass],
+      ['game.passTD','Player passing TDs',game.passTD],
+      ['game.rushYds','Player rushing yards',game.rush],
+      ['game.rushTD','Player rushing TDs',game.rushTD],
+      ['game.int','Player interceptions',game.interceptions],
+      ['game.teamTotalYards','Team total offense',team.totalYards],
+      ['game.teamFirstDowns','Team first downs',team.firstDowns],
+      ['game.teamTurnovers','Team turnovers',team.turnovers],
+    ].filter(([, ,value])=>value!==null && value!==undefined && value!=='').map(([key,label,value],index)=>({
+      id:`demo-${index}`,key,label,value,confidence:1,evidence:'Existing saved week value',selected:true,sourceId:'saved-week-demo'
+    }));
     setFiles(demo);
-    notify('Loaded a local demo queue from the selected saved week. Nothing was uploaded.');
+    setScanDraft({facts:rows,sources:[{id:'saved-week-demo',fileName:'Saved week'}],gamePatch:game.raw || {}});
+    setReviewRows(rows);
+    setScanError('');
+    notify('Loaded the selected saved week into a local review demo. No scanner call or career write occurred.');
   };
 
-  const scanPreview=()=>{
-    if(!files.length) return;
+  const scanGameData=async()=>{
+    if(!files.length || scanning) return;
+    const actual=files.filter((entry)=>entry.file);
+    if(!actual.length){
+      if(hasSavedGame){
+        setPhase('review');
+        return;
+      }
+      setScanError('Choose real screenshots before running the scanner.');
+      return;
+    }
+    if(!user){
+      setScanError('Connect your DynastyHQ account before using the real scanner.');
+      return;
+    }
+
     setScanning(true);
-    window.setTimeout(()=>{
+    setScanProgress(0);
+    setScanStatus('Preparing scanner…');
+    setScanError('');
+    setReviewRows([]);
+    setOfficialArticles([]);
+    try{
+      const idToken=await user.getIdToken();
+      let draft=createEmptyScanDraft({
+        season:data.season,
+        week:data.week,
+        careerPhase:career.careerPhase || 'Player',
+        isCommitted:Boolean(career.player?.isCommitted),
+      });
+      const official=[];
+
+      for(let index=0;index<actual.length;index+=1){
+        const entry=actual[index];
+        const sourceId=`preview-${Date.now()}-${index}`;
+        setScanStatus(`Analyzing ${index+1} of ${actual.length}: ${entry.name}`);
+        setScanProgress(Math.round((index/actual.length)*100));
+        const compressedImage=await compressImage(entry.file);
+        try{
+          const result=await analyzeScreenshot({
+            idToken,
+            imageDataUrl:compressedImage,
+            fileName:entry.name,
+            careerPhase:career.careerPhase || 'Player',
+            player:career.player || {},
+            recruitingSchools:(career.recruiting || []).map(({name})=>({name})),
+            rosterPlayers:(career.retentionBoard || []).map(({name})=>({name})),
+            uploadContext:null,
+            suppressAnalysisEvent:true,
+          });
+          const analysis=result?.analysis || {};
+          if((analysis.screenTypes || []).includes('ea_sports_network_article')){
+            official.push({
+              fileName:entry.name,
+              headline:analysis.officialArticle?.headline || analysis.screenTitle || 'EA SPORTS Network article',
+              body:analysis.officialArticle?.body || '',
+              byline:analysis.officialArticle?.byline || '',
+              pageLabel:analysis.officialArticle?.pageLabel || '',
+            });
+          }
+          const normalized=normalizeGameScreenshotAnalysis({
+            analysis,
+            sourceId,
+            fileName:entry.name,
+            previewUrl:compressedImage,
+            uploadContext:null,
+            recruiting:career.recruiting || [],
+            retentionBoard:career.retentionBoard || [],
+            careerPhase:career.careerPhase || 'Player',
+          });
+          draft=mergeScanResult(draft,normalized);
+        }catch(error){
+          draft=mergeScanResult(draft,createFailedScreenshotResult({
+            sourceId,
+            fileName:entry.name,
+            previewUrl:compressedImage,
+            message:error?.message || 'Screenshot analysis failed.',
+            uploadContext:null,
+          }));
+        }
+        setScanProgress(Math.round(((index+1)/actual.length)*100));
+      }
+
+      const rows=(draft.facts || [])
+        .filter((fact)=>String(fact.key||'').startsWith('game.'))
+        .map((fact)=>({...fact,selected:true}));
+      setScanDraft(draft);
+      setReviewRows(rows);
+      setOfficialArticles(official);
+      const failed=(draft.sources || []).filter((source)=>source.error).length;
+      if(!rows.length && !official.length){
+        setScanError(failed ? `No reliable game facts were found; ${failed} screen${failed===1?'':'s'} failed.` : 'No reliable game facts were found. Try tighter screenshots.');
+      }else{
+        setPhase('review');
+      }
+    }catch(error){
+      setScanError(error?.message || 'The scanner could not analyze these screenshots.');
+    }finally{
       setScanning(false);
-      setPhase('review');
-    },900);
+      setScanStatus('');
+      setScanProgress(0);
+    }
   };
 
-  const verifiedFacts=[
-    ['Final score',hasSavedGame?`${data.player.school} ${game.us} – ${game.them} ${game.opponent}`:'Waiting for game result'],
-    ['Passing yards',game.pass ?? '—'],
-    ['Rushing yards',game.rush ?? '—'],
-    ['Total touchdowns',game.td ?? '—'],
-    ['Team offense',team.totalYards ?? '—'],
-    ['Turnovers',team.turnovers ?? '—'],
-  ];
-  const missingFacts=[
-    team.firstDowns==null?'Team first downs':null,
-    team.totalYards==null?'Team total offense':null,
-    game.interceptions==null?'Interceptions':null,
-  ].filter(Boolean);
+  const updateReviewRow=(id,patch)=>setReviewRows((current)=>current.map((row)=>row.id===id?{...row,...patch}:row));
+
+  const scanRtgFiles=async(fileList)=>{
+    const selected=[...(fileList||[])].filter((file)=>file?.type?.startsWith('image/')).slice(0,8);
+    if(!selected.length || rtgScanning) return;
+    if(!user){setRtgError('Connect your DynastyHQ account before scanning RTG screens.');return;}
+    setRtgScanning(true);
+    setRtgError('');
+    setRtgFacts([]);
+    setRtgScreens([]);
+    setRtgSkipped(false);
+    try{
+      const idToken=await user.getIdToken();
+      const facts=[];
+      const screens=[];
+      for(let index=0;index<selected.length;index+=1){
+        const file=selected[index];
+        setRtgProgress(`Analyzing ${index+1} of ${selected.length}: ${file.name}`);
+        const imageDataUrl=await compressImage(file,2400,0.9);
+        const result=await analyzeRtgStatusScreenshot({
+          idToken,
+          imageDataUrl,
+          fileName:file.name,
+          player:career.player || {},
+        });
+        const analysis=result?.analysis || {};
+        screens.push({fileName:file.name,screenType:analysis.screenType || 'unknown',summary:analysis.summary || ''});
+        (analysis.facts || []).forEach((fact,factIndex)=>facts.push({
+          ...fact,
+          id:`rtg-${index}-${factIndex}`,
+          sourceName:file.name,
+          selected:true,
+        }));
+      }
+      setRtgScreens(screens);
+      setRtgFacts(facts);
+      if(!facts.length) setRtgError('No reliable RTG facts were found. Nothing was changed.');
+    }catch(error){
+      setRtgError(error?.message || 'RTG scanning failed.');
+    }finally{
+      setRtgScanning(false);
+      setRtgProgress('');
+    }
+  };
+
+  const updateRtgFact=(id,patch)=>setRtgFacts((current)=>current.map((fact)=>fact.id===id?{...fact,...patch}:fact));
+
+  const scanCoverageFiles=async(fileList)=>{
+    const selected=[...(fileList||[])].filter((file)=>file?.type?.startsWith('image/')).slice(0,12);
+    if(!selected.length || coverageScanning) return;
+    if(!user){setCoverageError('Connect your DynastyHQ account before scanning Coverage Data.');return;}
+    setCoverageScanning(true);
+    setCoverageError('');
+    setCoverageFacts([]);
+    setCoverageScreens([]);
+    setCoverageSkipped(false);
+    try{
+      const idToken=await user.getIdToken();
+      const facts=[];
+      const screens=[];
+      const school=career.player?.college || career.player?.school || data.player.school || '';
+      for(let index=0;index<selected.length;index+=1){
+        const file=selected[index];
+        setCoverageProgress(`Analyzing ${index+1} of ${selected.length}: ${file.name}`);
+        const imageDataUrl=await compressImage(file,2000,0.88);
+        const result=await analyzeCoverageReference({idToken,imageDataUrl,fileName:file.name,school});
+        const analysis=result?.analysis || {};
+        screens.push({fileName:file.name,screenType:analysis.screenType || 'unknown',summary:analysis.summary || ''});
+        (analysis.facts || []).forEach((fact,factIndex)=>facts.push({
+          ...fact,
+          id:`coverage-${index}-${factIndex}`,
+          sourceName:file.name,
+          selected:Number(fact.confidence)>=0.65,
+        }));
+      }
+      setCoverageScreens(screens);
+      setCoverageFacts(facts);
+      if(!facts.length) setCoverageError('No reliable coverage facts were found. Nothing was changed.');
+    }catch(error){
+      setCoverageError(error?.message || 'Coverage Data scanning failed.');
+    }finally{
+      setCoverageScanning(false);
+      setCoverageProgress('');
+    }
+  };
+
+  const updateCoverageFact=(id,patch)=>setCoverageFacts((current)=>current.map((fact)=>fact.id===id?{...fact,...patch}:fact));
+
+  const selectedGameFacts=reviewRows.filter((row)=>row.selected && String(row.value??'').trim()!=='');
+  const lowConfidence=reviewRows.filter((row)=>row.selected && Number(row.confidence||0)<0.75);
+  const failedSources=(scanDraft?.sources || []).filter((source)=>source.error);
+  const rtgApproved=rtgFacts.filter((fact)=>fact.selected!==false && String(fact.value??'').trim()!=='');
+  const coverageApproved=coverageFacts.filter((fact)=>fact.selected && String(fact.value??'').trim()!=='');
+  const coverageAdded=coverageApproved.length>0;
+  const officialSaved=currentOfficialSaved || officialArticles.length>0;
 
   const rtg=data.rtg || {};
   const rtgCards=[
     ['OVR',data.player?.overall || '—'],
-    ['ROLE',rtg.role || rtg.currentRole || '—'],
+    ['ROLE',rtg.rank || rtg.role || rtg.currentRole || '—'],
     ['COACH TRUST',rtg.coachTrust ?? rtg.trust ?? '—'],
     ['SKILL POINTS',rtg.skillPoints ?? '—'],
     ['GPA',rtg.gpa ?? '—'],
   ];
 
-  const coverageAdded=Object.values(coverageChoice).some(Boolean);
-  const officialSaved=Boolean(data.news?.issue || data.news?.articles?.length);
+  const recognizedCoverage={
+    scoring:coverageScreens.some((entry)=>entry.screenType==='scoring_summary'),
+    teammates:coverageScreens.some((entry)=>entry.screenType==='player_stats'),
+    opponent:coverageScreens.some((entry)=>entry.screenType==='team_stats' || entry.screenType==='player_stats'),
+  };
 
   const closeSafe=()=>{
-    if(scanning) return;
-    files.forEach((file)=>file.url && URL.revokeObjectURL(file.url));
+    if(scanning || rtgScanning || coverageScanning) return;
+    revokeFiles(files);
     onClose();
   };
 
@@ -543,17 +790,13 @@ function WeekProcessingCenter({open,data,onClose,notify}){
             <span>WEEK PROCESSING CENTER</span>
             <b>SEASON {data.season} · WEEK {game.week} · {data.player.school} vs {game.opponent}</b>
           </div>
-          <div className="processing-safety"><ShieldCheck/><span>PREVIEW ONLY</span></div>
+          <div className="processing-safety"><ShieldCheck/><span>REAL SCANNERS · NO WRITES</span></div>
           <button className="processing-close" onClick={closeSafe} aria-label="Close Processing Center"><X/></button>
         </header>
 
         <nav className="processing-steps" aria-label="Processing steps">
           {steps.map(([id,label,Icon],index)=><React.Fragment key={id}>
-            <button
-              className={(phase===id?'current ':'')+(index<phaseIndex?'complete':'')}
-              onClick={()=>index<=phaseIndex && setPhase(id)}
-              disabled={index>phaseIndex}
-            >
+            <button className={(phase===id?'current ':'')+(index<phaseIndex?'complete':'')} onClick={()=>index<=phaseIndex && setPhase(id)} disabled={index>phaseIndex}>
               <i>{index<phaseIndex?<Check/>:<Icon/>}</i>
               <span><small>STEP {index+1}</small><b>{label}</b></span>
             </button>
@@ -566,28 +809,23 @@ function WeekProcessingCenter({open,data,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 1 · GAME DATA</span>
               <h1>START WITH WHAT HAPPENED ON THE FIELD.</h1>
-              <p>Keep game evidence together: final score, your player line, useful team stats, and the scoring summary. RTG menus and optional media context come later.</p>
+              <p>This lane now uses the same verified Game Data scanner as the current DynastyHQ workflow. Results stay local to this preview until write testing is explicitly enabled later.</p>
             </div>
+
+            <div className="scanner-engine-note"><ShieldCheck/><span><b>Existing scanner engine connected</b><small>Same game/box-score rules, Total Offense safeguards, TD recovery, retry logic and free-first AI routing.</small></span></div>
 
             <div className="processing-game-grid">
               <div className="processing-upload-side">
-                <button
-                  className={'processing-drop '+(dragging?'dragging':'')}
-                  onClick={()=>inputRef.current?.click()}
-                  onDragEnter={(event)=>{event.preventDefault();setDragging(true)}}
-                  onDragOver={(event)=>event.preventDefault()}
-                  onDragLeave={(event)=>{event.preventDefault();setDragging(false)}}
-                  onDrop={(event)=>{event.preventDefault();setDragging(false);addFiles(event.dataTransfer.files)}}
-                >
+                <button className={'processing-drop '+(dragging?'dragging':'')} onClick={()=>inputRef.current?.click()} onDragEnter={(event)=>{event.preventDefault();setDragging(true)}} onDragOver={(event)=>event.preventDefault()} onDragLeave={(event)=>{event.preventDefault();setDragging(false)}} onDrop={(event)=>{event.preventDefault();setDragging(false);addFiles(event.dataTransfer.files)}}>
                   <span><Upload/></span>
                   <strong>{files.length?'ADD MORE GAME SCREENS':'DROP GAME SCREENSHOTS HERE'}</strong>
-                  <small>Final score · Player stats · Team stats · Game summary</small>
+                  <small>Final score · Player stats · Team stats · EA SPORTS Network pages</small>
                   <em>Choose Screens</em>
                 </button>
-                <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={(event)=>{addFiles(event.target.files);event.target.value=''}}/>
+                <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(event)=>{addFiles(event.target.files);event.target.value=''}}/>
 
                 {files.length ? <div className="processing-queue">
-                  <header><span>{files.length} SCREEN{files.length===1?'':'S'} READY</span><button onClick={()=>setFiles([])}>Clear</button></header>
+                  <header><span>{files.length} SCREEN{files.length===1?'':'S'} READY · MAX 30</span><button onClick={()=>{revokeFiles(files);setFiles([])}}>Clear</button></header>
                   <div className="processing-file-grid">
                     {files.map((file,index)=><article key={file.id}>
                       <div className="processing-thumb">{file.url?<img src={file.url} alt=""/>:<ImageIcon/>}</div>
@@ -597,28 +835,31 @@ function WeekProcessingCenter({open,data,onClose,notify}){
                   </div>
                 </div> : <div className="processing-demo-prompt">
                   <Sparkles/>
-                  <div><b>Want to test the workflow?</b><small>Load the selected saved week into a local demo queue. No career data is changed.</small></div>
+                  <div><b>Want to test the layout without spending a scan?</b><small>Load the selected saved week into the same review screen locally.</small></div>
                   <button disabled={!hasSavedGame} onClick={loadSavedDemo}>{hasSavedGame?'LOAD SAVED WEEK':'NO SAVED GAME'}</button>
                 </div>}
+
+                {(scanning || scanStatus) && <div className="real-scan-progress"><div><span style={{width:`${scanProgress}%`}}/></div><p>{scanStatus || 'Analyzing…'}</p></div>}
+                {scanError && <div className="scanner-error"><Shield/><span>{scanError}</span></div>}
               </div>
 
               <aside className="processing-needs">
-                <span>WHAT DYNASTYHQ NEEDS</span>
-                <h3>Build a clean game packet.</h3>
+                <span>WHAT THE SCANNER READS</span>
+                <h3>Same fields as the current workflow.</h3>
                 {[
-                  ['Final score','Establishes the result and opponent.',true],
-                  ['Your player stats','Passing, rushing and turnovers.',true],
-                  ['Team stats','Total offense, first downs and turnovers.',false],
-                  ['Scoring summary','Makes Newsroom + Huddle coverage richer.',false],
-                  ['EA SPORTS Network','Preserves the in-game official story.',false],
-                ].map(([title,sub,required])=><div key={title}><i className={required?'required':''}>{required?<Check/>:<PlusIcon/>}</i><span><b>{title}</b><small>{sub}</small></span><em>{required?'CORE':'OPTIONAL'}</em></div>)}
-                <p><ShieldCheck/>Game screens stay separate from RTG status and coverage context so the wrong data never gets mixed together.</p>
+                  ['Final score + opponent','Result, tracked-team score and opponent score.',true],
+                  ['Your player line','Pass YDS/TD, rush YDS/TD and interceptions.',true],
+                  ['Team comparison','Total Offense, first downs, turnovers, rush/pass yards.',false],
+                  ['Rankings','Only when visibly attached to the correct team.',false],
+                  ['EA SPORTS Network','Recognizes article pages without treating them as stats.',false],
+                ].map(([title,sub,required])=><div key={title}><i className={required?'required':''}>{required?<Check/>:<PlusIcon/>}</i><span><b>{title}</b><small>{sub}</small></span><em>{required?'CORE':'SUPPORTED'}</em></div>)}
+                <p><ShieldCheck/>Visible zeroes remain valid. Cropped or ambiguous values are omitted instead of guessed.</p>
               </aside>
             </div>
 
             <div className="processing-actions">
               <button className="secondary" onClick={closeSafe}>CANCEL</button>
-              <button className="primary" disabled={!files.length||scanning} onClick={scanPreview}>{scanning?'READING SCREENS…':'SCAN GAME DATA'}<ChevronRight/></button>
+              <button className="primary" disabled={!files.length||scanning} onClick={scanGameData}>{scanning?'RUNNING REAL SCANNER…':'SCAN GAME DATA'}<ChevronRight/></button>
             </div>
           </section>}
 
@@ -626,34 +867,43 @@ function WeekProcessingCenter({open,data,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 2 · REVIEW</span>
               <h1>VERIFY THE WEEK BEFORE IT COUNTS.</h1>
-              <p>This preview uses the selected saved week to demonstrate the review layout. The production scanner will eventually feed this same interface.</p>
+              <p>These are the facts returned by the existing scanner engine. Editing or unchecking them here changes only this temporary preview packet.</p>
             </div>
 
             <div className="review-summary-bar">
               <div><strong>{files.length}</strong><small>SCREENS</small></div>
-              <div><strong>{verifiedFacts.filter(([,value])=>value!=='—').length}</strong><small>VERIFIED FACTS</small></div>
-              <div><strong>{missingFacts.length}</strong><small>NEEDS REVIEW</small></div>
-              <span>INTERACTION PREVIEW · NO WRITES</span>
+              <div><strong>{selectedGameFacts.length}</strong><small>GAME FACTS</small></div>
+              <div><strong>{lowConfidence.length+failedSources.length}</strong><small>NEEDS REVIEW</small></div>
+              <span>REAL ANALYSIS · LOCAL REVIEW ONLY</span>
             </div>
 
+            {officialArticles.length>0 && <div className="official-scan-detected"><RadioIcon/><span><b>EA SPORTS NETWORK ARTICLE · DETECTED</b><small>{officialArticles.map((entry)=>entry.headline).filter(Boolean).join(' · ')}</small></span><em>{officialArticles.length} PAGE{officialArticles.length===1?'':'S'}</em></div>}
+
             <div className="review-layout">
-              <article className="verified-facts-panel">
-                <header><span><Check/>VERIFIED</span><b>Detected game facts</b></header>
-                <div className="verified-facts-grid">
-                  {verifiedFacts.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong><i><Check/></i></div>)}
-                </div>
+              <article className="verified-facts-panel real-review-panel">
+                <header><span><Check/>EXTRACTED GAME FACTS</span><b>{reviewRows.length} detected</b></header>
+                {reviewRows.length ? <div className="real-review-rows">
+                  {reviewRows.map((row)=><div key={row.id} className={!row.selected?'ignored':''}>
+                    <button className="review-toggle" onClick={()=>updateReviewRow(row.id,{selected:!row.selected})}>{row.selected?<Check/>:<X/>}</button>
+                    <span><b>{row.label || row.key}</b><small>{row.evidence || row.key}</small></span>
+                    <em>{Math.round((Number(row.confidence)||0)*100)}%</em>
+                    <input value={row.value ?? ''} onChange={(event)=>updateReviewRow(row.id,{value:event.target.value,selected:true})}/>
+                  </div>)}
+                </div> : <div className="empty-scan-result"><Shield/><span><b>No game facts extracted</b><small>Return to Game Data and try a clearer screenshot.</small></span></div>}
               </article>
 
               <aside className="flagged-panel">
-                <header><span>NEEDS REVIEW</span><strong>{missingFacts.length || 0}</strong></header>
-                {missingFacts.length ? missingFacts.map((label)=><div key={label}><Shield/><span><b>{label}</b><small>No verified value is attached to this saved week.</small></span><button onClick={()=>setFlaggedReviewed(true)}>{flaggedReviewed?'ACKNOWLEDGED':'REVIEW'}</button></div>) : <div className="all-clear"><Check/><span><b>No conflicts found</b><small>The saved week has the core fields needed for this preview.</small></span></div>}
-                <button className="advanced-review" onClick={()=>notify('Advanced source-by-source review will be reconnected when preview writes are sandboxed.')}><Pencil/>OPEN ADVANCED DETAILS</button>
+                <header><span>NEEDS REVIEW</span><strong>{lowConfidence.length+failedSources.length}</strong></header>
+                {lowConfidence.map((row)=><div key={`low-${row.id}`}><Shield/><span><b>{row.label || row.key}</b><small>{Math.round((Number(row.confidence)||0)*100)}% confidence · verify the visible value.</small></span><button onClick={()=>updateReviewRow(row.id,{selected:true})}>KEEP</button></div>)}
+                {failedSources.map((source,index)=><div key={source.id||index}><Shield/><span><b>{source.fileName || 'Screenshot failed'}</b><small>{source.error || 'Scanner could not classify this screen.'}</small></span></div>)}
+                {!lowConfidence.length && !failedSources.length && <div className="all-clear"><Check/><span><b>No scanner warnings</b><small>All extracted game facts cleared the preview confidence check.</small></span></div>}
+                <button className="advanced-review" onClick={()=>notify('This review is already using the real scanner output. Source-by-source image highlighting can be added later.')}><Pencil/>SOURCE DETAILS</button>
               </aside>
             </div>
 
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('game')}><ChevronLeft/>GAME DATA</button>
-              <button className="primary" onClick={()=>setPhase('rtg')}>ACCEPT VERIFIED DATA<ChevronRight/></button>
+              <button className="primary" disabled={!selectedGameFacts.length && !officialArticles.length} onClick={()=>setPhase('rtg')}>ACCEPT INTO PREVIEW PACKET<ChevronRight/></button>
             </div>
           </section>}
 
@@ -661,30 +911,44 @@ function WeekProcessingCenter({open,data,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 3 · RTG STATUS</span>
               <h1>CHECK THE PLAYER, NOT THE BOX SCORE.</h1>
-              <p>RTG menu screens update career-state values like OVR, role, Coach Trust and skill points. They never overwrite the game you just verified.</p>
+              <p>This lane now calls the same RTG Status scanner used by the current site for Overview, Academics, Leadership, Health, Fitness and Brand screens.</p>
             </div>
+
+            <div className="scanner-engine-note"><Sparkles/><span><b>RTG Status scanner connected</b><small>Weekly Points stay separate from Energy; NIL weekly cost stays separate from valuation; unsupported values are omitted.</small></span></div>
 
             <div className="rtg-status-grid">
-              {rtgCards.map(([label,value])=><div key={label}><small>{label}</small><strong>{value}</strong><span>{rtgUpdated?'CURRENT':'SAVED'}</span></div>)}
+              {rtgCards.map(([label,value])=><div key={label}><small>{label}</small><strong>{value}</strong><span>SAVED</span></div>)}
             </div>
 
-            <div className="rtg-upload-card">
+            <div className="rtg-upload-card real-scanner-upload">
               <div className="rtg-player-mark"><UserRound/></div>
-              <div><span>PLAYER STATUS CHECK</span><h3>{data.player.name} · #{data.player.number} · {data.player.pos}</h3><p>Upload RTG menu screens here when something changed, or carry the saved status forward for this week.</p></div>
-              <button className={rtgUpdated?'done':''} onClick={()=>setRtgUpdated(true)}>{rtgUpdated?<><Check/>STATUS UPDATED</>:<><Upload/>PREVIEW RTG UPDATE</>}</button>
+              <div><span>PLAYER STATUS CHECK</span><h3>{data.player.name} · #{data.player.number} · {data.player.pos}</h3><p>Upload up to 8 current RTG screens together. The extracted values remain unsaved in this preview.</p></div>
+              <button disabled={rtgScanning} onClick={()=>rtgInputRef.current?.click()}>{rtgScanning?<><Sparkles/>SCANNING…</>:<><Upload/>UPLOAD RTG SCREENS</>}</button>
+              <input ref={rtgInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{scanRtgFiles(event.target.files);event.target.value=''}}/>
             </div>
 
-            <div className="rtg-change-preview">
-              <span>CHANGE PREVIEW</span>
-              <div><b>OVR</b><strong>{data.player.overall || '—'}</strong><ChevronRight/><em>{rtgUpdated?(Number(data.player.overall)||0)+1:data.player.overall || '—'}</em></div>
-              <div><b>Coach Trust</b><strong>{rtg.coachTrust ?? rtg.trust ?? '—'}</strong><ChevronRight/><em>{rtgUpdated && Number(rtg.coachTrust ?? rtg.trust)?Number(rtg.coachTrust ?? rtg.trust)+850:(rtg.coachTrust ?? rtg.trust ?? '—')}</em></div>
-              <p><Sparkles/>This is only a visual demonstration of how progression changes could be presented after a real scan.</p>
-            </div>
+            {rtgProgress && <div className="scanner-inline-status"><Sparkles/><span>{rtgProgress}</span></div>}
+            {rtgError && <div className="scanner-error scanner-inline"><Shield/><span>{rtgError}</span></div>}
+
+            {rtgScreens.length>0 && <div className="detected-screen-strip">
+              <span>DETECTED SCREENS</span>
+              <div>{rtgScreens.map((entry,index)=><b key={`${entry.fileName}-${index}`} className={entry.screenType==='unknown'?'unknown':''}>{entry.screenType.replaceAll('_',' ')}</b>)}</div>
+            </div>}
+
+            {rtgFacts.length>0 && <div className="scanner-fact-review">
+              <header><span>RTG FACTS · PREVIEW ONLY</span><b>{rtgApproved.length} selected</b></header>
+              {rtgFacts.map((fact)=><div key={fact.id} className={fact.selected===false?'ignored':''}>
+                <button onClick={()=>updateRtgFact(fact.id,{selected:fact.selected===false})}>{fact.selected===false?<X/>:<Check/>}</button>
+                <span><b>{fact.label || fact.key}</b><small>{fact.evidence || fact.sourceName}</small></span>
+                <em>{Math.round((Number(fact.confidence)||0)*100)}%</em>
+                <input value={fact.value ?? ''} onChange={(event)=>updateRtgFact(fact.id,{value:event.target.value,selected:true})}/>
+              </div>)}
+            </div>}
 
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('review')}><ChevronLeft/>REVIEW</button>
-              <button className="secondary" onClick={()=>{setRtgUpdated(false);setPhase('coverage')}}>SKIP · NOTHING CHANGED</button>
-              <button className="primary" onClick={()=>setPhase('coverage')}>CONTINUE TO COVERAGE<ChevronRight/></button>
+              <button className="secondary" onClick={()=>{setRtgSkipped(true);setPhase('coverage')}}>SKIP · NOTHING CHANGED</button>
+              <button className="primary" disabled={rtgScanning} onClick={()=>setPhase('coverage')}>{rtgApproved.length?'ACCEPT RTG INTO PREVIEW':'CONTINUE WITHOUT RTG'}<ChevronRight/></button>
             </div>
           </section>}
 
@@ -692,31 +956,52 @@ function WeekProcessingCenter({open,data,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 4 · COVERAGE</span>
               <h1>ADD CONTEXT ONLY IF THE STORY NEEDS IT.</h1>
-              <p>This lane enriches the Newsroom and The Huddle. It can add teammate, opponent and scoring context, but it cannot change your official RTG stats.</p>
+              <p>This lane now uses the same Coverage Data scanner that reads teammate/opponent Player Stats, Team Stats and Scoring Summary screens for editorial use only.</p>
             </div>
+
+            <div className="scanner-engine-note"><Newspaper/><span><b>Coverage scanner connected</b><small>Receiving rows, scoring plays and team notes remain editorial-only and cannot contaminate your official player line.</small></span></div>
 
             <div className="coverage-choice-grid">
               {[
-                ['scoring','Scoring Summary',ClipboardList,'Accurate scoring drives and game-flow context.'],
-                ['teammates','Teammate Stats',UserRound,'Supporting performances and offensive context.'],
-                ['opponent','Opponent Stats',BarChart3,'What the other side did and why the result happened.'],
-              ].map(([key,title,Icon,sub])=><button key={key} className={coverageChoice[key]?'selected':''} onClick={()=>{setCoverageSkipped(false);setCoverageChoice((current)=>({...current,[key]:!current[key]}))}}>
-                <i><Icon/></i><span><b>{title}</b><small>{sub}</small></span><em>{coverageChoice[key]?<Check/>:'OPTIONAL'}</em>
-              </button>)}
+                ['scoring','Scoring Summary',ClipboardList,'Accurate scoring plays and game-flow context.',recognizedCoverage.scoring],
+                ['teammates','Player Stats',UserRound,'Supporting teammate/opponent performances.',recognizedCoverage.teammates],
+                ['opponent','Team Stats',BarChart3,'Team-level editorial context.',recognizedCoverage.opponent],
+              ].map(([key,title,Icon,sub,detected])=><div key={key} className={detected?'selected':''}>
+                <i><Icon/></i><span><b>{title}</b><small>{sub}</small></span><em>{detected?<><Check/>DETECTED</>:'SUPPORTED'}</em>
+              </div>)}
             </div>
+
+            <div className="coverage-real-upload">
+              <div><Upload/><span><b>UPLOAD COVERAGE SCREENS</b><small>Up to 12 screenshots · optional</small></span></div>
+              <button disabled={coverageScanning} onClick={()=>coverageInputRef.current?.click()}>{coverageScanning?'SCANNING…':'CHOOSE COVERAGE'}</button>
+              <input ref={coverageInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{scanCoverageFiles(event.target.files);event.target.value=''}}/>
+            </div>
+
+            {coverageProgress && <div className="scanner-inline-status"><Newspaper/><span>{coverageProgress}</span></div>}
+            {coverageError && <div className="scanner-error scanner-inline"><Shield/><span>{coverageError}</span></div>}
+
+            {coverageFacts.length>0 && <div className="scanner-fact-review coverage-fact-review">
+              <header><span>EDITORIAL-ONLY FACTS</span><b>{coverageApproved.length} selected</b></header>
+              {coverageFacts.map((fact)=><div key={fact.id} className={!fact.selected?'ignored':''}>
+                <button onClick={()=>updateCoverageFact(fact.id,{selected:!fact.selected})}>{fact.selected?<Check/>:<X/>}</button>
+                <span><b>{fact.label || 'Coverage fact'}</b><small>{[fact.category,fact.team,fact.subject].filter(Boolean).join(' · ') || fact.evidence || fact.sourceName}</small></span>
+                <em>{Math.round((Number(fact.confidence)||0)*100)}%</em>
+                <input value={fact.value ?? ''} onChange={(event)=>updateCoverageFact(fact.id,{value:event.target.value,selected:true})}/>
+              </div>)}
+            </div>}
 
             <section className="official-feed-card">
               <RadioIcon/>
-              <div><span>EA SPORTS NETWORK</span><h3>{officialSaved?'Official in-game coverage already exists for this week.':'Preserve official in-game coverage when available.'}</h3><p>Official articles remain separate from DynastyHQ-generated Local, Regional and National stories.</p></div>
-              <b className={officialSaved?'saved':''}>{officialSaved?'SAVED':'OPTIONAL'}</b>
+              <div><span>EA SPORTS NETWORK</span><h3>{officialSaved?'Official in-game coverage is present for this week.':'No official article has been detected in this preview packet yet.'}</h3><p>Article pages are recognized in the Game Data lane and remain separate from DynastyHQ-generated journalism.</p></div>
+              <b className={officialSaved?'saved':''}>{officialSaved?'DETECTED':'OPTIONAL'}</b>
             </section>
 
-            <div className="coverage-boundary-note"><ShieldCheck/><span><b>Coverage-only boundary</b><small>Nothing selected here can overwrite the player line, team result, or career totals.</small></span></div>
+            <div className="coverage-boundary-note"><ShieldCheck/><span><b>Coverage-only boundary</b><small>Nothing reviewed here can overwrite the player line, team result, or career totals.</small></span></div>
 
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('rtg')}><ChevronLeft/>RTG STATUS</button>
               {!coverageAdded && <button className="secondary" onClick={()=>{setCoverageSkipped(true);setPhase('ready')}}>SKIP OPTIONAL COVERAGE</button>}
-              <button className="primary" disabled={!coverageAdded && !coverageSkipped} onClick={()=>setPhase('ready')}>CONTINUE TO PROCESS WEEK<ChevronRight/></button>
+              <button className="primary" disabled={coverageScanning || (!coverageAdded && !coverageSkipped)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PREVIEW':'CONTINUE'}<ChevronRight/></button>
             </div>
           </section>}
 
@@ -724,30 +1009,30 @@ function WeekProcessingCenter({open,data,onClose,notify}){
             <div className="ready-check"><Check/></div>
             <span className="ready-kicker">STEP 5 · PROCESS WEEK</span>
             <h1>WEEK {game.week} IS READY.</h1>
-            <p>The weekly packet is cleanly separated. In the real workflow, this is where DynastyHQ would update the career record and build the week's media.</p>
+            <p>The preview packet was built using the same Game Data, RTG Status and Coverage scanner services as the current site. The only missing piece on purpose is persistence.</p>
 
             <div className="ready-status-grid">
-              <div className="done"><Upload/><span><small>GAME DATA</small><strong>VERIFIED</strong></span></div>
-              <div className={rtgUpdated?'done':'skipped'}><Sparkles/><span><small>RTG STATUS</small><strong>{rtgUpdated?'UPDATED':'NO CHANGES'}</strong></span></div>
-              <div className={coverageAdded?'done':'skipped'}><Newspaper/><span><small>COVERAGE DATA</small><strong>{coverageAdded?'ADDED':'OPTIONAL · SKIPPED'}</strong></span></div>
-              <div className={officialSaved?'official':'skipped'}><Shield/><span><small>EA SPORTS NETWORK</small><strong>{officialSaved?'PRESERVED':'NOT INCLUDED'}</strong></span></div>
+              <div className="done"><Upload/><span><small>GAME DATA</small><strong>{selectedGameFacts.length} FACTS REVIEWED</strong></span></div>
+              <div className={rtgApproved.length?'done':'skipped'}><Sparkles/><span><small>RTG STATUS</small><strong>{rtgApproved.length?`${rtgApproved.length} FACTS READY`:(rtgSkipped?'NO CHANGES':'NOT SCANNED')}</strong></span></div>
+              <div className={coverageAdded?'done':'skipped'}><Newspaper/><span><small>COVERAGE DATA</small><strong>{coverageAdded?`${coverageApproved.length} FACTS READY`:'OPTIONAL · SKIPPED'}</strong></span></div>
+              <div className={officialSaved?'official':'skipped'}><Shield/><span><small>EA SPORTS NETWORK</small><strong>{officialSaved?'DETECTED':'NOT INCLUDED'}</strong></span></div>
             </div>
 
             <section className="ready-builds">
-              <header><span>WHAT DYNASTYHQ WILL BUILD</span><b>FROM THIS WEEK</b></header>
+              <header><span>WHAT DYNASTYHQ WILL BUILD</span><b>FROM THIS VERIFIED PACKET</b></header>
               <div>
-                <article><BarChart3/><span><b>Game Hub</b><small>Stats, progression and verified game material</small></span></article>
+                <article><BarChart3/><span><b>Game Hub</b><small>Verified player + team game facts</small></span></article>
                 <article><Newspaper/><span><b>Newsroom</b><small>Local, Regional and National coverage</small></span></article>
                 <article><Headphones/><span><b>The Huddle</b><small>Transcript and NotebookLM source pack</small></span></article>
                 <article><Archive/><span><b>Chronicle</b><small>Permanent Week {game.week} career chapter</small></span></article>
               </div>
             </section>
 
-            <div className="ready-warning"><LockKeyhole/><span><b>Preview boundary</b><small>This button demonstrates the final workflow only. No Firestore, uploads, generation, or production career data will be changed.</small></span></div>
+            <div className="ready-warning"><LockKeyhole/><span><b>Write boundary is still locked</b><small>The real scanner services ran, but this preview packet has not been written to Firestore, Storage, Game Logs, Newsroom, Podcast, Chronicle or any production state.</small></span></div>
 
             <div className="processing-actions centered">
               <button className="secondary" onClick={()=>setPhase('coverage')}><ChevronLeft/>BACK</button>
-              <button className="primary ready-button" onClick={()=>{notify(`Week ${game.week} processing preview complete — no data was written.`);closeSafe()}}>PROCESS WEEK {game.week}<ChevronRight/></button>
+              <button className="primary ready-button" onClick={()=>{notify(`Week ${game.week} scanner bridge validated — no career data was written.`);closeSafe()}}>FINISH PREVIEW<ChevronRight/></button>
             </div>
           </section>}
         </main>

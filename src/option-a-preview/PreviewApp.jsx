@@ -2352,7 +2352,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
           </div>
           <div className="panel-actions">
             <button className="ghost" onClick={()=>setDetailOpen('sources')}><ShieldCheck/>VIEW VERIFIED SOURCES</button>
-            <button className="ghost" onClick={openProcessing}><Pencil/>REVIEW / UPDATE WEEK</button>
+            <button className="ghost" onClick={openProcessing}><Pencil/>REVIEW WEEK DATA</button>
           </div>
         </article>
 

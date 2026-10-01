@@ -22,6 +22,63 @@ const pages = [
   ['chronicle','Chronicle',BookOpen],
 ];
 
+
+const PAGE_VISUAL_STORAGE_KEY = 'dynastyhq-preview-page-visuals-v1';
+const PAGE_VISUAL_POSITIONS = {
+  home:'59%',
+  gamehub:'52%',
+  newsroom:'50%',
+  podcast:'72%',
+  offseason:'50%',
+  career:'50%',
+  chronicle:'72%',
+};
+
+const defaultPageVisual = (pageId) => ({
+  image:playerPhoto,
+  position:PAGE_VISUAL_POSITIONS[pageId] || '50%',
+  custom:false,
+});
+
+const loadPageVisuals = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved=JSON.parse(window.localStorage.getItem(PAGE_VISUAL_STORAGE_KEY) || '{}');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    return {};
+  }
+};
+
+const compressPagePhoto = (file) => new Promise((resolve,reject)=>{
+  if (!file?.type?.startsWith('image/')) {
+    reject(new Error('Choose an image file.'));
+    return;
+  }
+  const reader=new FileReader();
+  reader.onerror=()=>reject(new Error('The image could not be read.'));
+  reader.onload=()=>{
+    const image=new Image();
+    image.onerror=()=>reject(new Error('The image could not be opened.'));
+    image.onload=()=>{
+      const maxDimension=1200;
+      const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||1,image.naturalHeight||1));
+      const width=Math.max(1,Math.round(image.naturalWidth*scale));
+      const height=Math.max(1,Math.round(image.naturalHeight*scale));
+      const canvas=document.createElement('canvas');
+      canvas.width=width;
+      canvas.height=height;
+      const context=canvas.getContext('2d');
+      context.drawImage(image,0,0,width,height);
+      let dataUrl=canvas.toDataURL('image/webp',.72);
+      if (!dataUrl.startsWith('data:image/webp')) dataUrl=canvas.toDataURL('image/jpeg',.74);
+      resolve(dataUrl);
+    };
+    image.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
 const fallbackData = {
   player: { name:'BRYAN WESSEL', number:'6', pos:'QB', school:'OREGON', overall:'76', headshot:'' },
   season: 4,
@@ -53,6 +110,10 @@ function App(){
   const [liveAuthOpen,setLiveAuthOpen] = useState(false);
   const [liveEmail,setLiveEmail] = useState('');
   const [livePassword,setLivePassword] = useState('');
+  const [pageVisuals,setPageVisuals] = useState(()=>loadPageVisuals());
+  const [visualEditorOpen,setVisualEditorOpen] = useState(false);
+  const [visualTarget,setVisualTarget] = useState('home');
+  const [visualBusy,setVisualBusy] = useState(false);
   const live = useReadOnlyLiveCareer();
   const data = useMemo(
     () => live.career
@@ -91,6 +152,50 @@ function App(){
     window.scrollTo({top:0,behavior:'smooth'});
   };
   const notify = (message) => { setToast(message); window.setTimeout(()=>setToast(''),2200); };
+  const visualFor = (id) => ({...defaultPageVisual(id),...(pageVisuals[id] || {})});
+  const persistVisuals = (next) => {
+    setPageVisuals(next);
+    try {
+      window.localStorage.setItem(PAGE_VISUAL_STORAGE_KEY,JSON.stringify(next));
+      return true;
+    } catch {
+      notify('That photo is too large for browser-only preview storage. Try a smaller image.');
+      return false;
+    }
+  };
+  const openVisualEditor = (id=page) => {
+    setVisualTarget(id);
+    setVisualEditorOpen(true);
+    setMobileMenu(false);
+  };
+  const updateVisual = (id,patch) => {
+    const current=visualFor(id);
+    persistVisuals({...pageVisuals,[id]:{...current,...patch,custom:true}});
+  };
+  const resetVisual = (id) => {
+    const next={...pageVisuals};
+    delete next[id];
+    persistVisuals(next);
+  };
+  const uploadVisual = async (file) => {
+    if(!file) return;
+    setVisualBusy(true);
+    try {
+      const image=await compressPagePhoto(file);
+      updateVisual(visualTarget,{image});
+    } catch(error) {
+      notify(error?.message || 'The photo could not be added.');
+    } finally {
+      setVisualBusy(false);
+    }
+  };
+  const applyVisualToAll = () => {
+    const current=visualFor(visualTarget);
+    const next={...pageVisuals};
+    pages.forEach(([id])=>{ next[id]={...defaultPageVisual(id),image:current.image,custom:true}; });
+    persistVisuals(next);
+    notify('That photo is now used across all page heroes in this browser.');
+  };
   const connectLiveCareer = async (event) => {
     event.preventDefault();
     const ok = await live.signIn(liveEmail,livePassword);
@@ -120,6 +225,7 @@ function App(){
 
       <div className={'mobile-drawer '+(mobileMenu?'open':'')}>
         {pages.map(([id,label,Icon])=><button key={id} onClick={()=>go(id)}><Icon size={17}/>{label}</button>)}
+        <button className="mobile-visual-entry" onClick={()=>openVisualEditor(page)}><Camera size={17}/>Page photo</button>
       </div>
 
       <div className="career-row">
@@ -153,14 +259,15 @@ function App(){
       onConnect={connectLiveCareer}
     />
 
-    <main>
-      {page==='home' && <HomePage data={data} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
-      {page==='gamehub' && <GameHub data={data} go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom data={data} articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
-      {page==='podcast' && <PodcastPage data={data} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
-      {page==='offseason' && <OffseasonPage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
-      {page==='career' && <CareerPage data={data} go={go} openArchiveMoment={openArchiveMoment}/>} 
-      {page==='chronicle' && <ChroniclePage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
+    <main className="preview-main">
+      <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
+      {page==='home' && <HomePage data={data} visual={visualFor('home')} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
+      {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
+      {page==='career' && <CareerPage data={data} visual={visualFor('career')} go={go} openArchiveMoment={openArchiveMoment}/>} 
+      {page==='chronicle' && <ChroniclePage data={data} visual={visualFor('chronicle')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
     </main>
 
     <nav className="mobile-bottom">
@@ -173,7 +280,58 @@ function App(){
       <button className={page==='chronicle'?'active':''} onClick={()=>go('chronicle')}><BookOpen/><span>Chronicle</span></button>
     </nav>
 
+    <PageVisualEditor
+      open={visualEditorOpen}
+      target={visualTarget}
+      setTarget={setVisualTarget}
+      visual={visualFor(visualTarget)}
+      busy={visualBusy}
+      onClose={()=>setVisualEditorOpen(false)}
+      onUpload={uploadVisual}
+      onReset={()=>resetVisual(visualTarget)}
+      onPosition={(position)=>updateVisual(visualTarget,{position})}
+      onApplyAll={applyVisualToAll}
+    />
+
     {toast && <div className="toast" role="status">{toast}</div>}
+  </div>;
+}
+
+function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,onReset,onPosition,onApplyAll}){
+  if(!open) return null;
+  const label=pages.find(([id])=>id===target)?.[1] || 'Page';
+  const positions=[['30%','Left'],['50%','Center'],['70%','Right']];
+  return <div className="visual-editor-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget) onClose()}}>
+    <section className="visual-editor" role="dialog" aria-modal="true" aria-label="Page photo settings">
+      <header>
+        <div><span>PAGE APPEARANCE</span><h2>{label} photo</h2></div>
+        <button onClick={onClose} aria-label="Close photo settings"><X/></button>
+      </header>
+
+      <div className="visual-editor-preview" style={{'--preview-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
+        <div/>
+        <span>Gradient + blend stay automatic</span>
+      </div>
+
+      <label className="visual-page-select">Page
+        <select value={target} onChange={(event)=>setTarget(event.target.value)}>
+          {pages.map(([id,pageLabel])=><option key={id} value={id}>{pageLabel}</option>)}
+        </select>
+      </label>
+
+      <div className="visual-position-row">
+        <span>Photo focus</span>
+        <div>{positions.map(([position,text])=><button key={position} className={visual.position===position?'active':''} onClick={()=>onPosition(position)}>{text}</button>)}</div>
+      </div>
+
+      <div className="visual-editor-actions">
+        <label className="visual-upload"><Upload/>{busy?'Preparing…':'Choose photo'}<input type="file" accept="image/*" disabled={busy} onChange={(event)=>{const file=event.target.files?.[0];event.target.value='';onUpload(file)}}/></label>
+        <button onClick={onReset}>Reset page</button>
+        <button onClick={onApplyAll}>Use on all pages</button>
+      </div>
+
+      <p><ShieldCheck/>Saved only in this browser’s preview settings. It does not alter your DynastyHQ career data.</p>
+    </section>
   </div>;
 }
 

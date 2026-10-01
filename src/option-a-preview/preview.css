@@ -980,3 +980,469 @@ button:active{transform:translateY(1px)}
   }
   .newsroom-page .reference-journal-box{min-height:0}
 }
+
+
+/* Precision match pass v5 — true reference geometry for Home */
+@media(min-width:701px){
+  /* Do not collapse the approved three-card composition at tablet/desktop widths */
+  .home-page .home-cards{
+    display:grid!important;
+    grid-template-columns:1fr 1fr 1.08fr!important;
+    gap:10px!important;
+  }
+  .home-page .reference-newsroom-card{grid-column:auto!important}
+  .home-page .journey-strip{
+    display:grid!important;
+    grid-template-columns:1.05fr 1.28fr 1.25fr 1.25fr!important;
+  }
+
+  /* Hero behaves like a designed broadcast plate, not flowing webpage text */
+  .home-page .hero{
+    min-height:510px!important;
+  }
+  .home-page .hero-copy{
+    width:50%!important;
+    min-width:500px;
+    padding:29px 0 26px 30px!important;
+  }
+  .home-page .hero h1{
+    width:560px;
+    max-width:560px!important;
+    font-size:clamp(72px,6.1vw,100px)!important;
+    line-height:.80!important;
+    letter-spacing:-2px!important;
+  }
+  .home-page .hero h1>span,
+  .home-page .hero h1>em{
+    display:block!important;
+    white-space:nowrap!important;
+  }
+  .home-page .hero-score{
+    width:430px!important;
+    min-width:430px!important;
+    height:76px;
+    min-height:76px!important;
+    display:grid!important;
+    grid-template-columns:1fr 70px 1fr!important;
+    align-items:center!important;
+    gap:0!important;
+    margin-top:14px!important;
+    padding:6px 10px!important;
+    overflow:hidden;
+  }
+  .home-page .hero-score-team{
+    min-width:0;
+    display:grid!important;
+    grid-template-columns:54px 1fr!important;
+    grid-template-rows:42px 14px!important;
+    align-items:center!important;
+    column-gap:7px!important;
+  }
+  .home-page .hero-score-team .team-logo{
+    grid-row:1 / 3!important;
+    grid-column:1!important;
+    width:50px!important;
+    height:50px!important;
+    font-size:40px!important;
+    margin:0!important;
+  }
+  .home-page .hero-score-team strong{
+    grid-row:1!important;
+    grid-column:2!important;
+    align-self:end!important;
+    font-size:39px!important;
+    line-height:.88!important;
+  }
+  .home-page .hero-score-team small{
+    grid-row:2!important;
+    grid-column:2!important;
+    align-self:start!important;
+    text-align:left!important;
+    font-size:7px!important;
+    letter-spacing:1px!important;
+  }
+  .home-page .away-team{
+    grid-template-columns:1fr 54px!important;
+  }
+  .home-page .away-team strong{
+    grid-column:1!important;
+    text-align:right;
+  }
+  .home-page .away-team .team-logo{
+    grid-column:2!important;
+  }
+  .home-page .away-team small{
+    grid-column:1!important;
+    text-align:right!important;
+  }
+  .home-page .hero-final{
+    height:45px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0!important;
+    border-left:1px solid #54766d!important;
+    border-right:1px solid #54766d!important;
+    font-size:8px!important;
+  }
+  .home-page .hero-stats{
+    width:430px!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,1fr)!important;
+    margin-top:10px!important;
+  }
+  .home-page .hero-stats>div{
+    padding:0 16px!important;
+    border-right:1px solid var(--yellow)!important;
+  }
+  .home-page .hero-stats>div:last-child{border-right:0!important}
+  .home-page .hero-actions{
+    width:535px!important;
+    display:grid!important;
+    grid-template-columns:1.12fr .98fr!important;
+    gap:12px!important;
+    margin-top:16px!important;
+  }
+
+  /* Bottom three cards are one coordinated module */
+  .home-page .dark-card,
+  .home-page .paper-card{
+    height:245px!important;
+    min-height:245px!important;
+    overflow:hidden;
+  }
+  .home-page .reference-next-week,
+  .home-page .reference-wrap,
+  .home-page .reference-newsroom-card{
+    display:flex;
+    flex-direction:column;
+  }
+  .home-page .reference-next-week .yellow,
+  .home-page .reference-wrap .outline{
+    margin-top:auto;
+  }
+  .home-page .reference-next-week .next-body{
+    flex:0 0 82px;
+  }
+  .home-page .reference-next-week p{
+    margin:3px 0 8px!important;
+  }
+  .home-page .reference-wrap .check-row{
+    margin:9px 4px!important;
+  }
+  .home-page .reference-newsroom-card .news-flex{
+    flex:0 0 112px;
+    margin:8px 0 4px!important;
+  }
+  .home-page .reference-newsroom-card .pod-mini{
+    flex:1;
+    min-height:68px;
+    display:grid!important;
+    grid-template-columns:78px 1fr 88px 44px!important;
+    align-items:center!important;
+    gap:9px!important;
+    padding:8px 0 0!important;
+    border-top:1px solid #d5cec0!important;
+  }
+  .home-page .reference-newsroom-card .pod-mini img{
+    width:78px!important;
+    height:54px!important;
+  }
+  .home-page .pod-copy{
+    display:grid!important;
+    text-align:left;
+  }
+  .home-page .pod-copy b{font-size:10px}
+  .home-page .pod-copy small{font-size:8px;margin-top:2px}
+  .home-page .pod-copy em{
+    font-style:normal;
+    font-size:7px;
+    margin-top:2px;
+  }
+  .home-page .pod-wave{
+    height:28px;
+    display:flex!important;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+  }
+  .home-page .pod-wave i{
+    width:2px;
+    border-radius:4px;
+    background:#cbc6bc;
+  }
+  .home-page .pod-wave i:nth-child(1){height:5px}
+  .home-page .pod-wave i:nth-child(2){height:11px}
+  .home-page .pod-wave i:nth-child(3){height:17px}
+  .home-page .pod-wave i:nth-child(4){height:9px}
+  .home-page .pod-wave i:nth-child(5){height:22px}
+  .home-page .pod-wave i:nth-child(6){height:14px}
+  .home-page .pod-wave i:nth-child(7){height:19px}
+  .home-page .pod-wave i:nth-child(8){height:8px}
+  .home-page .pod-wave i:nth-child(9){height:15px}
+  .home-page .pod-wave i:nth-child(10){height:21px}
+  .home-page .pod-wave i:nth-child(11){height:10px}
+  .home-page .pod-wave i:nth-child(12){height:6px}
+  .home-page .pod-play{
+    width:42px;height:42px;border-radius:50%;
+    display:grid!important;place-items:center;
+    background:#075638;color:white;
+  }
+  .home-page .pod-play svg{width:17px;height:17px}
+
+  .home-page .journey-strip{
+    height:76px;
+    min-height:76px;
+    margin-top:11px!important;
+  }
+  .home-page .journey-strip>div{
+    min-height:74px!important;
+    padding:11px 16px!important;
+  }
+  .journey-helmet{
+    position:relative;
+    grid-row:1/3;
+    width:38px;height:31px!important;
+    border:4px solid #f6f4da;
+    border-radius:55% 55% 42% 45%;
+    display:block!important;
+  }
+  .journey-helmet::before{
+    content:"";
+    position:absolute;
+    right:-9px;bottom:-7px;
+    width:17px;height:15px;
+    border-right:4px solid #f6f4da;
+    border-bottom:4px solid #f6f4da;
+    border-radius:0 0 8px 0;
+  }
+  .journey-helmet::after{
+    content:"";
+    position:absolute;
+    left:7px;bottom:-7px;
+    width:15px;height:8px;
+    border-bottom:4px solid #f6f4da;
+  }
+}
+
+/* Override the older mid-width collapse that made the desktop preview generic */
+@media(min-width:701px) and (max-width:1000px){
+  .home-page .home-cards{
+    grid-template-columns:1fr 1fr 1.08fr!important;
+  }
+  .home-page .reference-newsroom-card{grid-column:auto!important}
+  .home-page .journey-strip{
+    grid-template-columns:1.05fr 1.28fr 1.25fr 1.25fr!important;
+  }
+  .home-page .hero-copy{
+    width:53%!important;
+    min-width:440px;
+    padding-left:24px!important;
+  }
+  .home-page .hero h1{
+    width:470px;
+    max-width:470px!important;
+    font-size:clamp(60px,7.4vw,76px)!important;
+  }
+  .home-page .hero-score,
+  .home-page .hero-stats{width:390px!important;min-width:390px!important}
+  .home-page .hero-actions{width:485px!important}
+  .home-page .home-cards{
+    gap:8px!important;
+  }
+  .home-page .dark-card,
+  .home-page .paper-card{
+    height:220px!important;
+    min-height:220px!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  .home-page .card-title{font-size:9px!important;height:34px!important}
+  .home-page .reference-next-week .next-body{flex-basis:70px!important}
+  .home-page .team-logo.big{width:48px!important;height:48px!important;font-size:34px!important}
+  .home-page .next-body h3{font-size:17px!important}
+  .home-page .reference-wrap .check-row{margin:6px 2px!important}
+  .home-page .reference-wrap .check-row>span{width:24px!important;height:24px!important}
+  .home-page .reference-newsroom-card .news-flex{grid-template-columns:1fr 76px!important;flex-basis:94px!important}
+  .home-page .reference-newsroom-card .news-flex h3{font-size:17px!important}
+  .home-page .reference-newsroom-card .news-flex p{font-size:7px!important}
+  .home-page .reference-newsroom-card .thumb.photo-tile{height:76px!important;min-height:76px!important}
+  .home-page .reference-newsroom-card .pod-mini{
+    grid-template-columns:60px 1fr 60px 34px!important;
+  }
+  .home-page .reference-newsroom-card .pod-mini img{width:60px!important;height:43px!important}
+  .home-page .pod-play{width:34px!important;height:34px!important}
+}
+
+/* MOBILE: use the approved phone composition, not a squeezed desktop layout */
+@media(max-width:700px){
+  .home-page{padding-bottom:8px!important}
+  .home-page .hero{
+    min-height:470px!important;
+    height:470px!important;
+    overflow:hidden!important;
+  }
+  .home-page .hero::before{
+    width:100%!important;
+    height:100%!important;
+    inset:0!important;
+    background-size:cover!important;
+    background-position:58% 23%!important;
+    -webkit-mask-image:none!important;
+    mask-image:none!important;
+    opacity:1!important;
+  }
+  .home-page .hero::after{
+    background:
+      linear-gradient(0deg,
+        rgba(0,23,17,.99) 0%,
+        rgba(0,23,17,.96) 24%,
+        rgba(0,23,17,.70) 43%,
+        rgba(0,23,17,.24) 62%,
+        rgba(0,23,17,.04) 82%,
+        rgba(0,23,17,.02) 100%),
+      linear-gradient(90deg,rgba(0,20,15,.44) 0%,transparent 60%)!important;
+  }
+  .home-page .hero-copy{
+    position:absolute!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    top:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    padding:0 16px 18px!important;
+  }
+  .home-page .eyebrow{
+    margin:0 0 7px!important;
+    font-size:8px!important;
+    letter-spacing:3.8px!important;
+  }
+  .home-page .hero h1{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0!important;
+    font-size:49px!important;
+    line-height:.80!important;
+    letter-spacing:-1.4px!important;
+    transform:skew(-2deg)!important;
+  }
+  .home-page .hero h1>span,
+  .home-page .hero h1>em{
+    display:block!important;
+    white-space:nowrap!important;
+  }
+  .home-page .hero-score{
+    width:100%!important;
+    min-width:0!important;
+    height:65px!important;
+    min-height:65px!important;
+    display:grid!important;
+    grid-template-columns:1fr 54px 1fr!important;
+    margin:12px 0 0!important;
+    padding:5px 8px!important;
+  }
+  .home-page .hero-score-team{
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:42px 1fr!important;
+    grid-template-rows:35px 12px!important;
+    column-gap:5px!important;
+  }
+  .home-page .hero-score-team .team-logo{
+    width:39px!important;height:39px!important;font-size:31px!important;
+    grid-row:1/3!important;
+  }
+  .home-page .hero-score-team strong{
+    font-size:31px!important;
+    line-height:.9!important;
+  }
+  .home-page .hero-score-team small{
+    font-size:6px!important;
+  }
+  .home-page .away-team{
+    grid-template-columns:1fr 42px!important;
+  }
+  .home-page .hero-final{
+    height:34px!important;
+    font-size:7px!important;
+  }
+  .home-page .hero-stats{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,1fr)!important;
+    margin-top:10px!important;
+  }
+  .home-page .hero-stats>div{padding:0 7px!important}
+  .home-page .hero-stats strong{font-size:25px!important}
+  .home-page .hero-stats span{font-size:6px!important;letter-spacing:1px!important}
+  .home-page .hero-actions{
+    width:100%!important;
+    display:block!important;
+    margin-top:13px!important;
+  }
+  .home-page .hero-actions .yellow{
+    width:100%!important;
+    min-height:43px!important;
+  }
+  .home-page .hero-actions .outline{display:none!important}
+
+  .home-page .home-cards{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    margin-top:8px!important;
+  }
+  .home-page .reference-wrap{display:none!important}
+  .home-page .reference-next-week,
+  .home-page .reference-newsroom-card{
+    height:auto!important;
+    min-height:0!important;
+  }
+  .home-page .reference-next-week{
+    min-height:175px!important;
+  }
+  .home-page .reference-next-week .next-body{
+    min-height:65px!important;
+    padding:7px 3px!important;
+  }
+  .home-page .reference-next-week p{
+    min-height:0!important;
+    margin:3px 0 8px!important;
+  }
+  .home-page .reference-newsroom-card{
+    min-height:154px!important;
+  }
+  .home-page .reference-newsroom-card .news-flex{
+    display:grid!important;
+    grid-template-columns:1fr 74px!important;
+    min-height:76px!important;
+    margin:7px 0 4px!important;
+  }
+  .home-page .reference-newsroom-card .news-flex h3{
+    font-size:18px!important;
+    line-height:.98!important;
+  }
+  .home-page .reference-newsroom-card .news-flex p{
+    font-size:7px!important;
+    line-height:1.35!important;
+  }
+  .home-page .reference-newsroom-card .thumb.photo-tile{
+    width:74px!important;height:74px!important;min-height:74px!important;
+  }
+  .home-page .reference-newsroom-card .pod-mini{
+    min-height:56px!important;
+    display:grid!important;
+    grid-template-columns:54px 1fr 42px!important;
+    gap:8px!important;
+    border-top:1px solid #d5cec0!important;
+    padding-top:6px!important;
+  }
+  .home-page .reference-newsroom-card .pod-mini img{width:54px!important;height:40px!important}
+  .home-page .pod-wave{display:none!important}
+  .home-page .pod-copy em{display:none!important}
+  .home-page .pod-play{
+    width:36px!important;height:36px!important;
+    justify-self:end;
+  }
+  .home-page .journey-strip{display:none!important}
+}

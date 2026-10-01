@@ -12325,34 +12325,6 @@ select optgroup{
   grid-column:auto;
 }
 
-/* Windows desktop was resolving the display stack to Impact, which made the
-   largest headlines noticeably heavier than the phone rendering. Prefer the
-   lighter condensed face on desktop only; mobile styling is intentionally left alone. */
-@media(min-width:701px){
-  :root{
-    --display:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed",sans-serif;
-  }
-  .hero h1,
-  .hub-hero h1,
-  .career-identity h1,
-  .chronicle-hero-redesign h1,
-  .offseason-hero-copy h1,
-  .pod-show-identity h1,
-  .processing-stage-head h1,
-  .national-headline-block h1,
-  .article-skin-national .digital-feature-head h1{
-    font-family:var(--display)!important;
-    font-weight:700!important;
-    -webkit-font-smoothing:antialiased;
-    text-rendering:optimizeLegibility;
-  }
-  .hero h1,
-  .chronicle-hero-redesign h1,
-  .career-identity h1{
-    letter-spacing:-1.25px!important;
-  }
-}
-
 @media(max-width:700px){
   .profile-photo-change{
     width:28px;

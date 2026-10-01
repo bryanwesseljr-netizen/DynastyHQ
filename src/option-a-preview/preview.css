@@ -12203,3 +12203,164 @@ button:active{transform:translateY(1px)}
   background:#2a1414;
   color:#f3aaa3!important;
 }
+
+
+/* Precision match pass v41 — contrast, career profile photo, lighter desktop display */
+
+/* Native dropdown menus: keep the closed controls on-brand, but make the opened
+   option list light with dark text so every value is readable on desktop. */
+select option{
+  background:#f4f1e8!important;
+  color:#0a2119!important;
+  font-weight:700!important;
+}
+select option:checked{
+  background:#0b5a46!important;
+  color:#ffffff!important;
+}
+select optgroup{
+  background:#e5e0d4!important;
+  color:#0a2119!important;
+  font-weight:800!important;
+}
+
+/* One player identity photo per career. Weekly/article/page hero images remain
+   separate so a game photo never silently becomes the player's profile image. */
+.player-photo{
+  position:relative;
+}
+.profile-photo-change{
+  position:absolute;
+  z-index:5;
+  top:7px;
+  right:7px;
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.68);
+  border-radius:50%;
+  background:rgba(0,35,26,.90);
+  color:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.22);
+}
+.profile-photo-change svg{
+  width:14px;
+  height:14px;
+}
+.back-photo.photo-tile .profile-photo-change.compact{
+  top:5px;
+  right:5px;
+  width:26px;
+  height:26px;
+  padding:0;
+  text-shadow:none;
+}
+.back-photo.photo-tile .profile-photo-change.compact svg{
+  width:12px;
+  height:12px;
+}
+.career-profile-photo-button{
+  width:100%;
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  margin-top:11px;
+  border:1px solid #0b644d;
+  border-radius:4px;
+  background:#075c43;
+  color:#fff;
+  font-size:7px;
+  font-weight:800;
+  letter-spacing:.45px;
+}
+.career-profile-photo-button svg{
+  width:13px;
+  height:13px;
+}
+.profile-photo-preview{
+  position:relative;
+  height:220px;
+  margin-top:15px;
+  overflow:hidden;
+  border:1px solid #315c51;
+  border-radius:8px;
+  background:#00241c;
+}
+.profile-photo-preview::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:var(--preview-photo);
+  background-size:cover;
+  background-position:var(--photo-x,50%) 28%;
+}
+.profile-photo-preview::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(0deg,rgba(0,22,16,.32),transparent 48%);
+}
+.profile-photo-preview>div{
+  position:absolute;
+  z-index:2;
+  inset:12px;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:6px;
+  pointer-events:none;
+}
+.profile-photo-explainer{
+  margin:13px 0 0;
+  color:#b8c9c2;
+  font-size:8px;
+  line-height:1.6;
+}
+.profile-photo-editor .visual-editor-actions{
+  grid-template-columns:1fr;
+}
+.profile-photo-editor .visual-upload{
+  grid-column:auto;
+}
+
+/* Windows desktop was resolving the display stack to Impact, which made the
+   largest headlines noticeably heavier than the phone rendering. Prefer the
+   lighter condensed face on desktop only; mobile styling is intentionally left alone. */
+@media(min-width:701px){
+  :root{
+    --display:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed",sans-serif;
+  }
+  .hero h1,
+  .hub-hero h1,
+  .career-identity h1,
+  .chronicle-hero-redesign h1,
+  .offseason-hero-copy h1,
+  .pod-show-identity h1,
+  .processing-stage-head h1,
+  .national-headline-block h1,
+  .article-skin-national .digital-feature-head h1{
+    font-family:var(--display)!important;
+    font-weight:700!important;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .hero h1,
+  .chronicle-hero-redesign h1,
+  .career-identity h1{
+    letter-spacing:-1.25px!important;
+  }
+}
+
+@media(max-width:700px){
+  .profile-photo-change{
+    width:28px;
+    height:28px;
+    top:5px;
+    right:5px;
+  }
+  .profile-photo-preview{
+    height:200px;
+  }
+}

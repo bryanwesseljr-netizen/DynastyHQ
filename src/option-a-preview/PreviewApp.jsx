@@ -126,9 +126,9 @@ function HomePage({go,openArticle,notify}){
         <span className="eyebrow">WEEK 10 <i/> FINAL</span>
         <h1><span>A NIGHT TO</span><em>REMEMBER</em></h1>
         <div className="hero-score">
-          <div><Logo/><strong>54</strong><small>OREGON</small></div>
-          <span>FINAL</span>
-          <div><strong>48</strong><Logo team="I" type="illinois"/><small>ILLINOIS</small></div>
+          <div className="hero-score-team home-team"><Logo/><strong>54</strong><small>OREGON</small></div>
+          <span className="hero-final">FINAL</span>
+          <div className="hero-score-team away-team"><strong>48</strong><Logo team="I" type="illinois"/><small>ILLINOIS</small></div>
         </div>
         <div className="hero-stats">
           <div><strong>286</strong><span>PASS YDS</span></div>
@@ -175,14 +175,16 @@ function HomePage({go,openArticle,notify}){
         </div>
         <button className="pod-mini" onClick={()=>go('newsroom')}>
           <img src={podcastCover} alt="The Huddle"/>
-          <span><b>THE HUDDLE</b><small>Illinois recap · 28:14</small></span><Play/>
+          <span className="pod-copy"><b>THE HUDDLE</b><small>Illinois recap</small><em>28:14</em></span>
+          <span className="pod-wave" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></span>
+          <span className="pod-play"><Play/></span>
         </button>
       </article>
     </section>
 
     <section className="journey-strip">
       <div><b>YOUR JOURNEY</b><small>One career. Every chapter.</small></div>
-      <div className="stage active"><span>🏈</span><b>Player</b><small>Build your legacy<br/>as a college star</small></div>
+      <div className="stage active"><span className="journey-helmet" aria-hidden="true"></span><b>Player</b><small>Build your legacy<br/>as a college star</small></div>
       <div className="stage"><Headphones/><b>Coordinator</b><small>Future Mode</small></div>
       <div className="stage"><Trophy/><b>Head coach</b><small>Future Mode</small></div>
     </section>

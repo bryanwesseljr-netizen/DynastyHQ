@@ -45,6 +45,7 @@ function App(){
   const pageTitle = useMemo(()=>pages.find(p=>p[0]===page)?.[1] || 'Home',[page]);
   const go = (next) => { setPage(next); if(next!=='newsroom') setArticleOpen(false); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const openNewsArticle = () => { setPage('newsroom'); setArticleOpen(true); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
+  const openPodcast = (tab='episode') => { setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const notify = (message) => { setToast(message); window.setTimeout(()=>setToast(''),2200); };
 
   return <div className="site-shell">
@@ -92,17 +93,17 @@ function App(){
     </header>
 
     <main>
-      {page==='home' && <HomePage go={go} openArticle={openNewsArticle} notify={notify}/>}
-      {page==='gamehub' && <GameHub go={go} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>}
-      {page==='newsroom' && <Newsroom articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} go={go} playing={playing} setPlaying={setPlaying}/>}
+      {page==='home' && <HomePage go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
+      {page==='gamehub' && <GameHub go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>}
     </main>
 
     <nav className="mobile-bottom">
       <button className={page==='home'?'active':''} onClick={()=>go('home')}><Home/><span>Home</span></button>
       <button className={page==='gamehub'?'active':''} onClick={()=>go('gamehub')}><CalendarDays/><span>Week</span></button>
-      <button className={page==='podcast'||page==='newsroom'?'active':''} onClick={()=>go('podcast')}><Play/><span>Media</span></button>
-      <button onClick={()=>notify('Career preview coming after the three approved screens.')}><BarChart3/><span>Career</span></button>
+      <button className={page==='newsroom'?'active':''} onClick={()=>go('newsroom')}><Newspaper/><span>News</span></button>
+      <button className={page==='podcast'?'active':''} onClick={()=>openPodcast('episode')}><Headphones/><span>Podcast</span></button>
       <button onClick={()=>setMobileMenu(v=>!v)}><MoreHorizontal/><span>More</span></button>
     </nav>
 
@@ -121,7 +122,7 @@ function ScoreRibbon(){
   </div>;
 }
 
-function HomePage({go,openArticle,notify}){
+function HomePage({go,openArticle,openPodcast,notify}){
   return <div className="page home-page">
     <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${playerPhoto})`}}>
       <div className="hero-overlay"/>
@@ -176,7 +177,7 @@ function HomePage({go,openArticle,notify}){
           <div><h3>Wessel leads Oregon past Illinois</h3><p>Oregon secures a 54–48 victory behind 286 passing yards, 124 rush yards and 7 total TD from Bryan Wessel.</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/>
         </div>
-        <button className="pod-mini" onClick={()=>go('podcast')}>
+        <button className="pod-mini" onClick={()=>openPodcast('episode')}>
           <img src={podcastCover} alt="The Huddle"/>
           <span className="pod-copy"><b>THE HUDDLE</b><small>Illinois recap</small><em>28:14</em></span>
           <span className="pod-wave" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></span>
@@ -197,7 +198,7 @@ function HomePage({go,openArticle,notify}){
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub}){ return <div className="check-row"><span><Check/></span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({go,statsTab,setStatsTab,notify}){
+function GameHub({go,openPodcast,statsTab,setStatsTab,notify}){
   const statContent = statsTab==='player'
     ? [['286','PASSING YARDS'],['124','RUSHING YARDS'],['410','TOTAL YARDS'],['7','TOTAL TD']]
     : statsTab==='team'
@@ -240,9 +241,9 @@ function GameHub({go,statsTab,setStatsTab,notify}){
         <article className="paper-panel material reference-material">
           <h2>GAME MATERIAL</h2>
           <div className="material-grid">
-            <Material icon={FileText} title="Box score" sub="Game statistics and team totals attached."/>
-            <Material icon={ClipboardList} title="Scoring summary" sub="All scoring drives attached to this game."/>
-            <Material icon={UserRound} title="Player ratings" sub="Individual player ratings attached."/>
+            <Material icon={FileText} title="Box score" sub="Game statistics and team totals attached." onClick={()=>notify('Box score detail is sample-only in this visual preview.')}/>
+            <Material icon={ClipboardList} title="Scoring summary" sub="All scoring drives attached to this game." onClick={()=>setStatsTab('drives')}/>
+            <Material icon={UserRound} title="Player ratings" sub="Individual player ratings attached." onClick={()=>notify('Player ratings detail is sample-only in this visual preview.')}/>
           </div>
         </article>
       </div>
@@ -251,16 +252,16 @@ function GameHub({go,statsTab,setStatsTab,notify}){
         <article className="paper-panel coverage reference-coverage">
           <h2>WEEKLY COVERAGE</h2>
           <CoverageRow icon={Newspaper} title="Newsroom edition" sub="Game recap and analysis." onClick={()=>go('newsroom')}/>
-          <CoverageRow icon={Mic2} title="Podcast transcript" sub="Full episode transcript." onClick={()=>go('newsroom')}/>
-          <CoverageRow icon={BookOpen} title="NotebookLM pack" sub="Game files and key moments." onClick={()=>notify('NotebookLM pack is a sample interaction in this preview.')}/>
+          <CoverageRow icon={Mic2} title="Podcast transcript" sub="Full episode transcript." onClick={()=>openPodcast('transcript')}/>
+          <CoverageRow icon={BookOpen} title="NotebookLM pack" sub="Game files and key moments." onClick={()=>openPodcast('notebook')}/>
           <button className="yellow full" onClick={()=>go('newsroom')}><Zap/>OPEN COVERAGE<ChevronRight/></button>
         </article>
 
         <article className="paper-panel development reference-development">
           <h2>PLAYER DEVELOPMENT</h2>
-          <SimpleRow icon={BarChart3} title="Attribute changes" sub="See how this week impacted your player."/>
-          <SimpleRow icon={UserRound} title="Coach trust" sub="Build your role and earn opportunities."/>
-          <SimpleRow icon={ClipboardList} title="Training notes" sub="Focus areas for next week."/>
+          <SimpleRow icon={BarChart3} title="Attribute changes" sub="See how this week impacted your player." onClick={()=>notify('Attribute-change details are sample-only in this visual preview.')}/>
+          <SimpleRow icon={UserRound} title="Coach trust" sub="Build your role and earn opportunities." onClick={()=>notify('Coach-trust details are sample-only in this visual preview.')}/>
+          <SimpleRow icon={ClipboardList} title="Training notes" sub="Focus areas for next week." onClick={()=>notify('Training-note details are sample-only in this visual preview.')}/>
           <button className="ghost full" onClick={()=>notify('Player development details are sample-only.')}><BarChart3/>REVIEW CHANGES<ChevronRight/></button>
         </article>
       </div>
@@ -274,9 +275,9 @@ function GameHub({go,statsTab,setStatsTab,notify}){
   </div>;
 }
 
-function Material({icon:Icon,title,sub}){ return <button className="material-card"><Icon/><div><b>{title}</b><small>{sub}</small></div><span><Check/></span><ChevronRight/></button>; }
+function Material({icon:Icon,title,sub,onClick}){ return <button className="material-card" onClick={onClick}><Icon/><div><b>{title}</b><small>{sub}</small></div><span><Check/></span><ChevronRight/></button>; }
 function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
-function SimpleRow({icon:Icon,title,sub}){ return <button className="coverage-row simple"><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
+function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row simple" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
 function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
   const transcript = [
@@ -403,27 +404,27 @@ function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
     <section className="previous-episodes">
       <div className="previous-head"><div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div><button onClick={()=>notify('Full podcast archive is sample-only in this preview.')}>View all episodes<ChevronRight/></button></div>
       <div className="episode-cards">
-        <button><span>WEEK 9</span><b>Michigan: The Road Test</b><small>24:38 • Postgame</small><Play/></button>
-        <button><span>WEEK 8</span><b>Ohio State: Under the Lights</b><small>31:06 • Postgame</small><Play/></button>
-        <button><span>PRESEASON</span><b>Named the Starter</b><small>18:22 • Career Special</small><Play/></button>
+        <button onClick={()=>notify('Week 9 archived episode is sample-only in this visual preview.')}><span>WEEK 9</span><b>Michigan: The Road Test</b><small>24:38 • Postgame</small><Play/></button>
+        <button onClick={()=>notify('Week 8 archived episode is sample-only in this visual preview.')}><span>WEEK 8</span><b>Ohio State: Under the Lights</b><small>31:06 • Postgame</small><Play/></button>
+        <button onClick={()=>notify('Preseason archived episode is sample-only in this visual preview.')}><span>PRESEASON</span><b>Named the Starter</b><small>18:22 • Career Special</small><Play/></button>
       </div>
     </section>
   </div>;
 }
 
-function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}){
+function Newsroom({articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
   return <div className="page newsroom-page">
     <section className="journal">
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>OREGON EDITION • SEASON 4 • WEEK 10</span></div>
         <div className="journal-tabs">
           <button className={!articleOpen?'active':''} onClick={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
-          <button>Local Beat</button><button>National</button><button>Archive</button>
+          <button onClick={()=>notify('Local Beat is sample-only in this visual preview.')}>Local Beat</button><button onClick={()=>notify('National coverage is sample-only in this visual preview.')}>National</button><button onClick={()=>notify('Newsroom archive is sample-only in this visual preview.')}>Archive</button>
         </div>
       </header>
 
       {articleOpen ? (
-        <NewsroomArticle onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go}/>
+        <NewsroomArticle onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go} openPodcast={openPodcast} notify={notify}/>
       ) : (
         <>
           <section className="lead-story">
@@ -453,10 +454,10 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}
             <article className="journal-box huddle reference-journal-box">
               <CardHeader title="THE HUDDLE" light/>
               <div className="huddle-grid">
-                <button className="cover-play" onClick={()=>go('podcast')}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
+                <button className="cover-play" onClick={()=>openPodcast('episode')}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
                 <div><small>Week 10</small><h3>The Illinois Shootout</h3><p>Game breakdown, key plays, and what’s next for Wessel and the Ducks.</p><b>28:14</b></div>
               </div>
-              <div className="huddle-actions"><button onClick={()=>go('podcast')}><FileText/>Print transcript</button><button onClick={()=>go('podcast')}><Zap/>NotebookLM pack</button></div>
+              <div className="huddle-actions"><button onClick={()=>openPodcast('transcript')}><FileText/>Print transcript</button><button onClick={()=>openPodcast('notebook')}><Zap/>NotebookLM pack</button></div>
               {playing && <div className="now-playing">▶ Playing preview audio…</div>}
             </article>
 
@@ -471,7 +472,7 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}
   </div>;
 }
 
-function NewsroomArticle({onBack,go}){
+function NewsroomArticle({onBack,go,openPodcast,notify}){
   return <article className="newsroom-article digital-feature">
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
@@ -546,16 +547,16 @@ function NewsroomArticle({onBack,go}){
         <section className="related-card">
           <span>RELATED COVERAGE</span>
           <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
-          <button onClick={()=>go('podcast')}><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
-          <button><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
+          <button onClick={()=>openPodcast('episode')}><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
+          <button onClick={()=>notify('Career File is sample-only in this visual preview.')}><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
         </section>
       </aside>
     </div>
 
     <section className="digital-related-strip">
       <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the numbers behind the win</b></span><ChevronRight/></button>
-      <button onClick={()=>go('podcast')}><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
-      <button><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
+      <button onClick={()=>openPodcast('episode')}><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
+      <button onClick={()=>notify('Career File is sample-only in this visual preview.')}><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
     </section>
   </article>;
 }

@@ -2763,3 +2763,433 @@ button:active{transform:translateY(1px)}
     padding-bottom:12px!important;
   }
 }
+
+
+/* Precision match pass v13 — Game Hub final fidelity */
+.gamehub-page .mobile-label{display:none}
+
+@media(min-width:701px){
+  .gamehub-page .hub-hero{
+    min-height:148px!important;
+    padding:18px 28px!important;
+    border-radius:0!important;
+    overflow:hidden!important;
+  }
+  .gamehub-page .hub-hero h1{
+    font-size:74px!important;
+    line-height:.82!important;
+    letter-spacing:-1.6px!important;
+  }
+  .gamehub-page .hub-hero p{
+    margin-top:9px!important;
+    font-size:10px!important;
+    letter-spacing:2.5px!important;
+  }
+  .gamehub-page .hub-hero .import{
+    min-width:215px!important;
+    min-height:44px!important;
+    font-size:9px!important;
+  }
+
+  .gamehub-page .complete-strip{
+    min-height:64px!important;
+    padding:10px 20px!important;
+  }
+  .gamehub-page .complete-strip h2{
+    font-size:16px!important;
+    line-height:1!important;
+  }
+  .gamehub-page .complete-strip p{
+    font-size:8px!important;
+    margin-top:4px!important;
+  }
+  .gamehub-page .flow{
+    min-width:56%!important;
+  }
+  .gamehub-page .flow-step{
+    font-size:8px!important;
+  }
+  .gamehub-page .flow-step i{
+    width:28px!important;
+    height:28px!important;
+  }
+
+  .gamehub-page .hub-grid{
+    grid-template-columns:minmax(0,1.72fr) minmax(320px,.92fr)!important;
+    gap:10px!important;
+  }
+
+  .gamehub-page .reference-verified{
+    padding:13px 17px 12px!important;
+  }
+  .gamehub-page .reference-verified .panel-head{
+    min-height:34px!important;
+    align-items:center!important;
+  }
+  .gamehub-page .reference-verified .panel-head h2{
+    font-size:16px!important;
+  }
+  .gamehub-page .tabs{
+    height:34px!important;
+  }
+  .gamehub-page .tabs button{
+    height:34px!important;
+    min-width:125px!important;
+    font-size:8px!important;
+  }
+  .gamehub-page .player-summary{
+    grid-template-columns:162px minmax(0,1fr)!important;
+    gap:14px!important;
+    margin-top:13px!important;
+  }
+  .gamehub-page .fake-player.photo-tile{
+    height:146px!important;
+    border-radius:6px!important;
+    background-position:center 27%!important;
+  }
+  .gamehub-page .player-name{
+    min-height:48px!important;
+  }
+  .gamehub-page .player-name .team-logo{
+    width:48px!important;
+    height:48px!important;
+    font-size:39px!important;
+  }
+  .gamehub-page .player-name h3{
+    font-size:14px!important;
+    line-height:1!important;
+  }
+  .gamehub-page .player-name p{
+    font-size:7px!important;
+  }
+  .gamehub-page .stat-grid{
+    margin-top:9px!important;
+    border-radius:5px!important;
+  }
+  .gamehub-page .stat-grid>div{
+    min-height:76px!important;
+    padding:10px 4px!important;
+  }
+  .gamehub-page .stat-grid strong{
+    font-size:26px!important;
+  }
+  .gamehub-page .stat-grid span{
+    font-size:6.5px!important;
+  }
+  .gamehub-page .panel-actions{
+    margin-top:11px!important;
+  }
+  .gamehub-page .panel-actions .ghost{
+    min-height:37px!important;
+    font-size:8px!important;
+  }
+
+  .gamehub-page .reference-material{
+    padding:12px 17px!important;
+  }
+  .gamehub-page .reference-material h2{
+    font-size:16px!important;
+  }
+  .gamehub-page .material-grid{
+    gap:9px!important;
+    margin-top:9px!important;
+  }
+  .gamehub-page .material-card{
+    min-height:96px!important;
+    padding:10px!important;
+  }
+  .gamehub-page .material-card b{
+    font-size:9px!important;
+  }
+  .gamehub-page .material-card small{
+    font-size:7px!important;
+  }
+
+  .gamehub-page .reference-coverage,
+  .gamehub-page .reference-development{
+    padding:12px 16px!important;
+  }
+  .gamehub-page .reference-coverage h2,
+  .gamehub-page .reference-development h2{
+    font-size:16px!important;
+  }
+  .gamehub-page .coverage-row{
+    min-height:44px!important;
+    padding:8px 2px!important;
+  }
+  .gamehub-page .coverage-row b{
+    font-size:9px!important;
+  }
+  .gamehub-page .coverage-row small{
+    font-size:7px!important;
+  }
+  .gamehub-page .coverage-row em{
+    padding:5px 9px!important;
+    font-size:6.5px!important;
+  }
+  .gamehub-page .reference-coverage .yellow{
+    min-height:40px!important;
+    margin-top:9px!important;
+  }
+  .gamehub-page .reference-development .ghost{
+    min-height:35px!important;
+    margin-top:8px!important;
+  }
+
+  .gamehub-page .hub-bottom{
+    grid-template-columns:1.05fr .93fr 1.08fr!important;
+    gap:10px!important;
+    margin-top:8px!important;
+  }
+  .gamehub-page .hub-bottom>div,
+  .gamehub-page .hub-bottom>.yellow{
+    height:64px!important;
+    min-height:64px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child{
+    gap:10px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child>b{
+    font-size:10px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child>span{
+    font-size:8px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child>strong{
+    font-size:15px!important;
+  }
+  .gamehub-page .hub-bottom .team-logo{
+    width:40px!important;
+    height:40px!important;
+    font-size:28px!important;
+  }
+  .gamehub-page .hub-bottom>.yellow{
+    font-size:9px!important;
+  }
+  .gamehub-page .future svg{
+    width:25px!important;
+  }
+  .gamehub-page .future b{
+    font-size:9px!important;
+  }
+  .gamehub-page .future small{
+    font-size:7px!important;
+  }
+}
+
+/* Mid-width desktop remains structured, not cramped */
+@media(min-width:701px) and (max-width:1000px){
+  .gamehub-page .hub-grid{
+    grid-template-columns:minmax(0,1.65fr) minmax(270px,.95fr)!important;
+  }
+  .gamehub-page .tabs button{
+    min-width:92px!important;
+  }
+  .gamehub-page .player-summary{
+    grid-template-columns:130px minmax(0,1fr)!important;
+  }
+  .gamehub-page .fake-player.photo-tile{
+    height:130px!important;
+  }
+  .gamehub-page .stat-grid strong{
+    font-size:21px!important;
+  }
+  .gamehub-page .hub-bottom{
+    grid-template-columns:1fr .9fr 1.05fr!important;
+  }
+}
+
+/* Mobile = purpose-built Game Hub, not compressed desktop */
+@media(max-width:700px){
+  .gamehub-page .desktop-label{display:none!important}
+  .gamehub-page .mobile-label{display:inline!important}
+
+  .gamehub-page{
+    padding-left:7px!important;
+    padding-right:7px!important;
+  }
+  .gamehub-page .hub-hero{
+    position:relative!important;
+    min-height:118px!important;
+    padding:10px 10px 10px 126px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .gamehub-page .hub-hero::before{
+    width:126px!important;
+    height:100%!important;
+    left:0!important;
+    right:auto!important;
+    background-size:cover!important;
+    background-position:48% 28%!important;
+    -webkit-mask-image:linear-gradient(90deg,#000 0%,#000 72%,transparent 100%)!important;
+    mask-image:linear-gradient(90deg,#000 0%,#000 72%,transparent 100%)!important;
+  }
+  .gamehub-page .hub-hero::after{
+    background:linear-gradient(90deg,rgba(0,20,16,.10) 0%,rgba(0,20,16,.82) 38%,rgba(0,20,16,.96) 100%)!important;
+  }
+  .gamehub-page .hub-hero h1{
+    font-size:34px!important;
+    line-height:.84!important;
+    margin:0!important;
+  }
+  .gamehub-page .hub-hero p{
+    margin:5px 0 8px!important;
+    font-size:6.5px!important;
+    letter-spacing:1.2px!important;
+  }
+  .gamehub-page .hub-hero .import{
+    width:100%!important;
+    min-height:36px!important;
+    padding:0 8px!important;
+    font-size:7px!important;
+  }
+
+  .gamehub-page .complete-strip{
+    margin-top:7px!important;
+    padding:10px 10px 9px!important;
+  }
+  .gamehub-page .complete-strip h2{
+    font-size:13px!important;
+  }
+  .gamehub-page .complete-strip p{
+    font-size:7px!important;
+  }
+  .gamehub-page .flow{
+    margin-top:10px!important;
+  }
+  .gamehub-page .flow-step i{
+    width:24px!important;
+    height:24px!important;
+  }
+  .gamehub-page .flow-step{
+    font-size:6.5px!important;
+  }
+
+  .gamehub-page .hub-grid{
+    display:block!important;
+    margin-top:7px!important;
+  }
+  .gamehub-page .reference-verified{
+    padding:11px!important;
+  }
+  .gamehub-page .reference-verified .panel-head{
+    min-height:28px!important;
+  }
+  .gamehub-page .reference-verified .panel-head h2{
+    font-size:13px!important;
+  }
+  .gamehub-page .reference-verified .tabs{
+    display:none!important;
+  }
+  .gamehub-page .player-summary{
+    grid-template-columns:64px minmax(0,1fr)!important;
+    gap:8px!important;
+    margin-top:8px!important;
+  }
+  .gamehub-page .fake-player.photo-tile{
+    height:64px!important;
+    border-radius:5px!important;
+  }
+  .gamehub-page .player-name{
+    min-height:36px!important;
+    gap:7px!important;
+  }
+  .gamehub-page .player-name .team-logo{
+    width:34px!important;
+    height:34px!important;
+    font-size:27px!important;
+  }
+  .gamehub-page .player-name h3{
+    font-size:10px!important;
+  }
+  .gamehub-page .player-name p{
+    font-size:6px!important;
+  }
+  .gamehub-page .stat-grid{
+    grid-template-columns:repeat(2,1fr)!important;
+    margin-top:8px!important;
+  }
+  .gamehub-page .stat-grid>div{
+    min-height:58px!important;
+    padding:7px 3px!important;
+  }
+  .gamehub-page .stat-grid strong{
+    font-size:21px!important;
+  }
+  .gamehub-page .stat-grid span{
+    font-size:6px!important;
+  }
+  .gamehub-page .panel-actions{
+    margin-top:8px!important;
+  }
+  .gamehub-page .panel-actions .ghost:first-child{
+    width:100%!important;
+    min-height:35px!important;
+    font-size:7px!important;
+  }
+
+  .gamehub-page .reference-material,
+  .gamehub-page .reference-development{
+    display:none!important;
+  }
+
+  .gamehub-page .reference-coverage{
+    padding:10px 11px!important;
+    margin-bottom:7px!important;
+  }
+  .gamehub-page .reference-coverage h2{
+    font-size:13px!important;
+  }
+  .gamehub-page .coverage-row{
+    min-height:40px!important;
+    padding:7px 2px!important;
+  }
+  .gamehub-page .coverage-row b{
+    font-size:8px!important;
+  }
+  .gamehub-page .coverage-row small{
+    display:none!important;
+  }
+  .gamehub-page .coverage-row em{
+    padding:4px 7px!important;
+    font-size:6px!important;
+  }
+  .gamehub-page .reference-coverage .yellow{
+    min-height:37px!important;
+    font-size:7px!important;
+  }
+
+  .gamehub-page .hub-bottom{
+    display:block!important;
+    margin-top:0!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child{
+    min-height:52px!important;
+    height:52px!important;
+    display:flex!important;
+    padding:8px 10px!important;
+    gap:8px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child>b{
+    font-size:8px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child>span{
+    font-size:7px!important;
+  }
+  .gamehub-page .hub-bottom>div:first-child>strong{
+    font-size:12px!important;
+  }
+  .gamehub-page .hub-bottom .team-logo{
+    width:34px!important;
+    height:34px!important;
+    font-size:24px!important;
+  }
+  .gamehub-page .hub-bottom>.yellow,
+  .gamehub-page .hub-bottom>.future{
+    display:none!important;
+  }
+}

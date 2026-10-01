@@ -1754,7 +1754,7 @@ function ScoreRibbon({data}){
   </div>;
 }
 
-function HomePage({data,visual,go,openArticle,openPodcast,notify}){
+function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,notify}){
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
   const matchup=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
@@ -1838,7 +1838,7 @@ function HomePage({data,visual,go,openArticle,openPodcast,notify}){
           <div className="thumb photo-tile" style={{backgroundImage:`url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/>
         </div>
         <button className={'pod-mini '+(pregame?'pending-media':'')} onClick={()=>pregame?notify('The Huddle will unlock after this week is completed.'):openPodcast('episode')}>
-          <img src={podcastCover} alt="The Huddle"/>
+          <img src={podcastEpisodeCover || podcastCover} alt="The Huddle"/>
           <span className="pod-copy"><b>THE HUDDLE</b><small>{pregame?'Episode generates after the final':data.podcast.title}</small><em>{pregame?'WAITING':data.podcast.duration}</em></span>
           <span className="pod-wave" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></span>
           <span className="pod-play">{pregame?<LockKeyhole/>:<Play/>}</span>
@@ -1948,7 +1948,26 @@ function Material({icon:Icon,title,sub,onClick,ready=true}){ return <button clas
 function CoverageRow({icon:Icon,title,sub,onClick,status='READY'}){ return <button className={'coverage-row '+(status==='READY'?'':'pending')} onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>{status}</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row simple" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
-function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcastTab,setPodcastTab,notify}){
+function PodcastPage({
+  data,
+  visual,
+  showCover,
+  episodeCover,
+  localPodcastArtwork,
+  podcastCoverForPublication,
+  podcastArtBusy,
+  onUploadShowCover,
+  onResetShowCover,
+  onUploadEpisodeCover,
+  onUseShowCover,
+  go,
+  openArchiveMoment,
+  playing,
+  setPlaying,
+  podcastTab,
+  setPodcastTab,
+  notify,
+}){
   const episode=data.podcast || {};
   const archiveRef=useRef(null);
   const [showAllEpisodes,setShowAllEpisodes]=useState(false);
@@ -1957,6 +1976,8 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
   const [audioUrl,setAudioUrl]=useState('');
   const [audioLoading,setAudioLoading]=useState(false);
   const audioRef=useRef(null);
+  const showCoverInputRef=useRef(null);
+  const episodeCoverInputRef=useRef(null);
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
   const transcript = episode.segments?.length
@@ -1985,6 +2006,17 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
   const ownerUser=auth.currentUser;
   const prior=episode.previous || [];
   const archiveEpisodes=episode.archive?.length ? episode.archive : prior;
+  const localEpisodeArtwork=localPodcastArtwork?.episodes?.[publicationId] || {};
+  const showCoverIsPreviewOverride=Boolean(localPodcastArtwork?.show?.image);
+  const episodeCoverIsPreviewOverride=Boolean(localEpisodeArtwork.image);
+  const episodeUsesShowCover=Boolean(localEpisodeArtwork.useShowCover)
+    || (!episodeCoverIsPreviewOverride && !episode.episodeCoverUrl);
+  const showCoverStatus=showCoverIsPreviewOverride
+    ? 'Preview override'
+    : (episode.showCoverUrl ? 'Saved DynastyHQ cover' : 'Built-in default');
+  const episodeCoverStatus=episodeCoverIsPreviewOverride
+    ? 'Custom episode override'
+    : (episodeUsesShowCover ? 'Using default show cover' : 'Saved episode cover');
   const scrollArchive=(direction)=>{
     archiveRef.current?.scrollBy({left:direction*Math.max(280,archiveRef.current.clientWidth*.78),behavior:'smooth'});
   };
@@ -2074,7 +2106,7 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
 
       <div className="pod-show-overview">
         <div className="pod-show-cover">
-          <img src={podcastCover} alt="The Huddle podcast cover"/>
+          <img src={showCover || podcastCover} alt="The Huddle podcast cover"/>
         </div>
         <div className="pod-show-identity">
           <span className="pod-show-category">COLLEGE FOOTBALL PODCAST</span>
@@ -2095,7 +2127,7 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
 
       <section className="pod-embed-card">
         <div className="pod-embed-art">
-          <img src={podcastCover} alt=""/>
+          <img src={episodeCover || showCover || podcastCover} alt=""/>
         </div>
         <div className="pod-embed-info">
           <span>FEATURED EPISODE · WEEK {game.week}</span>
@@ -2155,7 +2187,7 @@ function PodcastPage({data,visual,go,openArchiveMoment,playing,setPlaying,podcas
         <aside className="pod-episode-rail-v2">
           <section className="pod-about-show">
             <span>ABOUT THE SHOW</span>
-            <div className="pod-about-heading"><img src={podcastCover} alt=""/><div><b>The Huddle</b><small>DynastyHQ Sports Network</small></div></div>
+            <div className="pod-about-heading"><img src={showCover || podcastCover} alt=""/><div><b>The Huddle</b><small>DynastyHQ Sports Network</small></div></div>
             <p>Weekly college-football coverage built around your Road to Glory career, with game reaction, verified stats and season context.</p>
           </section>
 
@@ -2628,7 +2660,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,profileVisual,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
@@ -2730,7 +2762,7 @@ function Newsroom({data,visual,profileVisual,openProfilePhoto,articleOpen,setArt
             <article className="journal-box huddle reference-journal-box">
               <CardHeader title="THE HUDDLE" light/>
               <div className="huddle-grid">
-                <button className="cover-play" onClick={()=>openPodcast('episode')}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
+                <button className="cover-play" onClick={()=>openPodcast('episode')}><img src={podcastEpisodeCover || podcastCover} alt="The Huddle"/><span><Play/></span></button>
                 <div><small>Week {game.week}</small><h3>{data.podcast.title}</h3><p>{data.podcast.summary}</p><b>{data.podcast.duration}</b></div>
               </div>
               <div className="huddle-actions"><button onClick={()=>openPodcast('transcript')}><FileText/>Print transcript</button><button onClick={()=>openPodcast('notebook')}><Zap/>NotebookLM pack</button></div>

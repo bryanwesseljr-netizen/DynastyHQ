@@ -138,6 +138,7 @@ function Logo({team='Oregon', type=''}) {
 function App(){
   const [page,setPage] = useState('home');
   const [mobileMenu,setMobileMenu] = useState(false);
+  const [mobileMoreOpen,setMobileMoreOpen] = useState(false);
   const [season,setSeason] = useState(4);
   const [week,setWeek] = useState(10);
   const [articleOpen,setArticleOpen] = useState(false);
@@ -186,19 +187,21 @@ function App(){
   const weekOptions=data.navigation?.weeks?.length ? data.navigation.weeks : [week];
 
   const pageTitle = useMemo(()=>pages.find(p=>p[0]===page)?.[1] || 'Home',[page]);
-  const go = (next) => { setPage(next); if(next!=='newsroom') setArticleOpen(false); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
+  const go = (next) => { setPage(next); if(next!=='newsroom') setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const openNewsArticle = (articleId='') => {
     setSelectedArticleId(articleId || data.news?.article?.id || '');
     setPage('newsroom');
     setArticleOpen(true);
     setMobileMenu(false);
+    setMobileMoreOpen(false);
     window.scrollTo({top:0,behavior:'smooth'});
   };
-  const openPodcast = (tab='episode') => { setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
+  const openPodcast = (tab='episode') => { setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const openArchiveMoment = (targetSeason,targetWeek,target='gamehub',tab='episode') => {
     setSeason(Number(targetSeason));
     setWeek(Number(targetWeek));
     setMobileMenu(false);
+    setMobileMoreOpen(false);
     setArticleOpen(target==='newsroom');
     if(target==='newsroom') setSelectedArticleId('');
     if (target==='podcast') setPodcastTab(tab);
@@ -309,6 +312,8 @@ function App(){
 
       <div className={'mobile-drawer '+(mobileMenu?'open':'')}>
         {pages.map(([id,label,Icon])=><button key={id} onClick={()=>go(id)}><Icon size={17}/>{label}</button>)}
+        <button onClick={()=>notify('Search preview')}><Search size={17}/>Search</button>
+        <button onClick={()=>notify('No new notifications in the mockup.')}><Bell size={17}/>Notifications</button>
         <button className="mobile-visual-entry" onClick={()=>openVisualEditor(page)}><Camera size={17}/>Page photo</button>
       </div>
 
@@ -327,6 +332,12 @@ function App(){
           </label>
           <button className="dynasty-lock" onClick={()=>notify('Dynasty mode stays locked in this RTG preview.')}><LockKeyhole size={15}/>Dynasty</button>
         </div>
+      </div>
+
+      <div className="mobile-context-row" aria-label="Career archive controls">
+        <label><span>SEASON</span><select value={season} onChange={e=>setSeason(Number(e.target.value))}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label><span>WEEK</span><select value={week} onChange={e=>setWeek(Number(e.target.value))}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <button onClick={()=>setMobileMoreOpen(true)}><Menu/><span>MORE</span></button>
       </div>
 
       <ScoreRibbon data={data}/>
@@ -354,14 +365,27 @@ function App(){
       {page==='chronicle' && <ChroniclePage data={data} visual={visualFor('chronicle')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
     </main>
 
+    {mobileMoreOpen && <div className="mobile-more-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setMobileMoreOpen(false)}}>
+      <section className="mobile-more-sheet" aria-label="More DynastyHQ destinations">
+        <header><div><span>DYNASTYHQ</span><b>More</b></div><button onClick={()=>setMobileMoreOpen(false)} aria-label="Close"><X/></button></header>
+        <div className="mobile-more-grid">
+          <button onClick={()=>go('offseason')}><Target/><span><b>Off-Season</b><small>Review, decisions and next chapter</small></span></button>
+          <button onClick={()=>go('career')}><UserRound/><span><b>Career</b><small>Player dossier and career progress</small></span></button>
+          <button onClick={()=>go('chronicle')}><BookOpen/><span><b>Chronicle</b><small>Full career archive and museum</small></span></button>
+          <button onClick={()=>openVisualEditor(page)}><Camera/><span><b>Page photo</b><small>Customize this page’s visual</small></span></button>
+          <button onClick={()=>{notify('Search preview');setMobileMoreOpen(false)}}><Search/><span><b>Search</b><small>Search DynastyHQ</small></span></button>
+          <button onClick={()=>{notify('No new notifications in the mockup.');setMobileMoreOpen(false)}}><Bell/><span><b>Notifications</b><small>Updates and alerts</small></span></button>
+        </div>
+        <div className="mobile-more-status"><LockKeyhole/><span><b>Dynasty mode</b><small>Locked during this Road to Glory career</small></span></div>
+      </section>
+    </div>}
+
     <nav className="mobile-bottom">
       <button className={page==='home'?'active':''} onClick={()=>go('home')}><Home/><span>Home</span></button>
       <button className={page==='gamehub'?'active':''} onClick={()=>go('gamehub')}><CalendarDays/><span>Week</span></button>
       <button className={page==='newsroom'?'active':''} onClick={()=>go('newsroom')}><Newspaper/><span>News</span></button>
       <button className={page==='podcast'?'active':''} onClick={()=>openPodcast('episode')}><Headphones/><span>Podcast</span></button>
-      <button className={page==='offseason'?'active':''} onClick={()=>go('offseason')}><Target/><span>Offseason</span></button>
-      <button className={page==='career'?'active':''} onClick={()=>go('career')}><UserRound/><span>Career</span></button>
-      <button className={page==='chronicle'?'active':''} onClick={()=>go('chronicle')}><BookOpen/><span>Chronicle</span></button>
+      <button className={['offseason','career','chronicle'].includes(page)||mobileMoreOpen?'active':''} onClick={()=>setMobileMoreOpen(v=>!v)}><Menu/><span>More</span></button>
     </nav>
 
     <PageVisualEditor

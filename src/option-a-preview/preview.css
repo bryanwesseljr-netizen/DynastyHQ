@@ -6696,3 +6696,366 @@ button:active{transform:translateY(1px)}
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* Precision match pass v24 — subtle per-page hero photo controls */
+.preview-main{
+  position:relative;
+}
+
+.page-visual-trigger{
+  position:absolute;
+  z-index:30;
+  top:10px;
+  right:18px;
+  width:31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:50%;
+  background:rgba(0,22,16,.34);
+  color:rgba(255,255,255,.62);
+  opacity:.30;
+  backdrop-filter:blur(8px);
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+  transition:opacity .16s ease,background .16s ease,border-color .16s ease,transform .16s ease;
+}
+.page-visual-trigger svg{
+  width:15px;
+  height:15px;
+}
+.page-visual-trigger:hover,
+.page-visual-trigger:focus-visible{
+  opacity:1;
+  background:rgba(0,43,32,.88);
+  border-color:rgba(255,230,0,.62);
+}
+.mobile-visual-entry{
+  border-color:#315d51!important;
+  color:#d8e2de!important;
+}
+.mobile-visual-entry svg{
+  color:var(--yellow);
+}
+
+/* Keep the approved photo fades while allowing horizontal focal-point control. */
+.home-page .hero::before{
+  background-position:var(--photo-x,59%) 30%!important;
+}
+.gamehub-page .hub-hero::before{
+  background-position:var(--photo-x,52%) 28%!important;
+}
+
+/* Podcast and Chronicle did not originally need a player image in the hero.
+   Add it softly behind the existing composition rather than replacing the design. */
+.podcast-hero::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:0 0 0 42%;
+  pointer-events:none;
+  background-image:var(--page-photo);
+  background-size:cover;
+  background-position:var(--photo-x,72%) 28%;
+  opacity:.18;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 24%,#000 54%,rgba(0,0,0,.78) 100%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.55) 24%,#000 54%,rgba(0,0,0,.78) 100%);
+  filter:saturate(.82) contrast(1.03);
+}
+.podcast-hero::after{
+  z-index:0;
+}
+.podcast-hero-art,
+.podcast-hero-copy{
+  z-index:1;
+}
+
+.chronicle-hero-redesign::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:0 0 0 48%;
+  pointer-events:none;
+  background-image:var(--page-photo);
+  background-size:cover;
+  background-position:var(--photo-x,72%) 28%;
+  opacity:.17;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.58) 22%,#000 55%,rgba(0,0,0,.74) 100%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.58) 22%,#000 55%,rgba(0,0,0,.74) 100%);
+  filter:saturate(.78) contrast(1.04);
+}
+.chronicle-hero-redesign::after{
+  z-index:0;
+}
+.chronicle-hero-redesign>div,
+.chronicle-hero-redesign>aside{
+  position:relative;
+  z-index:1;
+}
+
+/* Photo settings drawer */
+.visual-editor-backdrop{
+  position:fixed;
+  z-index:1000;
+  inset:0;
+  display:flex;
+  justify-content:flex-end;
+  align-items:stretch;
+  background:rgba(0,10,8,.48);
+  backdrop-filter:blur(3px);
+}
+.visual-editor{
+  width:min(390px,92vw);
+  height:100%;
+  overflow-y:auto;
+  padding:18px;
+  border-left:1px solid #24594b;
+  background:#061c17;
+  color:#fff;
+  box-shadow:-18px 0 46px rgba(0,0,0,.32);
+}
+.visual-editor>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:13px;
+  border-bottom:1px solid #245247;
+}
+.visual-editor>header span{
+  color:var(--yellow);
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:1.4px;
+}
+.visual-editor>header h2{
+  margin:3px 0 0;
+  font-family:var(--condensed);
+  font-size:25px;
+  line-height:1;
+}
+.visual-editor>header button{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border:1px solid #315f53;
+  border-radius:50%;
+  background:#0a3027;
+  color:#fff;
+}
+.visual-editor>header button svg{
+  width:16px;
+}
+.visual-editor-preview{
+  position:relative;
+  height:190px;
+  margin-top:15px;
+  overflow:hidden;
+  border:1px solid #315c51;
+  border-radius:7px;
+  background:#00241c;
+}
+.visual-editor-preview::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:var(--preview-photo);
+  background-size:cover;
+  background-position:var(--photo-x,50%) 27%;
+}
+.visual-editor-preview::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(90deg,rgba(0,25,18,.96) 0%,rgba(0,25,18,.72) 28%,rgba(0,25,18,.15) 62%,rgba(0,25,18,.06) 100%),
+    linear-gradient(0deg,rgba(0,17,13,.70),transparent 58%);
+}
+.visual-editor-preview>div{
+  position:absolute;
+  z-index:2;
+  left:15px;
+  bottom:34px;
+  width:112px;
+  height:10px;
+  border-radius:2px;
+  background:rgba(255,255,255,.86);
+  box-shadow:0 18px 0 var(--yellow);
+}
+.visual-editor-preview>span{
+  position:absolute;
+  z-index:2;
+  right:9px;
+  bottom:8px;
+  color:rgba(255,255,255,.74);
+  font-size:6px;
+  font-weight:800;
+  letter-spacing:.5px;
+}
+.visual-page-select{
+  display:grid;
+  gap:5px;
+  margin-top:14px;
+  color:#91a69e;
+  font-size:6px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+.visual-page-select select{
+  width:100%;
+  min-height:38px;
+  border:1px solid #315e52;
+  border-radius:5px;
+  background:#092820;
+  color:#fff;
+  padding:0 10px;
+  font-size:8px;
+  font-weight:800;
+}
+.visual-position-row{
+  display:grid;
+  gap:7px;
+  margin-top:14px;
+}
+.visual-position-row>span{
+  color:#91a69e;
+  font-size:6px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+.visual-position-row>div{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border:1px solid #315e52;
+  border-radius:5px;
+  overflow:hidden;
+}
+.visual-position-row button{
+  min-height:34px;
+  border:0;
+  border-right:1px solid #315e52;
+  background:#092820;
+  color:#a7bab2;
+  font-size:7px;
+  font-weight:900;
+}
+.visual-position-row button:last-child{
+  border-right:0;
+}
+.visual-position-row button.active{
+  background:#0d5a43;
+  color:#fff;
+  box-shadow:inset 0 -2px 0 var(--yellow);
+}
+.visual-editor-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+  margin-top:14px;
+}
+.visual-editor-actions>button,
+.visual-upload{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  border:1px solid #35665a;
+  border-radius:5px;
+  background:#0a3027;
+  color:#fff;
+  padding:0 9px;
+  font-size:7px;
+  font-weight:900;
+  text-align:center;
+  cursor:pointer;
+}
+.visual-upload{
+  grid-column:1/3;
+  border-color:#a88f00;
+  background:var(--yellow);
+  color:#07140f;
+}
+.visual-upload svg,
+.visual-editor-actions>button svg{
+  width:14px;
+}
+.visual-upload input{
+  display:none;
+}
+.visual-editor>p{
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+  margin:15px 0 0;
+  padding:10px;
+  border:1px solid #234e43;
+  border-radius:5px;
+  background:#08251e;
+  color:#91a69e;
+  font-size:6.5px;
+  line-height:1.45;
+}
+.visual-editor>p svg{
+  flex:0 0 auto;
+  width:14px;
+  color:#4dcc9f;
+}
+
+@media(max-width:700px){
+  .page-visual-trigger{
+    display:none!important;
+  }
+  .mobile-drawer.open{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .mobile-visual-entry{
+    display:flex!important;
+  }
+
+  .home-page .hero::before{
+    background-position:var(--photo-x,54%) 25%!important;
+  }
+  .gamehub-page .hub-hero::before{
+    background-position:var(--photo-x,52%) 28%!important;
+  }
+
+  .podcast-hero::before{
+    inset:0;
+    opacity:.14;
+    background-position:var(--photo-x,62%) 20%;
+    -webkit-mask-image:linear-gradient(0deg,transparent 0%,rgba(0,0,0,.55) 24%,#000 60%,rgba(0,0,0,.6) 100%);
+    mask-image:linear-gradient(0deg,transparent 0%,rgba(0,0,0,.55) 24%,#000 60%,rgba(0,0,0,.6) 100%);
+  }
+  .chronicle-hero-redesign::before{
+    inset:0;
+    opacity:.13;
+    background-position:var(--photo-x,62%) 20%;
+    -webkit-mask-image:linear-gradient(0deg,transparent 0%,rgba(0,0,0,.45) 30%,#000 70%);
+    mask-image:linear-gradient(0deg,transparent 0%,rgba(0,0,0,.45) 30%,#000 70%);
+  }
+
+  .visual-editor-backdrop{
+    align-items:flex-end;
+  }
+  .visual-editor{
+    width:100%;
+    max-height:88vh;
+    height:auto;
+    padding:14px 13px calc(15px + env(safe-area-inset-bottom));
+    border-left:0;
+    border-top:1px solid #2b6556;
+    border-radius:14px 14px 0 0;
+    box-shadow:0 -16px 44px rgba(0,0,0,.34);
+  }
+  .visual-editor-preview{
+    height:155px;
+  }
+  .visual-editor-actions{
+    grid-template-columns:1fr 1fr;
+  }
+}

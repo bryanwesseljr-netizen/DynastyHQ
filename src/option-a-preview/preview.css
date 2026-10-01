@@ -4524,3 +4524,66 @@ button:active{transform:translateY(1px)}
     margin:0!important;padding:0!important;border:0!important;background:#fff!important;color:#000!important;
   }
 }
+
+
+/* Precision match pass v17 — interaction audit responsive cleanup */
+@media(max-width:700px){
+  .mobile-drawer.open{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:7px!important;
+    padding:8px 10px 10px!important;
+  }
+  .mobile-drawer button{
+    min-width:0!important;
+    min-height:42px!important;
+    font-size:8px!important;
+  }
+
+  .mobile-bottom{
+    height:62px!important;
+    padding-bottom:max(0px,env(safe-area-inset-bottom))!important;
+  }
+  .mobile-bottom button{
+    width:20%!important;
+    min-width:0!important;
+    padding:5px 2px 4px!important;
+    gap:3px!important;
+    font-size:6.5px!important;
+    line-height:1!important;
+  }
+  .mobile-bottom svg{
+    width:19px!important;
+    height:19px!important;
+  }
+  .mobile-bottom button.active{
+    box-shadow:inset 0 2px 0 var(--yellow);
+  }
+
+  .toast{
+    bottom:74px!important;
+  }
+
+  /* Keep small-screen action labels from forcing horizontal overflow. */
+  .podcast-actions button,
+  .huddle-actions button,
+  .hero-actions button,
+  .panel-actions button{
+    white-space:normal!important;
+    text-align:center!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:860px){
+  .top-row{
+    gap:14px!important;
+  }
+  .desktop-nav{
+    gap:9px!important;
+  }
+  .desktop-nav button{
+    font-size:7.5px!important;
+  }
+  .header-actions{
+    gap:4px!important;
+  }
+}

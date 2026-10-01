@@ -1421,35 +1421,63 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
+  const articles=Array.isArray(news.articles)?news.articles:[];
+  const leadStory=articles.find((entry)=>entry.id===news.article?.id) || articles[0] || news.article || null;
+  const selectedStory=articles.find((entry)=>entry.id===selectedArticleId) || leadStory;
+  const localStory=articles.find((entry)=>entry.id===news.localArticleId) || null;
+  const nationalStory=articles.find((entry)=>entry.id===news.nationalArticleId) || null;
+  const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
+  const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
+
+  const openSavedStory=(story,label)=>{
+    if(!story){
+      notify(`No saved ${label} article exists for this edition yet.`);
+      return;
+    }
+    setSelectedArticleId(story.id);
+    setArticleOpen(true);
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+
   return <div className="page newsroom-page">
     <section className="journal">
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
         <div className="journal-tabs">
-          <button className={!articleOpen?'active':''} onClick={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
-          <button onClick={()=>notify(`${news.articles?.length || 0} real saved Newsroom stories are available for this week. Outlet switching is the next Newsroom interaction pass.`)}>Local Beat</button>
-          <button onClick={()=>notify('National outlet switching will reuse the real saved Newsroom articles during the workflow pass.')}>National</button>
-          <button onClick={()=>notify('The real Newsroom archive is connected in the data bridge; archive selection UI is next.')}>Archive</button>
+          <button className={!articleOpen?'active':''} onClick={()=>{setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
+          <button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>
+          <button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>
+          <button onClick={()=>notify(`${articles.length} saved Newsroom article${articles.length===1?'':'s'} are attached to Season ${data.season}, Week ${news.week || game.week}. Full archive browsing is coming in the archive workflow pass.`)}>Archive</button>
         </div>
       </header>
 
       {articleOpen ? (
-        <NewsroomArticle data={data} visual={visual} onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go} openPodcast={openPodcast}/>
+        <NewsroomArticle
+          data={data}
+          visual={visual}
+          story={selectedStory}
+          articles={articles}
+          onSelectStory={(story)=>{setSelectedArticleId(story.id);window.scrollTo({top:0,behavior:'smooth'})}}
+          onBack={()=>{setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}
+          go={go}
+          openPodcast={openPodcast}
+        />
       ) : (
         <>
           <section className="lead-story">
             <div className="lead-copy">
-              <span>{news.kicker || 'GAME RECAP'}</span>
-              <h2>{news.headline}</h2>
-              <p>{news.dek}</p>
-              <button className="yellow" onClick={openArticle}>Read full story<ChevronRight/></button>
+              <span>{leadStory?.kicker || news.kicker || 'GAME RECAP'}</span>
+              <h2>{leadStory?.headline || news.headline}</h2>
+              <p>{leadStory?.dek || news.dek}</p>
+              <div className="lead-outlet-row"><b>{leadStory?.outletName || news.outlet}</b><small>{articles.length} STORIES IN THIS EDITION</small></div>
+              <button className="yellow" onClick={()=>openSavedStory(leadStory,'lead')}>Read full story<ChevronRight/></button>
             </div>
-            <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}>
-              <div className="journal-player"><span>{data.player.number}</span></div>
+            <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${leadPhoto})`,backgroundPosition:`${visual.position} 29%`}}>
+              <div className="journal-photo-credit"><span>{leadStory?.photo ? 'CAREER PHOTO LIBRARY' : 'HERO FALLBACK'}</span><small>{leadPhotoCaption}</small></div>
             </div>
           </section>
 
@@ -1458,11 +1486,25 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,openArticle,openPodcas
             <div><b>{lastName}</b></div><div><strong>{game.total}</strong><small>TOTAL YARDS</small></div><div><strong>{game.td}</strong><small>TOTAL TD</small></div>
           </section>
 
+          <section className="newsroom-edition-deck">
+            {articles.slice(0,4).map((story)=>{
+              const photo=story.photo?.url || leadPhoto;
+              const label=story.audience==='local'?'LOCAL BEAT':story.audience?.startsWith('national')?'NATIONAL':story.audience==='regional'?'REGIONAL':story.audience==='analysis'?'FILM ROOM':'COVERAGE';
+              return <button key={story.id} className="edition-story-card" onClick={()=>openSavedStory(story,label)}>
+                <div className="edition-story-photo" style={{backgroundImage:`linear-gradient(0deg,rgba(0,20,14,.42),transparent 55%),url(${photo})`}}/>
+                <span>{label} · {story.outletName}</span>
+                <strong>{story.headline}</strong>
+                <small>{story.dek}</small>
+                <em>Read article <ChevronRight/></em>
+              </button>;
+            })}
+          </section>
+
           <section className="journal-lower">
             <article className="journal-box inside reference-journal-box">
               <CardHeader title="INSIDE THE GAME" light/>
               <p>The verified numbers behind the latest saved game.</p>
-              <div className="inside-grid"><div className="tiny-photo photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/><div><button onClick={()=>go('gamehub')}><ClipboardList/>Player stats<ChevronRight/></button><button onClick={()=>go('gamehub')}><BarChart3/>Scoring drives<ChevronRight/></button></div></div>
+              <div className="inside-grid"><div className="tiny-photo photo-tile" style={{backgroundImage:`url(${leadPhoto})`}}/><div><button onClick={()=>go('gamehub')}><ClipboardList/>Player stats<ChevronRight/></button><button onClick={()=>go('gamehub')}><BarChart3/>Scoring drives<ChevronRight/></button></div></div>
             </article>
 
             <article className="journal-box huddle reference-journal-box">
@@ -1477,7 +1519,7 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,openArticle,openPodcas
 
             <article className="journal-box career-file reference-journal-box">
               <CardHeader title="THE CAREER FILE" light/>
-              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>{lastName}</span><b>{data.player.number}</b></div><div><h3>From the early chapters<br/>to the current spotlight.</h3><p>Follow {data.player.name}’s preserved career story, milestones, and defining weeks.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
+              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${leadPhoto})`}}><span>{lastName}</span><b>{data.player.number}</b></div><div><h3>From the early chapters<br/>to the current spotlight.</h3><p>Follow {data.player.name}’s preserved career story, milestones, and defining weeks.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
             </article>
           </section>
         </>
@@ -1486,12 +1528,13 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,openArticle,openPodcas
   </div>;
 }
 
-function NewsroomArticle({data,visual,onBack,go,openPodcast}){
+function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,openPodcast}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
-  const paragraphs=news.paragraphs?.length ? news.paragraphs : [
-    news.dek || `${data.player.school} completed its latest verified game against ${game.opponent}.`,
+  const selected=story || news.article || {};
+  const paragraphs=selected.paragraphs?.length ? selected.paragraphs : [
+    selected.dek || news.dek || `${data.player.school} completed its latest verified game against ${game.opponent}.`,
     `${data.player.name} finished with ${game.total} total yards and ${game.td} total touchdowns in the saved game record.`,
     `The next scheduled opponent is ${data.next.opponent} in Week ${data.next.week}.`,
   ];
@@ -1500,29 +1543,38 @@ function NewsroomArticle({data,visual,onBack,go,openPodcast}){
     const date=new Date(news.publishedAt);
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   })();
+  const articlePhoto=selected.photo?.url || news.weeklyPhoto?.url || visual.image;
+  const audienceLabel=selected.audience==='local'?'Local Beat':selected.audience?.startsWith('national')?'National Desk':selected.audience==='regional'?'Regional Desk':selected.audience==='analysis'?'Film Room':selected.category || 'Coverage';
 
   return <article className="newsroom-article digital-feature">
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
-      <span>{news.kicker || 'GAME RECAP'} • WEEK {news.week || game.week}</span>
+      <span>{audienceLabel} • WEEK {news.week || game.week}</span>
     </div>
+
+    <nav className="article-outlet-switcher" aria-label="This week's Newsroom articles">
+      {(articles || []).map((entry)=><button key={entry.id} className={entry.id===selected.id?'active':''} onClick={()=>onSelectStory(entry)}>
+        <span>{entry.audience==='local'?'LOCAL':entry.audience?.startsWith('national')?'NATIONAL':entry.audience==='regional'?'REGIONAL':entry.audience==='analysis'?'FILM':'STORY'}</span>
+        <b>{entry.outletName}</b>
+      </button>)}
+    </nav>
 
     <section className="digital-feature-top">
       <header className="digital-feature-head">
-        <span className="digital-kicker">{news.kicker || 'GAME RECAP'}</span>
-        <h1>{news.headline}</h1>
-        <p className="digital-deck">{news.dek}</p>
+        <span className="digital-kicker">{selected.kicker || news.kicker || 'GAME RECAP'}</span>
+        <h1>{selected.headline || news.headline}</h1>
+        <p className="digital-deck">{selected.dek || news.dek}</p>
         <div className="digital-byline">
-          <span>By <b>{news.byline || 'DynastyHQ Staff'}</b> · {news.outlet || 'DynastyHQ Sports'}</span>
+          <span>By <b>{selected.byline || 'DynastyHQ Staff'}</b> · {selected.outletName || news.outlet || 'DynastyHQ Sports'}</span>
           {published && <time>{published}</time>}
         </div>
       </header>
 
       <figure className="digital-hero-figure">
-        <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${visual.image})`,backgroundPosition:`${visual.position} 26%`}}/>
+        <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${articlePhoto})`,backgroundPosition:`${visual.position} 26%`}}/>
         <figcaption>
-          <span>{news.photoCaption || news.dek}</span>
-          <em>Career Photo Library</em>
+          <span>{selected.photoCaption || selected.dek || news.photoCaption || news.dek}</span>
+          <em>{selected.photo ? 'Career Photo Library' : 'Default hero fallback'}</em>
         </figcaption>
       </figure>
     </section>

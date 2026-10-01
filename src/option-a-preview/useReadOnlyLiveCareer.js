@@ -241,20 +241,88 @@ const previousEpisodes = (state, currentEpisode) => [...(state.podcastEpisodes |
     audioReady: entry.audioStatus === 'ready',
   }));
 
-export const derivePreviewData = (state) => {
+
+const navigationFor = (state = {}, selectedSeason = null) => {
+  const seasonSet = new Set([numeric(state.currentSeason, 1)]);
+  const addSeason = (entry) => {
+    const season = numeric(entry?.season, 0);
+    if (season > 0) seasonSet.add(season);
+  };
+  (state.gameLogs || []).forEach(addSeason);
+  (state.newsroomIssues || []).forEach(addSeason);
+  (state.podcastEpisodes || []).forEach(addSeason);
+  (state.careerChronicle || []).forEach(addSeason);
+  (state.seasonSchedules || []).forEach(addSeason);
+
+  const seasons = [...seasonSet].filter(Boolean).sort((a,b)=>b-a);
+  const season = numeric(selectedSeason, numeric(state.currentSeason, seasons[0] || 1));
+  const weekSet = new Set();
+  const addWeek = (entry) => {
+    if (numeric(entry?.season, season) !== season) return;
+    const week = numeric(entry?.week, -1);
+    if (week >= 0) weekSet.add(week);
+  };
+  (state.gameLogs || []).filter((entry)=>entry && entry.stage!=='high-school' && !entry.evaluation).forEach(addWeek);
+  (state.newsroomIssues || []).forEach(addWeek);
+  (state.podcastEpisodes || []).forEach(addWeek);
+  (state.careerChronicle || []).forEach(addWeek);
+  scheduleEntries(state, season).forEach((entry)=>{
+    const week = numeric(entry?.week, -1);
+    if (week >= 0 && !entry?.isBye) weekSet.add(week);
+  });
+  if (season === numeric(state.currentSeason, season)) weekSet.add(numeric(state.currentWeek, 0));
+
+  return {
+    seasons,
+    weeks:[...weekSet].sort((a,b)=>b-a),
+  };
+};
+
+const exactIssueFor = (state, season, week) => [...(state.newsroomIssues || [])]
+  .filter(Boolean)
+  .sort(bySeasonWeek)
+  .reverse()
+  .find((entry)=>matchesSeasonWeek(entry, season, week)) || null;
+
+const exactEpisodeFor = (state, issue, season, week) => {
+  const episodes=[...(state.podcastEpisodes || [])].filter(Boolean).sort(bySeasonWeek).reverse();
+  const publicationId=publicationIdFor(issue);
+  if (publicationId) {
+    const match=episodes.find((entry)=>publicationIdFor(entry)===publicationId);
+    if (match) return match;
+  }
+  return episodes.find((entry)=>matchesSeasonWeek(entry, season, week)) || null;
+};
+
+export const derivePreviewData = (state, selection = {}) => {
   if (!state) return null;
 
-  const season = Math.max(1, numeric(state.currentSeason, 1));
-  const week = Math.max(0, numeric(state.currentWeek, 0));
+  const currentSeason = Math.max(1, numeric(state.currentSeason, 1));
+  const currentWeek = Math.max(0, numeric(state.currentWeek, 0));
+  const season = Math.max(1, numeric(selection?.season, currentSeason));
+  const navigation = navigationFor(state, season);
+  const defaultWeek = season === currentSeason
+    ? currentWeek
+    : (navigation.weeks[0] ?? 0);
+  const week = Math.max(0, numeric(selection?.week, defaultWeek));
+  const isExplicitSelection = selection?.season !== undefined || selection?.week !== undefined;
+
   const games = collegeGames(state, season);
-  const game = games.at(-1) || null;
+  const exactGame = games.find((entry)=>numeric(entry?.week, -1) === week) || null;
+  const game = isExplicitSelection ? exactGame : (games.at(-1) || null);
+  const contextWeek = game ? numeric(game.week, week) : week;
   const scores = gameScores(game || {});
-  const next = nextScheduledGame(state, season, Math.max(week, numeric(game?.week, 0) + 1));
-  const issue = issueForGame(state, game, season, week);
+  const next = nextScheduledGame(state, season, Math.max(contextWeek + 1, week + 1));
+
+  const issue = isExplicitSelection
+    ? exactIssueFor(state, season, week)
+    : issueForGame(state, game, season, week);
   const article = issue?.articles?.find((entry) => entry?.headline || entry?.title) || issue?.articles?.[0] || null;
-  const episode = episodeForIssue(state, issue, game, season, week);
+  const episode = isExplicitSelection
+    ? exactEpisodeFor(state, issue, season, week)
+    : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode);
-  const facts = factsForPublication(state, publicationId, numeric(game?.season, season), numeric(game?.week, week));
+  const facts = factsForPublication(state, publicationId, season, week);
   const transcriptSections = episodeTranscriptSections(episode || {});
   const transcriptText = episode ? podcastTranscriptText(episode) : '';
   const offseason = buildPlayerOffseasonMode(state);
@@ -262,6 +330,8 @@ export const derivePreviewData = (state) => {
   const career = careerOverview(state);
   const player = state.player || {};
   const school = clean(player.college || player.school, 'PROGRAM');
+  const scheduleEntry = scheduleEntries(state, season).find((entry)=>numeric(entry?.week,-1)===week) || null;
+  const opponent = clean(game?.opponent || scheduleEntry?.opponent, 'NO GAME');
   const pass = valueOr(game?.passYds);
   const rush = valueOr(game?.rushYds);
   const passTD = valueOr(game?.passTD);
@@ -269,6 +339,15 @@ export const derivePreviewData = (state) => {
 
   return {
     state,
+    navigation,
+    selection: {
+      season,
+      week,
+      hasGame:Boolean(game),
+      hasNewsroom:Boolean(issue),
+      hasPodcast:Boolean(episode),
+      isCurrent:season===currentSeason && week===currentWeek,
+    },
     player: {
       name: clean(player.name, 'PLAYER').toUpperCase(),
       number: clean(player.number, '—'),
@@ -281,11 +360,11 @@ export const derivePreviewData = (state) => {
     week,
     game: {
       raw: game,
-      week: numeric(game?.week, week),
-      opponent: clean(game?.opponent, 'OPPONENT').toUpperCase(),
-      result: clean(game?.result, 'FINAL').toUpperCase(),
-      us: scores.us,
-      them: scores.them,
+      week,
+      opponent: opponent.toUpperCase(),
+      result: clean(game?.result, game ? 'FINAL' : 'NO GAME').toUpperCase(),
+      us: game ? scores.us : 0,
+      them: game ? scores.them : 0,
       pass,
       rush,
       total: pass + rush,
@@ -296,7 +375,7 @@ export const derivePreviewData = (state) => {
     },
     next: {
       raw: next,
-      week: numeric(next?.week, Math.max(week + 1, numeric(game?.week, week) + 1)),
+      week: numeric(next?.week, Math.max(week + 1, contextWeek + 1)),
       opponent: clean(next?.opponent, 'NEXT OPPONENT').toUpperCase(),
     },
     rtg: state.rtg || {},
@@ -304,11 +383,11 @@ export const derivePreviewData = (state) => {
       issue,
       article,
       publicationId,
-      season: numeric(issue?.season, season),
-      week: numeric(issue?.week, numeric(game?.week, week)),
-      headline: clean(article?.headline || article?.title || issue?.headline, 'Latest DynastyHQ coverage'),
-      dek: clean(article?.dek || article?.summary || issue?.dek, 'Your latest verified career story is ready.'),
-      kicker: clean(article?.kicker, 'GAME RECAP'),
+      season,
+      week,
+      headline: clean(article?.headline || article?.title || issue?.headline, issue ? 'Saved DynastyHQ coverage' : `No Newsroom edition saved for Week ${week}`),
+      dek: clean(article?.dek || article?.summary || issue?.dek, issue ? 'Your saved career story is ready.' : 'Choose another saved week to open its Newsroom coverage.'),
+      kicker: clean(article?.kicker, issue ? 'GAME RECAP' : 'ARCHIVE'),
       byline: clean(article?.byline, 'DynastyHQ Staff'),
       outlet: clean(article?.outletName || issue?.outletProfile?.localOutletName, 'DynastyHQ Sports'),
       publishedAt: clean(issue?.publishedAt || issue?.editorialGeneratedAt),
@@ -319,8 +398,8 @@ export const derivePreviewData = (state) => {
     podcast: {
       episode,
       publicationId,
-      title: clean(episode?.title || issue?.podcastBrief?.title, game ? `${clean(game.opponent, 'Game')} recap` : 'Latest episode'),
-      summary: clean(episode?.summary || issue?.podcastBrief?.summary, 'The latest DynastyHQ episode is tied to this verified career week.'),
+      title: clean(episode?.title || issue?.podcastBrief?.title, episode ? `Week ${week} episode` : `No Huddle episode saved for Week ${week}`),
+      summary: clean(episode?.summary || issue?.podcastBrief?.summary, episode ? 'The saved DynastyHQ episode is tied to this career week.' : 'Choose another saved week to open its podcast episode.'),
       duration: durationLabel(episode || {}),
       estimatedMinutes: numeric(episode?.estimatedMinutes, 0),
       status: clean(episode?.status, episode ? 'scripted' : 'not-generated'),

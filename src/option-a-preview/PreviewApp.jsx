@@ -1005,6 +1005,123 @@ function App(){
   </div>;
 }
 
+function ShareCareerModal({open,busy,url,enabled,lastSynced,onClose,onPublish,onCopy}){
+  if(!open) return null;
+  const syncedLabel=lastSynced
+    ? new Date(lastSynced).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
+    : '';
+  return <div className="share-modal-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget) onClose()}}>
+    <section className="share-career-modal" role="dialog" aria-modal="true" aria-label="Share career">
+      <header>
+        <div><span><Share2/>CAREER FOLLOW</span><h2>Share a read-only career page</h2></div>
+        <button onClick={onClose} aria-label="Close share career"><X/></button>
+      </header>
+      <p>Friends get a clean follower view with the current result, career totals, latest Newsroom story, podcast status, honors and recent milestones. No owner controls or private editing data are exposed.</p>
+
+      {url ? <div className="share-link-box">
+        <Link2/>
+        <input readOnly value={url} aria-label="Read-only career share link"/>
+        <button onClick={onCopy}><Copy/>COPY</button>
+      </div> : <div className="share-link-empty"><ShieldCheck/><span><b>No public follower link yet.</b><small>Create it once and the same link can stay with the career.</small></span></div>}
+
+      <div className="share-career-actions">
+        <button className="share-primary" disabled={busy} onClick={onPublish}><Share2/>{busy?'PUBLISHING…':enabled?'UPDATE SHARE NOW':'CREATE SHARE LINK'}</button>
+        {url && <button className="share-secondary" onClick={()=>window.open(url,'_blank','noopener,noreferrer')}>OPEN FOLLOWER VIEW<ChevronRight/></button>}
+      </div>
+
+      <div className="share-sync-note"><ShieldCheck/><span><b>{enabled?'AUTO-SYNC ON':'READ-ONLY BY DESIGN'}</b><small>{enabled?'When your connected career changes while DynastyHQ is open, the lightweight follower snapshot refreshes automatically.':'Creating the link publishes only a compact follower snapshot, not your editable master save.'}{syncedLabel ? ' · Last synced '+syncedLabel : ''}</small></span></div>
+    </section>
+  </div>;
+}
+
+function FollowerView({view}){
+  if(view.status==='loading') return <div className="follower-loading"><ShieldCheck/><b>Loading DynastyHQ career…</b></div>;
+  if(view.status!=='ready' || !view.snapshot) return <div className="follower-loading follower-missing"><Shield/><b>This career follow page is not available.</b><span>The owner may not have published it yet, or the link may have been revoked.</span></div>;
+
+  const s=view.snapshot;
+  const player=s.player || {};
+  const game=s.game || {};
+  const totals=s.totals || {};
+  const career=s.career || {};
+  const honors=career.honors || [];
+  const timeline=career.timeline || [];
+  const updated=s.updatedAt ? new Date(s.updatedAt).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : 'Recently';
+
+  return <div className="follower-shell">
+    <header className="follower-header">
+      <div className="follower-brand">DYNASTY<span>HQ</span></div>
+      <div className="follower-readonly"><ShieldCheck/>READ-ONLY CAREER FOLLOW</div>
+    </header>
+
+    <main className="follower-main">
+      <section className="follower-hero">
+        <div>
+          <span>SEASON {s.season} · WEEK {s.week}</span>
+          <h1>{player.name}</h1>
+          <p>#{player.number} · {player.pos} · {player.school}{player.overall!=='' ? ' · '+player.overall+' OVR' : ''}</p>
+          <small>Updated {updated}</small>
+        </div>
+        <Logo team={player.school}/>
+      </section>
+
+      <section className="follower-latest">
+        <div className="follower-score">
+          <span>LATEST RESULT</span>
+          <div><Logo team={player.school}/><strong>{game.us}</strong><em>FINAL</em><strong>{game.them}</strong><span>{game.opponent}</span></div>
+          <p>Week {game.week} · {game.result || 'Final'} · {game.total} total yards · {game.td} total TD</p>
+        </div>
+        <div className="follower-game-stats">
+          <article><strong>{game.pass}</strong><span>PASS YDS</span><small>{game.passTD} TD</small></article>
+          <article><strong>{game.rush}</strong><span>RUSH YDS</span><small>{game.rushTD} TD</small></article>
+          <article><strong>{game.td}</strong><span>TOTAL TD</span><small>{game.interceptions} INT</small></article>
+        </div>
+      </section>
+
+      <section className="follower-stat-grid">
+        <article><span>CAREER PASSING</span><strong>{Number(totals.passYds||0).toLocaleString()}</strong><small>{totals.passTD||0} TD</small></article>
+        <article><span>CAREER RUSHING</span><strong>{Number(totals.rushYds||0).toLocaleString()}</strong><small>{totals.rushTD||0} TD</small></article>
+        <article><span>COLLEGE RECORD</span><strong>{career.record?.wins||0}–{career.record?.losses||0}</strong><small>{career.appearances||totals.appearances||0} appearances</small></article>
+        <article><span>CURRENT CHAPTER</span><strong>{career.stage || 'Road to Glory'}</strong><small>{s.next?.opponent ? 'Next: Week '+s.next.week+' vs '+s.next.opponent : 'Season in progress'}</small></article>
+      </section>
+
+      <section className="follower-content-grid">
+        <article className="follower-story">
+          <span><Newspaper/>LATEST FROM THE NEWSROOM</span>
+          {s.news?.photoUrl && <img src={s.news.photoUrl} alt="Latest career coverage"/>}
+          <h2>{s.news?.headline || 'Career coverage will appear here.'}</h2>
+          <p>{s.news?.dek || 'The owner has not published a Newsroom summary in the follower snapshot yet.'}</p>
+          {s.news?.outlet && <small>{s.news.outlet}</small>}
+        </article>
+
+        <article className="follower-podcast">
+          <span><Headphones/>THE HUDDLE</span>
+          <h2>{s.podcast?.title || 'Podcast update pending'}</h2>
+          <p>{s.podcast?.summary || 'Podcast notes will appear here when an episode is available.'}</p>
+          <div><b>{s.podcast?.duration || '—'}</b><em>{s.podcast?.audioReady?'AUDIO READY':'TRANSCRIPT / NOTES'}</em></div>
+        </article>
+      </section>
+
+      <section className="follower-history-grid">
+        <article>
+          <header><span>ACHIEVEMENTS</span><h2>Honors & Milestones</h2></header>
+          <div className="follower-honors">
+            {honors.length ? honors.map((honor)=><div key={honor.id}><Trophy/><span><b>{honor.name}</b><small>{honor.year}</small></span></div>) : <p>No honors have been published yet.</p>}
+          </div>
+        </article>
+
+        <article>
+          <header><span>CAREER STORY</span><h2>Recent milestones</h2></header>
+          <div className="follower-timeline">
+            {timeline.length ? timeline.map((entry)=><div key={entry.id}><i/><span><small>S{entry.season} · W{entry.week}</small><b>{entry.title}</b><p>{entry.summary}</p></span></div>) : <p>Career milestones will collect here as the story grows.</p>}
+          </div>
+        </article>
+      </section>
+
+      <footer className="follower-footer"><ShieldCheck/><span>This page is a read-only DynastyHQ career follow snapshot. Editing controls and private owner data are never included.</span></footer>
+    </main>
+  </div>;
+}
+
 function WeekProcessingCenter({open,data,user,onClose,notify}){
   const inputRef=useRef(null);
   const rtgInputRef=useRef(null);

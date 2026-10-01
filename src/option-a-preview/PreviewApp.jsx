@@ -2434,6 +2434,9 @@ function PodcastPage({
   const facts=episode.sourceFacts || [];
   const scoringFacts=facts.filter((fact)=>/scor|drive|touchdown|field goal/i.test(`${fact?.key||''} ${fact?.label||''}`));
   const developmentFacts=facts.filter((fact)=>String(fact?.key||'').startsWith('rtg.') || String(fact?.key||'').includes('overall') || String(fact?.key||'').includes('development'));
+  const notebookPack=notebookSourcePackText({data,episode,facts,scoringFacts,developmentFacts});
+  const downloadNotebookPack=()=>downloadPreviewText(notebookPack,'DynastyHQ-S'+data.season+'-W'+game.week+'-NotebookLM-Source-Pack.txt');
+  const downloadTranscript=()=>downloadPreviewText(episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt');
   const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
   const hasTranscript=Boolean(episode.segments?.length);
   const masterFileName=episode.masterAudioFileName || '';
@@ -2759,7 +2762,7 @@ function PodcastPage({
           </span>
         </div>
         <div className="pod-studio-actions">
-          <button onClick={()=>jumpToTab('notebook')}><FileText/>NOTEBOOKLM SOURCE PACK</button>
+          <button onClick={downloadNotebookPack}><FileText/>DOWNLOAD SOURCE PACK</button>
           <button
             className={isNotebookMaster?'replace-master':'attach-master'}
             disabled={masterBusy}
@@ -2914,7 +2917,7 @@ function PodcastPage({
         <article className="transcript-paper">
           <div className="transcript-head">
             <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `Week ${game.week} Recap`}</h2><p>Season {data.season} • Week {game.week} • {data.player.school} {game.us}, {game.opponent} {game.them}</p></div>
-            <button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button>
+            <div className="transcript-head-actions"><button className="ghost" onClick={downloadTranscript}><FileText/>DOWNLOAD TRANSCRIPT</button><button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button></div>
           </div>
           {transcript.map(([title,body],index)=><section key={`${title}-${index}`}><h3>{title}</h3><p>{body}</p></section>)}
           <div className="transcript-note">{episode.segments?.length ? 'This is the complete saved DynastyHQ transcript for the selected real career week.' : 'No generated transcript is saved for this week yet; only verified game context is shown.'}</div>
@@ -2942,13 +2945,13 @@ function PodcastPage({
             <div><Check/><span><b>Player development</b><small>{developmentFacts.length} saved facts reference RTG status, overall, or development.</small></span></div>
             <div><Check/><span><b>Podcast transcript</b><small>{episode.segments?.length || 0} saved transcript segments are available for source material.</small></span></div>
           </div>
-          <button className="yellow" onClick={()=>notify('The real source data is mapped read-only. Download/export will be reconnected later in the preview workflow pass.')}><Zap/>SOURCE PACK STATUS<ChevronRight/></button>
+          <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD NOTEBOOKLM SOURCE PACK<ChevronRight/></button>
         </article>
         <aside className="notebook-tip">
           <BookOpen/>
-          <span>READ-ONLY BRIDGE</span>
-          <h3>Same saved week. New presentation.</h3>
-          <p>This redesign is reading the real DynastyHQ episode and verified publication data without changing the live career record.</p>
+          <span>SOURCE PACK READY</span>
+          <h3>Same saved week. Exportable source material.</h3>
+          <p>The download includes the selected game line, team context, current RTG status, verified facts, scoring/development references, chapters, and the complete saved transcript.</p>
         </aside>
       </div>}
     </section>

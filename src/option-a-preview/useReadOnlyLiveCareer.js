@@ -4,6 +4,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db, productionAppId } from '../firebase.js';
 import { DEFAULT_CAREER_STATE } from '../domain/defaultCareerState.js';
 import { migrateCareerState } from '../domain/weeklyEngine.js';
+import { podcastTranscriptText } from '../domain/podcastEngine.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
   hydrateCareerStateFromArchives,
@@ -71,15 +72,83 @@ const collegeGames = (state, season) => (state.gameLogs || [])
   ))
   .sort(bySeasonWeek);
 
-const latestIssue = (state) => [...(state.newsroomIssues || [])]
-  .filter(Boolean)
-  .sort(bySeasonWeek)
-  .at(-1) || null;
+const publicationIdFor = (entry = {}) => clean(entry?.publicationId || entry?.id || entry?.weekKey);
 
-const latestEpisode = (state) => [...(state.podcastEpisodes || [])]
-  .filter(Boolean)
+const matchesSeasonWeek = (entry, season, week) => (
+  numeric(entry?.season, 1) === numeric(season, 1)
+  && numeric(entry?.week, 0) === numeric(week, 0)
+);
+
+const issueForGame = (state, game, season, week) => {
+  const issues = [...(state.newsroomIssues || [])].filter(Boolean).sort(bySeasonWeek);
+  if (!issues.length) return null;
+  const targetSeason = numeric(game?.season, season);
+  const targetWeek = numeric(game?.week, week);
+  return issues.findLast?.((entry) => matchesSeasonWeek(entry, targetSeason, targetWeek))
+    || [...issues].reverse().find((entry) => matchesSeasonWeek(entry, targetSeason, targetWeek))
+    || issues.at(-1)
+    || null;
+};
+
+const episodeForIssue = (state, issue, game, season, week) => {
+  const episodes = [...(state.podcastEpisodes || [])].filter(Boolean).sort(bySeasonWeek);
+  if (!episodes.length) return null;
+  const publicationId = publicationIdFor(issue);
+  if (publicationId) {
+    const exact = episodes.find((entry) => publicationIdFor(entry) === publicationId);
+    if (exact) return exact;
+  }
+  const targetSeason = numeric(game?.season, season);
+  const targetWeek = numeric(game?.week, week);
+  return [...episodes].reverse().find((entry) => matchesSeasonWeek(entry, targetSeason, targetWeek))
+    || episodes.at(-1)
+    || null;
+};
+
+const durationLabel = (episode = {}) => {
+  const explicit = clean(episode.duration || episode.runtime);
+  if (explicit) return explicit;
+  const minutes = Number(episode.estimatedMinutes);
+  if (!Number.isFinite(minutes) || minutes <= 0) return '—';
+  const whole = Math.floor(minutes);
+  const seconds = Math.round((minutes - whole) * 60);
+  return `${whole}:${String(seconds).padStart(2, '0')}`;
+};
+
+const episodeTranscriptSections = (episode = {}) => {
+  const hostMap = new Map((episode.hosts || []).map((host) => [host.id, clean(host.name, 'HOST')]));
+  return (episode.segments || [])
+    .filter((segment) => clean(segment?.text))
+    .map((segment, index) => ({
+      id: clean(segment.id, `segment-${index + 1}`),
+      speaker: hostMap.get(segment.hostId) || clean(segment.hostId, 'HOST').replaceAll('-', ' ').toUpperCase(),
+      text: clean(segment.text),
+      chapterId: clean(segment.chapterId),
+    }));
+};
+
+const factsForPublication = (state, publicationId, season, week) => (state.factLedger || []).filter((fact) => (
+  fact?.verified
+  && (
+    (publicationId && publicationIdFor(fact) === publicationId)
+    || matchesSeasonWeek(fact, season, week)
+  )
+));
+
+const previousEpisodes = (state, currentEpisode) => [...(state.podcastEpisodes || [])]
+  .filter((entry) => entry && entry !== currentEpisode)
   .sort(bySeasonWeek)
-  .at(-1) || null;
+  .reverse()
+  .slice(0, 3)
+  .map((entry) => ({
+    publicationId: publicationIdFor(entry),
+    season: numeric(entry.season, 1),
+    week: numeric(entry.week, 0),
+    title: clean(entry.title, 'Archived episode'),
+    summary: clean(entry.summary),
+    duration: durationLabel(entry),
+    audioReady: entry.audioStatus === 'ready',
+  }));
 
 export const derivePreviewData = (state) => {
   if (!state) return null;
@@ -90,9 +159,13 @@ export const derivePreviewData = (state) => {
   const game = games.at(-1) || null;
   const scores = gameScores(game || {});
   const next = nextScheduledGame(state, season, Math.max(week, numeric(game?.week, 0) + 1));
-  const issue = latestIssue(state);
+  const issue = issueForGame(state, game, season, week);
   const article = issue?.articles?.find((entry) => entry?.headline || entry?.title) || issue?.articles?.[0] || null;
-  const episode = latestEpisode(state);
+  const episode = episodeForIssue(state, issue, game, season, week);
+  const publicationId = publicationIdFor(issue) || publicationIdFor(episode);
+  const facts = factsForPublication(state, publicationId, numeric(game?.season, season), numeric(game?.week, week));
+  const transcriptSections = episodeTranscriptSections(episode || {});
+  const transcriptText = episode ? podcastTranscriptText(episode) : '';
   const player = state.player || {};
   const school = clean(player.college || player.school, 'PROGRAM');
   const pass = valueOr(game?.passYds);
@@ -136,14 +209,35 @@ export const derivePreviewData = (state) => {
     news: {
       issue,
       article,
+      publicationId,
+      season: numeric(issue?.season, season),
+      week: numeric(issue?.week, numeric(game?.week, week)),
       headline: clean(article?.headline || article?.title || issue?.headline, 'Latest DynastyHQ coverage'),
       dek: clean(article?.dek || article?.summary || issue?.dek, 'Your latest verified career story is ready.'),
+      kicker: clean(article?.kicker, 'GAME RECAP'),
+      byline: clean(article?.byline, 'DynastyHQ Staff'),
+      outlet: clean(article?.outletName || issue?.outletProfile?.localOutletName, 'DynastyHQ Sports'),
+      publishedAt: clean(issue?.publishedAt || issue?.editorialGeneratedAt),
+      paragraphs: Array.isArray(article?.paragraphs) ? article.paragraphs.filter((entry) => clean(entry)).slice(0, 10) : [],
+      photoCaption: clean(article?.photoCaption || article?.dek),
+      articles: Array.isArray(issue?.articles) ? issue.articles : [],
     },
     podcast: {
       episode,
-      title: clean(episode?.title, game ? `${clean(game.opponent, 'Game')} recap` : 'Latest episode'),
-      duration: clean(episode?.duration || episode?.runtime, '—'),
-      transcript: episode?.transcript || episode?.script || '',
+      publicationId,
+      title: clean(episode?.title || issue?.podcastBrief?.title, game ? `${clean(game.opponent, 'Game')} recap` : 'Latest episode'),
+      summary: clean(episode?.summary || issue?.podcastBrief?.summary, 'The latest DynastyHQ episode is tied to this verified career week.'),
+      duration: durationLabel(episode || {}),
+      estimatedMinutes: numeric(episode?.estimatedMinutes, 0),
+      status: clean(episode?.status, episode ? 'scripted' : 'not-generated'),
+      audioStatus: clean(episode?.audioStatus, 'not-generated'),
+      audioReady: episode?.audioStatus === 'ready',
+      chapters: Array.isArray(episode?.chapters) ? episode.chapters : [],
+      segments: transcriptSections,
+      transcript: transcriptText,
+      citedFactKeys: Array.isArray(episode?.citedFactKeys) ? episode.citedFactKeys : [],
+      sourceFacts: facts,
+      previous: previousEpisodes(state, episode),
     },
     totals: games.reduce((acc, entry) => ({
       passYds: acc.passYds + valueOr(entry.passYds),

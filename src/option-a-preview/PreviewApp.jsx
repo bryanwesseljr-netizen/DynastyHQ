@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Archive, BarChart3, Bell, BookOpen, CalendarDays, Check, ChevronDown, ChevronRight,
+  Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronRight,
   ClipboardList, FileText, Headphones, Home, Image as ImageIcon, LockKeyhole, Menu,
-  Mic2, MoreHorizontal, Newspaper, Pencil, Play, Search, ShieldCheck, Trophy,
-  Upload, UserRound, X, Zap
+  Mic2, MoreHorizontal, Newspaper, Pencil, Play, Search, Shield, ShieldCheck, Sparkles, Target,
+  TrendingUp, Trophy, Upload, UserRound, X, Zap
 } from 'lucide-react';
 import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
@@ -16,6 +16,8 @@ const pages = [
   ['gamehub','Game Hub',CalendarDays],
   ['newsroom','Newsroom',Newspaper],
   ['podcast','Podcast',Headphones],
+  ['career','Career',UserRound],
+  ['chronicle','Chronicle',BookOpen],
 ];
 
 const sample = {
@@ -56,8 +58,6 @@ function App(){
         <nav className="desktop-nav" aria-label="Primary">
           {pages.map(([id,label])=><button key={id} className={page===id?'active':''} onClick={()=>go(id)}>{label}</button>)}
           <button onClick={()=>notify('Offseason is intentionally disabled in this visual preview.')}>Offseason</button>
-          <button onClick={()=>notify('Career is intentionally disabled in this visual preview.')}>Career</button>
-          <button onClick={()=>notify('Chronicle is intentionally disabled in this visual preview.')}>Chronicle</button>
         </nav>
 
         <div className="header-actions">
@@ -97,6 +97,8 @@ function App(){
       {page==='gamehub' && <GameHub go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
       {page==='newsroom' && <Newsroom articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>}
+      {page==='career' && <CareerPage go={go}/>}
+      {page==='chronicle' && <ChroniclePage go={go} openPodcast={openPodcast} openArticle={openNewsArticle}/>}
     </main>
 
     <nav className="mobile-bottom">
@@ -104,7 +106,8 @@ function App(){
       <button className={page==='gamehub'?'active':''} onClick={()=>go('gamehub')}><CalendarDays/><span>Week</span></button>
       <button className={page==='newsroom'?'active':''} onClick={()=>go('newsroom')}><Newspaper/><span>News</span></button>
       <button className={page==='podcast'?'active':''} onClick={()=>openPodcast('episode')}><Headphones/><span>Podcast</span></button>
-      <button onClick={()=>setMobileMenu(v=>!v)}><MoreHorizontal/><span>More</span></button>
+      <button className={page==='career'?'active':''} onClick={()=>go('career')}><UserRound/><span>Career</span></button>
+      <button className={page==='chronicle'?'active':''} onClick={()=>go('chronicle')}><BookOpen/><span>Chronicle</span></button>
     </nav>
 
     {toast && <div className="toast" role="status">{toast}</div>}
@@ -412,6 +415,192 @@ function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
   </div>;
 }
 
+function CareerPage({go}){
+  const timeline = [
+    ['S4 · W10','Illinois Shootout','410 total yards and seven touchdowns in a 54–48 Oregon win.'],
+    ['S4 · W9','Michigan Road Test','Another major chapter in the first season as Oregon’s starter.'],
+    ['S4 · W8','Ohio State Under the Lights','A national-stage week preserved across Game Hub, Newsroom, and The Huddle.'],
+    ['S4 · W1','First College Start','The Vanderbilt week that moved the career from waiting to playing.'],
+    ['PRESEASON','Named the Starter','The moment the Oregon quarterback job became Wessel’s.'],
+  ];
+  return <div className="page career-page">
+    <section className="career-hero-redesign">
+      <div className="career-portrait" style={{backgroundImage:`linear-gradient(0deg,rgba(0,23,17,.18),rgba(0,23,17,.04)),url(${playerPhoto})`}}/>
+      <div className="career-identity">
+        <span className="career-kicker"><Sparkles/>CAREER OVERVIEW</span>
+        <h1>BRYAN<br/><em>WESSEL</em></h1>
+        <p>#6 · QB · OREGON</p>
+        <div className="career-chapter">
+          <div><small>CURRENT CHAPTER</small><strong>ROAD TO GLORY PLAYER</strong><span>Season 4 · Week 10</span></div>
+          <div><small>COLLEGE RECORD</small><strong>5–3</strong><span>Current sample season</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section className="career-stat-row">
+      <article><TrendingUp/><span>CAREER PASSING</span><strong>2,846</strong><small>28 TD · 8 INT · preview data</small></article>
+      <article><Target/><span>CAREER RUSHING</span><strong>742</strong><small>9 rushing TD · preview data</small></article>
+      <article><Shield/><span>DEVELOPMENT</span><strong>76 OVR</strong><small>QB1 · Oregon</small></article>
+      <article><Trophy/><span>LEGACY</span><strong>6</strong><small>honors + milestones · preview</small></article>
+    </section>
+
+    <section className="career-content-grid">
+      <article className="career-panel career-story-panel">
+        <div className="career-panel-head"><div><span>CAREER STORY</span><h2>Timeline</h2></div><BookOpen/></div>
+        <div className="career-timeline-list">
+          {timeline.map(([meta,title,body],index)=><button key={title} onClick={()=>index===0?go('chronicle'):go('chronicle')}><i/><span><small>{meta}</small><strong>{title}</strong><p>{body}</p></span><ChevronRight/></button>)}
+        </div>
+      </article>
+
+      <aside className="career-side-stack">
+        <article className="career-panel">
+          <div className="career-panel-head"><div><span>PLAYER PROFILE</span><h2>Current Snapshot</h2></div><UserRound/></div>
+          <dl className="career-profile-list">
+            <div><dt>Position</dt><dd>QB</dd></div>
+            <div><dt>Program</dt><dd>Oregon</dd></div>
+            <div><dt>Overall</dt><dd>76</dd></div>
+            <div><dt>Depth Chart</dt><dd>QB1</dd></div>
+            <div><dt>Career Stage</dt><dd>College Player</dd></div>
+          </dl>
+        </article>
+        <article className="career-panel career-current-panel">
+          <div className="career-panel-head"><div><span>CURRENT CHAPTER</span><h2>Road to Glory</h2></div><TrendingUp/></div>
+          <strong>Season 4</strong>
+          <p>The career has moved from earning the job to building a résumé as Oregon’s starter.</p>
+          <button onClick={()=>go('gamehub')}>OPEN GAME HUB<ChevronRight/></button>
+        </article>
+      </aside>
+    </section>
+
+    <section className="career-lower-grid">
+      <article className="career-panel">
+        <div className="career-panel-head"><div><span>HISTORY</span><h2>Rivalry Ledger</h2></div><ShieldCheck/></div>
+        <div className="career-rivalries">
+          <div><span>Illinois</span><strong>1–0</strong><small>Last played S4</small></div>
+          <div><span>Michigan</span><strong>1 meeting</strong><small>Season 4</small></div>
+          <div><span>Ohio State</span><strong>1 meeting</strong><small>Season 4</small></div>
+          <div><span>Vanderbilt</span><strong>1 meeting</strong><small>First start</small></div>
+        </div>
+      </article>
+      <article className="career-panel">
+        <div className="career-panel-head"><div><span>ACHIEVEMENTS</span><h2>Honors & Milestones</h2></div><Award/></div>
+        <div className="career-honors">
+          <div><Trophy/><span><strong>Named Oregon Starter</strong><small>Preseason · Season 4</small></span></div>
+          <div><Trophy/><span><strong>First College Start</strong><small>Vanderbilt · Season 4</small></span></div>
+          <div><Trophy/><span><strong>Seven-TD Signature Game</strong><small>Illinois · Week 10</small></span></div>
+        </div>
+      </article>
+    </section>
+
+    <footer className="career-footer-redesign">
+      <span>DynastyHQ Career · Your Career. Your Legacy. Your Dynasty.</span>
+      <button onClick={()=>go('chronicle')}>OPEN CAREER CHRONICLE<ChevronRight/></button>
+    </footer>
+  </div>;
+}
+
+function ChroniclePage({go,openPodcast,openArticle}){
+  const [season,setSeason] = useState(4);
+  const [moment,setMoment] = useState('illinois');
+  const [museumTab,setMuseumTab] = useState('signatures');
+  const moments = {
+    illinois:{week:'W10',label:'SIGNATURE GAME',title:'W vs Illinois',score:'54–48',copy:'A seven-touchdown performance turns a shootout into one of the defining games of the season.',pass:'286',td:'7',int:'2'},
+    michigan:{week:'W9',label:'ROAD TEST',title:'Michigan',score:'SEASON 4',copy:'A major road chapter preserved as the first season as starter kept building.',pass:'—',td:'—',int:'—'},
+    ohio:{week:'W8',label:'NATIONAL STAGE',title:'Ohio State',score:'SEASON 4',copy:'A spotlight week with the game, coverage, and podcast preserved together.',pass:'—',td:'—',int:'—'},
+    vandy:{week:'W1',label:'FIRST START',title:'Vanderbilt',score:'SEASON 4',copy:'The week the career changed from backup context to a verified college start.',pass:'—',td:'—',int:'—'},
+  };
+  const active=moments[moment];
+  return <div className="page chronicle-page">
+    <section className="chronicle-hero-redesign">
+      <div>
+        <span><Sparkles/>CAREER CHRONICLE</span>
+        <h1>THE FILM OF<br/><em>THE CAREER</em></h1>
+        <p>Seasons become chapters. Signature games, stories, shows, photos, and defining career moments stay attached to the week where they happened.</p>
+      </div>
+      <aside>
+        <div><strong>4</strong><span>SEASONS</span></div>
+        <div><strong>S4</strong><span>CURRENT</span></div>
+        <div><strong>3</strong><span>SIGNATURES</span></div>
+        <div><strong>MEDIA</strong><span>LINKED</span></div>
+      </aside>
+    </section>
+
+    <nav className="chronicle-season-nav" aria-label="Career seasons">
+      {[1,2,3,4].map(s=><button key={s} className={season===s?'active':''} onClick={()=>setSeason(s)}><span>SEASON {s}</span><strong>{s===4?'OREGON':'CAREER CHAPTER'}</strong><small>{s===4?'5–3 · QB':'Archived chapter'}</small></button>)}
+    </nav>
+
+    {season===4 ? <>
+      <section className="chronicle-chapter">
+        <div><span><CalendarDays/>SEASON 4 · OREGON</span><h2>THE STARTER CHAPTER</h2><p>A season that began with winning the job and is now producing nationally visible moments.</p></div>
+        <div className="chronicle-season-line">
+          <div><strong>5–3</strong><span>RECORD</span></div>
+          <div><strong>W10</strong><span>CURRENT</span></div>
+          <div><strong>4</strong><span>PRESERVED WEEKS</span></div>
+          <div><strong>3</strong><span>SIGNATURES</span></div>
+        </div>
+      </section>
+
+      <section className="chronicle-signatures">
+        <header><div><span><Trophy/>SIGNATURE GAMES</span><h2>The weeks worth remembering</h2></div><small>Selected from verified career history</small></header>
+        <div className="chronicle-signature-grid">
+          <button className={moment==='illinois'?'active':''} onClick={()=>setMoment('illinois')}><span>WEEK 10 · SIGNATURE GAME</span><strong>W vs Illinois</strong><p>54–48 · 286 pass yds · 7 TD</p><small>Seven touchdowns · 410 total yards</small><ChevronRight/></button>
+          <button className={moment==='ohio'?'active':''} onClick={()=>setMoment('ohio')}><span>WEEK 8 · NATIONAL STAGE</span><strong>Ohio State</strong><p>Major spotlight week</p><small>Newsroom + Huddle preserved</small><ChevronRight/></button>
+          <button className={moment==='vandy'?'active':''} onClick={()=>setMoment('vandy')}><span>WEEK 1 · FIRST START</span><strong>Vanderbilt</strong><p>The beginning of the starter chapter</p><small>Career turning point</small><ChevronRight/></button>
+        </div>
+      </section>
+
+      <section className="chronicle-moment">
+        <div className="chronicle-moment-main">
+          <span>{active.label} · SEASON 4 · {active.week}</span>
+          <h2>{active.title}</h2>
+          <p>{active.copy}</p>
+          <div className="chronicle-moment-stats">
+            <div><strong>{active.score}</strong><span>SCORE / CONTEXT</span></div>
+            <div><strong>{active.pass}</strong><span>PASS YDS</span></div>
+            <div><strong>{active.td}</strong><span>TOTAL TD</span></div>
+            <div><strong>{active.int}</strong><span>INT</span></div>
+          </div>
+          <div className="chronicle-why"><span>WHY DYNASTYHQ KEPT THIS ONE</span><p>{active.copy}</p></div>
+          <div className="chronicle-media-actions">
+            <button onClick={openArticle}><Newspaper/>READ NEWSROOM</button>
+            <button onClick={()=>openPodcast('episode')}><Headphones/>PLAY THE HUDDLE</button>
+            <button onClick={()=>go('gamehub')}><BarChart3/>OPEN GAME DATA</button>
+          </div>
+        </div>
+        <aside className="chronicle-memory-stack">
+          <span>MEMORY STACK</span>
+          <article><Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>Wessel Leads Oregon Past Illinois</strong><p>The complete editorial recap stays attached to Week 10.</p></div></article>
+          <article><Headphones/><div><small>THE HUDDLE</small><strong>The Illinois Shootout</strong><p>Episode, transcript, and NotebookLM source pack preserved with the week.</p></div></article>
+          <article><ImageIcon/><div><small>PHOTO LIBRARY</small><strong>Game imagery</strong><p>Visual memories remain tied to the career moment.</p></div></article>
+        </aside>
+      </section>
+
+      <section className="chronicle-timeline">
+        <header><div><span><BookOpen/>SEASON TIMELINE</span><h2>Every verified chapter</h2></div><small>4 preserved entries</small></header>
+        <div>
+          <button className={moment==='illinois'?'active':''} onClick={()=>setMoment('illinois')}><span>W10</span><strong>Illinois Shootout</strong><small>W · 54–48 · signature game</small><Newspaper/><Headphones/><ChevronRight/></button>
+          <button className={moment==='michigan'?'active':''} onClick={()=>setMoment('michigan')}><span>W9</span><strong>Michigan Road Test</strong><small>Season 4 career chapter</small><Newspaper/><ChevronRight/></button>
+          <button className={moment==='ohio'?'active':''} onClick={()=>setMoment('ohio')}><span>W8</span><strong>Ohio State Under the Lights</strong><small>National-stage week</small><Headphones/><ChevronRight/></button>
+          <button className={moment==='vandy'?'active':''} onClick={()=>setMoment('vandy')}><span>W1</span><strong>First Start vs Vanderbilt</strong><small>Starter chapter begins</small><ChevronRight/></button>
+        </div>
+      </section>
+    </> : <section className="chronicle-archived-season"><Archive/><span>SEASON {season}</span><h2>Archived Career Chapter</h2><p>This preview keeps earlier seasons intentionally compact. In the connected build, verified games, milestones, media, and stats for this season populate here automatically.</p></section>}
+
+    <section className="chronicle-museum">
+      <header><div><span><Trophy/>CAREER MUSEUM</span><h2>The Legacy So Far</h2></div><small>Built automatically from preserved history</small></header>
+      <nav>
+        {[['signatures','SIGNATURE GAMES'],['records','RECORD BOOK'],['media','MEDIA VAULT'],['stops','CAREER STOPS']].map(([id,label])=><button key={id} className={museumTab===id?'active':''} onClick={()=>setMuseumTab(id)}>{label}</button>)}
+      </nav>
+      <div className="museum-content">
+        {museumTab==='signatures' && <div className="museum-signature-grid"><article><span>S4 · W10</span><strong>ILLINOIS SHOOTOUT</strong><p>410 total yards · 7 TD</p></article><article><span>S4 · W8</span><strong>OHIO STATE</strong><p>National-stage career week</p></article><article><span>S4 · W1</span><strong>FIRST START</strong><p>Vanderbilt · starter chapter begins</p></article></div>}
+        {museumTab==='records' && <div className="museum-record-grid"><article><strong>410</strong><span>TOTAL YARDS</span><small>Career high · S4 W10</small></article><article><strong>7</strong><span>TOTAL TD</span><small>Career high · S4 W10</small></article><article><strong>124</strong><span>RUSH YDS</span><small>Signature game · S4 W10</small></article></div>}
+        {museumTab==='media' && <div className="museum-record-grid"><article><Newspaper/><strong>Newsroom</strong><small>Stories preserved with career weeks</small></article><article><Headphones/><strong>The Huddle</strong><small>Episodes + transcripts archived</small></article><article><Camera/><strong>Game Photos</strong><small>Visual memories linked to moments</small></article></div>}
+        {museumTab==='stops' && <div className="museum-stop"><Logo/><span><small>CAREER STOP</small><strong>OREGON</strong><p>Season 4 · Road to Glory Player · current program</p></span></div>}
+      </div>
+    </section>
+  </div>;
+}
+
 function Newsroom({articleOpen,setArticleOpen,openArticle,openPodcast,go,playing,setPlaying,notify}){
   return <div className="page newsroom-page">
     <section className="journal">
@@ -463,7 +652,7 @@ function Newsroom({articleOpen,setArticleOpen,openArticle,openPodcast,go,playing
 
             <article className="journal-box career-file reference-journal-box">
               <CardHeader title="THE CAREER FILE" light/>
-              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>WESSEL</span><b>6</b></div><div><h3>From first start<br/>to the spotlight.</h3><p>Revisit the early chapters of Bryan Wessel’s journey and how he became the face of this program.</p><button onClick={()=>go('gamehub')}>Explore Chronicle<ChevronRight/></button></div></div>
+              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>WESSEL</span><b>6</b></div><div><h3>From first start<br/>to the spotlight.</h3><p>Revisit the early chapters of Bryan Wessel’s journey and how he became the face of this program.</p><button onClick={()=>go('chronicle')}>Explore Chronicle<ChevronRight/></button></div></div>
             </article>
           </section>
         </>
@@ -548,7 +737,7 @@ function NewsroomArticle({onBack,go,openPodcast,notify}){
           <span>RELATED COVERAGE</span>
           <button onClick={()=>go('gamehub')}><BarChart3/><b>Inside the Game</b><small>Player stats + scoring drives</small><ChevronRight/></button>
           <button onClick={()=>openPodcast('episode')}><Headphones/><b>The Huddle</b><small>Illinois Shootout · 28:14</small><ChevronRight/></button>
-          <button onClick={()=>notify('Career File is sample-only in this visual preview.')}><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
+          <button onClick={()=>go('chronicle')}><Archive/><b>Career File</b><small>From first start to spotlight</small><ChevronRight/></button>
         </section>
       </aside>
     </div>
@@ -556,7 +745,7 @@ function NewsroomArticle({onBack,go,openPodcast,notify}){
     <section className="digital-related-strip">
       <button onClick={()=>go('gamehub')}><BarChart3/><span><small>GAME DATA</small><b>See the numbers behind the win</b></span><ChevronRight/></button>
       <button onClick={()=>openPodcast('episode')}><Headphones/><span><small>THE HUDDLE</small><b>Listen to the Illinois recap</b></span><ChevronRight/></button>
-      <button onClick={()=>notify('Career File is sample-only in this visual preview.')}><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
+      <button onClick={()=>go('chronicle')}><Archive/><span><small>CAREER FILE</small><b>Follow Wessel’s season story</b></span><ChevronRight/></button>
     </section>
   </article>;
 }

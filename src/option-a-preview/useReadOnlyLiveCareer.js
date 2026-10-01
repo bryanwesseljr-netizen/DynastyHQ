@@ -24,6 +24,12 @@ const numeric = (value, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback;
 };
 
+const optionalNumber = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
 const valueOr = (value, fallback = 0) => (
   value === '' || value === null || value === undefined ? fallback : numeric(value, fallback)
 );
@@ -54,13 +60,22 @@ const scheduleEntries = (state, season) => {
   return Array.isArray(entries) ? entries : [];
 };
 
-const nextScheduledGame = (state, season, currentWeek) => {
+const nextScheduledGame = (state, season, afterWeek, { historical = false } = {}) => {
   const entries = scheduleEntries(state, season)
     .filter((entry) => entry && !entry.isBye && clean(entry.opponent))
     .sort((a, b) => numeric(a.week) - numeric(b.week));
 
-  return entries.find((entry) => !entry.completed && numeric(entry.week) >= numeric(currentWeek))
-    || entries.find((entry) => numeric(entry.week) > numeric(currentWeek))
+  if (historical) {
+    return entries.find((entry) => numeric(entry.week) > numeric(afterWeek)) || null;
+  }
+
+  return entries.find((entry) => {
+    const status = clean(entry.status).toLowerCase();
+    return numeric(entry.week) > numeric(afterWeek)
+      && entry.completed !== true
+      && status !== 'completed';
+  })
+    || entries.find((entry) => numeric(entry.week) > numeric(afterWeek))
     || null;
 };
 
@@ -230,7 +245,6 @@ const previousEpisodes = (state, currentEpisode) => [...(state.podcastEpisodes |
   .filter((entry) => entry && entry !== currentEpisode)
   .sort(bySeasonWeek)
   .reverse()
-  .slice(0, 3)
   .map((entry) => ({
     publicationId: publicationIdFor(entry),
     season: numeric(entry.season, 1),
@@ -312,7 +326,8 @@ export const derivePreviewData = (state, selection = {}) => {
   const game = isExplicitSelection ? exactGame : (games.at(-1) || null);
   const contextWeek = game ? numeric(game.week, week) : week;
   const scores = gameScores(game || {});
-  const next = nextScheduledGame(state, season, Math.max(contextWeek + 1, week + 1));
+  const historicalSelection = season < currentSeason || (season === currentSeason && week < currentWeek);
+  const next = nextScheduledGame(state, season, contextWeek, { historical: historicalSelection });
 
   const issue = isExplicitSelection
     ? exactIssueFor(state, season, week)
@@ -321,8 +336,13 @@ export const derivePreviewData = (state, selection = {}) => {
   const episode = isExplicitSelection
     ? exactEpisodeFor(state, issue, season, week)
     : episodeForIssue(state, issue, game, season, week);
-  const publicationId = publicationIdFor(issue) || publicationIdFor(episode);
+  const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
   const facts = factsForPublication(state, publicationId, season, week);
+  const coverageFacts = facts.filter((fact) => fact?.sourceType === 'coverage-reference' || fact?.editorialOnly === true);
+  const scoringFacts = coverageFacts.filter((fact) => (
+    String(fact?.key || '').includes('.scoring.')
+    || /scoring|touchdown|field goal|extra point/i.test(`${fact?.label || ''} ${fact?.evidence || ''}`)
+  ));
   const transcriptSections = episodeTranscriptSections(episode || {});
   const transcriptText = episode ? podcastTranscriptText(episode) : '';
   const offseason = buildPlayerOffseasonMode(state);
@@ -372,6 +392,24 @@ export const derivePreviewData = (state, selection = {}) => {
       rushTD,
       td: passTD + rushTD,
       interceptions: valueOr(game?.int),
+      team: {
+        points: game ? scores.us : null,
+        totalYards: optionalNumber(game?.teamTotalYards),
+        firstDowns: optionalNumber(game?.teamFirstDowns),
+        turnovers: optionalNumber(game?.teamTurnovers),
+        rushYards: optionalNumber(game?.teamRushYds),
+        passYards: optionalNumber(game?.teamPassYds),
+        opponentTotalYards: optionalNumber(game?.opponentTotalYards),
+        opponentFirstDowns: optionalNumber(game?.opponentFirstDowns),
+        opponentTurnovers: optionalNumber(game?.opponentTurnovers),
+      },
+      scoring: {
+        playCount: scoringFacts.length || null,
+        passTD,
+        rushTD,
+        opponentPoints: game ? scores.them : null,
+        facts: scoringFacts,
+      },
     },
     next: {
       raw: next,
@@ -410,7 +448,8 @@ export const derivePreviewData = (state, selection = {}) => {
       transcript: transcriptText,
       citedFactKeys: Array.isArray(episode?.citedFactKeys) ? episode.citedFactKeys : [],
       sourceFacts: facts,
-      previous: previousEpisodes(state, episode),
+      previous: previousEpisodes(state, episode).slice(0, 3),
+      archive: previousEpisodes(state, episode),
     },
     totals: games.reduce((acc, entry) => ({
       passYds: acc.passYds + valueOr(entry.passYds),

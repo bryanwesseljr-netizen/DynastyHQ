@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronRight,
+  Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, FileText, Headphones, Home, Image as ImageIcon, LockKeyhole, Menu,
   Mic2, MoreHorizontal, Newspaper, Pencil, Play, Search, Shield, ShieldCheck, Sparkles, Target,
   TrendingUp, Trophy, Upload, UserRound, X, Zap
@@ -26,11 +26,11 @@ const fallbackData = {
   player: { name:'BRYAN WESSEL', number:'6', pos:'QB', school:'OREGON', overall:'76', headshot:'' },
   season: 4,
   week: 10,
-  game: { week:10, opponent:'ILLINOIS', result:'W', us:54, them:48, pass:286, rush:124, total:410, passTD:6, rushTD:1, td:7, interceptions:2 },
+  game: { week:10, opponent:'ILLINOIS', result:'W', us:54, them:48, pass:286, rush:124, total:410, passTD:6, rushTD:1, td:7, interceptions:2, team:{points:54,totalYards:468,firstDowns:24,turnovers:0,rushYards:182,passYards:286}, scoring:{playCount:7,passTD:6,rushTD:1,opponentPoints:48,facts:[]} },
   next: { week:11, opponent:'MARYLAND' },
   rtg: { rank:'QB1', coachTrust:'' },
   news: { headline:'Wessel leads Oregon past Illinois', dek:'Oregon secures a 54–48 victory behind 286 passing yards, 124 rush yards and 7 total TD from Bryan Wessel.' },
-  podcast: { title:'Illinois recap', duration:'28:14' },
+  podcast: { title:'Illinois recap', duration:'28:14', previous:[], archive:[] },
   totals: { passYds:2846, rushYds:742, passTD:28, rushTD:9, interceptions:8, appearances:4 },
   navigation: { seasons:[4,3], weeks:[10,9] },
   selection: { season:4, week:10, hasGame:true, hasNewsroom:true, hasPodcast:true, isCurrent:true },
@@ -286,11 +286,14 @@ function CardHeader({title,light=false}){ return <div className={'card-title '+(
 function CheckRow({title,sub}){ return <div className="check-row"><span><Check/></span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
 function GameHub({data,go,openPodcast,statsTab,setStatsTab,notify}){
+  const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
+  const team=data.game.team || {};
+  const scoring=data.game.scoring || {};
   const statContent = statsTab==='player'
-    ? [[String(data.game.pass),'PASSING YARDS'],[String(data.game.rush),'RUSHING YARDS'],[String(data.game.total),'TOTAL YARDS'],[String(data.game.td),'TOTAL TD']]
+    ? [[showStat(data.game.pass),'PASSING YARDS'],[showStat(data.game.rush),'RUSHING YARDS'],[showStat(data.game.total),'TOTAL YARDS'],[showStat(data.game.td),'TOTAL TD']]
     : statsTab==='team'
-      ? [['54','POINTS'],['468','TOTAL YARDS'],['7','TOUCHDOWNS'],['0','TURNOVERS']]
-      : [['7','SCORING DRIVES'],['4','PASS TD'],['3','RUSH TD'],['48','OPP PTS']];
+      ? [[showStat(team.points),'POINTS'],[showStat(team.totalYards),'TOTAL OFFENSE'],[showStat(team.firstDowns),'FIRST DOWNS'],[showStat(team.turnovers),'TURNOVERS']]
+      : [[showStat(scoring.playCount),'SCORING PLAYS'],[showStat(scoring.passTD),'PASS TD'],[showStat(scoring.rushTD),'RUSH TD'],[showStat(scoring.opponentPoints),'OPP PTS']];
   return <div className="page gamehub-page">
     <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${playerPhoto})`}}>
       <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / POSTGAME</p></div>
@@ -368,6 +371,8 @@ function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="cov
 
 function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,setPodcastTab,notify}){
   const episode=data.podcast || {};
+  const archiveRef=useRef(null);
+  const [showAllEpisodes,setShowAllEpisodes]=useState(false);
   const game=data.game || {};
   const transcript = episode.segments?.length
     ? episode.segments.map((segment,index)=>[segment.speaker || `HOST ${index+1}`,segment.text])
@@ -386,6 +391,10 @@ function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,se
   const scoringFacts=facts.filter((fact)=>/scor|drive|touchdown|field goal/i.test(`${fact?.key||''} ${fact?.label||''}`));
   const developmentFacts=facts.filter((fact)=>String(fact?.key||'').startsWith('rtg.') || String(fact?.key||'').includes('overall') || String(fact?.key||'').includes('development'));
   const prior=episode.previous || [];
+  const archiveEpisodes=episode.archive?.length ? episode.archive : prior;
+  const scrollArchive=(direction)=>{
+    archiveRef.current?.scrollBy({left:direction*Math.max(280,archiveRef.current.clientWidth*.78),behavior:'smooth'});
+  };
   const playEpisode=()=> {
     if(episode.audioReady){
       setPlaying(v=>!v);
@@ -506,9 +515,16 @@ function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,se
     </section>
 
     <section className="previous-episodes">
-      <div className="previous-head"><div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div><button onClick={()=>notify('Archive selection will be wired during the workflow pass; these titles are already coming from your saved career.')}>View all episodes<ChevronRight/></button></div>
-      <div className="episode-cards">
-        {prior.length ? prior.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}><span>{item.week? `WEEK ${item.week}` : `SEASON ${item.season}`}</span><b>{item.title}</b><small>{item.duration} • {item.audioReady?'Audio ready':'Transcript'}</small><Play/></button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
+      <div className="previous-head">
+        <div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div>
+        <div className="previous-controls">
+          <button className="archive-arrow" onClick={()=>scrollArchive(-1)} aria-label="Scroll previous episodes left"><ChevronLeft/></button>
+          <button className="archive-arrow" onClick={()=>scrollArchive(1)} aria-label="Scroll previous episodes right"><ChevronRight/></button>
+          <button className="view-all-episodes" onClick={()=>setShowAllEpisodes(v=>!v)}>{showAllEpisodes?'Carousel view':'View all episodes'}<ChevronRight/></button>
+        </div>
+      </div>
+      <div ref={archiveRef} className={showAllEpisodes?'episode-cards episode-archive-all':'episode-cards episode-carousel'}>
+        {archiveEpisodes.length ? archiveEpisodes.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}><span>{item.week? `WEEK ${item.week}` : `SEASON ${item.season}`}</span><b>{item.title}</b><small>{item.duration} • {item.audioReady?'Audio ready':'Transcript'}</small><Play/></button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
       </div>
     </section>
   </div>;

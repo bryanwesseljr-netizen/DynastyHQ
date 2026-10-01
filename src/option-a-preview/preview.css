@@ -1446,3 +1446,161 @@ button:active{transform:translateY(1px)}
   }
   .home-page .journey-strip{display:none!important}
 }
+
+
+/* Precision match pass v6 — seamless Home transition + single-row lower modules */
+@media(min-width:701px){
+  /* HOME: remove the dead space below the hero controls and visually connect the card row */
+  .home-page .hero{
+    min-height:430px!important;
+    height:430px!important;
+  }
+  .home-page .hero-copy{
+    padding-top:24px!important;
+    padding-bottom:18px!important;
+  }
+  .home-page .hero-actions{
+    margin-top:13px!important;
+  }
+  .home-page .home-cards{
+    margin-top:4px!important;
+  }
+
+  /* NEWSROOM: keep all three lower editorial modules in one coordinated row */
+  .newsroom-page .journal-lower{
+    display:grid!important;
+    grid-template-columns:1fr 1.08fr 1fr!important;
+    gap:10px!important;
+    align-items:stretch!important;
+  }
+  .newsroom-page .career-file{
+    grid-column:auto!important;
+  }
+  .newsroom-page .reference-journal-box{
+    min-width:0!important;
+    height:100%!important;
+  }
+
+  /* GAME HUB: Up Next, CTA, and Dynasty Workspace stay on one row */
+  .gamehub-page .hub-bottom{
+    display:grid!important;
+    grid-template-columns:1.03fr .90fr 1.08fr!important;
+    gap:10px!important;
+    align-items:stretch!important;
+  }
+  .gamehub-page .hub-bottom>.future{
+    grid-column:auto!important;
+  }
+  .gamehub-page .hub-bottom>div,
+  .gamehub-page .hub-bottom>.yellow{
+    min-height:68px!important;
+    height:68px!important;
+  }
+}
+
+/* Narrow desktop / "desktop site" on a phone: preserve the same-row composition */
+@media(min-width:701px) and (max-width:1000px){
+  .home-page .hero{
+    min-height:390px!important;
+    height:390px!important;
+  }
+  .home-page .home-cards{
+    margin-top:4px!important;
+  }
+
+  .newsroom-page .journal-lower{
+    grid-template-columns:1fr 1.05fr 1fr!important;
+    gap:7px!important;
+  }
+  .newsroom-page .career-file{
+    grid-column:auto!important;
+  }
+  .newsroom-page .reference-journal-box{
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  .newsroom-page .inside-grid{
+    grid-template-columns:96px 1fr!important;
+    gap:7px!important;
+  }
+  .newsroom-page .tiny-photo.photo-tile{
+    min-height:92px!important;
+  }
+  .newsroom-page .huddle-grid{
+    grid-template-columns:100px 1fr!important;
+    gap:7px!important;
+  }
+  .newsroom-page .cover-play img{
+    width:100px!important;
+    height:78px!important;
+  }
+  .newsroom-page .huddle-grid h3{
+    font-size:13px!important;
+  }
+  .newsroom-page .huddle-grid p{
+    font-size:7.5px!important;
+  }
+  .newsroom-page .huddle-actions{
+    gap:5px!important;
+  }
+  .newsroom-page .huddle-actions button{
+    padding:0 5px!important;
+    font-size:7px!important;
+  }
+  .newsroom-page .career-grid{
+    grid-template-columns:92px 1fr!important;
+    gap:7px!important;
+  }
+  .newsroom-page .back-photo.photo-tile{
+    min-height:96px!important;
+  }
+  .newsroom-page .career-grid h3{
+    font-size:14px!important;
+  }
+  .newsroom-page .career-grid p{
+    font-size:7.5px!important;
+  }
+
+  .gamehub-page .hub-bottom{
+    grid-template-columns:1.04fr .92fr 1.08fr!important;
+    gap:7px!important;
+  }
+  .gamehub-page .hub-bottom>.future{
+    grid-column:auto!important;
+  }
+  .gamehub-page .hub-bottom>div,
+  .gamehub-page .hub-bottom>.yellow{
+    min-height:62px!important;
+    height:62px!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  .gamehub-page .hub-bottom>div>strong{
+    font-size:12px!important;
+  }
+  .gamehub-page .hub-bottom>div>span,
+  .gamehub-page .future small{
+    font-size:7px!important;
+  }
+  .gamehub-page .hub-bottom .team-logo{
+    width:36px!important;
+    height:36px!important;
+    font-size:25px!important;
+  }
+  .gamehub-page .hub-bottom>.yellow{
+    padding:0 9px!important;
+    font-size:8px!important;
+  }
+  .gamehub-page .future em{
+    padding:4px 6px!important;
+    font-size:6px!important;
+  }
+}
+
+/* True mobile remains vertically stacked for readability */
+@media(max-width:700px){
+  .home-page .home-cards{margin-top:5px!important}
+  .newsroom-page .journal-lower{grid-template-columns:1fr!important}
+  .newsroom-page .career-file{grid-column:auto!important}
+  .gamehub-page .hub-bottom{grid-template-columns:1fr!important}
+}

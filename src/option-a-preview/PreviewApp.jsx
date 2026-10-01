@@ -130,8 +130,8 @@ function App(){
     <main>
       {page==='home' && <HomePage data={data} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
       {page==='gamehub' && <GameHub data={data} go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
-      {page==='podcast' && <PodcastPage go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>}
+      {page==='newsroom' && <Newsroom data={data} articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='podcast' && <PodcastPage data={data} go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage go={go}/>}
       {page==='chronicle' && <ChroniclePage go={go} openPodcast={openPodcast} openArticle={openNewsArticle}/>}
@@ -235,12 +235,12 @@ function HomePage({data,go,openArticle,openPodcast,notify}){
       <article className="paper-card newsroom-card reference-newsroom-card">
         <CardHeader title="FROM THE NEWSROOM" light/>
         <div className="news-flex">
-          <div><h3>Wessel leads Oregon past Illinois</h3><p>Oregon secures a 54–48 victory behind 286 passing yards, 124 rush yards and 7 total TD from Bryan Wessel.</p></div>
+          <div><h3>{data.news.headline}</h3><p>{data.news.dek}</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/>
         </div>
         <button className="pod-mini" onClick={()=>openPodcast('episode')}>
           <img src={podcastCover} alt="The Huddle"/>
-          <span className="pod-copy"><b>THE HUDDLE</b><small>Illinois recap</small><em>28:14</em></span>
+          <span className="pod-copy"><b>THE HUDDLE</b><small>{data.podcast.title}</small><em>{data.podcast.duration}</em></span>
           <span className="pod-wave" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></span>
           <span className="pod-play"><Play/></span>
         </button>

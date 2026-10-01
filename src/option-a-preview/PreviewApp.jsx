@@ -132,9 +132,9 @@ function App(){
       {page==='gamehub' && <GameHub data={data} go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
       {page==='newsroom' && <Newsroom data={data} articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} go={go} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
-      {page==='offseason' && <OffseasonPage go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
-      {page==='career' && <CareerPage go={go}/>}
-      {page==='chronicle' && <ChroniclePage go={go} openPodcast={openPodcast} openArticle={openNewsArticle}/>}
+      {page==='offseason' && <OffseasonPage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
+      {page==='career' && <CareerPage data={data} go={go}/>}
+      {page==='chronicle' && <ChroniclePage data={data} go={go} openPodcast={openPodcast} openArticle={openNewsArticle}/>} 
     </main>
 
     <nav className="mobile-bottom">

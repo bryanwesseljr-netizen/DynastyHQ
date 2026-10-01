@@ -340,32 +340,52 @@ function Material({icon:Icon,title,sub,onClick}){ return <button className="mate
 function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row simple" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
-function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
-  const transcript = [
-    ['OPENING','Oregon and Illinois just traded blows for four quarters, and when it finally stopped, Bryan Wessel had accounted for 410 total yards and seven touchdowns in a 54–48 Ducks win.'],
-    ['THE GAME','The story was pressure and response. Illinois kept forcing Oregon to answer, and Wessel repeatedly created the next explosive play—six touchdowns through the air, another on the ground, and 124 rushing yards when the pocket broke down.'],
-    ['THE TURNING POINT','The defining stretch came late, when Oregon needed offense without giving Illinois a short field. Wessel extended drives with his legs and the Ducks finally created enough separation to survive the final Illinois push.'],
-    ['WHAT IT MEANS','This is the kind of performance that changes the tone of a season. Oregon moves forward with momentum, while Wessel adds the most complete statistical game of his young career.'],
-    ['UP NEXT','Maryland is next in Week 11. The challenge shifts from surviving a shootout to proving this level of production can carry from one week to the next.']
-  ];
+function PodcastPage({data,go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
+  const episode=data.podcast || {};
+  const game=data.game || {};
+  const transcript = episode.segments?.length
+    ? episode.segments.map((segment,index)=>[segment.speaker || `HOST ${index+1}`,segment.text])
+    : [
+      ['EPISODE BRIEF',episode.summary || 'This week does not have a generated podcast transcript yet.'],
+      ['GAME CONTEXT',`${data.player.school} ${game.us}–${game.them} ${game.opponent}. ${game.pass} passing yards, ${game.rush} rushing yards, ${game.td} total touchdowns.`],
+    ];
+  const chapters=episode.chapters?.length
+    ? episode.chapters.slice(0,6)
+    : [
+      {title:'Opening Drive',summary:`The Week ${game.week} result and why it mattered.`},
+      {title:`${data.player.name.split(' ').at(-1)}’s Night`,summary:`${game.pass} passing, ${game.rush} rushing, ${game.td} total touchdowns.`},
+      {title:'What Comes Next',summary:`The Week ${data.next.week} setup against ${data.next.opponent}.`},
+    ];
+  const facts=episode.sourceFacts || [];
+  const scoringFacts=facts.filter((fact)=>/scor|drive|touchdown|field goal/i.test(`${fact?.key||''} ${fact?.label||''}`));
+  const developmentFacts=facts.filter((fact)=>String(fact?.key||'').startsWith('rtg.') || String(fact?.key||'').includes('overall') || String(fact?.key||'').includes('development'));
+  const prior=episode.previous || [];
+  const playEpisode=()=> {
+    if(episode.audioReady){
+      setPlaying(v=>!v);
+      notify('Saved podcast audio is detected. Full audio-file playback wiring is the next functionality pass.');
+    } else {
+      notify('This saved episode does not currently have ready audio attached. The transcript and source data are still available.');
+    }
+  };
 
   return <div className="page podcast-page">
     <section className="podcast-hero">
       <div className="podcast-hero-art">
         <img src={podcastCover} alt="The Huddle podcast cover"/>
-        <button className="podcast-main-play" onClick={()=>setPlaying(v=>!v)}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
+        <button className="podcast-main-play" onClick={playEpisode}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
       </div>
       <div className="podcast-hero-copy">
-        <span className="podcast-kicker">THE HUDDLE • WEEK 10</span>
-        <h1>THE ILLINOIS<br/><em>SHOOTOUT</em></h1>
-        <p>Game breakdown, key plays, player development, and what comes next after Oregon’s 54–48 win.</p>
-        <div className="podcast-meta"><span>28:14</span><i/><span>Season 4</span><i/><span>Week 10</span></div>
+        <span className="podcast-kicker">THE HUDDLE • WEEK {game.week}</span>
+        <h1 className="podcast-live-title">{episode.title || `WEEK ${game.week} RECAP`}</h1>
+        <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
+        <div className="podcast-meta"><span>{episode.duration || '—'}</span><i/><span>Season {data.season}</span><i/><span>Week {game.week}</span></div>
 
         <div className="audio-console">
-          <button className="audio-play" onClick={()=>setPlaying(v=>!v)}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
+          <button className="audio-play" onClick={playEpisode}>{playing?<span className="pause-bars"><i/><i/></span>:<Play/>}</button>
           <div className="audio-track">
             <div className="audio-wave" aria-hidden="true">{Array.from({length:34}).map((_,i)=><i key={i}/>)}</div>
-            <div className="audio-time"><span>{playing?'08:42':'00:00'}</span><b>28:14</b></div>
+            <div className="audio-time"><span>{episode.audioReady?(playing?'PLAYING':'SAVED AUDIO'):'SCRIPT ONLY'}</span><b>{episode.duration || '—'}</b></div>
           </div>
         </div>
 
@@ -377,10 +397,10 @@ function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
     </section>
 
     <section className="podcast-context-strip">
-      <div><small>FINAL</small><strong>OREGON 54–48 ILLINOIS</strong></div>
+      <div><small>FINAL</small><strong>{data.player.school} {game.us}–{game.them} {game.opponent}</strong></div>
       <i/>
-      <div><small>WESSEL</small><strong>410 TOTAL YARDS</strong></div>
-      <div><small>TOUCHDOWNS</small><strong>7 TOTAL TD</strong></div>
+      <div><small>{data.player.name.split(' ').at(-1)}</small><strong>{game.total} TOTAL YARDS</strong></div>
+      <div><small>TOUCHDOWNS</small><strong>{game.td} TOTAL TD</strong></div>
       <button onClick={()=>go('gamehub')}>VIEW GAME DATA<ChevronRight/></button>
     </section>
 
@@ -394,22 +414,19 @@ function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
       {podcastTab==='episode' && <div className="episode-layout">
         <article className="episode-story">
           <span className="section-kicker">EPISODE BRIEF</span>
-          <h2>One game. Seven touchdowns. A whole lot to unpack.</h2>
-          <p>The Huddle treats each week like a real postgame show—using the uploaded game data, verified player stats, scoring summary, and career context to tell the story behind the result.</p>
+          <h2>{episode.title || `Week ${game.week} postgame show`}</h2>
+          <p>{episode.summary || 'The episode uses the saved verified game packet and career context for this week.'}</p>
           <div className="episode-chapters">
-            <div><b>00:00</b><span><strong>Opening Drive</strong><small>The 54–48 final and why this game mattered.</small></span></div>
-            <div><b>04:18</b><span><strong>Wessel’s Night</strong><small>286 passing, 124 rushing, seven total touchdowns.</small></span></div>
-            <div><b>12:46</b><span><strong>How Oregon Survived</strong><small>The scoring swings and high-leverage moments.</small></span></div>
-            <div><b>21:05</b><span><strong>What Changes Now</strong><small>Player development and the Week 11 Maryland setup.</small></span></div>
+            {chapters.map((chapter,index)=><div key={chapter.id||chapter.title||index}><b>{String(index+1).padStart(2,'0')}</b><span><strong>{chapter.title || `Chapter ${index+1}`}</strong><small>{chapter.summary || 'Saved episode chapter.'}</small></span></div>)}
           </div>
         </article>
         <aside className="episode-side">
           <section>
-            <span>THIS EPISODE USES</span>
-            <div><Check/>Verified player stats</div>
-            <div><Check/>Team statistics</div>
-            <div><Check/>Scoring drives</div>
-            <div><Check/>Career progression</div>
+            <span>THIS SAVED EPISODE USES</span>
+            <div><Check/>{facts.length} verified source facts</div>
+            <div><Check/>{episode.segments?.length || 0} transcript segments</div>
+            <div><Check/>{scoringFacts.length} scoring/drive references</div>
+            <div><Check/>{developmentFacts.length} development references</div>
           </section>
           <section>
             <span>RELATED</span>
@@ -422,18 +439,18 @@ function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
       {podcastTab==='transcript' && <div className="transcript-layout">
         <article className="transcript-paper">
           <div className="transcript-head">
-            <div><span>THE HUDDLE • OFFICIAL TRANSCRIPT</span><h2>The Illinois Shootout</h2><p>Season 4 • Week 10 • Oregon 54, Illinois 48</p></div>
+            <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `Week ${game.week} Recap`}</h2><p>Season {data.season} • Week {game.week} • {data.player.school} {game.us}, {game.opponent} {game.them}</p></div>
             <button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button>
           </div>
-          {transcript.map(([title,body])=><section key={title}><h3>{title}</h3><p>{body}</p></section>)}
-          <div className="transcript-note">Preview transcript excerpt. The connected DynastyHQ version will use the complete generated episode transcript for the selected week.</div>
+          {transcript.map(([title,body],index)=><section key={`${title}-${index}`}><h3>{title}</h3><p>{body}</p></section>)}
+          <div className="transcript-note">{episode.segments?.length ? 'This is the complete saved DynastyHQ transcript for the selected real career week.' : 'No generated transcript is saved for this week yet; only verified game context is shown.'}</div>
         </article>
         <aside className="transcript-sidebar">
           <span>GAME REFERENCES</span>
-          <div><small>Passing</small><b>286 YDS • 6 TD</b></div>
-          <div><small>Rushing</small><b>124 YDS • 1 TD</b></div>
-          <div><small>Total offense</small><b>410 YDS</b></div>
-          <div><small>Final score</small><b>ORE 54 • ILL 48</b></div>
+          <div><small>Passing</small><b>{game.pass} YDS • {game.passTD} TD</b></div>
+          <div><small>Rushing</small><b>{game.rush} YDS • {game.rushTD} TD</b></div>
+          <div><small>Total offense</small><b>{game.total} YDS</b></div>
+          <div><small>Final score</small><b>{data.player.school} {game.us} • {game.opponent} {game.them}</b></div>
           <button onClick={()=>go('gamehub')}>VERIFY IN GAME HUB<ChevronRight/></button>
         </aside>
       </div>}
@@ -442,32 +459,30 @@ function PodcastPage({go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
         <article className="notebook-card">
           <div className="notebook-icon"><Zap/></div>
           <span className="section-kicker">NOTEBOOKLM SOURCE PACK</span>
-          <h2>Week 10 • Illinois</h2>
-          <p>A clean source bundle built for generating an expanded audio conversation in NotebookLM.</p>
+          <h2>Week {game.week} • {game.opponent}</h2>
+          <p>This view is now grounded in the same saved facts and transcript attached to the real DynastyHQ week.</p>
           <div className="source-list">
-            <div><Check/><span><b>Game overview</b><small>Final score, opponent, week context, season record.</small></span></div>
-            <div><Check/><span><b>Verified statistics</b><small>Player and team stats from the selected game.</small></span></div>
-            <div><Check/><span><b>Scoring summary</b><small>Drive-by-drive scoring context and turning points.</small></span></div>
-            <div><Check/><span><b>Player development</b><small>Progression, regression, milestones, and career context.</small></span></div>
-            <div><Check/><span><b>Podcast transcript</b><small>The complete DynastyHQ episode script included as source material.</small></span></div>
+            <div><Check/><span><b>Game overview</b><small>{data.player.school} {game.us}–{game.them} {game.opponent} · Season {data.season}, Week {game.week}.</small></span></div>
+            <div><Check/><span><b>Verified source facts</b><small>{facts.length} saved verified facts are attached to this publication.</small></span></div>
+            <div><Check/><span><b>Scoring summary</b><small>{scoringFacts.length} saved facts reference scoring, drives, touchdowns, or field goals.</small></span></div>
+            <div><Check/><span><b>Player development</b><small>{developmentFacts.length} saved facts reference RTG status, overall, or development.</small></span></div>
+            <div><Check/><span><b>Podcast transcript</b><small>{episode.segments?.length || 0} saved transcript segments are available for source material.</small></span></div>
           </div>
-          <button className="yellow" onClick={()=>notify('NotebookLM export is sample-only in this visual preview.')}><Zap/>OPEN SOURCE PACK<ChevronRight/></button>
+          <button className="yellow" onClick={()=>notify('The real source data is mapped read-only. Download/export will be reconnected later in the preview workflow pass.')}><Zap/>SOURCE PACK STATUS<ChevronRight/></button>
         </article>
         <aside className="notebook-tip">
           <BookOpen/>
-          <span>WHY IT EXISTS</span>
-          <h3>Take the same verified week data into a deeper conversation.</h3>
-          <p>DynastyHQ creates the structured source material; NotebookLM can then turn that package into a longer-form discussion without losing the game context.</p>
+          <span>READ-ONLY BRIDGE</span>
+          <h3>Same saved week. New presentation.</h3>
+          <p>This redesign is reading the real DynastyHQ episode and verified publication data without changing the live career record.</p>
         </aside>
       </div>}
     </section>
 
     <section className="previous-episodes">
-      <div className="previous-head"><div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div><button onClick={()=>notify('Full podcast archive is sample-only in this preview.')}>View all episodes<ChevronRight/></button></div>
+      <div className="previous-head"><div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div><button onClick={()=>notify('Archive selection will be wired during the workflow pass; these titles are already coming from your saved career.')}>View all episodes<ChevronRight/></button></div>
       <div className="episode-cards">
-        <button onClick={()=>notify('Week 9 archived episode is sample-only in this visual preview.')}><span>WEEK 9</span><b>Michigan: The Road Test</b><small>24:38 • Postgame</small><Play/></button>
-        <button onClick={()=>notify('Week 8 archived episode is sample-only in this visual preview.')}><span>WEEK 8</span><b>Ohio State: Under the Lights</b><small>31:06 • Postgame</small><Play/></button>
-        <button onClick={()=>notify('Preseason archived episode is sample-only in this visual preview.')}><span>PRESEASON</span><b>Named the Starter</b><small>18:22 • Career Special</small><Play/></button>
+        {prior.length ? prior.map((item,index)=><button key={item.publicationId||index} onClick={()=>notify(`${item.title} is a real saved archive entry. Archive switching is the next interaction layer.`)}><span>{item.week? `WEEK ${item.week}` : `SEASON ${item.season}`}</span><b>{item.title}</b><small>{item.duration} • {item.audioReady?'Audio ready':'Transcript'}</small><Play/></button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
       </div>
     </section>
   </div>;

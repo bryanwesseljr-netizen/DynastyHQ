@@ -119,6 +119,118 @@ const savePreviewViewState = (state) => {
   }
 };
 
+const followerViewIdFromLocation = () => {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('follow') || '';
+};
+
+const buildFollowerSnapshot = (data = {}) => {
+  const player=data.player || {};
+  const game=data.game || {};
+  const career=data.career || {};
+  const totals=data.totals || {};
+  const news=data.news || {};
+  const podcast=data.podcast || {};
+  const honors=Array.isArray(career.honors) ? career.honors.slice(0,8) : [];
+  const timeline=Array.isArray(career.timeline) ? career.timeline.slice(0,8) : [];
+
+  return {
+    version:1,
+    updatedAt:new Date().toISOString(),
+    player:{
+      name:String(player.name || 'DynastyHQ Career'),
+      number:String(player.number || ''),
+      pos:String(player.pos || ''),
+      school:String(player.school || ''),
+      overall:player.overall ?? '',
+    },
+    season:Number(data.season)||1,
+    week:Number(data.week)||0,
+    game:{
+      week:Number(game.week)||0,
+      opponent:String(game.opponent || ''),
+      result:String(game.result || ''),
+      us:Number(game.us)||0,
+      them:Number(game.them)||0,
+      pass:Number(game.pass)||0,
+      rush:Number(game.rush)||0,
+      total:Number(game.total)||0,
+      passTD:Number(game.passTD)||0,
+      rushTD:Number(game.rushTD)||0,
+      td:Number(game.td)||0,
+      interceptions:Number(game.interceptions)||0,
+    },
+    next:{
+      week:Number(data.next?.week)||0,
+      opponent:String(data.next?.opponent || ''),
+    },
+    totals:{
+      passYds:Number(totals.passYds)||0,
+      rushYds:Number(totals.rushYds)||0,
+      passTD:Number(totals.passTD)||0,
+      rushTD:Number(totals.rushTD)||0,
+      interceptions:Number(totals.interceptions)||0,
+      appearances:Number(totals.appearances)||0,
+    },
+    career:{
+      stage:String(career.stage || 'Road to Glory'),
+      record:{
+        wins:Number(career.record?.wins)||0,
+        losses:Number(career.record?.losses)||0,
+      },
+      appearances:Number(career.appearances)||0,
+      honors:honors.map((honor,index)=>({
+        id:String(honor.id || index),
+        name:String(honor.name || honor.title || 'Career honor'),
+        year:String(honor.year || honor.season || ''),
+      })),
+      timeline:timeline.map((entry,index)=>({
+        id:String(entry.id || index),
+        season:Number(entry.season)||1,
+        week:Number(entry.week)||0,
+        title:String(entry.title || 'Career milestone'),
+        summary:String(entry.summary || ''),
+      })),
+    },
+    news:{
+      headline:String(news.headline || ''),
+      dek:String(news.dek || ''),
+      outlet:String(news.outlet || ''),
+      photoUrl:String(news.weeklyPhoto?.url || news.article?.photo?.url || ''),
+    },
+    podcast:{
+      title:String(podcast.title || ''),
+      summary:String(podcast.summary || ''),
+      duration:String(podcast.duration || ''),
+      audioReady:Boolean(podcast.audioReady),
+    },
+  };
+};
+
+function useFollowerSnapshot(viewId){
+  const [snapshot,setSnapshot]=useState(null);
+  const [status,setStatus]=useState(viewId?'loading':'idle');
+
+  useEffect(()=>{
+    if(!viewId || !db){
+      setSnapshot(null);
+      setStatus(viewId?'error':'idle');
+      return undefined;
+    }
+    const publicRef=doc(db,'artifacts',productionAppId,'public','data','shared_dynasties',viewId);
+    return onSnapshot(publicRef,(docSnap)=>{
+      const next=docSnap.exists() ? docSnap.data()?.redesignFollower : null;
+      setSnapshot(next || null);
+      setStatus(next?'ready':'missing');
+    },()=>{
+      setSnapshot(null);
+      setStatus('error');
+    });
+  },[viewId]);
+
+  return {snapshot,status};
+}
+
 const PAGE_VISUAL_POSITIONS = {
   home:'59%',
   gamehub:'52%',

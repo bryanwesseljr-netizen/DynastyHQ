@@ -34,3 +34,17 @@ test('opened select menus use readable paper/dark contrast and desktop display h
   assert.match(css, /--display:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed",sans-serif/);
   assert.match(css, /font-weight:700!important/);
 });
+
+
+test('podcast artwork supports one default show cover with per-episode overrides and fallback', async () => {
+  const source = await readFile(previewSourceUrl, 'utf8');
+
+  assert.match(source, /PODCAST_ARTWORK_STORAGE_KEY/);
+  assert.match(source, /showCoverImage/);
+  assert.match(source, /currentEpisodeCoverImage/);
+  assert.match(source, /podcastCoverForPublication/);
+  assert.match(source, /DEFAULT SHOW COVER/);
+  assert.match(source, /EPISODE COVER/);
+  assert.match(source, /USE SHOW COVER/);
+  assert.match(source, /Default show cover \+ optional episode override/);
+});

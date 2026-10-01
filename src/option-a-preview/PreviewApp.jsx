@@ -1729,6 +1729,281 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     opponent:coverageScreens.some((entry)=>entry.screenType==='team_stats' || entry.screenType==='player_stats'),
   };
 
+  const publishVerifiedPacket=async()=>{
+    if(publishing) return;
+    const signedInUser=auth.currentUser;
+    if(!signedInUser || !user || signedInUser.uid!==user.uid){
+      setPublishError('Reconnect the same DynastyHQ account before publishing this verified week.');
+      return;
+    }
+    if(!selectedGameFacts.length){
+      setPublishError('At least one verified game-data fact is required before DynastyHQ can publish the week.');
+      return;
+    }
+
+    const targetSeason=Number(data.season)||1;
+    const targetWeek=Number(data.week)||0;
+    const targetPublicationId=createWeekKey(targetSeason,targetWeek);
+    const approvedGameFacts=selectedGameFacts.map(previewCleanFact);
+    const approvedRtgFacts=rtgApproved.map(previewCleanFact);
+    const approvedCoverageFacts=coverageApproved.map(previewCleanFact);
+    const checkpointId=`before-redesign-${targetPublicationId}-${Date.now()}`;
+
+    setPublishing(true);
+    setPublishError('');
+    setPublishResult(null);
+
+    try{
+      const result=await runTransaction(db,async(transaction)=>{
+        const loaded=await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+        });
+        if(!loaded) throw new Error('Your live DynastyHQ career could not be loaded. Nothing was written.');
+
+        const remote=loaded.state;
+        const conflict=findPublishedWeekConflict(remote,{
+          season:targetSeason,
+          week:targetWeek,
+          weekKey:targetPublicationId,
+        });
+
+        let nextState=remote;
+        let action='published';
+
+        if(conflict){
+          const gameIndex=(remote.gameLogs || []).findIndex((entry)=>(
+            Number(entry?.season || 1)===targetSeason && Number(entry?.week)===targetWeek
+          ));
+          if(gameIndex<0){
+            const error=new Error('This week is already published as a non-game update. The Game Data workflow will not overwrite it.');
+            error.code='PUBLISHED_NON_GAME';
+            throw error;
+          }
+
+          const correctedGame=previewGameFromFacts({
+            baseGame:remote.gameLogs[gameIndex] || {},
+            facts:approvedGameFacts,
+            fallbackOpponent:data.game?.opponent || '',
+          });
+
+          nextState=correctPublishedWeek({
+            state:remote,
+            gameIndex,
+            game:correctedGame,
+          });
+          nextState=mergeVerifiedPublicationFacts(nextState,targetPublicationId,approvedGameFacts);
+          nextState=applyCorrectedRtgSnapshot(nextState,{
+            publicationId:targetPublicationId,
+            season:targetSeason,
+            week:targetWeek,
+            facts:approvedRtgFacts,
+          });
+          action='updated';
+        }else{
+          const currentPublicationId=createWeekKey(
+            Number(remote.currentSeason)||1,
+            Number(remote.currentWeek)||1,
+          );
+          if(currentPublicationId!==targetPublicationId){
+            const error=new Error(
+              `This packet belongs to Season ${targetSeason}, Week ${targetWeek}, but the live career is currently waiting for ${currentPublicationId.replace('season-','Season ').replace('-week-',', Week ')}. DynastyHQ blocked the stale write.`,
+            );
+            error.code='STALE_WEEK';
+            throw error;
+          }
+
+          const setup=remote.currentWeekSetup || {};
+          const publishGame=previewGameFromFacts({
+            baseGame:{
+              opponent:setup.opponent || data.game?.opponent || '',
+              result:'',
+              homeScore:'',
+              awayScore:'',
+              passYds:'',
+              passTD:'',
+              rushYds:'',
+              rushTD:'',
+              int:'',
+              isConferenceGame:typeof setup.isConferenceGame==='boolean' ? setup.isConferenceGame : undefined,
+              conferenceGameSource:setup.conferenceGameSource || 'auto',
+            },
+            facts:approvedGameFacts,
+            fallbackOpponent:setup.opponent || data.game?.opponent || '',
+          });
+
+          if(!String(publishGame.opponent || '').trim()){
+            throw new Error('Opponent is missing from the verified packet and current-week setup.');
+          }
+          if(!String(publishGame.result || '').trim()){
+            const teamScore=Number(publishGame.homeScore);
+            const opponentScore=Number(publishGame.awayScore);
+            if(Number.isFinite(teamScore) && Number.isFinite(opponentScore) && teamScore!==opponentScore){
+              publishGame.result=teamScore>opponentScore?'W':'L';
+            }
+          }
+
+          const requiredFields=[
+            ['result','Result'],
+            ['homeScore','Team score'],
+            ['awayScore','Opponent score'],
+            ['passYds','Passing yards'],
+            ['passTD','Passing touchdowns'],
+            ['rushYds','Rushing yards'],
+            ['rushTD','Rushing touchdowns'],
+            ['int','Interceptions'],
+          ];
+          const missing=requiredFields.filter(([field])=>publishGame[field]==='' || publishGame[field]===null || publishGame[field]===undefined);
+          if(missing.length){
+            throw new Error('The verified packet is missing: '+missing.map(([,label])=>label).join(', ')+'. Return to Review before publishing.');
+          }
+
+          const nextRtg=previewRtgFromFacts(remote.rtg || {},approvedRtgFacts);
+          nextState=createPublishedWeek({
+            state:remote,
+            game:publishGame,
+            rtg:nextRtg,
+            coach:remote.coach,
+            facts:[...approvedGameFacts,...approvedRtgFacts],
+            sources:(scanDraft?.sources || []).map((source)=>({
+              id:source.id,
+              fileName:source.fileName,
+              detectedTypes:source.detectedTypes,
+              error:source.error || '',
+            })),
+            weekType:scanDraft?.weekType || 'game',
+            season:targetSeason,
+            week:targetWeek,
+            weekKey:targetPublicationId,
+          });
+        }
+
+        if(approvedCoverageFacts.length){
+          nextState=replaceCoverageReferences(nextState,{
+            publicationId:targetPublicationId,
+            season:targetSeason,
+            week:targetWeek,
+            facts:approvedCoverageFacts,
+            sourceCount:coverageScreens.length,
+          });
+        }
+
+        nextState=appendOfficialNetworkArticles(nextState,{
+          publicationId:targetPublicationId,
+          season:targetSeason,
+          week:targetWeek,
+          articles:officialArticles,
+        });
+
+        const regression=detectDestructiveCareerRegression(remote,nextState);
+        if(regression.blocked){
+          const error=new Error('DynastyHQ blocked the save because it would remove or roll back published career history. '+regression.reason);
+          error.code='CAREER_REGRESSION_BLOCKED';
+          throw error;
+        }
+
+        const remoteRevision=Number(loaded.rawMain?._sync?.revision)||0;
+        const savedAt=new Date().toISOString();
+        nextState={
+          ...nextState,
+          _sync:{
+            revision:remoteRevision+1,
+            deviceId:PREVIEW_WEEK_PROCESSOR_DEVICE_ID,
+            updatedAt:savedAt,
+          },
+        };
+
+        const storagePreview=splitCareerStateForStorage(nextState,savedAt);
+        const mainBytes=estimatedJsonBytes(storagePreview.mainState);
+        const largestArchiveBytes=storagePreview.archives.reduce(
+          (largest,archive)=>Math.max(largest,estimatedJsonBytes(archive)),
+          0,
+        );
+        if(mainBytes>=950*1024 || largestArchiveBytes>=950*1024){
+          const error=new Error(
+            mainBytes>=950*1024
+              ? `The compact DynastyHQ master would be too large (${Math.round(mainBytes/1024)} KB). Nothing was written.`
+              : `The selected week archive would be too large (${Math.round(largestArchiveBytes/1024)} KB). Nothing was written.`,
+          );
+          error.code='STORAGE_SHARD_TOO_LARGE';
+          throw error;
+        }
+
+        const beforeStorage=splitCareerStateForStorage(remote,savedAt);
+        const beforeTargetArchive=beforeStorage.archives.find((archive)=>archive.archiveId===targetPublicationId) || null;
+        const checkpointMain={
+          ...beforeStorage.mainState,
+          _checkpoint:{
+            immutable:true,
+            createdAt:savedAt,
+            reason:'Automatic safety checkpoint before redesign Week Processing write.',
+            targetPublicationId,
+            action,
+            originalArchiveIds:beforeStorage.archives.map((archive)=>archive.archiveId),
+            targetArchiveBackupDocument:beforeTargetArchive ? `${checkpointId}-target-archive` : '',
+          },
+        };
+        if(estimatedJsonBytes(checkpointMain)>=950*1024){
+          throw new Error('DynastyHQ could not create the pre-write safety checkpoint, so the week was not published.');
+        }
+        transaction.set(
+          doc(db,'artifacts',productionAppId,'users',signedInUser.uid,'hq_data',checkpointId),
+          checkpointMain,
+        );
+        if(beforeTargetArchive){
+          if(estimatedJsonBytes(beforeTargetArchive)>=950*1024){
+            throw new Error('The existing week is too large to checkpoint safely, so DynastyHQ blocked the update.');
+          }
+          transaction.set(
+            doc(db,'artifacts',productionAppId,'users',signedInUser.uid,'hq_data',`${checkpointId}-target-archive`),
+            {
+              ...beforeTargetArchive,
+              _checkpointArchive:{
+                immutable:true,
+                createdAt:savedAt,
+                targetPublicationId,
+              },
+            },
+          );
+        }
+
+        writeHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+          state:nextState,
+        });
+
+        return {
+          action,
+          publicationId:targetPublicationId,
+          savedAt,
+          nextWeek:Number(nextState.currentWeek)||targetWeek,
+          gameFactCount:approvedGameFacts.length,
+          rtgFactCount:approvedRtgFacts.length,
+          coverageFactCount:approvedCoverageFacts.length,
+          officialArticleCount:officialArticles.length,
+          checkpointId,
+        };
+      });
+
+      setPublishResult(result);
+      setPublishConfirm(false);
+      notify(
+        result.action==='updated'
+          ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Coverage that depended on changed facts may need regeneration.`
+          : `Season ${targetSeason}, Week ${targetWeek} was safely published to your live DynastyHQ career.`,
+      );
+    }catch(error){
+      setPublishError(error?.message || 'DynastyHQ could not publish this verified week. Nothing was intentionally changed.');
+    }finally{
+      setPublishing(false);
+    }
+  };
+
   const closeSafe=()=>{
     if(scanning || rtgScanning || coverageScanning) return;
     revokeFiles(files);

@@ -6568,3 +6568,131 @@ button:active{transform:translateY(1px)}
     font-size:8px;
   }
 }
+
+
+/* Precision match pass v23 — weekly archive fixes + media overflow */
+@media(min-width:701px){
+  /* Real episode summaries can be taller than the original mock copy.
+     Let the grid establish one equal-height row instead of clipping content. */
+  .newsroom-page .journal-lower{
+    align-items:stretch!important;
+  }
+  .newsroom-page .reference-journal-box{
+    height:auto!important;
+    min-height:218px!important;
+    overflow:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .newsroom-page .huddle-grid{
+    height:auto!important;
+    min-height:108px!important;
+    flex:1 0 auto!important;
+  }
+  .newsroom-page .huddle-grid>div{
+    min-width:0!important;
+  }
+  .newsroom-page .huddle-grid p{
+    overflow-wrap:anywhere!important;
+  }
+  .newsroom-page .huddle-actions{
+    flex:0 0 auto!important;
+    margin-top:9px!important;
+    padding-bottom:1px!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:1000px){
+  .newsroom-page .reference-journal-box{
+    height:auto!important;
+    min-height:210px!important;
+  }
+  .newsroom-page .huddle-grid{
+    min-height:104px!important;
+  }
+}
+
+/* Podcast archive: swipe/scroll through every saved prior episode. */
+.previous-controls{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.previous-head .archive-arrow{
+  width:30px;
+  height:30px;
+  min-width:30px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid #2f6657;
+  border-radius:50%;
+  background:#07352b;
+  color:#fff;
+}
+.previous-head .archive-arrow svg{
+  width:14px;
+  height:14px;
+}
+.previous-head .view-all-episodes{
+  min-height:30px;
+  padding:0 4px 0 8px;
+}
+.episode-cards.episode-carousel{
+  display:flex!important;
+  grid-template-columns:none!important;
+  gap:9px!important;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scroll-snap-type:x mandatory;
+  scroll-behavior:smooth;
+  padding:0 0 7px!important;
+  scrollbar-width:thin;
+}
+.episode-cards.episode-carousel>button{
+  flex:0 0 calc((100% - 18px)/3);
+  min-width:0;
+  scroll-snap-align:start;
+}
+.episode-cards.episode-archive-all{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  overflow:visible!important;
+}
+.episode-cards.episode-archive-all>button{
+  min-width:0;
+}
+
+@media(max-width:700px){
+  .previous-head{
+    align-items:flex-start!important;
+    gap:9px!important;
+  }
+  .previous-controls{
+    gap:4px;
+  }
+  .previous-head .archive-arrow{
+    width:28px;
+    height:28px;
+    min-width:28px;
+  }
+  .previous-head .view-all-episodes{
+    min-height:28px;
+    font-size:5.8px!important;
+  }
+  .episode-cards.episode-carousel{
+    display:flex!important;
+    margin-right:-4px;
+    padding-right:28px!important;
+  }
+  .episode-cards.episode-carousel>button{
+    flex:0 0 86%;
+    min-height:84px!important;
+  }
+  .episode-cards.episode-archive-all{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+  }
+}

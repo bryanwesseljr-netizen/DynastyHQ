@@ -1975,3 +1975,370 @@ button:active{transform:translateY(1px)}
     border-bottom:0;
   }
 }
+
+
+/* Precision match pass v9 — premium digital sports feature article */
+.digital-feature{
+  background:#f4f1e9;
+  color:#0c1411;
+  min-height:760px;
+}
+.digital-feature-head{
+  max-width:1050px;
+  padding:24px 24px 14px;
+}
+.digital-kicker{
+  display:block;
+  color:#076146;
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:1.7px;
+}
+.digital-feature-head h1{
+  max-width:980px;
+  margin:7px 0 8px;
+  font-family:Inter,Arial,Helvetica,sans-serif;
+  font-size:48px;
+  font-weight:950;
+  line-height:.94;
+  letter-spacing:-2.2px;
+}
+.digital-deck{
+  max-width:830px;
+  margin:0;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:18px;
+  line-height:1.3;
+  color:#3e4541;
+}
+.digital-byline{
+  margin-top:14px;
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  padding-bottom:9px;
+  border-bottom:1px solid #9ba19d;
+  color:#65706a;
+  font-size:8px;
+}
+.digital-byline b{color:#075d43}
+.digital-hero-figure{
+  margin:0 24px;
+}
+.digital-hero-photo{
+  height:445px;
+  background-size:cover;
+  background-position:center 28%;
+  background-repeat:no-repeat;
+  border:1px solid #d4cec2;
+}
+.digital-hero-figure figcaption{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:6px 1px 0;
+  color:#757b77;
+  font-family:Georgia,serif;
+  font-size:8px;
+  font-style:italic;
+}
+.digital-scorebar{
+  display:grid;
+  grid-template-columns:1.08fr 62px 1.08fr 1px repeat(4,.63fr);
+  gap:10px;
+  align-items:center;
+  min-height:74px;
+  margin:14px 24px 0;
+  padding:8px 12px;
+  border-top:1px solid #b9beb9;
+  border-bottom:1px solid #b9beb9;
+}
+.digital-team{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.digital-team.away{justify-content:flex-end}
+.digital-team .team-logo{
+  width:46px;height:46px;font-size:37px;
+}
+.digital-team span{display:grid}
+.digital-team b{font-size:8px}
+.digital-team strong{font-size:30px;line-height:1}
+.digital-scorebar>em{
+  font-style:normal;
+  text-align:center;
+  font-size:8px;
+  font-weight:900;
+}
+.digital-scorebar>i{
+  width:1px;height:42px;background:#c4c7c3;
+}
+.digital-stat{
+  display:grid;
+  justify-items:center;
+  gap:2px;
+}
+.digital-stat strong{
+  font-family:Inter,Arial,sans-serif;
+  font-size:26px;
+  line-height:1;
+}
+.digital-stat small{
+  font-size:6px;
+  letter-spacing:.6px;
+}
+.digital-story-layout{
+  display:grid;
+  grid-template-columns:minmax(0,760px) 260px;
+  justify-content:center;
+  gap:42px;
+  padding:28px 24px 34px;
+}
+.digital-story-copy{
+  min-width:0;
+}
+.digital-story-copy p{
+  margin:0 0 15px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:14px;
+  line-height:1.75;
+  color:#404641;
+}
+.digital-story-copy .digital-lede{
+  font-size:18px;
+  line-height:1.55;
+  color:#171e1a;
+}
+.digital-story-copy .digital-lede::first-letter{
+  float:left;
+  padding-right:7px;
+  margin-top:1px;
+  font-size:54px;
+  line-height:.75;
+  font-weight:700;
+  color:#08110d;
+}
+.digital-story-copy h2{
+  margin:25px 0 7px;
+  padding-bottom:5px;
+  border-bottom:2px solid #0b654a;
+  color:#075c43;
+  font-family:Inter,Arial,sans-serif;
+  font-size:19px;
+  line-height:1;
+}
+.digital-pullquote{
+  margin:24px 0;
+  padding:18px 20px 17px;
+  border-left:5px solid var(--yellow);
+  background:#082c23;
+  color:#fff;
+}
+.digital-pullquote>span{
+  color:var(--yellow);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:1.5px;
+}
+.digital-pullquote blockquote{
+  margin:7px 0 0;
+  font-family:Georgia,serif;
+  font-size:22px;
+  font-weight:700;
+  line-height:1.25;
+}
+.digital-story-rail{
+  align-self:start;
+  position:sticky;
+  top:185px;
+  display:grid;
+  gap:14px;
+}
+.snapshot-card,
+.related-card{
+  border:1px solid #adb5b0;
+  background:#faf8f2;
+}
+.snapshot-head{
+  padding:9px 11px;
+  background:#075c43;
+  color:#fff;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.7px;
+}
+.snapshot-row{
+  display:grid;
+  gap:3px;
+  padding:10px 11px;
+  border-bottom:1px solid #d0d4d0;
+}
+.snapshot-row:last-child{border-bottom:0}
+.snapshot-row span{
+  color:#69716d;
+  font-size:7px;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+.snapshot-row b{
+  font-size:9px;
+  line-height:1.3;
+}
+.related-card{
+  padding:10px;
+}
+.related-card>span{
+  display:block;
+  margin-bottom:5px;
+  color:#075c43;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:1px;
+}
+.related-card button{
+  width:100%;
+  display:grid;
+  grid-template-columns:24px 1fr 14px;
+  grid-template-rows:auto auto;
+  column-gap:8px;
+  align-items:center;
+  padding:9px 2px;
+  border:0;
+  border-bottom:1px solid #d3d6d2;
+  background:transparent;
+  color:#0b1511;
+  text-align:left;
+}
+.related-card button:last-child{border-bottom:0}
+.related-card button>svg:first-child{grid-row:1/3}
+.related-card button>b{font-size:9px}
+.related-card button>small{font-size:7px;color:#69726e}
+.related-card button>svg:last-child{grid-column:3;grid-row:1/3;width:13px}
+.digital-related-strip{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin:0 24px 24px;
+  padding-top:18px;
+  border-top:1px solid #b9beb9;
+}
+.digital-related-strip button{
+  min-height:76px;
+  display:grid;
+  grid-template-columns:30px 1fr 16px;
+  gap:9px;
+  align-items:center;
+  border:1px solid #c5cac6;
+  background:#faf8f2;
+  color:#0a1511;
+  text-align:left;
+  padding:10px 12px;
+}
+.digital-related-strip button>span{display:grid}
+.digital-related-strip small{
+  color:#075c43;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:1px;
+}
+.digital-related-strip b{
+  margin-top:3px;
+  font-family:Georgia,serif;
+  font-size:13px;
+  line-height:1.15;
+}
+.digital-related-strip svg:last-child{width:14px}
+
+@media(max-width:1000px) and (min-width:701px){
+  .digital-feature-head h1{font-size:40px}
+  .digital-hero-photo{height:360px}
+  .digital-scorebar{
+    grid-template-columns:1fr 52px 1fr 1px .58fr .58fr .58fr .58fr;
+  }
+  .digital-story-layout{
+    grid-template-columns:minmax(0,1fr) 220px;
+    gap:25px;
+  }
+  .digital-story-copy p{font-size:13px}
+}
+
+@media(max-width:700px){
+  .digital-feature-head{
+    padding:16px 13px 10px;
+  }
+  .digital-feature-head h1{
+    font-size:34px;
+    line-height:.95;
+    letter-spacing:-1.3px;
+  }
+  .digital-deck{
+    font-size:14px;
+  }
+  .digital-byline{
+    display:grid;
+    gap:4px;
+    font-size:7px;
+  }
+  .digital-hero-figure{
+    margin:0;
+  }
+  .digital-hero-photo{
+    height:285px;
+    background-position:center 24%;
+    border-left:0;
+    border-right:0;
+  }
+  .digital-hero-figure figcaption{
+    padding:6px 12px 0;
+    font-size:7px;
+  }
+  .digital-scorebar{
+    grid-template-columns:1fr 45px 1fr;
+    margin:10px 12px 0;
+    padding:7px 4px;
+    gap:5px;
+  }
+  .digital-scorebar>i,
+  .digital-stat{
+    display:none;
+  }
+  .digital-team .team-logo{
+    width:38px;height:38px;font-size:30px;
+  }
+  .digital-team strong{font-size:24px}
+  .digital-team b{font-size:6px}
+  .digital-scorebar>em{font-size:6px}
+  .digital-story-layout{
+    grid-template-columns:1fr;
+    gap:22px;
+    padding:20px 13px 26px;
+  }
+  .digital-story-copy p{
+    font-size:13px;
+    line-height:1.7;
+  }
+  .digital-story-copy .digital-lede{
+    font-size:16px;
+  }
+  .digital-story-copy h2{
+    font-size:17px;
+  }
+  .digital-pullquote{
+    margin:20px -13px;
+    padding:16px 16px;
+    border-left:0;
+    border-top:4px solid var(--yellow);
+  }
+  .digital-pullquote blockquote{
+    font-size:19px;
+  }
+  .digital-story-rail{
+    position:static;
+    grid-template-columns:1fr;
+  }
+  .digital-related-strip{
+    grid-template-columns:1fr;
+    margin:0 13px 18px;
+  }
+}

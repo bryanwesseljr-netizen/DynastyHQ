@@ -2293,11 +2293,27 @@ function CardHeader({title,light=false}){ return <div className={'card-title '+(
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
 function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
+  const [detailOpen,setDetailOpen]=useState('');
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
   const team=data.game.team || {};
   const scoring=data.game.scoring || {};
   const activeOpponent=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
+  const verifiedFacts=data.podcast?.sourceFacts || [];
+  const rtg=data.rtg || {};
+  const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
+  const rtgRows=[
+    ['Overall',data.player.overall],
+    ['Depth chart',rtg.rank],
+    ['Coach trust',rtg.coachTrust],
+    ['Trust to next rank',rtg.trustToNext],
+    ['Skill points',rtg.skillPoints],
+    ['Energy',rtg.energy],
+    ['GPA',rtg.gpa],
+    ['Followers',rtg.followers],
+    ['NIL valuation',rtg.valuation],
+  ].filter(([,value])=>value!==undefined&&value!==null&&value!=='');
+  const wearRows=Object.entries(rtg.wear || {}).map(([key,value])=>[`${key.charAt(0).toUpperCase()}${key.slice(1)} wear`,value]);
   const statContent = statsTab==='player'
     ? [[showStat(data.game.pass),'PASSING YARDS'],[showStat(data.game.rush),'RUSHING YARDS'],[showStat(data.game.total),'TOTAL YARDS'],[showStat(data.game.td),'TOTAL TD']]
     : statsTab==='team'
@@ -2335,17 +2351,17 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
             </div>
           </div>
           <div className="panel-actions">
-            <button className="ghost" onClick={()=>notify('Source screenshots are not connected in the visual preview.')}><Upload/>VIEW SOURCE SCREENSHOTS</button>
-            <button className="ghost" onClick={()=>notify('Editing is disabled in the visual preview.')}><Pencil/>EDIT VERIFIED DATA</button>
+            <button className="ghost" onClick={()=>setDetailOpen('sources')}><ShieldCheck/>VIEW VERIFIED SOURCES</button>
+            <button className="ghost" onClick={openProcessing}><Pencil/>REVIEW / UPDATE WEEK</button>
           </div>
         </article>
 
         <article className="paper-panel material reference-material">
           <h2>GAME MATERIAL</h2>
           <div className="material-grid">
-            <Material icon={FileText} title="Box score" sub={pregame?'Available after the final.':'Game statistics and team totals attached.'} ready={!pregame} onClick={()=>pregame?notify('The box score will unlock after this game is completed.'):notify('Box score detail is sample-only in this visual preview.')}/>
+            <Material icon={FileText} title="Box score" sub={pregame?'Available after the final.':'Game statistics and team totals attached.'} ready={!pregame} onClick={()=>pregame?notify('The box score will unlock after this game is completed.'):setDetailOpen('box')}/>
             <Material icon={ClipboardList} title="Scoring summary" sub={pregame?'Available after the final.':'All scoring drives attached to this game.'} ready={!pregame} onClick={()=>pregame?notify('Scoring drives will unlock after this game is completed.'):setStatsTab('drives')}/>
-            <Material icon={UserRound} title="Player ratings" sub={pregame?'Available after the final.':'Individual player ratings attached.'} ready={!pregame} onClick={()=>pregame?notify('Player ratings will unlock after this game is completed.'):notify('Player ratings detail is sample-only in this visual preview.')}/>
+            <Material icon={UserRound} title="Player ratings" sub={pregame?'Available after the final.':'Current saved RTG/player status.'} ready={!pregame} onClick={()=>pregame?notify('Player ratings will unlock after this game is completed.'):setDetailOpen('ratings')}/>
           </div>
         </article>
       </div>
@@ -2361,19 +2377,64 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
 
         <article className="paper-panel development reference-development">
           <h2>PLAYER DEVELOPMENT</h2>
-          <SimpleRow icon={BarChart3} title="Attribute changes" sub="See how this week impacted your player." onClick={()=>notify('Attribute-change details are sample-only in this visual preview.')}/>
-          <SimpleRow icon={UserRound} title="Coach trust" sub="Build your role and earn opportunities." onClick={()=>notify('Coach-trust details are sample-only in this visual preview.')}/>
-          <SimpleRow icon={ClipboardList} title="Training notes" sub="Focus areas for next week." onClick={()=>notify('Training-note details are sample-only in this visual preview.')}/>
-          <button className="ghost full" onClick={()=>notify('Player development details are sample-only.')}><BarChart3/>REVIEW CHANGES<ChevronRight/></button>
+          <SimpleRow icon={BarChart3} title="Attribute changes" sub={developmentFacts.length?developmentFacts.length+' verified development references saved.':'Open current saved player-development status.'} onClick={()=>setDetailOpen('development')}/>
+          <SimpleRow icon={UserRound} title="Coach trust" sub={rtg.coachTrust!==undefined?'Saved trust: '+rtg.coachTrust+(rtg.trustToNext!==undefined?' / '+rtg.trustToNext:''):'Open current depth-chart status.'} onClick={()=>setDetailOpen('ratings')}/>
+          <SimpleRow icon={ClipboardList} title="Training status" sub={rtg.skillPoints!==undefined?'Skill points available: '+rtg.skillPoints:'Review current energy, wear and saved RTG values.'} onClick={()=>setDetailOpen('training')}/>
+          <button className="ghost full" onClick={()=>setDetailOpen('development')}><BarChart3/>REVIEW DEVELOPMENT<ChevronRight/></button>
         </article>
       </div>
     </section>
 
     <section className="hub-bottom">
       <div><b>{pregame?'THIS WEEK':'UP NEXT'}</b><span>• WEEK {activeOpponent.week}</span><Logo team={activeOpponent.opponent}/><strong>{activeOpponent.opponent}</strong></div>
-      <button className="yellow" onClick={()=>notify(`Week ${activeOpponent.week} preparation is still preview-only.`)}><CalendarDays/>{pregame?'PREPARE THIS WEEK':'PREPARE NEXT WEEK'}<ChevronRight/></button>
+      <button className="yellow" onClick={()=>notify(`Week ${activeOpponent.week} preparation workspace is not part of the redesigned RTG flow yet.`)}><CalendarDays/>{pregame?'PREPARE THIS WEEK':'PREPARE NEXT WEEK'}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
+
+    {detailOpen && <div className="game-detail-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setDetailOpen('')}}>
+      <section className="game-detail-modal" role="dialog" aria-modal="true" aria-label="Game Hub details">
+        <header>
+          <div><span>SEASON {data.season} · WEEK {data.game.week}</span><h2>{detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
+          <button onClick={()=>setDetailOpen('')} aria-label="Close details"><X/></button>
+        </header>
+
+        {detailOpen==='box' && <div className="game-detail-body">
+          <section><h3>{data.player.name}</h3><div className="game-detail-grid">
+            {[
+              ['Passing yards',data.game.pass],['Passing TD',data.game.passTD],['Rushing yards',data.game.rush],['Rushing TD',data.game.rushTD],
+              ['Total yards',data.game.total],['Total TD',data.game.td],['Interceptions',data.game.interceptions],
+            ].map(([label,value])=><div key={label}><span>{label}</span><b>{showStat(value)}</b></div>)}
+          </div></section>
+          <section><h3>{data.player.school} TEAM</h3><div className="game-detail-grid">
+            {[
+              ['Points',team.points],['Total offense',team.totalYards],['Passing yards',team.passYards],['Rushing yards',team.rushYards],
+              ['First downs',team.firstDowns],['Turnovers',team.turnovers],['Opponent yards',team.opponentTotalYards],['Opponent turnovers',team.opponentTurnovers],
+            ].map(([label,value])=><div key={label}><span>{label}</span><b>{showStat(value)}</b></div>)}
+          </div></section>
+        </div>}
+
+        {detailOpen==='sources' && <div className="game-detail-body">
+          <p className="game-detail-intro">These are the verified Fact Ledger entries attached to this selected publication. Evidence text is shown when it was preserved with the fact.</p>
+          <div className="verified-source-list">
+            {verifiedFacts.length ? verifiedFacts.map((fact,index)=><article key={fact.id||fact.key||index}>
+              <ShieldCheck/>
+              <div><span>{fact.label || fact.key || 'Verified fact'}</span><b>{String(fact.value ?? fact.displayValue ?? fact.text ?? 'Verified')}</b>{(fact.evidence||fact.sourceName||fact.sourceType) && <small>{fact.evidence || fact.sourceName || fact.sourceType}</small>}</div>
+            </article>) : <div className="game-detail-empty">No verified Fact Ledger entries are attached to this selected week.</div>}
+          </div>
+        </div>}
+
+        {(detailOpen==='ratings'||detailOpen==='training'||detailOpen==='development') && <div className="game-detail-body">
+          <section><h3>CURRENT SAVED RTG STATUS</h3><div className="game-detail-grid">
+            {(detailOpen==='training' ? [...rtgRows.filter(([label])=>['Skill points','Energy','GPA'].includes(label)),...wearRows] : rtgRows).map(([label,value])=><div key={label}><span>{label}</span><b>{showStat(value)}</b></div>)}
+          </div></section>
+          {detailOpen==='development' && <section><h3>VERIFIED DEVELOPMENT REFERENCES</h3><div className="verified-source-list">
+            {developmentFacts.length ? developmentFacts.map((fact,index)=><article key={fact.id||fact.key||index}><BarChart3/><div><span>{fact.label || fact.key || 'Development fact'}</span><b>{String(fact.value ?? fact.displayValue ?? fact.text ?? 'Saved')}</b>{fact.evidence && <small>{fact.evidence}</small>}</div></article>) : <div className="game-detail-empty">No separate development facts were saved for this week. The current RTG status above is still live career data.</div>}
+          </div></section>}
+        </div>}
+
+        <footer><button onClick={()=>setDetailOpen('')}>CLOSE</button></footer>
+      </section>
+    </div>}
   </div>;
 }
 

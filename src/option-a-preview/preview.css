@@ -1678,3 +1678,26 @@ button:active{transform:translateY(1px)}
 .gamehub-page .complete-strip{
   background:var(--paper)!important;
 }
+
+
+/* Precision match pass v8 — align Home CTA row with hero data stack */
+@media(min-width:701px){
+  .home-page .hero-actions{
+    width:430px!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:10px!important;
+  }
+  .home-page .hero-actions .yellow,
+  .home-page .hero-actions .outline{
+    min-width:0!important;
+    width:100%!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:1000px){
+  .home-page .hero-actions{
+    width:390px!important;
+  }
+}

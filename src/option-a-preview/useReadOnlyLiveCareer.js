@@ -5,6 +5,9 @@ import { auth, db, productionAppId } from '../firebase.js';
 import { DEFAULT_CAREER_STATE } from '../domain/defaultCareerState.js';
 import { migrateCareerState } from '../domain/weeklyEngine.js';
 import { podcastTranscriptText } from '../domain/podcastEngine.js';
+import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
+import { buildCareerChronicle2 } from '../domain/careerChronicle2.js';
+import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
   hydrateCareerStateFromArchives,
@@ -105,6 +108,94 @@ const episodeForIssue = (state, issue, game, season, week) => {
     || null;
 };
 
+
+const stageLabelFor = (state = {}) => {
+  const stage = deriveCareerStage(state);
+  if (stage === CAREER_STAGES.RETIRED) return 'Career Complete';
+  if (stage === CAREER_STAGES.HC) return 'Head Coach';
+  if (stage === CAREER_STAGES.OC) return 'Offensive Coordinator';
+  if (stage === CAREER_STAGES.COLLEGE) return 'Road to Glory Player';
+  return 'High School Recruit';
+};
+
+const careerOverview = (state = {}) => {
+  const allGames = (state.gameLogs || []).filter(Boolean);
+  const college = allGames.filter((game) => (
+    game.didPlay !== false
+    && game.stage !== 'high-school'
+    && !game.evaluation
+    && clean(game.opponent)
+  )).sort(bySeasonWeek);
+  const wins = college.filter((game) => clean(game.result).toUpperCase() === 'W').length;
+  const losses = college.filter((game) => clean(game.result).toUpperCase() === 'L').length;
+  const totals = college.reduce((acc, game) => ({
+    passYds: acc.passYds + valueOr(game.passYds),
+    rushYds: acc.rushYds + valueOr(game.rushYds),
+    passTD: acc.passTD + valueOr(game.passTD),
+    rushTD: acc.rushTD + valueOr(game.rushTD),
+    interceptions: acc.interceptions + valueOr(game.int),
+  }), { passYds:0, rushYds:0, passTD:0, rushTD:0, interceptions:0 });
+
+  const milestones = Array.isArray(state.careerMilestones) ? state.careerMilestones : [];
+  const chronicle = Array.isArray(state.careerChronicle) ? state.careerChronicle : [];
+  const timeline = [...milestones, ...chronicle]
+    .filter(Boolean)
+    .sort((a,b) => (
+      numeric(b.season,1)-numeric(a.season,1)
+      || numeric(b.week,0)-numeric(a.week,0)
+      || String(b.occurredAt||b.publishedAt||'').localeCompare(String(a.occurredAt||a.publishedAt||''))
+    ))
+    .slice(0,8)
+    .map((entry,index)=>({
+      id: clean(entry.id || entry.publicationId, `timeline-${index}`),
+      season: numeric(entry.season,1),
+      week: numeric(entry.week,0),
+      title: clean(entry.title || entry.achievement || entry.type, 'Career milestone'),
+      summary: clean(entry.summary || entry.detail || entry.description, 'Verified career event'),
+    }));
+
+  const rivalryMap = college.reduce((map,game)=>{
+    const opponent=clean(game.opponent);
+    if(!opponent) return map;
+    const row=map.get(opponent)||{opponent,wins:0,losses:0,lastSeason:numeric(game.season,1)};
+    if(clean(game.result).toUpperCase()==='W') row.wins+=1;
+    if(clean(game.result).toUpperCase()==='L') row.losses+=1;
+    row.lastSeason=Math.max(row.lastSeason,numeric(game.season,1));
+    map.set(opponent,row);
+    return map;
+  },new Map());
+
+  return {
+    stage: stageLabelFor(state),
+    record:{wins,losses},
+    appearances:college.length,
+    totals,
+    timeline,
+    rivalries:[...rivalryMap.values()]
+      .sort((a,b)=>((b.wins+b.losses)-(a.wins+a.losses))||(b.lastSeason-a.lastSeason))
+      .slice(0,6),
+    honors:(state.trophies||[]).filter(Boolean).slice(0,6).map((honor,index)=>({
+      id:clean(honor.id,`honor-${index}`),
+      name:clean(honor.name || honor.title || honor.type,'Honor'),
+      year:clean(honor.year || honor.season || honor.summary,'Career achievement'),
+    })),
+    milestones,
+    legacyCount:(state.trophies||[]).length+milestones.length,
+    profile:{
+      height:clean(state.player?.height,'—'),
+      weight:clean(state.player?.weight,'—'),
+      archetype:clean(state.player?.archetype,'Not captured'),
+      overall:clean(state.player?.overall,'—'),
+      rank:clean(state.rtg?.rank || state.player?.depthChartRole,'Not captured'),
+      gpa:clean(state.rtg?.gpa,'Not captured'),
+      followers:valueOr(state.rtg?.followers),
+      valuation:valueOr(state.rtg?.valuation),
+      coachTrust:valueOr(state.rtg?.coachTrust),
+      skillPoints:valueOr(state.rtg?.skillPoints),
+    },
+  };
+};
+
 const durationLabel = (episode = {}) => {
   const explicit = clean(episode.duration || episode.runtime);
   if (explicit) return explicit;
@@ -166,6 +257,9 @@ export const derivePreviewData = (state) => {
   const facts = factsForPublication(state, publicationId, numeric(game?.season, season), numeric(game?.week, week));
   const transcriptSections = episodeTranscriptSections(episode || {});
   const transcriptText = episode ? podcastTranscriptText(episode) : '';
+  const offseason = buildPlayerOffseasonMode(state);
+  const chronicleView = buildCareerChronicle2(state);
+  const career = careerOverview(state);
   const player = state.player || {};
   const school = clean(player.college || player.school, 'PROGRAM');
   const pass = valueOr(game?.passYds);
@@ -247,6 +341,9 @@ export const derivePreviewData = (state) => {
       interceptions: acc.interceptions + valueOr(entry.int),
       appearances: acc.appearances + 1,
     }), { passYds: 0, rushYds: 0, passTD: 0, rushTD: 0, interceptions: 0, appearances: 0 }),
+    career,
+    offseason,
+    chronicle: chronicleView,
   };
 };
 

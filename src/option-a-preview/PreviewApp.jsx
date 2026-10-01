@@ -342,23 +342,25 @@ function NewsroomArticle({onBack,go}){
       <span>GAME RECAP • WEEK 10</span>
     </div>
 
-    <header className="digital-feature-head">
-      <span className="digital-kicker">GAME RECAP</span>
-      <h1>Wessel Leads Oregon Past No. 20 Illinois in Shootout</h1>
-      <p className="digital-deck">Oregon survives a 54–48 thriller behind 410 total yards and seven touchdowns from Bryan Wessel.</p>
-      <div className="digital-byline">
-        <span>By <b>Rachel Monroe</b> · Campus Beat Writer</span>
-        <time>September 2026</time>
-      </div>
-    </header>
+    <section className="digital-feature-top">
+      <header className="digital-feature-head">
+        <span className="digital-kicker">GAME RECAP</span>
+        <h1>Wessel Leads Oregon Past No. 20 Illinois in Shootout</h1>
+        <p className="digital-deck">Oregon survives a 54–48 thriller behind 410 total yards and seven touchdowns from Bryan Wessel.</p>
+        <div className="digital-byline">
+          <span>By <b>Rachel Monroe</b> · Campus Beat Writer</span>
+          <time>September 2026</time>
+        </div>
+      </header>
 
-    <figure className="digital-hero-figure">
-      <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(0deg,rgba(0,20,14,.28),transparent 45%),url(${playerPhoto})`}}/>
-      <figcaption>
-        <span>A career-best performance from the quarterback secures a critical win for the Ducks.</span>
-        <em>Career Photo Library</em>
-      </figcaption>
-    </figure>
+      <figure className="digital-hero-figure">
+        <div className="digital-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(244,241,233,.12),transparent 18%),linear-gradient(0deg,rgba(0,20,14,.24),transparent 48%),url(${playerPhoto})`}}/>
+        <figcaption>
+          <span>A career-best performance from the quarterback secures a critical win for the Ducks.</span>
+          <em>Career Photo Library</em>
+        </figcaption>
+      </figure>
+    </section>
 
     <section className="digital-scorebar">
       <div className="digital-team"><Logo/><span><b>OREGON</b><strong>54</strong></span></div>

@@ -37,6 +37,7 @@ import {
   savePodcastAudioLocal,
 } from '../services/podcastAudioStorage.js';
 import {
+  careerArchiveRef,
   readHydratedCareerInTransaction,
   writeHydratedCareerInTransaction,
 } from '../services/careerStorageFirestore.js';

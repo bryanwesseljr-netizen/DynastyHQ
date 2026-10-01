@@ -11989,3 +11989,51 @@ button:active{transform:translateY(1px)}
     letter-spacing:.1px!important;
   }
 }
+
+
+/* Precision match pass v38 — evenly distributed desktop primary navigation */
+@media(min-width:861px){
+  .desktop-nav{
+    display:grid!important;
+    grid-template-columns:repeat(7,minmax(0,1fr))!important;
+    flex:1 1 auto!important;
+    align-items:stretch!important;
+    justify-content:stretch!important;
+    gap:0!important;
+    min-width:0!important;
+    width:100%!important;
+  }
+  .desktop-nav button{
+    width:100%!important;
+    min-width:0!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0 6px!important;
+    text-align:center!important;
+  }
+  .desktop-nav button.active:after{
+    left:50%!important;
+    right:auto!important;
+    width:42px!important;
+    transform:translateX(-50%)!important;
+  }
+}
+
+@media(min-width:1001px){
+  .top-row{
+    gap:24px!important;
+  }
+  .desktop-nav button{
+    font-size:13px!important;
+  }
+}
+
+@media(min-width:861px) and (max-width:1000px){
+  .top-row{
+    gap:15px!important;
+  }
+  .desktop-nav button{
+    padding-inline:3px!important;
+    font-size:10.5px!important;
+  }
+}

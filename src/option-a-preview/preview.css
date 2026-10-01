@@ -12512,3 +12512,24 @@ select optgroup{
     grid-column:1/3;
   }
 }
+
+
+/* Precision match pass v43 — align live-data bridge to DynastyHQ shell */
+.live-data-bar{
+  width:100%;
+  max-width:var(--shell-max,1440px);
+  margin-left:auto;
+  margin-right:auto;
+  border-left:1px solid #19483c;
+  border-right:1px solid #19483c;
+}
+.live-data-bar.is-connected{
+  border-left-color:#1d6853;
+  border-right-color:#1d6853;
+}
+@media(max-width:700px){
+  .live-data-bar{
+    border-left:0;
+    border-right:0;
+  }
+}

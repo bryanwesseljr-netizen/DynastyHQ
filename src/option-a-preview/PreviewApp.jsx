@@ -2231,9 +2231,22 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,selectedArticleId,setS
   const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
   const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
 
+  const switchSavedStory=(story)=>{
+    if(!story) return;
+    const scrollY=window.scrollY;
+    setSelectedArticleId(story.id);
+    window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>{
+      window.scrollTo({top:scrollY,left:0,behavior:'auto'});
+    }));
+  };
+
   const openSavedStory=(story,label)=>{
     if(!story){
       notify(`No saved ${label} article exists for this edition yet.`);
+      return;
+    }
+    if(articleOpen){
+      switchSavedStory(story);
       return;
     }
     setSelectedArticleId(story.id);
@@ -2259,7 +2272,7 @@ function Newsroom({data,visual,articleOpen,setArticleOpen,selectedArticleId,setS
           visual={visual}
           story={selectedStory}
           articles={articles}
-          onSelectStory={(story)=>{setSelectedArticleId(story.id);window.scrollTo({top:0,behavior:'smooth'})}}
+          onSelectStory={switchSavedStory}
           onBack={()=>{setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}
           go={go}
           openPodcast={openPodcast}

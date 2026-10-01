@@ -46,8 +46,8 @@ const readerClasses = [
 const findBackButton = (root) => [...root.querySelectorAll('button')]
   .find((button) => /back to all articles/i.test(clean(button.textContent)));
 
-const findTeamNewsButton = (root) => [...root.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
-  .find((button) => /team news/i.test(clean(button.textContent)));
+const findFrontPageButton = (root) => [...root.querySelectorAll('nav[aria-label="Newsroom desks"] button')]
+  .find((button) => /front page/i.test(clean(button.textContent)));
 
 const isNewsroomTopNavButton = (button) => Boolean(
   button
@@ -73,6 +73,7 @@ const NewsroomArticleExperiencePortal = () => {
     let lastStoryKey = '';
     let homeResetGeneration = 0;
     let wasNewsroomActive = false;
+    let hasObservedInitialRoute = false;
 
     const cancelHomeReset = () => {
       homeResetGeneration += 1;
@@ -100,10 +101,10 @@ const NewsroomArticleExperiencePortal = () => {
             return;
           }
 
-          const teamButton = findTeamNewsButton(root);
-          if (!teamButton) return;
+          const frontPageButton = findFrontPageButton(root);
+          if (!frontPageButton) return;
 
-          if (teamButton.getAttribute('data-active') !== 'true') teamButton.click();
+          if (frontPageButton.getAttribute('data-active') !== 'true') frontPageButton.click();
           scrollOnce();
           if (generation === homeResetGeneration) homeResetGeneration += 1;
         }, delay);
@@ -117,8 +118,18 @@ const NewsroomArticleExperiencePortal = () => {
         .find((button) => isNewsroomTopNavButton(button));
       const newsroomActive = Boolean(main) || newsroomNavButton?.getAttribute('aria-current') === 'page';
 
-      if (newsroomActive && !wasNewsroomActive) forceNewsroomHome();
+      // Entering Newsroom from another route should land on Front Page. On the
+      // first observation after a browser refresh, preserve the restored desk/article.
+      if (hasObservedInitialRoute && newsroomActive && !wasNewsroomActive) forceNewsroomHome();
       wasNewsroomActive = newsroomActive;
+      hasObservedInitialRoute = true;
+
+      const header = root.querySelector('.dhq-broadcast-header');
+      const headerHeight = Math.ceil(Number(header?.getBoundingClientRect?.().height) || 0);
+      if (main && headerHeight > 0) {
+        main.style.setProperty('--dhq-newsroom-fixed-header-height', `${headerHeight}px`);
+      }
+
       const issueSelect = root.querySelector('select[aria-label="Choose weekly newsroom edition"]');
       const newsroomRoot = issueSelect?.closest('.max-w-6xl');
 
@@ -254,6 +265,8 @@ const NewsroomArticleExperiencePortal = () => {
     document.addEventListener('wheel', handleUserScrollIntent, { capture: true, passive: true });
     document.addEventListener('touchmove', handleUserScrollIntent, { capture: true, passive: true });
     document.addEventListener('keydown', handleScrollKey, true);
+    window.addEventListener('resize', schedule, { passive: true });
+    window.visualViewport?.addEventListener('resize', schedule, { passive: true });
 
     return () => {
       cancelHomeReset();
@@ -263,7 +276,11 @@ const NewsroomArticleExperiencePortal = () => {
       document.removeEventListener('wheel', handleUserScrollIntent, true);
       document.removeEventListener('touchmove', handleUserScrollIntent, true);
       document.removeEventListener('keydown', handleScrollKey, true);
-      root.querySelector('main')?.classList.remove('dhq-newsroom-article-main');
+      window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      const currentMain = root.querySelector('main');
+      currentMain?.classList.remove('dhq-newsroom-article-main');
+      currentMain?.style.removeProperty('--dhq-newsroom-fixed-header-height');
     };
   }, []);
 

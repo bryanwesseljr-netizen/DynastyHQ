@@ -394,3 +394,12 @@ main[data-active-tab="newsroom"].dhq-newsroom-article-main {
     overflow-x: clip !important;
   }
 }
+
+
+/* The fixed DynastyHQ header changes rendered height between phone, Android
+   desktop-site, and desktop layouts. Use the measured height so Back / Share /
+   article tabs never sit underneath the fixed shell. */
+main[data-active-tab="newsroom"].dhq-newsroom-article-main {
+  padding-top: calc(var(--dhq-newsroom-fixed-header-height, 127px) + 10px) !important;
+  scroll-padding-top: calc(var(--dhq-newsroom-fixed-header-height, 127px) + 10px) !important;
+}

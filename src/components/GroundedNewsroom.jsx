@@ -9,6 +9,7 @@ import PostgameFrontPage from './PostgameFrontPage';
 import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { presentationVariables, resolveNewsroomPresentation } from '../domain/newsroomPresentation';
 import { resolveIssueTeamMediaProfile } from '../domain/teamMediaProfile';
+import { readDynastyViewSession, updateDynastyViewSession } from '../domain/viewSession.js';
 import { appId, auth, db } from '../firebase';
 
 const iconForOutlet = (outletId) => ({
@@ -74,12 +75,25 @@ const GroundedNewsroom = ({
   onNotify,
 }) => {
   const latestIssue = issues[issues.length - 1];
+  const restoredView = useMemo(() => (readOnly ? {} : readDynastyViewSession()), [readOnly]);
+  const restoredNewsroom = restoredView.newsroom || {};
+  const restoreNewsroomView = restoredView.activeTab === 'newsroom' && !initialFrontPageId;
+  const restoredIssueId = restoreNewsroomView
+    && issues.some((issue) => issue.id === restoredNewsroom.selectedIssueId)
+    ? restoredNewsroom.selectedIssueId
+    : '';
   const [selectedIssueId, setSelectedIssueId] = useState(
-    issues.some((issue) => issue.id === initialIssueId) ? initialIssueId : latestIssue.id,
+    issues.some((issue) => issue.id === initialIssueId) ? initialIssueId : (restoredIssueId || latestIssue.id),
   );
-  const [selectedOutletId, setSelectedOutletId] = useState('');
-  const [isReaderOpen, setIsReaderOpen] = useState(false);
-  const [frontPageIssueId, setFrontPageIssueId] = useState(initialFrontPageId);
+  const [selectedOutletId, setSelectedOutletId] = useState(
+    restoreNewsroomView ? (restoredNewsroom.selectedOutletId || '') : '',
+  );
+  const [isReaderOpen, setIsReaderOpen] = useState(
+    Boolean(restoreNewsroomView && restoredNewsroom.readerOpen),
+  );
+  const [frontPageIssueId, setFrontPageIssueId] = useState(
+    initialFrontPageId || (restoreNewsroomView ? (restoredNewsroom.frontPageIssueId || '') : ''),
+  );
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveMessage, setArchiveMessage] = useState(null);
 
@@ -118,6 +132,18 @@ const GroundedNewsroom = ({
     setIsReaderOpen(false);
     setFrontPageIssueId('');
   }, [issues, selectedIssueId]);
+
+  useEffect(() => {
+    if (readOnly) return;
+    updateDynastyViewSession({
+      newsroom: {
+        selectedIssueId,
+        selectedOutletId,
+        readerOpen: isReaderOpen,
+        frontPageIssueId,
+      },
+    });
+  }, [frontPageIssueId, isReaderOpen, readOnly, selectedIssueId, selectedOutletId]);
 
   const openStory = (theme, outletId) => {
     setNewsTheme(theme);

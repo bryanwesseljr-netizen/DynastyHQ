@@ -1,7 +1,8 @@
 (() => {
   const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  let articleFirstPending = true;
-  let overviewRequested = false;
+  // The modern Team Hub is overview-first. Story opening is always explicit.
+  let articleFirstPending = false;
+  let overviewRequested = true;
   let applying = false;
   let utilityClosePending = false;
 
@@ -186,9 +187,9 @@
       return;
     }
 
-    if (label === 'the newsroom') {
-      overviewRequested = false;
-      articleFirstPending = true;
+    if (label === 'the newsroom' || label === 'newsroom') {
+      overviewRequested = true;
+      articleFirstPending = false;
       setTimeout(apply, 0);
       return;
     }
@@ -202,8 +203,8 @@
   document.addEventListener('change', (event) => {
     const select = event.target?.closest?.('select[aria-label="Choose weekly newsroom edition"]');
     if (!select) return;
-    overviewRequested = false;
-    articleFirstPending = true;
+    overviewRequested = true;
+    articleFirstPending = false;
     setTimeout(apply, 0);
   }, true);
 

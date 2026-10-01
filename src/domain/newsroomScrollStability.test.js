@@ -14,7 +14,9 @@ test('Newsroom home reset yields to user scrolling and does not restart on caree
   assert.match(source, /addEventListener\('touchmove', handleUserScrollIntent/);
   assert.match(source, /addEventListener\('wheel', handleUserScrollIntent/);
   assert.match(source, /const scrollOnce = \(\) =>/);
-  assert.match(source, /if \(!teamButton\) return;/);
+  assert.match(source, /if \(!frontPageButton\) return;/);
+  assert.match(source, /frontPageButton\.getAttribute\('data-active'\) !== 'true'/);
+  assert.match(source, /hasObservedInitialRoute && newsroomActive && !wasNewsroomActive/);
   assert.match(source, /useEffect\(\(\) => \{[\s\S]*?return null;\n\};/);
   assert.doesNotMatch(source, /\}, \[career\]\);\n\n  return null;/);
 });

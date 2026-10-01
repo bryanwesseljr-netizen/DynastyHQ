@@ -179,6 +179,11 @@ import {
   readHydratedCareerInTransaction,
   writeHydratedCareerInTransaction,
 } from './services/careerStorageFirestore.js';
+import {
+  readDynastyViewSession,
+  resetDynastyNewsroomHome,
+  updateDynastyViewSession,
+} from './domain/viewSession.js';
 
 const WeeklyReviewPanel = lazy(() => import('./components/WeeklyReviewPanel'));
 const GroundedNewsroom = lazy(() => import('./components/GroundedNewsroom'));
@@ -195,6 +200,10 @@ const HighSchoolEvaluationEditor = lazy(() => import('./components/HighSchoolEva
 const HighSchoolScreenshotUploader = lazy(() => import('./components/HighSchoolScreenshotUploader'));
 
 const publicationLocks = new Set();
+const RESTORABLE_APP_TABS = new Set([
+  'dashboard', 'frontOffice', 'offseason', 'recruiting', 'newsroom',
+  'podcast', 'chronicle', 'trophies', 'dataEntry', 'settings',
+]);
 const SAVE_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'dynastyhq-device';
 const createMediaAssetId = () => globalThis.crypto?.randomUUID?.()
   || `news-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -226,11 +235,16 @@ const App = () => {
   const recoverLiveWeek7Mode = urlParams.get('recoverLiveWeek7') === '1';
   const syncPreviewFromLive = urlParams.get('syncPreviewFromLive') === '1';
   const isReadOnly = !!viewId;
+  const initialViewSessionRef = useRef(frontPageParam || isReadOnly ? {} : readDynastyViewSession());
+  const initialViewSession = initialViewSessionRef.current;
+  const restoredActiveTab = RESTORABLE_APP_TABS.has(initialViewSession.activeTab)
+    ? initialViewSession.activeTab
+    : 'dashboard';
 
-  const [activeTab, setActiveTab] = useState(frontPageParam ? 'newsroom' : 'dashboard');
-  const [newsTheme, setNewsTheme] = useState('scouting');
-  const [newsroomFocusId, setNewsroomFocusId] = useState(frontPageParam);
-  const [podcastFocusId, setPodcastFocusId] = useState('');
+  const [activeTab, setActiveTab] = useState(frontPageParam ? 'newsroom' : restoredActiveTab);
+  const [newsTheme, setNewsTheme] = useState(initialViewSession.newsTheme || 'scouting');
+  const [newsroomFocusId, setNewsroomFocusId] = useState(frontPageParam || initialViewSession.newsroomFocusId || '');
+  const [podcastFocusId, setPodcastFocusId] = useState(initialViewSession.podcastFocusId || '');
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isHouseRulesModalOpen, setIsHouseRulesModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -282,6 +296,8 @@ const App = () => {
   const cloudWriteQueueRef = useRef(Promise.resolve());
   const pendingCloudStateRef = useRef(null);
   const retryTimerRef = useRef(null);
+  const viewRestoreRef = useRef(false);
+  const viewCaptureTimerRef = useRef(null);
 
   // Auth States
   const [authEmail, setAuthEmail] = useState('');
@@ -308,6 +324,101 @@ const App = () => {
   useEffect(() => {
     appStateRef.current = appState;
   }, [appState]);
+
+  useEffect(() => {
+    if (isReadOnly || frontPageParam) return;
+    updateDynastyViewSession({
+      activeTab,
+      newsTheme,
+      newsroomFocusId,
+      podcastFocusId,
+    });
+  }, [activeTab, frontPageParam, isReadOnly, newsTheme, newsroomFocusId, podcastFocusId]);
+
+  useEffect(() => {
+    if (isReadOnly || frontPageParam) return undefined;
+
+    const captureView = () => {
+      const main = document.querySelector('main.dhq-page-main');
+      const viewport = window.visualViewport;
+      updateDynastyViewSession({
+        activeTab,
+        newsTheme,
+        newsroomFocusId,
+        podcastFocusId,
+        scroll: {
+          windowX: Number(window.scrollX) || 0,
+          windowY: Number(window.scrollY) || 0,
+          mainLeft: Number(main?.scrollLeft) || 0,
+          mainTop: Number(main?.scrollTop) || 0,
+        },
+        viewport: {
+          scale: Number(viewport?.scale) || 1,
+          pageLeft: Number(viewport?.pageLeft) || Number(window.scrollX) || 0,
+          pageTop: Number(viewport?.pageTop) || Number(window.scrollY) || 0,
+          offsetLeft: Number(viewport?.offsetLeft) || 0,
+          offsetTop: Number(viewport?.offsetTop) || 0,
+        },
+      });
+    };
+
+    const scheduleCapture = () => {
+      window.clearTimeout(viewCaptureTimerRef.current);
+      viewCaptureTimerRef.current = window.setTimeout(captureView, 120);
+    };
+
+    document.addEventListener('scroll', scheduleCapture, true);
+    window.visualViewport?.addEventListener('scroll', scheduleCapture, { passive: true });
+    window.visualViewport?.addEventListener('resize', scheduleCapture, { passive: true });
+    window.addEventListener('pagehide', captureView);
+    window.addEventListener('beforeunload', captureView);
+    return () => {
+      document.removeEventListener('scroll', scheduleCapture, true);
+      window.visualViewport?.removeEventListener('scroll', scheduleCapture);
+      window.visualViewport?.removeEventListener('resize', scheduleCapture);
+      window.removeEventListener('pagehide', captureView);
+      window.removeEventListener('beforeunload', captureView);
+      window.clearTimeout(viewCaptureTimerRef.current);
+    };
+  }, [activeTab, frontPageParam, isReadOnly, newsTheme, newsroomFocusId, podcastFocusId]);
+
+  useEffect(() => {
+    if (isReadOnly || frontPageParam || !isLoaded || viewRestoreRef.current) return undefined;
+    viewRestoreRef.current = true;
+    const restored = initialViewSessionRef.current;
+    if (!restored?.scroll || restored.activeTab !== activeTab) return undefined;
+
+    let cancelled = false;
+    const timers = [];
+    const cancelRestore = () => { cancelled = true; };
+    const restorePosition = () => {
+      if (cancelled) return;
+      const main = document.querySelector('main.dhq-page-main');
+      const mainLeft = Number(restored.scroll.mainLeft) || 0;
+      const mainTop = Number(restored.scroll.mainTop) || 0;
+      const windowX = Number(restored.viewport?.pageLeft ?? restored.scroll.windowX) || 0;
+      const windowY = Number(restored.viewport?.pageTop ?? restored.scroll.windowY) || 0;
+      main?.scrollTo?.({ left: mainLeft, top: mainTop, behavior: 'auto' });
+      window.scrollTo?.({ left: windowX, top: windowY, behavior: 'auto' });
+    };
+
+    [0, 90, 240, 520, 900, 1500].forEach((delay) => {
+      timers.push(window.setTimeout(restorePosition, delay));
+    });
+    document.addEventListener('pointerdown', cancelRestore, { capture: true, once: true });
+    document.addEventListener('touchstart', cancelRestore, { capture: true, once: true, passive: true });
+    document.addEventListener('wheel', cancelRestore, { capture: true, once: true, passive: true });
+    document.addEventListener('keydown', cancelRestore, { capture: true, once: true });
+
+    return () => {
+      cancelled = true;
+      timers.forEach((timer) => window.clearTimeout(timer));
+      document.removeEventListener('pointerdown', cancelRestore, true);
+      document.removeEventListener('touchstart', cancelRestore, true);
+      document.removeEventListener('wheel', cancelRestore, true);
+      document.removeEventListener('keydown', cancelRestore, true);
+    };
+  }, [activeTab, frontPageParam, isLoaded, isReadOnly]);
 
   useEffect(() => {
     if (
@@ -417,7 +528,11 @@ const App = () => {
         return;
       }
 
-      if (target === 'newsroom') setNewsroomFocusId(event?.detail?.publicationId || '');
+      if (target === 'newsroom') {
+        const publicationId = event?.detail?.publicationId || '';
+        setNewsroomFocusId(publicationId);
+        if (!publicationId) resetDynastyNewsroomHome();
+      }
       if (target === 'podcast') setPodcastFocusId(event?.detail?.publicationId || '');
 
       const standardTabs = new Set([
@@ -3519,7 +3634,10 @@ const handleSaveGameClick = () => {
           document.getElementById('recruit-command-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 0);
       } else {
-        if (item.id === 'newsroom') setNewsroomFocusId('');
+        if (item.id === 'newsroom') {
+          setNewsroomFocusId('');
+          resetDynastyNewsroomHome();
+        }
         if (item.id === 'podcast') setPodcastFocusId('');
         setActiveTab(item.id === 'dashboard' ? 'dashboard' : item.id);
         resetPageScroll();

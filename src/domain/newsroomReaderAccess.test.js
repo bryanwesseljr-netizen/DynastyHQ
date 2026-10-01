@@ -63,3 +63,16 @@ test('homepage matchup immersion keeps active pregame and completed postgame opp
   assert.match(immersion, /\['postgame', 'between'\]\.includes\(mode\)/);
   assert.match(immersion, /clean\(latestGame\?\.opponent\) \|\| 'OPPONENT'/);
 });
+
+
+test('article reader uses the measured fixed header height in Android desktop-site layouts', async () => {
+  const [source, styles] = await Promise.all([
+    readFile(experienceUrl, 'utf8'),
+    readFile(readerStylesUrl, 'utf8'),
+  ]);
+
+  assert.match(source, /getBoundingClientRect\?\.\(\)\.height/);
+  assert.match(source, /--dhq-newsroom-fixed-header-height/);
+  assert.match(source, /visualViewport\?\.addEventListener\('resize', schedule/);
+  assert.match(styles, /padding-top: calc\(var\(--dhq-newsroom-fixed-header-height, 127px\) \+ 10px\) !important/);
+});

@@ -8,6 +8,7 @@ import { resolveNewsroomMedia } from '../domain/newsroomMedia';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation';
 import { noAppearanceCoverageIssueIds } from '../domain/collegeGameCoverageRepair.js';
 import { newsroomIssueIsVisible } from '../domain/newsroomVisibility.js';
+import { readDynastyViewSession, updateDynastyViewSession } from '../domain/viewSession.js';
 import {
   resolveCareerTeamMediaProfile,
   resolveIssueTeamMediaProfile,
@@ -272,9 +273,13 @@ const OfficialFeedReader = ({ career, article, onBack }) => {
 
 const NewsroomTeamHubPortal = () => {
   const { career } = useOwnerCareer();
+  const restoredDesk = readDynastyViewSession().newsroom?.activeDesk;
+  const initialDesk = ['front', 'team', 'regional', 'national', 'official'].includes(restoredDesk)
+    ? restoredDesk
+    : 'front';
   const [mount, setMount] = useState(null);
   const [isHome, setIsHome] = useState(false);
-  const [activeDesk, setActiveDesk] = useState('front');
+  const [activeDesk, setActiveDesk] = useState(initialDesk);
   const [selectedOfficial, setSelectedOfficial] = useState(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -336,6 +341,10 @@ const NewsroomTeamHubPortal = () => {
       if (ownedMount?.parentElement) ownedMount.remove();
     };
   }, [libraryOpen, toolsOpen]);
+
+  useEffect(() => {
+    updateDynastyViewSession({ newsroom: { activeDesk } });
+  }, [activeDesk]);
 
   useEffect(() => {
     if (!career) return undefined;

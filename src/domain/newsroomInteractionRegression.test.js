@@ -94,3 +94,20 @@ test('opening a Newsroom story cancels delayed home-reset retries before the art
   assert.match(source, /\.dhq-newsroom-story-card/);
   assert.match(source, /handleNewsroomPointerDown[\s\S]*?isNewsroomStoryOpenEvent\(event\)[\s\S]*?cancelHomeReset\(\)/);
 });
+
+
+test('Newsroom top navigation is Front Page first and legacy immersive code never auto-opens article one', async () => {
+  const [experience, immersive, app] = await Promise.all([
+    readFile(new URL('../components/NewsroomArticleExperiencePortal.jsx', import.meta.url), 'utf8'),
+    readFile(immersiveUrl, 'utf8'),
+    readFile(new URL('../App.jsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(experience, /findFrontPageButton/);
+  assert.match(experience, /\/front page\/i/);
+  assert.match(experience, /frontPageButton\.click\(\)/);
+  assert.match(app, /resetDynastyNewsroomHome\(\)/);
+  assert.match(immersive, /let articleFirstPending = false;/);
+  assert.match(immersive, /let overviewRequested = true;/);
+  assert.match(immersive, /label === 'the newsroom' \|\| label === 'newsroom'/);
+});

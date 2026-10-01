@@ -1604,3 +1604,77 @@ button:active{transform:translateY(1px)}
   .newsroom-page .career-file{grid-column:auto!important}
   .gamehub-page .hub-bottom{grid-template-columns:1fr!important}
 }
+
+
+/* Precision match pass v7 — darker reference emerald cards */
+:root{
+  --card-green-deep:#00261e;
+  --card-green-deeper:#001b16;
+  --card-green-edge:#0b5a46;
+  --card-green-highlight:#07382c;
+}
+
+/* Home dark cards */
+.home-page .dark-card{
+  background:
+    linear-gradient(145deg,var(--card-green-highlight) 0%,var(--card-green-deep) 42%,var(--card-green-deeper) 100%)!important;
+  border-color:var(--card-green-edge)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.home-page .reference-next-week{
+  background:
+    linear-gradient(180deg,rgba(0,24,19,.08),rgba(0,18,14,.90)),
+    radial-gradient(circle at 76% 49%,rgba(177,13,41,.52),transparent 36%),
+    linear-gradient(145deg,#063227 0%,#00261e 44%,#001914 100%)!important;
+}
+.home-page .reference-wrap{
+  background:
+    linear-gradient(145deg,#06362a 0%,#00291f 45%,#001a15 100%)!important;
+}
+.home-page .journey-strip{
+  background:
+    linear-gradient(90deg,#00291f 0%,#002119 48%,#001813 100%)!important;
+  border-color:var(--card-green-edge)!important;
+}
+.home-page .journey-strip .stage{
+  background:rgba(255,255,255,.012)!important;
+}
+.home-page .journey-strip .stage.active{
+  background:
+    linear-gradient(110deg,#0a5039 0%,#07513a 52%,#06382c 100%)!important;
+}
+
+/* Game Hub green bottom modules */
+.gamehub-page .hub-bottom>div{
+  background:
+    linear-gradient(145deg,#06342a 0%,#00281f 50%,#001b16 100%)!important;
+  border-color:var(--card-green-edge)!important;
+}
+.gamehub-page .hub-bottom>.future{
+  background:
+    linear-gradient(145deg,#052d24 0%,#00231c 52%,#001a15 100%)!important;
+}
+.gamehub-page .hub-bottom .future em{
+  background:#183a31!important;
+  color:#d6e1dd!important;
+}
+
+/* Other green utility cards/panels that are already dark green */
+.site-shell .complete-strip + .hub-grid,
+.site-shell .journal{
+  box-shadow:none;
+}
+.home-page .hero-score,
+.gamehub-page .week-card,
+.gamehub-page .score-card{
+  border-color:var(--card-green-edge)!important;
+}
+
+/* Keep cream/editorial cards cream */
+.home-page .paper-card,
+.newsroom-page .journal,
+.newsroom-page .journal-box,
+.gamehub-page .paper-panel,
+.gamehub-page .complete-strip{
+  background:var(--paper)!important;
+}

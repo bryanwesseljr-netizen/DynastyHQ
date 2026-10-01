@@ -3446,3 +3446,401 @@ button:active{transform:translateY(1px)}
     min-height:52px!important;
   }
 }
+
+
+/* Precision match pass v15 — Newsroom front-page final fidelity */
+@media(min-width:701px){
+  .newsroom-page{
+    padding-bottom:24px!important;
+  }
+  .newsroom-page .journal{
+    margin-top:8px!important;
+    padding:12px 18px 14px!important;
+    border-radius:7px!important;
+    overflow:hidden!important;
+  }
+  .newsroom-page .mast-row{
+    min-height:66px!important;
+    padding:0 5px 8px!important;
+    align-items:end!important;
+  }
+  .newsroom-page .mast-row h1{
+    font-size:58px!important;
+    line-height:.9!important;
+    letter-spacing:-3.2px!important;
+  }
+  .newsroom-page .mast-row span{
+    padding-bottom:4px!important;
+    font-size:7px!important;
+    letter-spacing:1.35px!important;
+  }
+  .newsroom-page .journal-tabs{
+    gap:38px!important;
+    min-height:36px!important;
+  }
+  .newsroom-page .journal-tabs button{
+    height:36px!important;
+    font-size:8px!important;
+  }
+
+  .newsroom-page .lead-story{
+    min-height:340px!important;
+    height:340px!important;
+    margin-top:0!important;
+  }
+  .newsroom-page .lead-copy{
+    width:48%!important;
+    min-height:340px!important;
+    padding:19px 6px 16px!important;
+  }
+  .newsroom-page .lead-copy>span{
+    font-size:8px!important;
+    letter-spacing:1.8px!important;
+  }
+  .newsroom-page .lead-copy h2{
+    max-width:510px!important;
+    margin:6px 0 8px!important;
+    font-size:50px!important;
+    line-height:.9!important;
+    letter-spacing:-2.4px!important;
+  }
+  .newsroom-page .lead-copy p{
+    max-width:410px!important;
+    margin:0 0 13px!important;
+    font-size:16px!important;
+    line-height:1.16!important;
+  }
+  .newsroom-page .lead-copy .yellow{
+    min-height:39px!important;
+    padding:0 16px!important;
+    font-size:8px!important;
+  }
+  .newsroom-page .lead-image{
+    width:67%!important;
+    background-position:center 29%!important;
+  }
+
+  .newsroom-page .journal-score{
+    min-height:68px!important;
+    grid-template-columns:1.15fr .45fr 1.15fr .06fr .72fr .72fr .62fr!important;
+    margin-top:0!important;
+  }
+  .newsroom-page .journal-score .team-logo{
+    width:48px!important;
+    height:48px!important;
+    font-size:39px!important;
+  }
+  .newsroom-page .journal-score strong{
+    font-size:32px!important;
+  }
+  .newsroom-page .journal-score b{
+    font-size:8px!important;
+  }
+  .newsroom-page .journal-score small{
+    font-size:7px!important;
+  }
+  .newsroom-page .journal-score>span{
+    font-size:7px!important;
+  }
+
+  .newsroom-page .journal-lower{
+    grid-template-columns:1fr 1.08fr 1fr!important;
+    gap:9px!important;
+    margin-top:8px!important;
+    align-items:stretch!important;
+  }
+  .newsroom-page .reference-journal-box{
+    height:194px!important;
+    min-height:194px!important;
+    padding:0 11px 12px!important;
+    overflow:hidden!important;
+    border-radius:6px!important;
+  }
+  .newsroom-page .reference-journal-box .card-title{
+    height:36px!important;
+    font-size:9px!important;
+  }
+
+  .newsroom-page .inside>p{
+    margin:6px 0 7px!important;
+    font-size:9px!important;
+  }
+  .newsroom-page .inside-grid{
+    grid-template-columns:130px 1fr!important;
+    gap:9px!important;
+    height:124px!important;
+  }
+  .newsroom-page .tiny-photo.photo-tile{
+    height:116px!important;
+    min-height:116px!important;
+    background-position:center 28%!important;
+  }
+  .newsroom-page .inside-grid button{
+    min-height:55px!important;
+    padding:0 5px!important;
+    font-size:8px!important;
+  }
+
+  .newsroom-page .huddle-grid{
+    grid-template-columns:132px 1fr!important;
+    gap:9px!important;
+    min-height:101px!important;
+    margin-top:8px!important;
+  }
+  .newsroom-page .cover-play img{
+    width:132px!important;
+    height:92px!important;
+  }
+  .newsroom-page .cover-play span{
+    width:36px!important;
+    height:36px!important;
+    right:8px!important;
+    top:28px!important;
+  }
+  .newsroom-page .huddle-grid small{
+    font-size:7px!important;
+  }
+  .newsroom-page .huddle-grid h3{
+    margin:2px 0 3px!important;
+    font-size:14px!important;
+    line-height:1.05!important;
+  }
+  .newsroom-page .huddle-grid p{
+    margin:2px 0!important;
+    font-size:8px!important;
+    line-height:1.25!important;
+  }
+  .newsroom-page .huddle-grid b{
+    font-size:7px!important;
+  }
+  .newsroom-page .huddle-actions{
+    gap:8px!important;
+    margin-top:7px!important;
+  }
+  .newsroom-page .huddle-actions button{
+    min-height:34px!important;
+    padding:0 8px!important;
+    font-size:7px!important;
+  }
+
+  .newsroom-page .career-grid{
+    grid-template-columns:126px 1fr!important;
+    gap:10px!important;
+    min-height:126px!important;
+    margin-top:8px!important;
+  }
+  .newsroom-page .back-photo.photo-tile{
+    height:116px!important;
+    min-height:116px!important;
+    background-position:center 30%!important;
+  }
+  .newsroom-page .career-grid h3{
+    margin:1px 0 5px!important;
+    font-size:16px!important;
+    line-height:1.05!important;
+  }
+  .newsroom-page .career-grid p{
+    margin:0 0 7px!important;
+    font-size:8px!important;
+    line-height:1.28!important;
+  }
+  .newsroom-page .career-grid button{
+    min-height:31px!important;
+    margin-top:2px!important;
+    font-size:7px!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:1000px){
+  .newsroom-page .mast-row h1{
+    font-size:47px!important;
+  }
+  .newsroom-page .lead-story{
+    min-height:310px!important;
+    height:310px!important;
+  }
+  .newsroom-page .lead-copy{
+    min-height:310px!important;
+  }
+  .newsroom-page .lead-copy h2{
+    font-size:41px!important;
+  }
+  .newsroom-page .lead-copy p{
+    font-size:13px!important;
+  }
+  .newsroom-page .reference-journal-box{
+    height:184px!important;
+    min-height:184px!important;
+  }
+  .newsroom-page .inside-grid{
+    grid-template-columns:96px 1fr!important;
+  }
+  .newsroom-page .tiny-photo.photo-tile{
+    height:106px!important;
+    min-height:106px!important;
+  }
+  .newsroom-page .huddle-grid{
+    grid-template-columns:98px 1fr!important;
+  }
+  .newsroom-page .cover-play img{
+    width:98px!important;
+    height:76px!important;
+  }
+  .newsroom-page .career-grid{
+    grid-template-columns:92px 1fr!important;
+  }
+  .newsroom-page .back-photo.photo-tile{
+    height:104px!important;
+    min-height:104px!important;
+  }
+}
+
+/* True mobile: newspaper front page becomes a clean editorial stack */
+@media(max-width:700px){
+  .newsroom-page{
+    padding-left:7px!important;
+    padding-right:7px!important;
+  }
+  .newsroom-page .journal{
+    margin-top:5px!important;
+    padding:0 0 10px!important;
+    border-radius:7px!important;
+    overflow:hidden!important;
+  }
+  .newsroom-page .mast-row{
+    min-height:58px!important;
+    padding:7px 9px 5px!important;
+    text-align:center!important;
+  }
+  .newsroom-page .mast-row h1{
+    font-size:30px!important;
+    line-height:.94!important;
+    letter-spacing:-1.6px!important;
+  }
+  .newsroom-page .mast-row span{
+    display:block!important;
+    margin-top:3px!important;
+    font-size:5.5px!important;
+    letter-spacing:1px!important;
+  }
+  .newsroom-page .journal-tabs{
+    min-height:34px!important;
+    justify-content:space-around!important;
+    gap:0!important;
+    padding:0 5px!important;
+  }
+  .newsroom-page .journal-tabs button{
+    height:34px!important;
+    font-size:7px!important;
+  }
+
+  .newsroom-page .lead-story{
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+    height:auto!important;
+  }
+  .newsroom-page .lead-image{
+    order:1!important;
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    height:192px!important;
+    flex:none!important;
+    background-position:center 27%!important;
+    -webkit-mask-image:linear-gradient(0deg,transparent 0%,rgba(0,0,0,.76) 15%,#000 35%,#000 100%)!important;
+    mask-image:linear-gradient(0deg,transparent 0%,rgba(0,0,0,.76) 15%,#000 35%,#000 100%)!important;
+  }
+  .newsroom-page .lead-copy{
+    order:2!important;
+    width:100%!important;
+    min-height:0!important;
+    margin-top:-22px!important;
+    padding:0 12px 12px!important;
+    background:linear-gradient(0deg,#f4f0e6 0%,#f4f0e6 88%,rgba(244,240,230,.94) 94%,transparent 100%)!important;
+  }
+  .newsroom-page .lead-copy>span{
+    font-size:7px!important;
+  }
+  .newsroom-page .lead-copy h2{
+    margin:5px 0 6px!important;
+    font-size:35px!important;
+    line-height:.9!important;
+    letter-spacing:-1.5px!important;
+  }
+  .newsroom-page .lead-copy p{
+    margin:0 0 10px!important;
+    font-size:12px!important;
+    line-height:1.2!important;
+  }
+  .newsroom-page .lead-copy .yellow{
+    width:100%!important;
+    min-height:38px!important;
+    font-size:7.5px!important;
+  }
+
+  .newsroom-page .journal-score{
+    min-height:58px!important;
+    margin:0 8px!important;
+    grid-template-columns:1fr .42fr 1fr!important;
+  }
+  .newsroom-page .journal-score .team-logo{
+    width:38px!important;
+    height:38px!important;
+    font-size:31px!important;
+  }
+  .newsroom-page .journal-score strong{
+    font-size:25px!important;
+  }
+  .newsroom-page .journal-score b{
+    font-size:6px!important;
+  }
+
+  .newsroom-page .journal-lower{
+    display:block!important;
+    margin:7px 8px 0!important;
+  }
+  .newsroom-page .inside,
+  .newsroom-page .career-file{
+    display:none!important;
+  }
+  .newsroom-page .huddle{
+    height:auto!important;
+    min-height:145px!important;
+    padding:0 10px 9px!important;
+    overflow:hidden!important;
+  }
+  .newsroom-page .huddle .card-title{
+    height:34px!important;
+    font-size:8px!important;
+  }
+  .newsroom-page .huddle-grid{
+    grid-template-columns:94px 1fr!important;
+    gap:9px!important;
+    min-height:76px!important;
+    margin-top:7px!important;
+  }
+  .newsroom-page .cover-play img{
+    width:94px!important;
+    height:70px!important;
+  }
+  .newsroom-page .cover-play span{
+    width:32px!important;
+    height:32px!important;
+    top:20px!important;
+  }
+  .newsroom-page .huddle-grid h3{
+    font-size:12px!important;
+  }
+  .newsroom-page .huddle-grid p{
+    font-size:7px!important;
+  }
+  .newsroom-page .huddle-actions{
+    gap:6px!important;
+    margin-top:6px!important;
+  }
+  .newsroom-page .huddle-actions button{
+    min-height:32px!important;
+    font-size:6.5px!important;
+  }
+}

@@ -41,7 +41,8 @@ function App(){
   const [playing,setPlaying] = useState(false);
 
   const pageTitle = useMemo(()=>pages.find(p=>p[0]===page)?.[1] || 'Home',[page]);
-  const go = (next) => { setPage(next); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
+  const go = (next) => { setPage(next); if(next!=='newsroom') setArticleOpen(false); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
+  const openNewsArticle = () => { setPage('newsroom'); setArticleOpen(true); setMobileMenu(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const notify = (message) => { setToast(message); window.setTimeout(()=>setToast(''),2200); };
 
   return <div className="site-shell">
@@ -89,9 +90,9 @@ function App(){
     </header>
 
     <main>
-      {page==='home' && <HomePage go={go} openArticle={()=>setArticleOpen(true)} notify={notify}/>}
+      {page==='home' && <HomePage go={go} openArticle={openNewsArticle} notify={notify}/>}
       {page==='gamehub' && <GameHub go={go} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>}
-      {page==='newsroom' && <Newsroom openArticle={()=>setArticleOpen(true)} go={go} playing={playing} setPlaying={setPlaying}/>}
+      {page==='newsroom' && <Newsroom articleOpen={articleOpen} setArticleOpen={setArticleOpen} openArticle={openNewsArticle} go={go} playing={playing} setPlaying={setPlaying}/>}
     </main>
 
     <nav className="mobile-bottom">
@@ -102,7 +103,6 @@ function App(){
       <button onClick={()=>setMobileMenu(v=>!v)}><MoreHorizontal/><span>More</span></button>
     </nav>
 
-    {articleOpen && <ArticleReader onClose={()=>setArticleOpen(false)} go={go}/>}
     {toast && <div className="toast" role="status">{toast}</div>}
   </div>;
 }
@@ -275,72 +275,108 @@ function Material({icon:Icon,title,sub}){ return <button className="material-car
 function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub}){ return <button className="coverage-row simple"><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
-function Newsroom({openArticle,go,playing,setPlaying}){
+function Newsroom({articleOpen,setArticleOpen,openArticle,go,playing,setPlaying}){
   return <div className="page newsroom-page">
     <section className="journal">
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>OREGON EDITION • SEASON 4 • WEEK 10</span></div>
-        <div className="journal-tabs"><button className="active">Front Page</button><button>Local Beat</button><button>National</button><button>Archive</button></div>
+        <div className="journal-tabs">
+          <button className={!articleOpen?'active':''} onClick={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
+          <button>Local Beat</button><button>National</button><button>Archive</button>
+        </div>
       </header>
 
-      <section className="lead-story">
-        <div className="lead-copy">
-          <span>GAME RECAP</span>
-          <h2>WESSEL WINS<br/>THE SHOOTOUT.</h2>
-          <p>Oregon survives Illinois, 54–48.<br/>Revisit the game, the numbers, and<br/>the moments behind the result.</p>
-          <button className="yellow" onClick={openArticle}>Read full story<ChevronRight/></button>
-        </div>
-        <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${playerPhoto})`}}>
-          <div className="journal-player"><span>6</span></div>
-        </div>
-      </section>
+      {articleOpen ? (
+        <NewsroomArticle onBack={()=>{setArticleOpen(false);window.scrollTo({top:0,behavior:'smooth'})}} go={go}/>
+      ) : (
+        <>
+          <section className="lead-story">
+            <div className="lead-copy">
+              <span>GAME RECAP</span>
+              <h2>WESSEL WINS<br/>THE SHOOTOUT.</h2>
+              <p>Oregon survives Illinois, 54–48.<br/>Revisit the game, the numbers, and<br/>the moments behind the result.</p>
+              <button className="yellow" onClick={openArticle}>Read full story<ChevronRight/></button>
+            </div>
+            <div className="lead-image" style={{backgroundImage:`linear-gradient(90deg,rgba(242,239,230,.22),transparent 28%),linear-gradient(0deg,rgba(0,40,28,.06),transparent),url(${playerPhoto})`}}>
+              <div className="journal-player"><span>6</span></div>
+            </div>
+          </section>
 
-      <section className="journal-score">
-        <div><Logo/><b>OREGON</b><strong>54</strong></div><span>FINAL</span><div><strong>48</strong><Logo team="I" type="illinois"/><b>ILLINOIS</b></div><i/>
-        <div><b>WESSEL</b></div><div><strong>410</strong><small>TOTAL YARDS</small></div><div><strong>7</strong><small>TOTAL TD</small></div>
-      </section>
+          <section className="journal-score">
+            <div><Logo/><b>OREGON</b><strong>54</strong></div><span>FINAL</span><div><strong>48</strong><Logo team="I" type="illinois"/><b>ILLINOIS</b></div><i/>
+            <div><b>WESSEL</b></div><div><strong>410</strong><small>TOTAL YARDS</small></div><div><strong>7</strong><small>TOTAL TD</small></div>
+          </section>
 
-      <section className="journal-lower">
-        <article className="journal-box inside reference-journal-box">
-          <CardHeader title="INSIDE THE GAME" light/>
-          <p>The numbers behind the win.</p>
-          <div className="inside-grid"><div className="tiny-photo photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/><div><button onClick={()=>go('gamehub')}><ClipboardList/>Player stats<ChevronRight/></button><button onClick={()=>go('gamehub')}><BarChart3/>Scoring drives<ChevronRight/></button></div></div>
-        </article>
+          <section className="journal-lower">
+            <article className="journal-box inside reference-journal-box">
+              <CardHeader title="INSIDE THE GAME" light/>
+              <p>The numbers behind the win.</p>
+              <div className="inside-grid"><div className="tiny-photo photo-tile" style={{backgroundImage:`url(${playerPhoto})`}}/><div><button onClick={()=>go('gamehub')}><ClipboardList/>Player stats<ChevronRight/></button><button onClick={()=>go('gamehub')}><BarChart3/>Scoring drives<ChevronRight/></button></div></div>
+            </article>
 
-        <article className="journal-box huddle reference-journal-box">
-          <CardHeader title="THE HUDDLE" light/>
-          <div className="huddle-grid">
-            <button className="cover-play" onClick={()=>setPlaying(v=>!v)}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
-            <div><small>Week 10</small><h3>The Illinois Shootout</h3><p>Game breakdown, key plays, and what’s next for Wessel and the Ducks.</p><b>28:14</b></div>
-          </div>
-          <div className="huddle-actions"><button><FileText/>Print transcript</button><button><Zap/>NotebookLM pack</button></div>
-          {playing && <div className="now-playing">▶ Playing preview audio…</div>}
-        </article>
+            <article className="journal-box huddle reference-journal-box">
+              <CardHeader title="THE HUDDLE" light/>
+              <div className="huddle-grid">
+                <button className="cover-play" onClick={()=>setPlaying(v=>!v)}><img src={podcastCover} alt="The Huddle"/><span><Play/></span></button>
+                <div><small>Week 10</small><h3>The Illinois Shootout</h3><p>Game breakdown, key plays, and what’s next for Wessel and the Ducks.</p><b>28:14</b></div>
+              </div>
+              <div className="huddle-actions"><button><FileText/>Print transcript</button><button><Zap/>NotebookLM pack</button></div>
+              {playing && <div className="now-playing">▶ Playing preview audio…</div>}
+            </article>
 
-        <article className="journal-box career-file reference-journal-box">
-          <CardHeader title="THE CAREER FILE" light/>
-          <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>WESSEL</span><b>6</b></div><div><h3>From first start<br/>to the spotlight.</h3><p>Revisit the early chapters of Bryan Wessel’s journey and how he became the face of this program.</p><button onClick={()=>go('gamehub')}>Explore Chronicle<ChevronRight/></button></div></div>
-        </article>
-      </section>
+            <article className="journal-box career-file reference-journal-box">
+              <CardHeader title="THE CAREER FILE" light/>
+              <div className="career-grid"><div className="back-photo photo-tile" style={{backgroundImage:`linear-gradient(0deg,rgba(0,28,20,.25),transparent 60%),url(${playerPhoto})`}}><span>WESSEL</span><b>6</b></div><div><h3>From first start<br/>to the spotlight.</h3><p>Revisit the early chapters of Bryan Wessel’s journey and how he became the face of this program.</p><button onClick={()=>go('gamehub')}>Explore Chronicle<ChevronRight/></button></div></div>
+            </article>
+          </section>
+        </>
+      )}
     </section>
   </div>;
 }
 
-function ArticleReader({onClose,go}){
-  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <article className="article-reader">
-      <button className="close" onClick={onClose}><X/></button>
-      <div className="article-hero" style={{backgroundImage:`linear-gradient(0deg,rgba(5,12,9,.85),transparent),url(${stadium})`}}><span>GAME RECAP • WEEK 10</span></div>
-      <div className="article-body">
+function NewsroomArticle({onBack,go}){
+  return <article className="newsroom-article">
+    <div className="newsroom-article-tools">
+      <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
+      <span>GAME RECAP • WEEK 10</span>
+    </div>
+
+    <div className="newsroom-article-hero" style={{backgroundImage:`linear-gradient(90deg,rgba(244,240,230,.98) 0%,rgba(244,240,230,.80) 31%,rgba(244,240,230,.08) 62%,transparent 100%),linear-gradient(0deg,rgba(0,28,20,.12),transparent 45%),url(${playerPhoto})`}}>
+      <div className="article-headline">
         <small>THE FOOTBALL JOURNAL</small>
-        <h1>WESSEL WINS THE SHOOTOUT.</h1>
-        <p className="deck">Oregon survives Illinois, 54–48, as Bryan Wessel accounts for 410 total yards and seven touchdowns.</p>
-        <p>This is sample editorial copy for the interactive preview. It demonstrates the reading experience, typography, spacing, score context, and how a finished article would feel inside the redesigned DynastyHQ.</p>
-        <p>The final connected version could populate this story from the verified game packet. For now, no live career data is read or written.</p>
-        <button className="outline" onClick={()=>{onClose();go('gamehub')}}><BarChart3/>View game data</button>
+        <span>GAME RECAP</span>
+        <h1>WESSEL WINS<br/>THE SHOOTOUT.</h1>
+        <p>Oregon survives Illinois, 54–48, as Bryan Wessel accounts for 410 total yards and seven touchdowns.</p>
       </div>
-    </article>
-  </div>;
+    </div>
+
+    <div className="article-scoreline">
+      <div><Logo/><span><b>OREGON</b><strong>54</strong></span></div>
+      <em>FINAL</em>
+      <div><span><strong>48</strong><b>ILLINOIS</b></span><Logo team="I" type="illinois"/></div>
+      <i/>
+      <div className="article-stat"><strong>410</strong><small>TOTAL YARDS</small></div>
+      <div className="article-stat"><strong>7</strong><small>TOTAL TD</small></div>
+    </div>
+
+    <div className="article-content-grid">
+      <div className="article-copy">
+        <p className="article-lede">A back-and-forth night turned into one of the defining games of the season, with Wessel driving Oregon’s offense through the air and on the ground.</p>
+        <p>This is sample editorial copy for the interactive preview, but the layout is now designed to behave like a real internal Newsroom article rather than a modal. The finished version could populate this section from the verified weekly game packet.</p>
+        <h2>The game changed fast.</h2>
+        <p>Oregon’s offense kept answering every Illinois push. The article body can carry the full game narrative, scoring context, player performance, and career implications while the Newsroom navigation remains visible above it.</p>
+        <h2>Wessel’s night by the numbers</h2>
+        <p>286 passing yards, 124 rushing yards, 410 total yards and seven total touchdowns headline the week. Supporting game data can stay one click away without interrupting the reading experience.</p>
+        <button className="article-data-link" onClick={()=>go('gamehub')}><BarChart3/>View verified game data<ChevronRight/></button>
+      </div>
+
+      <aside className="article-sidebar">
+        <div><span>BY THE NUMBERS</span><strong>286</strong><small>PASS YDS</small><strong>124</strong><small>RUSH YDS</small><strong>7</strong><small>TOTAL TD</small></div>
+        <div><span>RELATED</span><b>The Illinois Shootout</b><small>The Huddle • 28:14</small></div>
+      </aside>
+    </div>
+  </article>;
 }
 
 export default App;

@@ -336,6 +336,7 @@ const previousEpisodes = (state, currentEpisode) => [...(state.podcastEpisodes |
     summary: clean(entry.summary),
     duration: durationLabel(entry),
     audioReady: entry.audioStatus === 'ready',
+    coverUrl: clean(entry.coverImageUrl || entry.coverUrl || entry.artworkUrl || entry.imageUrl),
   }));
 
 
@@ -543,6 +544,8 @@ export const derivePreviewData = (state, selection = {}) => {
       audioReady: episode?.audioStatus === 'ready',
       audioEngine: clean(episode?.audioEngine),
       audioSource: clean(episode?.audioSource),
+      showCoverUrl: clean(state.podcastBranding?.coverUrl || state.outletImages?.podcast),
+      episodeCoverUrl: clean(episode?.coverImageUrl || episode?.coverUrl || episode?.artworkUrl || episode?.imageUrl),
       masterAudioFileName: clean(episode?.masterAudioFileName),
       masterAudioMimeType: clean(episode?.masterAudioMimeType),
       masterAudioSizeBytes: numeric(episode?.masterAudioSizeBytes, 0),

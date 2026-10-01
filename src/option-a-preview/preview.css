@@ -11920,3 +11920,33 @@ button:active{transform:translateY(1px)}
     width:100%;
   }
 }
+
+
+/* Precision match pass v36 — larger desktop navigation labels */
+@media(min-width:1001px){
+  .desktop-nav{
+    gap:clamp(10px,1.45vw,22px)!important;
+  }
+  .desktop-nav button{
+    font-size:11px!important;
+    font-weight:850!important;
+    letter-spacing:.2px!important;
+  }
+}
+
+@media(min-width:861px) and (max-width:1000px){
+  .desktop-nav{
+    gap:10px!important;
+  }
+  .desktop-nav button{
+    font-size:9px!important;
+    font-weight:850!important;
+  }
+}
+
+@media(min-width:701px) and (max-width:860px){
+  .desktop-nav button{
+    font-size:8px!important;
+    font-weight:850!important;
+  }
+}

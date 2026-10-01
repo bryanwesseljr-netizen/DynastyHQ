@@ -857,6 +857,8 @@ function App(){
     }
   };
 
+  if(followerViewId) return <FollowerView view={followerView}/>;
+
   return <div className="site-shell">
     <header className="site-header">
       <div className="top-row">
@@ -870,6 +872,7 @@ function App(){
         <div className="header-actions">
           <button className="icon-btn" aria-label="Search" onClick={()=>notify('Search preview') }><Search size={19}/></button>
           <button className="icon-btn" aria-label="Notifications" onClick={()=>notify('No new notifications in the mockup.') }><Bell size={19}/></button>
+          <button className="icon-btn share-career-trigger" aria-label="Share career" title="Share read-only career follow link" onClick={()=>setShareOpen(true)}><Share2 size={18}/></button>
           <Logo team={data.player.school}/>
           <button className="menu-btn" onClick={()=>setMobileMenu(v=>!v)} aria-label="Menu">{mobileMenu?<X/>:<Menu/>}</button>
         </div>
@@ -879,6 +882,7 @@ function App(){
         {pages.map(([id,label,Icon])=><button key={id} onClick={()=>go(id)}><Icon size={17}/>{label}</button>)}
         <button onClick={()=>notify('Search preview')}><Search size={17}/>Search</button>
         <button onClick={()=>notify('No new notifications in the mockup.')}><Bell size={17}/>Notifications</button>
+        <button onClick={()=>{setShareOpen(true);setMobileMenu(false)}}><Share2 size={17}/>Share career</button>
         <button className="mobile-visual-entry" onClick={()=>openVisualEditor(page)}><Camera size={17}/>Page photo</button>
       </div>
 
@@ -984,6 +988,17 @@ function App(){
       onUpload={uploadProfilePhoto}
       onReset={resetProfilePhoto}
       onPosition={(position)=>updateProfilePhoto({position})}
+    />
+
+    <ShareCareerModal
+      open={shareOpen}
+      busy={shareBusy}
+      url={shareUrl}
+      enabled={shareEnabled}
+      lastSynced={shareLastSynced}
+      onClose={()=>setShareOpen(false)}
+      onPublish={publishFollowerShare}
+      onCopy={copyFollowerShare}
     />
 
     {toast && <div className="toast" role="status">{toast}</div>}

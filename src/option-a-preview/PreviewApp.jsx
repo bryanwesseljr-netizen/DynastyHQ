@@ -200,7 +200,7 @@ function ScoreRibbon({data}){
   const game=data.game;
   const next=data.next;
   return <div className="score-ribbon">
-    <div><span>W{game.week}</span><b>FINAL</b></div>
+    <div><span>W{game.week}</span><b>{data.selection?.hasGame?'FINAL':'ARCHIVE'}</b></div>
     <div className="score-team"><Logo team={data.player.school.slice(0,1)}/><span>{data.player.school}</span><strong>{game.us}</strong></div>
     <span className="dash">–</span>
     <div className="score-team away"><strong>{game.them}</strong><Logo team={game.opponent.slice(0,1)}/><span>{game.opponent}</span></div>

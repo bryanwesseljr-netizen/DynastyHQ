@@ -169,8 +169,8 @@ function App(){
     setMobileMenu(false);
   };
   const updateVisual = (id,patch) => {
-    const current=visualFor(id);
-    persistVisuals({...pageVisuals,[id]:{...current,...patch,custom:true}});
+    const stored=pageVisuals[id] || {};
+    persistVisuals({...pageVisuals,[id]:{...stored,...patch,custom:true}});
   };
   const resetVisual = (id) => {
     const next={...pageVisuals};
@@ -191,10 +191,17 @@ function App(){
   };
   const applyVisualToAll = () => {
     const current=visualFor(visualTarget);
+    const storedCurrent=pageVisuals[visualTarget] || {};
     const next={...pageVisuals};
-    pages.forEach(([id])=>{ next[id]={...defaultPageVisual(id),image:current.image,custom:true}; });
+    pages.forEach(([id])=>{
+      next[id]={
+        ...(storedCurrent.image ? {image:storedCurrent.image} : {}),
+        position:current.position,
+        custom:true,
+      };
+    });
     persistVisuals(next);
-    notify('That photo is now used across all page heroes in this browser.');
+    notify(storedCurrent.image ? 'That photo is now used across all page heroes in this browser.' : 'That photo focus is now used across all page heroes in this browser.');
   };
   const connectLiveCareer = async (event) => {
     event.preventDefault();

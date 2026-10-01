@@ -2019,7 +2019,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <span>WEEK PROCESSING CENTER</span>
             <b>SEASON {data.season} · WEEK {game.week} · {data.player.school} vs {game.opponent}</b>
           </div>
-          <div className="processing-safety"><ShieldCheck/><span>REAL SCANNERS · NO WRITES</span></div>
+          <div className="processing-safety"><ShieldCheck/><span>REAL SCANNERS · DRAFT UNTIL CONFIRMED</span></div>
           <button className="processing-close" onClick={closeSafe} aria-label="Close Processing Center"><X/></button>
         </header>
 
@@ -2038,7 +2038,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 1 · GAME DATA</span>
               <h1>START WITH WHAT HAPPENED ON THE FIELD.</h1>
-              <p>This lane now uses the same verified Game Data scanner as the current DynastyHQ workflow. Results stay local to this preview until write testing is explicitly enabled later.</p>
+              <p>This lane uses the same verified Game Data scanner as the current DynastyHQ workflow. Scans and edits stay in a temporary packet until you explicitly confirm the final save in Step 5.</p>
             </div>
 
             <div className="scanner-engine-note"><ShieldCheck/><span><b>Existing scanner engine connected</b><small>Same game/box-score rules, Total Offense safeguards, TD recovery, retry logic and free-first AI routing.</small></span></div>
@@ -2096,14 +2096,14 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 2 · REVIEW</span>
               <h1>VERIFY THE WEEK BEFORE IT COUNTS.</h1>
-              <p>These are the facts returned by the existing scanner engine. Editing or unchecking them here changes only this temporary preview packet.</p>
+              <p>These are the facts returned by the existing scanner engine. Editing or unchecking them changes only this temporary packet until the final confirmation step.</p>
             </div>
 
             <div className="review-summary-bar">
               <div><strong>{files.length}</strong><small>SCREENS</small></div>
               <div><strong>{selectedGameFacts.length}</strong><small>GAME FACTS</small></div>
               <div><strong>{lowConfidence.length+failedSources.length}</strong><small>NEEDS REVIEW</small></div>
-              <span>REAL ANALYSIS · LOCAL REVIEW ONLY</span>
+              <span>REAL ANALYSIS · DRAFT REVIEW</span>
             </div>
 
             {officialArticles.length>0 && <div className="official-scan-detected"><RadioIcon/><span><b>EA SPORTS NETWORK ARTICLE · DETECTED</b><small>{officialArticles.map((entry)=>entry.headline).filter(Boolean).join(' · ')}</small></span><em>{officialArticles.length} PAGE{officialArticles.length===1?'':'S'}</em></div>}
@@ -2132,7 +2132,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('game')}><ChevronLeft/>GAME DATA</button>
-              <button className="primary" disabled={!selectedGameFacts.length && !officialArticles.length} onClick={()=>setPhase('rtg')}>ACCEPT INTO PREVIEW PACKET<ChevronRight/></button>
+              <button className="primary" disabled={!selectedGameFacts.length && !officialArticles.length} onClick={()=>setPhase('rtg')}>ACCEPT INTO VERIFIED PACKET<ChevronRight/></button>
             </div>
           </section>}
 
@@ -2151,7 +2151,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
             <div className="rtg-upload-card real-scanner-upload">
               <div className="rtg-player-mark"><UserRound/></div>
-              <div><span>PLAYER STATUS CHECK</span><h3>{data.player.name} · #{data.player.number} · {data.player.pos}</h3><p>Upload up to 8 current RTG screens together. The extracted values remain unsaved in this preview.</p></div>
+              <div><span>PLAYER STATUS CHECK</span><h3>{data.player.name} · #{data.player.number} · {data.player.pos}</h3><p>Upload up to 8 current RTG screens together. Extracted values stay in the draft packet until Step 5 confirmation.</p></div>
               <button disabled={rtgScanning} onClick={()=>rtgInputRef.current?.click()}>{rtgScanning?<><Sparkles/>SCANNING…</>:<><Upload/>UPLOAD RTG SCREENS</>}</button>
               <input ref={rtgInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{scanRtgFiles(event.target.files);event.target.value=''}}/>
             </div>
@@ -2165,7 +2165,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             </div>}
 
             {rtgFacts.length>0 && <div className="scanner-fact-review">
-              <header><span>RTG FACTS · PREVIEW ONLY</span><b>{rtgApproved.length} selected</b></header>
+              <header><span>RTG FACTS · DRAFT PACKET</span><b>{rtgApproved.length} selected</b></header>
               {rtgFacts.map((fact)=><div key={fact.id} className={fact.selected===false?'ignored':''}>
                 <button onClick={()=>updateRtgFact(fact.id,{selected:fact.selected===false})}>{fact.selected===false?<X/>:<Check/>}</button>
                 <span><b>{fact.label || fact.key}</b><small>{fact.evidence || fact.sourceName}</small></span>
@@ -2177,7 +2177,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('review')}><ChevronLeft/>REVIEW</button>
               <button className="secondary" onClick={()=>{setRtgSkipped(true);setPhase('coverage')}}>SKIP · NOTHING CHANGED</button>
-              <button className="primary" disabled={rtgScanning} onClick={()=>setPhase('coverage')}>{rtgApproved.length?'ACCEPT RTG INTO PREVIEW':'CONTINUE WITHOUT RTG'}<ChevronRight/></button>
+              <button className="primary" disabled={rtgScanning} onClick={()=>setPhase('coverage')}>{rtgApproved.length?'ACCEPT RTG INTO PACKET':'CONTINUE WITHOUT RTG'}<ChevronRight/></button>
             </div>
           </section>}
 
@@ -2230,7 +2230,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('rtg')}><ChevronLeft/>RTG STATUS</button>
               {!coverageAdded && <button className="secondary" onClick={()=>{setCoverageSkipped(true);setPhase('ready')}}>SKIP OPTIONAL COVERAGE</button>}
-              <button className="primary" disabled={coverageScanning || (!coverageAdded && !coverageSkipped)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PREVIEW':'CONTINUE'}<ChevronRight/></button>
+              <button className="primary" disabled={coverageScanning || (!coverageAdded && !coverageSkipped)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':'CONTINUE'}<ChevronRight/></button>
             </div>
           </section>}
 
@@ -2238,7 +2238,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="ready-check"><Check/></div>
             <span className="ready-kicker">STEP 5 · PROCESS WEEK</span>
             <h1>WEEK {game.week} IS READY.</h1>
-            <p>The preview packet was built using the same Game Data, RTG Status and Coverage scanner services as the current site. The only missing piece on purpose is persistence.</p>
+            <p>Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.</p>
 
             <div className="ready-status-grid">
               <div className="done"><Upload/><span><small>GAME DATA</small><strong>{selectedGameFacts.length} FACTS REVIEWED</strong></span></div>
@@ -2257,11 +2257,32 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               </div>
             </section>
 
-            <div className="ready-warning"><LockKeyhole/><span><b>Write boundary is still locked</b><small>The real scanner services ran, but this preview packet has not been written to Firestore, Storage, Game Logs, Newsroom, Podcast, Chronicle or any production state.</small></span></div>
+            {!publishResult && <div className="ready-warning"><LockKeyhole/><span><b>Live write is locked until confirmation</b><small>Scanning and review have not changed your career. Confirming below performs one archive-aware transaction, creates a pre-write checkpoint, and blocks stale or destructive saves.</small></span></div>}
+
+            {publishError && <div className="publish-result-card error"><Shield/><span><b>WEEK NOT SAVED</b><small>{publishError}</small></span></div>}
+
+            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts. A safety checkpoint was created before the write.</small></span></div>}
+
+            {publishConfirm && !publishResult && <section className="publish-confirm-card">
+              <ShieldCheck/>
+              <div>
+                <span>FINAL OWNER CONFIRMATION</span>
+                <h3>{hasSavedGame?'Update this published week?':'Publish this verified week?'}</h3>
+                <p>{hasSavedGame
+                  ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. Dependent Newsroom/Podcast material is marked for regeneration when verified facts change.'
+                  : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle + Newsroom base issue, and save optional Coverage Data.'}</p>
+              </div>
+              <div>
+                <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('')}}>CANCEL</button>
+                <button className="primary danger-confirm" disabled={publishing} onClick={publishVerifiedPacket}>{publishing?'SAVING VERIFIED WEEK…':hasSavedGame?'YES · UPDATE WEEK':'YES · PUBLISH WEEK'}</button>
+              </div>
+            </section>}
 
             <div className="processing-actions centered">
-              <button className="secondary" onClick={()=>setPhase('coverage')}><ChevronLeft/>BACK</button>
-              <button className="primary ready-button" onClick={()=>{notify(`Week ${game.week} scanner bridge validated — no career data was written.`);closeSafe()}}>FINISH PREVIEW<ChevronRight/></button>
+              {!publishResult && <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('');setPhase('coverage')}}><ChevronLeft/>BACK</button>}
+              {publishResult
+                ? <button className="primary ready-button" onClick={closeSafe}>CLOSE & VIEW SAVED WEEK<ChevronRight/></button>
+                : <button className="primary ready-button" disabled={publishing} onClick={()=>{setPublishError('');setPublishConfirm(true)}}>{hasSavedGame?'UPDATE VERIFIED WEEK':'PUBLISH VERIFIED WEEK'}<ChevronRight/></button>}
             </div>
           </section>}
         </main>

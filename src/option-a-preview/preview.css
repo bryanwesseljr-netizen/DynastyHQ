@@ -579,3 +579,404 @@ button:active{transform:translateY(1px)}
   }
   .newsroom-page .lead-story::after{display:none}
 }
+
+
+/* Precision match pass v4 — cards + Home information stack */
+.home-page .hero h1>span,
+.home-page .hero h1>em{display:block;white-space:nowrap}
+
+@media(min-width:701px){
+  /* HOME reference geometry */
+  .home-page .hero{
+    min-height:522px;
+  }
+  .home-page .hero-copy{
+    width:51.5%;
+    padding:29px 28px 23px 31px;
+  }
+  .home-page .eyebrow{
+    margin-bottom:6px;
+  }
+  .home-page .hero h1{
+    margin:0;
+    font-size:clamp(78px,6.55vw,106px);
+    line-height:.79;
+    letter-spacing:-2px;
+  }
+  .home-page .hero h1>span{color:#fff}
+  .home-page .hero h1>em{color:var(--yellow)}
+  .home-page .hero-score{
+    display:grid;
+    grid-template-columns:1fr 66px 1fr;
+    align-items:center;
+    width:430px;
+    min-width:430px;
+    min-height:74px;
+    padding:7px 10px;
+    gap:0;
+  }
+  .home-page .hero-score>div{
+    grid-template-columns:auto 1fr;
+    grid-template-rows:1fr auto;
+    gap:2px 8px;
+  }
+  .home-page .hero-score>div:first-child{justify-self:start}
+  .home-page .hero-score>div:last-child{justify-self:end}
+  .home-page .hero-score>div:last-child strong{grid-column:1}
+  .home-page .hero-score>div:last-child .team-logo{grid-column:2}
+  .home-page .hero-score .team-logo{
+    grid-row:1/3;
+    width:52px;
+    height:52px;
+    font-size:43px;
+  }
+  .home-page .hero-score strong{
+    align-self:end;
+    font-size:41px;
+    line-height:.9;
+  }
+  .home-page .hero-score small{
+    grid-column:auto;
+    align-self:start;
+    text-align:left;
+    font-size:7px;
+    letter-spacing:1px;
+  }
+  .home-page .hero-score>div:last-child small{text-align:right}
+  .home-page .hero-score>span{
+    display:grid;
+    place-items:center;
+    height:42px;
+    padding:0;
+    font-size:8px;
+  }
+  .home-page .hero-stats{
+    width:430px;
+    margin-top:10px;
+  }
+  .home-page .hero-stats>div{padding:0 18px}
+  .home-page .hero-stats strong{
+    font-size:28px;
+    line-height:1;
+  }
+  .home-page .hero-stats span{
+    display:block;
+    margin-top:4px;
+    font-size:7px;
+    letter-spacing:1.3px;
+  }
+  .home-page .hero-actions{
+    width:535px;
+    display:grid;
+    grid-template-columns:1.2fr 1fr;
+    gap:12px;
+    margin-top:15px;
+  }
+  .home-page .hero-actions .yellow,
+  .home-page .hero-actions .outline{
+    min-width:0;
+    width:100%;
+    min-height:44px;
+    font-size:10px;
+  }
+
+  /* HOME cards: match the three-card reference row */
+  .home-page .home-cards{
+    grid-template-columns:1.02fr .95fr 1.08fr;
+    gap:10px;
+    margin-top:9px;
+  }
+  .home-page .dark-card,
+  .home-page .paper-card{
+    min-height:247px;
+    border-radius:6px;
+    padding:0 14px 12px;
+  }
+  .home-page .card-title{
+    height:39px;
+    font-size:11px;
+    letter-spacing:.25px;
+  }
+  .reference-next-week{
+    position:relative;
+    overflow:hidden;
+    background:
+      linear-gradient(180deg,rgba(2,44,33,.08),rgba(0,22,17,.88)),
+      radial-gradient(circle at 76% 49%,rgba(190,15,44,.60),transparent 36%),
+      linear-gradient(135deg,#073b2d 0%,#001a15 70%);
+  }
+  .reference-next-week::after{
+    content:"";
+    position:absolute;
+    right:-28px;
+    top:38px;
+    width:185px;
+    height:105px;
+    transform:rotate(-10deg);
+    border-radius:50%;
+    border:15px solid rgba(255,213,32,.10);
+    box-shadow:0 0 0 16px rgba(190,15,44,.10),0 0 45px rgba(190,15,44,.25);
+    pointer-events:none;
+  }
+  .reference-next-week>*{position:relative;z-index:2}
+  .reference-next-week .next-body{
+    min-height:89px;
+    gap:16px;
+    padding:10px 4px 7px;
+  }
+  .reference-next-week .next-body h3{
+    margin:2px 0 0;
+    font-size:25px;
+    line-height:1;
+  }
+  .reference-next-week p{
+    min-height:44px;
+    margin:4px 0 10px;
+    font-size:9px;
+    line-height:1.45;
+  }
+  .reference-next-week .yellow{min-height:41px}
+
+  .reference-wrap .check-row{
+    margin:12px 4px;
+  }
+  .reference-wrap .check-row>span{
+    width:30px;height:30px;
+  }
+  .reference-wrap .check-row b{font-size:9px}
+  .reference-wrap .check-row small{font-size:7px}
+  .reference-wrap .outline{min-height:40px;margin-top:2px}
+
+  .reference-newsroom-card .news-flex{
+    grid-template-columns:1fr 105px;
+    gap:9px;
+    margin:10px 0 8px;
+  }
+  .reference-newsroom-card .news-flex h3{
+    font-size:23px;
+    line-height:.98;
+  }
+  .reference-newsroom-card .news-flex p{
+    margin:6px 0 0;
+    font-size:8.5px;
+    line-height:1.33;
+  }
+  .reference-newsroom-card .thumb.photo-tile{
+    height:100px;
+    min-height:100px;
+    background-position:center 29%!important;
+  }
+  .reference-newsroom-card .pod-mini{
+    margin-top:4px;
+    min-height:63px;
+    padding-top:5px;
+    border-top:1px solid #d7d0c2;
+  }
+
+  .journey-strip{
+    grid-template-columns:1.08fr 1.25fr 1.25fr 1.25fr;
+    margin-top:11px;
+  }
+  .journey-strip>div{min-height:73px}
+
+  /* GAME HUB card fidelity */
+  .gamehub-page .complete-strip{
+    min-height:62px;
+    padding:10px 22px;
+  }
+  .gamehub-page .hub-grid{
+    grid-template-columns:1.75fr .92fr;
+    gap:10px;
+  }
+  .gamehub-page .left-stack,
+  .gamehub-page .right-stack{gap:10px}
+  .reference-verified{
+    min-height:300px;
+    padding:13px 18px 12px;
+  }
+  .reference-verified .panel-head{
+    min-height:36px;
+  }
+  .reference-verified .tabs button{
+    min-width:132px;
+  }
+  .reference-verified .player-summary{
+    grid-template-columns:165px 1fr;
+    gap:15px;
+    margin-top:14px;
+  }
+  .reference-verified .fake-player.photo-tile{
+    height:148px;
+  }
+  .reference-verified .player-name{
+    min-height:50px;
+  }
+  .reference-verified .stat-grid{
+    margin-top:10px;
+  }
+  .reference-verified .stat-grid>div{
+    min-height:78px;
+    display:grid;
+    place-items:center;
+    align-content:center;
+  }
+  .reference-verified .panel-actions{
+    margin-top:12px;
+  }
+  .reference-verified .panel-actions .ghost{
+    min-width:270px;
+    min-height:38px;
+  }
+  .reference-material{
+    min-height:160px;
+  }
+  .reference-material .material-grid{
+    margin-top:10px;
+  }
+  .reference-material .material-card{
+    min-height:102px;
+    grid-template-columns:36px 1fr 24px 14px;
+  }
+  .reference-coverage{
+    min-height:246px;
+  }
+  .reference-coverage .coverage-row{
+    min-height:47px;
+  }
+  .reference-coverage .yellow{min-height:42px}
+  .reference-development{
+    min-height:214px;
+  }
+  .reference-development .coverage-row{
+    min-height:45px;
+  }
+  .reference-development .ghost{min-height:37px}
+  .gamehub-page .hub-bottom{
+    grid-template-columns:1.02fr .9fr 1.05fr;
+  }
+
+  /* NEWSROOM lower cards */
+  .newsroom-page .journal-lower{
+    grid-template-columns:1.02fr 1.08fr .92fr;
+    gap:10px;
+    margin-top:10px;
+  }
+  .newsroom-page .reference-journal-box{
+    min-height:190px;
+    padding:0 12px 10px;
+  }
+  .newsroom-page .reference-journal-box .card-title{
+    height:38px;
+    font-size:10px;
+  }
+  .newsroom-page .inside>p{
+    margin:6px 0 8px;
+    font-size:11px;
+  }
+  .newsroom-page .inside-grid{
+    grid-template-columns:142px 1fr;
+    gap:10px;
+  }
+  .newsroom-page .tiny-photo.photo-tile{
+    min-height:112px;
+  }
+  .newsroom-page .inside-grid button{
+    min-height:54px;
+    grid-template-columns:24px 1fr 16px;
+  }
+  .newsroom-page .huddle-grid{
+    grid-template-columns:145px 1fr;
+    gap:11px;
+    margin-top:10px;
+  }
+  .newsroom-page .cover-play img{
+    width:145px;
+    height:100px;
+  }
+  .newsroom-page .huddle-actions button{
+    min-height:36px;
+  }
+  .newsroom-page .career-grid{
+    grid-template-columns:140px 1fr;
+    gap:11px;
+  }
+  .newsroom-page .back-photo.photo-tile{
+    min-height:126px;
+  }
+  .newsroom-page .career-grid h3{
+    font-size:17px;
+    line-height:1.05;
+  }
+  .newsroom-page .career-grid p{
+    font-size:9px;
+    line-height:1.3;
+  }
+}
+
+@media(max-width:700px){
+  /* HOME mobile reference is hero + next week + newsroom */
+  .home-page .hero-copy{padding-top:142px}
+  .home-page .hero h1{
+    font-size:58px;
+    line-height:.80;
+  }
+  .home-page .hero h1>span,
+  .home-page .hero h1>em{white-space:normal}
+  .home-page .hero-score{
+    width:100%;
+    grid-template-columns:1fr 54px 1fr;
+  }
+  .home-page .hero-stats{width:100%}
+  .home-page .hero-actions{
+    display:block;
+    width:100%;
+  }
+  .home-page .hero-actions .yellow{width:100%}
+  .home-page .hero-actions .outline{display:none}
+  .home-page .reference-wrap{display:none}
+  .home-page .reference-next-week,
+  .home-page .reference-newsroom-card{min-height:0}
+  .home-page .reference-next-week .next-body{min-height:72px}
+  .home-page .reference-newsroom-card .news-flex{
+    grid-template-columns:1fr 76px;
+  }
+  .home-page .reference-newsroom-card .thumb.photo-tile{
+    min-height:76px;height:76px;
+  }
+
+  /* GAME HUB mobile reference focuses on stats + coverage + up next */
+  .gamehub-page .reference-material,
+  .gamehub-page .reference-development{display:none}
+  .gamehub-page .hub-grid{display:block}
+  .gamehub-page .reference-verified,
+  .gamehub-page .reference-coverage{margin-bottom:8px}
+  .gamehub-page .reference-verified .panel-head .tabs{
+    display:none;
+  }
+  .gamehub-page .reference-verified .panel-head h2::after{
+    content:"PLAYER STATS";
+    font-size:0;
+  }
+  .gamehub-page .reference-verified .player-summary{
+    grid-template-columns:74px 1fr;
+  }
+  .gamehub-page .reference-verified .panel-actions{
+    display:block;
+  }
+  .gamehub-page .reference-verified .panel-actions .ghost:first-child{
+    width:100%;
+    min-width:0;
+  }
+  .gamehub-page .reference-verified .panel-actions .ghost:last-child{display:none}
+  .gamehub-page .hub-bottom{
+    grid-template-columns:1fr;
+  }
+  .gamehub-page .hub-bottom>.yellow,
+  .gamehub-page .hub-bottom>.future{display:none}
+
+  /* NEWSROOM mobile */
+  .newsroom-page .journal-lower{
+    grid-template-columns:1fr;
+  }
+  .newsroom-page .reference-journal-box{min-height:0}
+}

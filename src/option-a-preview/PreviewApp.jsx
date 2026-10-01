@@ -154,6 +154,7 @@ function App(){
   const [visualEditorOpen,setVisualEditorOpen] = useState(false);
   const [visualTarget,setVisualTarget] = useState('home');
   const [visualBusy,setVisualBusy] = useState(false);
+  const [processingOpen,setProcessingOpen] = useState(false);
   const live = useReadOnlyLiveCareer();
   const data = useMemo(
     () => live.career
@@ -357,7 +358,7 @@ function App(){
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
       {page==='home' && <HomePage data={data} visual={visualFor('home')} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
-      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} go={go} openPodcast={openPodcast} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
       {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
@@ -387,6 +388,13 @@ function App(){
       <button className={page==='podcast'?'active':''} onClick={()=>openPodcast('episode')}><Headphones/><span>Podcast</span></button>
       <button className={['offseason','career','chronicle'].includes(page)||mobileMoreOpen?'active':''} onClick={()=>setMobileMoreOpen(v=>!v)}><Menu/><span>More</span></button>
     </nav>
+
+    <WeekProcessingCenter
+      open={processingOpen}
+      data={data}
+      onClose={()=>setProcessingOpen(false)}
+      notify={notify}
+    />
 
     <PageVisualEditor
       open={visualEditorOpen}
@@ -839,7 +847,7 @@ function HomePage({data,visual,go,openArticle,openPodcast,notify}){
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
+function GameHub({data,visual,go,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
   const team=data.game.team || {};
@@ -853,7 +861,7 @@ function GameHub({data,visual,go,openPodcast,statsTab,setStatsTab,notify}){
   return <div className="page gamehub-page">
     <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / {pregame?'PREGAME':'POSTGAME'}</p></div>
-      <button className="yellow import" onClick={()=>notify('Screenshot import is disabled in this mockup preview.')}><Upload/>IMPORT SCREENSHOTS</button>
+      <button className="yellow import" onClick={openProcessing}><Upload/>PROCESS WEEK</button>
     </section>
 
     <section className={'complete-strip '+(pregame?'pregame-strip':'')}>

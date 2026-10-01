@@ -366,7 +366,7 @@ function Material({icon:Icon,title,sub,onClick}){ return <button className="mate
 function CoverageRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><em>READY</em><ChevronRight/></button>; }
 function SimpleRow({icon:Icon,title,sub,onClick}){ return <button className="coverage-row simple" onClick={onClick}><Icon/><span><b>{title}</b><small>{sub}</small></span><ChevronRight/></button>; }
 
-function PodcastPage({data,go,playing,setPlaying,podcastTab,setPodcastTab,notify}){
+function PodcastPage({data,go,openArchiveMoment,playing,setPlaying,podcastTab,setPodcastTab,notify}){
   const episode=data.podcast || {};
   const game=data.game || {};
   const transcript = episode.segments?.length
@@ -508,7 +508,7 @@ function PodcastPage({data,go,playing,setPlaying,podcastTab,setPodcastTab,notify
     <section className="previous-episodes">
       <div className="previous-head"><div><span>THE ARCHIVE</span><h2>Previous Episodes</h2></div><button onClick={()=>notify('Archive selection will be wired during the workflow pass; these titles are already coming from your saved career.')}>View all episodes<ChevronRight/></button></div>
       <div className="episode-cards">
-        {prior.length ? prior.map((item,index)=><button key={item.publicationId||index} onClick={()=>notify(`${item.title} is a real saved archive entry. Archive switching is the next interaction layer.`)}><span>{item.week? `WEEK ${item.week}` : `SEASON ${item.season}`}</span><b>{item.title}</b><small>{item.duration} • {item.audioReady?'Audio ready':'Transcript'}</small><Play/></button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
+        {prior.length ? prior.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}><span>{item.week? `WEEK ${item.week}` : `SEASON ${item.season}`}</span><b>{item.title}</b><small>{item.duration} • {item.audioReady?'Audio ready':'Transcript'}</small><Play/></button>) : <button onClick={()=>notify('No earlier saved podcast episodes were found in this career yet.')}><span>ARCHIVE</span><b>No previous saved episodes</b><small>Your older episodes will appear here automatically.</small><Archive/></button>}
       </div>
     </section>
   </div>;
@@ -614,7 +614,7 @@ function OffseasonPage({data,go,openPodcast,openArticle,notify}){
   </div>;
 }
 
-function CareerPage({data,go}){
+function CareerPage({data,go,openArchiveMoment}){
   const c=data.career || {};
   const totals=c.totals || data.totals || {};
   const profile=c.profile || {};
@@ -649,7 +649,7 @@ function CareerPage({data,go}){
       <article className="career-panel career-story-panel">
         <div className="career-panel-head"><div><span>CAREER STORY</span><h2>Timeline</h2></div><BookOpen/></div>
         <div className="career-timeline-list">
-          {timeline.length ? timeline.map((entry)=><button key={entry.id} onClick={()=>go('chronicle')}><i/><span><small>SEASON {entry.season} · WEEK {entry.week}</small><strong>{entry.title}</strong><p>{entry.summary}</p></span><ChevronRight/></button>) : <div className="career-empty-copy">Your verified milestones and Chronicle events will collect here automatically.</div>}
+          {timeline.length ? timeline.map((entry)=><button key={entry.id} onClick={()=>openArchiveMoment(entry.season,entry.week,'chronicle')}><i/><span><small>SEASON {entry.season} · WEEK {entry.week}</small><strong>{entry.title}</strong><p>{entry.summary}</p></span><ChevronRight/></button>) : <div className="career-empty-copy">Your verified milestones and Chronicle events will collect here automatically.</div>}
         </div>
       </article>
 
@@ -696,7 +696,7 @@ function CareerPage({data,go}){
   </div>;
 }
 
-function ChroniclePage({data,go,openPodcast,openArticle,notify}){
+function ChroniclePage({data,go,openPodcast,openArticle,openArchiveMoment,notify}){
   const chron=data.chronicle || {};
   const seasons=Array.isArray(chron.seasons)?chron.seasons:[];
   const initialSeason=seasons[0]?.season || data.season;
@@ -706,8 +706,12 @@ function ChroniclePage({data,go,openPodcast,openArticle,notify}){
 
   useEffect(()=>{
     if(!seasons.length) return;
+    if(seasons.some((item)=>Number(item.season)===Number(data.season))){
+      setSeason(Number(data.season));
+      return;
+    }
     if(!seasons.some((item)=>Number(item.season)===Number(season))) setSeason(seasons[0].season);
-  },[data.chronicle,season]);
+  },[data.chronicle,data.season,season]);
 
   const activeSeason=seasons.find((item)=>Number(item.season)===Number(season)) || seasons[0] || {
     season:data.season,school:data.player.school,role:data.rtg?.rank||'',record:{wins:0,losses:0},entries:[],signatureGames:[],appearances:0,passYds:0,passTD:0,rushYds:0,rushTD:0,totalTD:0,mediaCount:0,
@@ -761,8 +765,8 @@ function ChroniclePage({data,go,openPodcast,openArticle,notify}){
   const highRush=careerHigh((g)=>Number(g.rushYds)||0);
   const programs=[...new Set(seasons.map((item)=>item.school).filter(Boolean))];
   const mediaCount=seasons.reduce((sum,item)=>sum+(Number(item.mediaCount)||0),0);
-  const currentPublication=String(data.news?.publicationId||'');
-  const activePublication=String(active?.media?.newsroom?.publicationId || active?.publicationId || '');
+  const activeSeasonNumber=Number(active?.season || activeSeason.season || data.season);
+  const activeWeekNumber=Number(active?.week ?? data.week);
 
   return <div className="page chronicle-page">
     <section className="chronicle-hero-redesign">
@@ -780,7 +784,7 @@ function ChroniclePage({data,go,openPodcast,openArticle,notify}){
     </section>
 
     <nav className="chronicle-season-nav" aria-label="Career seasons">
-      {(seasons.length?seasons:[activeSeason]).map((s)=><button key={s.season} className={Number(season)===Number(s.season)?'active':''} onClick={()=>setSeason(s.season)}><span>SEASON {s.season}</span><strong>{s.school || 'CAREER CHAPTER'}</strong><small>{s.record ? `${s.record.wins||0}–${s.record.losses||0} · ${s.role || data.player.pos}` : 'Archived chapter'}</small></button>)}
+      {(seasons.length?seasons:[activeSeason]).map((s)=><button key={s.season} className={Number(season)===Number(s.season)?'active':''} onClick={()=>{setSeason(s.season); const target=(s.entries?.[0]?.week ?? s.signatureGames?.[0]?.week ?? 0); openArchiveMoment(s.season,target,'chronicle')}}><span>SEASON {s.season}</span><strong>{s.school || 'CAREER CHAPTER'}</strong><small>{s.record ? `${s.record.wins||0}–${s.record.losses||0} · ${s.role || data.player.pos}` : 'Archived chapter'}</small></button>)}
     </nav>
 
     <section className="chronicle-chapter">
@@ -818,9 +822,9 @@ function ChroniclePage({data,go,openPodcast,openArticle,notify}){
         </div>
         <div className="chronicle-why"><span>WHY DYNASTYHQ KEPT THIS ONE</span><p>{active?.signatureReasons?.join(' · ') || entrySummary(active)}</p></div>
         <div className="chronicle-media-actions">
-          <button onClick={()=>active?.media?.newsroom ? (activePublication===currentPublication?openArticle():notify('That historical Newsroom edition is real and linked; archive-specific opening will be wired in the interaction pass.')) : notify('No Newsroom edition is attached to this career entry.')}><Newspaper/>READ NEWSROOM</button>
-          <button onClick={()=>active?.media?.podcast ? (activePublication===currentPublication?openPodcast('episode'):notify('That historical Huddle episode is real and linked; archive-specific opening will be wired in the interaction pass.')) : notify('No podcast episode is attached to this career entry.')}><Headphones/>PLAY THE HUDDLE</button>
-          <button onClick={()=>go('gamehub')}><BarChart3/>OPEN GAME DATA</button>
+          <button onClick={()=>active?.media?.newsroom ? openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom') : notify('No Newsroom edition is attached to this career entry.')}><Newspaper/>READ NEWSROOM</button>
+          <button onClick={()=>active?.media?.podcast ? openArchiveMoment(activeSeasonNumber,activeWeekNumber,'podcast','episode') : notify('No podcast episode is attached to this career entry.')}><Headphones/>PLAY THE HUDDLE</button>
+          <button onClick={()=>openArchiveMoment(activeSeasonNumber,activeWeekNumber,'gamehub')}><BarChart3/>OPEN GAME DATA</button>
         </div>
       </div>
       <aside className="chronicle-memory-stack">

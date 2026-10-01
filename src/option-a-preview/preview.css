@@ -2342,3 +2342,93 @@ button:active{transform:translateY(1px)}
     margin:0 13px 18px;
   }
 }
+
+
+/* Precision match pass v10 — half-page article photo */
+@media(min-width:701px){
+  .digital-feature-top{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    align-items:stretch;
+    gap:0;
+    border-bottom:1px solid #b9beb9;
+  }
+  .digital-feature-head{
+    max-width:none!important;
+    min-height:390px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:30px 34px 26px!important;
+    border-right:1px solid #d0cbc0;
+  }
+  .digital-feature-head h1{
+    max-width:620px!important;
+    font-size:46px!important;
+    line-height:.93!important;
+  }
+  .digital-deck{
+    max-width:590px!important;
+    font-size:17px!important;
+  }
+  .digital-byline{
+    margin-top:18px!important;
+    padding-bottom:0!important;
+    border-bottom:0!important;
+  }
+  .digital-hero-figure{
+    margin:0!important;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    background:#ece8de;
+  }
+  .digital-hero-photo{
+    flex:1;
+    min-height:390px;
+    height:auto!important;
+    background-size:cover!important;
+    background-position:center 26%!important;
+  }
+  .digital-hero-figure figcaption{
+    min-height:34px;
+    align-items:center;
+    padding:7px 10px!important;
+    border-top:1px solid #d2ccc0;
+    background:#f4f1e9;
+  }
+  .digital-scorebar{
+    margin-top:0!important;
+    border-top:0!important;
+  }
+}
+
+@media(max-width:1000px) and (min-width:701px){
+  .digital-feature-head{
+    min-height:340px;
+    padding:24px!important;
+  }
+  .digital-feature-head h1{
+    font-size:38px!important;
+  }
+  .digital-hero-photo{
+    min-height:340px;
+  }
+}
+
+@media(max-width:700px){
+  .digital-feature-top{
+    display:flex;
+    flex-direction:column;
+  }
+  .digital-feature-head{
+    min-height:0;
+  }
+  .digital-hero-figure{
+    margin:0!important;
+  }
+  .digital-hero-photo{
+    min-height:0;
+    height:285px!important;
+  }
+}

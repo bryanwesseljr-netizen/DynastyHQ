@@ -78,6 +78,21 @@ const threadBadge = (thread = {}) => {
   return 'ACTIVE';
 };
 
+const latestHomeGameFor = (career = {}, season = 1) => arrayOf(career.gameLogs)
+  .filter((game) => game?.stage !== 'high-school' && !game?.evaluation && game?.didPlay !== false)
+  .filter((game) => Number(game?.season || 1) === Number(season))
+  .filter((game) => clean(game?.opponent))
+  .sort((left, right) => Number(left?.week || 0) - Number(right?.week || 0))
+  .at(-1) || null;
+
+const latestNewsroomFeatureFor = (career = {}) => arrayOf(career.newsroomIssues)
+  .flatMap((issue) => arrayOf(issue?.articles).map((article) => ({ issue, article })))
+  .filter(({ article }) => clean(article?.headline || article?.title))
+  .sort((left, right) => (
+    Number(right.issue?.season || 1) - Number(left.issue?.season || 1)
+    || Number(right.issue?.week || 0) - Number(left.issue?.week || 0)
+  ))[0] || null;
+
 const HomeFocusDeck = ({ career }) => {
   const season = Math.max(1, numberOf(career.currentSeason, 1));
   const context = currentStoryContext(career);
@@ -90,54 +105,99 @@ const HomeFocusDeck = ({ career }) => {
   const coachTrust = coachTrustFor(career);
   const lead = story.lead;
   const playerName = clean(career.player?.name) || 'Tracked Player';
-  const coverageTitle = media.dynasty.headline
-    || media.dynasty.podcastTitle
+  const latestGame = latestHomeGameFor(career, season);
+  const newsroomFeature = latestNewsroomFeatureFor(career);
+  const newsroomArticle = newsroomFeature?.article || null;
+  const newsroomIssue = newsroomFeature?.issue || null;
+  const newsroomImage = clean(
+    newsroomArticle?.imageUrl
+    || newsroomArticle?.photoUrl
+    || newsroomArticle?.media?.url
+    || newsroomArticle?.assignedMedia?.downloadUrl
+    || newsroomIssue?.imageUrl
+    || career.outletImages?.local
+    || career.outletImages?.broadsheet,
+  );
+  const coverageTitle = clean(newsroomArticle?.headline || newsroomArticle?.title)
+    || media.dynasty.headline
     || (media.official.status === 'captured' ? media.official.headline : '')
     || 'The next verified story will appear here.';
-  const coverageState = media.dynasty.finishedPodcast
-    ? 'FINISHED PODCAST READY'
-    : media.dynasty.newsroomReady
-      ? 'NEWSROOM EDITION READY'
-      : media.official.status === 'captured'
-        ? 'OFFICIAL COVERAGE CAPTURED'
-        : 'COVERAGE BUILDS WITH THE SEASON';
+  const coverageDetail = clean(newsroomArticle?.dek || newsroomArticle?.summary)
+    || media.dynasty.dek
+    || media.official.summary
+    || 'The latest verified coverage from your career.';
+  const latestResult = latestGame
+    ? `${clean(latestGame.result).toUpperCase() || 'FINAL'} ${latestGame.homeScore ?? '—'}-${latestGame.awayScore ?? '—'} vs ${clean(latestGame.opponent)}`
+    : 'No completed game this season yet';
+  const playerLine = latestGame
+    ? [
+        numberOf(latestGame.passYds) ? `${numberOf(latestGame.passYds)} PASS YDS` : '',
+        numberOf(latestGame.passTD) ? `${numberOf(latestGame.passTD)} PASS TD` : '',
+        numberOf(latestGame.rushYds) ? `${numberOf(latestGame.rushYds)} RUSH YDS` : '',
+      ].filter(Boolean).join(' · ')
+    : '';
+  const nextTitle = nextGame
+    ? `W${nextGame.week} · ${clean(nextGame.opponent).toUpperCase()}`
+    : 'SCHEDULE COMPLETE';
+  const nextDetail = nextGame
+    ? (nextGame.homeAway === 'home' ? 'HOME' : nextGame.homeAway === 'away' ? 'AWAY' : nextGame.homeAway === 'neutral' ? 'NEUTRAL' : 'UP NEXT')
+    : 'No regular-season opponent currently scheduled';
 
   return (
-    <section className="dhq-v3-focus" aria-label="What matters now">
+    <section className="dhq-v3-focus dhq-v3-focus--home-refresh" aria-label="The story right now">
       <header className="dhq-v3-focus__header">
         <div>
-          <span><Sparkles size={13} /> WHAT MATTERS NOW</span>
+          <span><Sparkles size={13} /> THE STORY RIGHT NOW</span>
           <h2>{lead?.title || `${playerName}'s season is moving forward.`}</h2>
         </div>
-        <p>{lead?.detail || story.previous?.copy || 'DynastyHQ is keeping the important career context together so you do not have to read every panel at once.'}</p>
+        <div className="dhq-v3-focus__story-copy">
+          <p>{lead?.detail || story.previous?.copy || 'DynastyHQ is keeping the current career story in focus.'}</p>
+          <div className="dhq-v3-focus__last-game">
+            <small>LAST GAME</small>
+            <strong>{latestResult}</strong>
+            {playerLine ? <span>{playerLine}</span> : null}
+          </div>
+        </div>
       </header>
 
-      <div className="dhq-v3-focus__grid">
-        <button type="button" className="dhq-v3-focus-card" onClick={() => openNav('Career')}>
+      <div className="dhq-v3-focus__grid dhq-v3-focus__grid--pulse">
+        <button type="button" className="dhq-v3-focus-card dhq-v3-focus-card--role" onClick={() => openNav('Career')}>
           <span><UserRound size={14} /> YOUR ROLE</span>
           <strong>{role.toUpperCase()}</strong>
           <small>{coachTrust ? `${coachTrust.toLocaleString()} coach trust` : `${playerName} · current saved role`}</small>
           <i>Career <ChevronRight size={13} /></i>
         </button>
 
-        <button type="button" className="dhq-v3-focus-card" onClick={() => document.querySelector('.dhq-season-strip')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+        <button type="button" className="dhq-v3-focus-card dhq-v3-focus-card--season" onClick={() => document.querySelector('.dhq-season-strip')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
           <span><Trophy size={14} /> SEASON</span>
           <strong>{record.wins}-{record.losses}</strong>
-          <small>{nextGame ? `Next: W${nextGame.week} · ${clean(nextGame.opponent).toUpperCase()}` : 'Season calendar is up to date'}</small>
-          <i>Schedule <ChevronRight size={13} /></i>
+          <small>{latestGame ? `Last: ${latestResult}` : 'Season record is up to date'}</small>
+          <i>Road Ahead <ChevronRight size={13} /></i>
         </button>
 
-        <button type="button" className="dhq-v3-focus-card" onClick={() => openNav(['The Newsroom', 'Newsroom'])}>
-          <span><Newspaper size={14} /> COVERAGE</span>
-          <strong>{coverageState}</strong>
-          <small>{coverageTitle}</small>
-          <i>Coverage <ChevronRight size={13} /></i>
+        <button type="button" className="dhq-v3-focus-card dhq-v3-focus-card--next" onClick={() => openNav('Game Hub')}>
+          <span><CalendarDays size={14} /> NEXT UP</span>
+          <strong>{nextTitle}</strong>
+          <small>{nextDetail}</small>
+          <i>Game Hub <ChevronRight size={13} /></i>
         </button>
       </div>
 
+      <button type="button" className={`dhq-v3-home-news ${newsroomImage ? 'has-image' : ''}`} onClick={() => openNav(['The Newsroom', 'Newsroom'])}>
+        <span className="dhq-v3-home-news__media" aria-hidden="true">
+          {newsroomImage ? <img src={newsroomImage} alt="" /> : <Newspaper size={30} />}
+        </span>
+        <span className="dhq-v3-home-news__copy">
+          <small><Newspaper size={13} /> LATEST FROM THE NEWSROOM</small>
+          <strong>{coverageTitle}</strong>
+          <p>{coverageDetail}</p>
+          <i>READ STORY <ChevronRight size={13} /></i>
+        </span>
+      </button>
+
       {lead ? (
-        <button type="button" className="dhq-v3-story-feature" onClick={() => openNav('Chronicle')}>
-          <span className="dhq-v3-story-feature__label"><BookOpen size={13} /> THE STORY · {threadBadge(lead)}</span>
+        <button type="button" className="dhq-v3-story-feature dhq-v3-story-feature--compact" onClick={() => openNav('Chronicle')}>
+          <span className="dhq-v3-story-feature__label"><BookOpen size={13} /> CAREER THREAD · {threadBadge(lead)}</span>
           <strong>{lead.title}</strong>
           <p>{lead.detail}</p>
           <i>FOLLOW THE CAREER THREAD <ChevronRight size={13} /></i>

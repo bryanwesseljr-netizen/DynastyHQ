@@ -289,7 +289,7 @@ const SeasonSchedulePortal = () => {
   const homeContent = homeMount ? createPortal(
     <section className="dhq-season-strip" aria-label="Season schedule">
       <div className="dhq-season-strip__heading">
-        <div><span><CalendarDays size={14} /> SEASON SCHEDULE</span><strong>{schedule?.entries?.length ? `${record.wins}-${record.losses} · ${schedule.entries.length} WEEKS SAVED` : 'IMPORT ONCE · USE ALL SEASON'}</strong></div>
+        <div><span><CalendarDays size={14} /> THE ROAD AHEAD</span><strong>{schedule?.entries?.length ? `${record.wins}-${record.losses}${nextGame ? ` · NEXT W${nextGame.week} ${nextGame.opponent.toUpperCase()}` : ' · SEASON SCHEDULE COMPLETE'}` : 'IMPORT ONCE · USE ALL SEASON'}</strong></div>
         <button type="button" onClick={openImporter}>{schedule?.entries?.length ? <><RefreshCw size={13} /> UPDATE</> : <><CloudUpload size={13} /> IMPORT SCHEDULE</>}</button>
       </div>
       {homeWindow.length ? (

@@ -508,3 +508,271 @@ body[data-dhq-team-accent="true"] :is(
 @media (prefers-reduced-motion: reduce) {
   .dhq-v3-focus-card { transition: none; }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* TEMPORARY HOME REFRESH — presentation-only while the larger redesign is in */
+/* mock-up. No data model, storage, Game Hub, or publishing behavior lives here. */
+/* -------------------------------------------------------------------------- */
+
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-broadcast-hero[data-home-focus="forward"] {
+  border-color: color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 48%, rgba(153, 166, 178, .52));
+  background:
+    radial-gradient(circle at 50% 88%, color-mix(in srgb, var(--dhq-team-primary, #226b4b) 28%, transparent), transparent 44%),
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 34%, rgba(2, 13, 23, .985)),
+      rgba(4, 17, 28, .86) 48%,
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 20%, rgba(2, 12, 20, .94)));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 9%, transparent),
+    0 22px 54px rgba(0, 0, 0, .42);
+}
+
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-broadcast-hero[data-home-focus="forward"] .dhq-broadcast-hero__kicker {
+  color: var(--dhq-team-highlight, #f5df45);
+}
+
+.dhq-v3-focus--home-refresh {
+  border-radius: 16px;
+}
+
+.dhq-v3-focus--home-refresh .dhq-v3-focus__header {
+  grid-template-columns: minmax(0, 1.08fr) minmax(310px, .92fr);
+  align-items: center;
+  padding: 23px 25px;
+}
+
+.dhq-v3-focus__story-copy {
+  display: grid;
+  gap: 13px;
+}
+
+.dhq-v3-focus__story-copy > p {
+  margin: 0;
+  color: #c7d2dc;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dhq-v3-focus__last-game {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 10px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-left: 3px solid color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 72%, white);
+  background: rgba(1, 8, 13, .42);
+}
+
+.dhq-v3-focus__last-game small {
+  color: var(--dhq-team-highlight, #f5df45);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .13em;
+}
+
+.dhq-v3-focus__last-game strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dhq-v3-focus__last-game span {
+  grid-column: 2;
+  color: #8fa0ad;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .035em;
+}
+
+.dhq-v3-focus__grid--pulse .dhq-v3-focus-card {
+  min-height: 126px;
+  padding: 17px 18px;
+}
+
+.dhq-v3-focus__grid--pulse .dhq-v3-focus-card strong {
+  margin-top: 11px;
+  font-size: clamp(18px, 2vw, 24px);
+}
+
+.dhq-v3-focus-card--next {
+  background:
+    linear-gradient(150deg,
+      color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 10%, rgba(5, 16, 25, .98)),
+      color-mix(in srgb, var(--dhq-team-primary, #226b4b) 22%, rgba(3, 11, 18, .98)));
+}
+
+.dhq-v3-home-news {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 210px;
+  grid-template-columns: minmax(220px, .82fr) minmax(0, 1.18fr);
+  overflow: hidden;
+  border: 0;
+  border-top: 1px solid rgba(170, 186, 199, .14);
+  background: rgba(2, 10, 17, .98);
+  padding: 0;
+  color: #f8fbff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dhq-v3-home-news__media {
+  position: relative;
+  display: grid;
+  min-height: 210px;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--dhq-team-primary, #226b4b) 38%, transparent), transparent 56%),
+    #06111b;
+  color: var(--dhq-team-highlight, #f5df45);
+}
+
+.dhq-v3-home-news__media::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent 60%, rgba(2, 10, 17, .96));
+  pointer-events: none;
+}
+
+.dhq-v3-home-news__media img {
+  width: 100%;
+  height: 100%;
+  min-height: 210px;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
+
+.dhq-v3-home-news:hover .dhq-v3-home-news__media img,
+.dhq-v3-home-news:focus-visible .dhq-v3-home-news__media img {
+  transform: scale(1.025);
+}
+
+.dhq-v3-home-news__copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 26px;
+}
+
+.dhq-v3-home-news__copy > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dhq-team-highlight, #f5df45);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.dhq-v3-home-news__copy > strong {
+  margin-top: 10px;
+  color: #fff;
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 950;
+  font-style: italic;
+  line-height: 1.04;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+}
+
+.dhq-v3-home-news__copy > p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 9px 0 0;
+  color: #aebbc6;
+  font-size: 11px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.dhq-v3-home-news__copy > i {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  color: color-mix(in srgb, var(--dhq-team-highlight, #f5df45) 78%, white);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: .1em;
+}
+
+.dhq-v3-story-feature--compact {
+  min-height: 0;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-season-strip {
+  border-color: color-mix(in srgb, var(--dhq-team-primary, #226b4b) 45%, rgba(56, 189, 248, .22));
+}
+
+#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-season-strip__heading span {
+  color: var(--dhq-team-highlight, #f5df45);
+}
+
+@media (max-width: 760px) {
+  .dhq-v3-focus--home-refresh .dhq-v3-focus__header {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 19px 17px;
+  }
+
+  .dhq-v3-focus__last-game {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .dhq-v3-focus__last-game span {
+    grid-column: 1;
+  }
+
+  .dhq-v3-focus__grid--pulse {
+    grid-template-columns: 1fr;
+  }
+
+  .dhq-v3-focus__grid--pulse .dhq-v3-focus-card {
+    min-height: 108px;
+  }
+
+  .dhq-v3-home-news {
+    grid-template-columns: 1fr;
+  }
+
+  .dhq-v3-home-news__media,
+  .dhq-v3-home-news__media img {
+    min-height: 180px;
+    height: 180px;
+  }
+
+  .dhq-v3-home-news__media::after {
+    background: linear-gradient(180deg, transparent 52%, rgba(2, 10, 17, .98));
+  }
+
+  .dhq-v3-home-news__copy {
+    margin-top: -24px;
+    padding: 18px 17px 20px;
+  }
+
+  .dhq-v3-story-feature--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .dhq-v3-story-feature--compact > p {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}

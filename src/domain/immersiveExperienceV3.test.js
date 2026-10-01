@@ -13,11 +13,22 @@ test('hierarchy-first experience is mounted and replaces the Home information wa
 
   assert.ok(owner.includes("import ImmersiveExperienceV3Portal from './ImmersiveExperienceV3Portal.jsx'"));
   assert.ok(owner.includes('<ImmersiveExperienceV3Portal />'));
-  assert.ok(portal.includes('WHAT MATTERS NOW'));
+  assert.ok(portal.includes('THE STORY RIGHT NOW'));
   assert.ok(portal.includes('YOUR ROLE'));
-  assert.ok(portal.includes('COVERAGE'));
+  assert.ok(portal.includes('NEXT UP'));
+  assert.ok(portal.includes('LATEST FROM THE NEWSROOM'));
+  assert.ok(portal.includes('dhq-v3-focus-card--next'));
+  assert.ok(portal.includes('latestNewsroomFeatureFor'));
   assert.ok(styles.includes('#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-broadcast-cards'));
   assert.ok(styles.includes('#dynastyhq-command-center[data-dhq-experience="v3"] .dhq-gameweek-immersion'));
+  assert.ok(styles.includes('TEMPORARY HOME REFRESH'));
+  assert.ok(styles.includes('.dhq-v3-home-news'));
+  const schedule = await readSource('../components/SeasonSchedulePortal.jsx');
+  const storyRepair = await readSource('../components/CareerStoryExperiencePortal.jsx');
+  assert.ok(schedule.includes('THE ROAD AHEAD'));
+  assert.ok(storyRepair.includes('.dhq-v3-focus-card--role'));
+  assert.ok(storyRepair.includes('.dhq-v3-focus-card--season'));
+  assert.ok(!storyRepair.includes('cards[2]'));
 });
 
 test('completed Game Hub destinations surface finished football experiences instead of backend panels', async () => {

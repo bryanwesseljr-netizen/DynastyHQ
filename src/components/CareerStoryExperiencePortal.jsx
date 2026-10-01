@@ -25,18 +25,15 @@ const CareerStoryExperiencePortal = () => {
       setText(focus.querySelector('.dhq-v3-focus__header h2'), model.headline);
       setText(focus.querySelector('.dhq-v3-focus__header > p'), model.summary);
 
-      const cards = [...focus.querySelectorAll('.dhq-v3-focus-card')];
-      if (cards[0]) {
-        setText(cards[0].querySelector('strong'), model.role.title);
-        setText(cards[0].querySelector('small'), model.role.detail);
+      const roleCard = focus.querySelector('.dhq-v3-focus-card--role');
+      const seasonCard = focus.querySelector('.dhq-v3-focus-card--season');
+      if (roleCard) {
+        setText(roleCard.querySelector('strong'), model.role.title);
+        setText(roleCard.querySelector('small'), model.role.detail);
       }
-      if (cards[1]) {
-        setText(cards[1].querySelector('strong'), model.seasonCard.title);
-        setText(cards[1].querySelector('small'), model.seasonCard.detail);
-      }
-      if (cards[2]) {
-        setText(cards[2].querySelector('strong'), model.coverage.title);
-        setText(cards[2].querySelector('small'), model.coverage.detail);
+      if (seasonCard) {
+        setText(seasonCard.querySelector('strong'), model.seasonCard.title);
+        setText(seasonCard.querySelector('small'), model.seasonCard.detail);
       }
 
       const story = focus.querySelector('.dhq-v3-story-feature');

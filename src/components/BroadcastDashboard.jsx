@@ -12,6 +12,7 @@ import './dynamic-matchup-helmets.css';
 import { buildDashboardV2 } from '../domain/dashboardV2';
 import { buildGameweekFlow } from '../domain/gameweekFlow';
 import { buildGameWeekImmersion } from '../domain/gameWeekImmersion.js';
+import { nextScheduledGame } from '../domain/seasonSchedule.js';
 import { requestNavigation } from '../domain/navigationBus.js';
 import './broadcast-dashboard.css';
 import './broadcast-reference.css';
@@ -103,6 +104,14 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   // The immersion model already scopes completed games to the current season.
   // Never fall back to a historical game here or an old opponent can leak into Home.
   const latestGame = immersion.latestGame || null;
+  // Temporary Home refresh: presentation only. If the latest game is complete,
+  // let Home look ahead to the next saved opponent without changing week state,
+  // workflow state, Game Hub, or any career data.
+  const forwardGame = ['postgame', 'between'].includes(immersion.mode)
+    ? nextScheduledGame(state, numberValue(state.currentSeason, immersion.currentSeason || 1))
+    : null;
+  const forwardOpponent = clean(forwardGame?.opponent);
+  const useForwardHero = Boolean(forwardOpponent);
   const newsItems = latestNewsItems(state);
   const chronicle = [...(state.careerChronicle || [])].filter(Boolean).reverse().slice(0, 4);
   const latestPodcast = [...(state.podcastEpisodes || [])].filter(Boolean).reverse().at(0) || null;
@@ -147,6 +156,36 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
               ? 'OFFSEASON'
               : 'CURRENT STATE';
 
+  const forwardSiteLabel = forwardGame?.homeAway === 'home'
+    ? 'HOME'
+    : forwardGame?.homeAway === 'away'
+      ? 'AWAY'
+      : forwardGame?.homeAway === 'neutral'
+        ? 'NEUTRAL'
+        : 'UP NEXT';
+  const latestScore = latestGame ? gameScore(latestGame) : '';
+  const heroKicker = useForwardHero ? `WEEK ${forwardGame.week} · THE NEXT CHAPTER` : immersion.kicker;
+  const heroHeadline = useForwardHero
+    ? `${clean(school).toUpperCase()} VS ${forwardOpponent.toUpperCase()}`
+    : immersion.headline;
+  const heroOpponent = useForwardHero ? forwardOpponent : (immersion.heroOpponent || '');
+  const heroRightTeam = useForwardHero ? forwardOpponent : (immersion.rightTeamName || opponent);
+  const heroRightMeta = useForwardHero ? forwardSiteLabel : rightTeamMeta;
+  const heroRightLabel = useForwardHero ? 'NEXT OPPONENT' : rightTeamLabel;
+  const heroCenter = useForwardHero ? 'VS' : immersion.center;
+  const heroCenterLine = useForwardHero ? `WEEK ${forwardGame.week}` : immersion.centerLine;
+  const heroCenterDetail = useForwardHero && latestGame
+    ? `LAST: ${clean(latestGame.result).toUpperCase() || 'FINAL'} ${latestScore} VS ${shortName(latestGame.opponent, 'OPPONENT')}`
+    : immersion.centerDetail;
+  const heroPrimaryLabel = useForwardHero && immersion.mode === 'postgame'
+    ? `CONTINUE TO WEEK ${forwardGame.week}`
+    : immersion.primaryLabel;
+  const heroPrimaryTarget = useForwardHero && immersion.mode === 'postgame'
+    ? 'gameHub'
+    : immersion.primaryTarget;
+  const heroSecondaryLabel = useForwardHero ? 'VIEW LAST GAME' : (immersion.secondaryLabel || 'VIEW WEEK HUB');
+  const heroSecondaryTarget = useForwardHero ? 'gameHub' : (immersion.secondaryTarget || 'gameHub');
+
   return (
     <div
       id="dynastyhq-command-center"
@@ -158,14 +197,14 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
       <div id="dhq-gameweek-flow-dashboard" hidden />
 
       <main className="dhq-broadcast-main">
-        <section className="dhq-broadcast-hero" aria-labelledby="broadcast-week-title" data-week-state={immersion.mode}>
+        <section className="dhq-broadcast-hero" aria-labelledby="broadcast-week-title" data-week-state={immersion.mode} data-home-focus={useForwardHero ? 'forward' : 'current'}>
           <div className="dhq-broadcast-hero__angles" aria-hidden="true" />
-          <span className="dhq-broadcast-hero__kicker">{immersion.kicker}</span>
-          <h1 id="broadcast-week-title">{immersion.headline}</h1>
+          <span className="dhq-broadcast-hero__kicker">{heroKicker}</span>
+          <h1 id="broadcast-week-title">{heroHeadline}</h1>
           <DynamicMatchupHelmets
             className="dhq-broadcast-helmets"
             homeTeam={school}
-            awayTeam={immersion.heroOpponent || ''}
+            awayTeam={heroOpponent}
             highSchool={model.stage === 'HighSchool'}
           />
 
@@ -175,34 +214,34 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
             <small>{model.stage === 'HighSchool' ? 'HIGH SCHOOL' : 'CONFERENCE'}</small>
           </div>
           <div className="dhq-broadcast-team dhq-broadcast-team--right">
-            <strong>{shortName(immersion.rightTeamName || opponent, 'OPPONENT')}</strong>
-            <span>{rightTeamMeta}</span>
-            <small>{rightTeamLabel}</small>
+            <strong>{shortName(heroRightTeam, 'OPPONENT')}</strong>
+            <span>{heroRightMeta}</span>
+            <small>{heroRightLabel}</small>
           </div>
 
-          {immersion.centerLayout === 'status' ? (
+          {!useForwardHero && immersion.centerLayout === 'status' ? (
             <div className="dhq-broadcast-season-center" aria-label="Current season status">
-              <b>{immersion.center}</b>
-              <span>{immersion.centerLine}</span>
-              <small>{immersion.centerDetail}</small>
+              <b>{heroCenter}</b>
+              <span>{heroCenterLine}</span>
+              <small>{heroCenterDetail}</small>
             </div>
           ) : (
             <div className="dhq-broadcast-versus">
-              <b>{immersion.center}</b>
-              <span>{immersion.centerLine}</span>
-              <small>{immersion.centerDetail}</small>
+              <b>{heroCenter}</b>
+              <span>{heroCenterLine}</span>
+              <small>{heroCenterDetail}</small>
             </div>
           )}
 
           {!readOnly ? (
             <div className="dhq-broadcast-hero__buttons">
-              <button type="button" className="dhq-broadcast-primary" onClick={() => open(immersion.primaryTarget)}>
-                {immersion.primaryLabel}
-                {immersion.primaryTarget === 'importSession' ? <CloudUpload size={16} /> : immersion.mode === 'pregame' ? <Play size={15} /> : <ChevronRight size={17} />}
+              <button type="button" className="dhq-broadcast-primary" onClick={() => open(heroPrimaryTarget)}>
+                {heroPrimaryLabel}
+                {heroPrimaryTarget === 'importSession' ? <CloudUpload size={16} /> : heroPrimaryTarget === 'gameHub' && useForwardHero ? <Play size={15} /> : immersion.mode === 'pregame' ? <Play size={15} /> : <ChevronRight size={17} />}
               </button>
-              <button type="button" className="dhq-broadcast-secondary" onClick={() => open(immersion.secondaryTarget || 'gameHub')}>
-                {immersion.secondaryLabel || 'VIEW WEEK HUB'}
-                {immersion.secondaryTarget === 'importSession' ? <CloudUpload size={16} /> : <ChevronRight size={17} />}
+              <button type="button" className="dhq-broadcast-secondary" onClick={() => open(heroSecondaryTarget)}>
+                {heroSecondaryLabel}
+                {heroSecondaryTarget === 'importSession' ? <CloudUpload size={16} /> : <ChevronRight size={17} />}
               </button>
             </div>
           ) : null}

@@ -59,3 +59,32 @@ test('new-week publish validates the verified core game line before any transact
   assert.match(source, /STORAGE_SHARD_TOO_LARGE/);
   assert.match(source, /CAREER_REGRESSION_BLOCKED/);
 });
+
+
+test('post-save coverage generation writes Newsroom and Podcast transcript automatically without generating audio', async () => {
+  const source = await readFile(sourceUrl, 'utf8');
+
+  assert.match(source, /refreshPublishedCoverage/);
+  assert.match(source, /buildNewsroomGenerationPayload/);
+  assert.match(source, /generateNewsroomEdition/);
+  assert.match(source, /normalizeGeneratedNewsroomEdition/);
+  assert.match(source, /applyGeneratedNewsroomEdition/);
+  assert.match(source, /buildPodcastGenerationPayload/);
+  assert.match(source, /generatePodcastScript/);
+  assert.match(source, /prepareAudio:false/);
+  assert.match(source, /normalizeGeneratedPodcast/);
+  assert.match(source, /upsertPodcastEpisode/);
+  assert.match(source, /BUILDING POSTGAME COVERAGE/);
+  assert.match(source, /POSTGAME COVERAGE READY/);
+});
+
+test('coverage generation is non-destructive and can be retried independently after the verified week is saved', async () => {
+  const source = await readFile(sourceUrl, 'utf8');
+
+  assert.match(source, /WEEK SAVED · COVERAGE NEEDS ATTENTION/);
+  assert.match(source, /RETRY COVERAGE/);
+  assert.match(source, /detectDestructiveCareerRegression\(remote,nextState\)/);
+  assert.match(source, /findPublishedWeekConflict\(remote/);
+  assert.match(source, /audioStatus:priorEpisode\?\.audioStatus==='ready' \? 'stale' : 'not-generated'/);
+  assert.match(source, /Existing audio is never regenerated automatically/);
+});

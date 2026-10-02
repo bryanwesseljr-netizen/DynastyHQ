@@ -25,6 +25,18 @@ import {
   mergeScanResult,
 } from '../domain/weeklyEngine.js';
 import { replaceCoverageReferences } from '../domain/coverageReferences.js';
+import {
+  applyGeneratedNewsroomEdition,
+  buildNewsroomGenerationPayload,
+  normalizeGeneratedNewsroomEdition,
+} from '../domain/newsroomGeneration.js';
+import {
+  buildPodcastGenerationPayload,
+  normalizeGeneratedPodcast,
+  upsertPodcastEpisode,
+} from '../domain/podcastEngine.js';
+import { generateNewsroomEdition } from '../services/newsroomClient.js';
+import { generatePodcastScript } from '../services/podcastClient.js';
 import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot } from '../domain/rtgProgress.js';
 import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
 import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
@@ -1401,6 +1413,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [publishing,setPublishing]=useState(false);
   const [publishError,setPublishError]=useState('');
   const [publishResult,setPublishResult]=useState(null);
+  const [coverageRefreshBusy,setCoverageRefreshBusy]=useState(false);
+  const [coverageRefreshError,setCoverageRefreshError]=useState('');
+  const [coverageRefreshResult,setCoverageRefreshResult]=useState(null);
 
   const game=data.game || {};
   const team=game.team || {};
@@ -1452,6 +1467,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setPublishing(false);
     setPublishError('');
     setPublishResult(null);
+    setCoverageRefreshBusy(false);
+    setCoverageRefreshError('');
+    setCoverageRefreshResult(null);
   },[open,data.season,data.week]);
 
   useEffect(()=>()=>revokeFiles(files),[]);
@@ -1728,6 +1746,204 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     scoring:coverageScreens.some((entry)=>entry.screenType==='scoring_summary'),
     teammates:coverageScreens.some((entry)=>entry.screenType==='player_stats'),
     opponent:coverageScreens.some((entry)=>entry.screenType==='team_stats' || entry.screenType==='player_stats'),
+  };
+
+  const refreshPublishedCoverage=async({targetPublicationId,targetSeason,targetWeek})=>{
+    if(coverageRefreshBusy) return coverageRefreshResult;
+    const signedInUser=auth.currentUser;
+    if(!signedInUser || !user || signedInUser.uid!==user.uid){
+      const message='Your week was saved, but DynastyHQ could not start coverage generation because the owner session changed.';
+      setCoverageRefreshError(message);
+      return {newsroom:'failed',podcast:'failed',errors:[message]};
+    }
+
+    setCoverageRefreshBusy(true);
+    setCoverageRefreshError('');
+    setCoverageRefreshResult(null);
+
+    const outcome={newsroom:'pending',podcast:'pending',errors:[]};
+    let newsroomEdition=null;
+    let podcastEpisode=null;
+
+    try{
+      const baseState=await runTransaction(db,async(transaction)=>{
+        const loaded=await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+        });
+        if(!loaded) throw new Error('The saved week could not be reloaded for coverage generation.');
+        const target=findPublishedWeekConflict(loaded.state,{
+          season:targetSeason,
+          week:targetWeek,
+          weekKey:targetPublicationId,
+        });
+        if(!target) throw new Error('The saved week is no longer present, so coverage generation was stopped.');
+        return loaded.state;
+      });
+
+      const idToken=await signedInUser.getIdToken();
+
+      try{
+        const newsroomPayload=buildNewsroomGenerationPayload(baseState,targetPublicationId);
+        const generated=await generateNewsroomEdition({idToken,payload:newsroomPayload});
+        newsroomEdition=normalizeGeneratedNewsroomEdition({
+          generated:generated.edition,
+          payload:newsroomPayload,
+          model:generated.model,
+        });
+        outcome.newsroom='generated';
+      }catch(error){
+        if(error?.code==='NO_NEWSWORTHY_NEWSROOM' || /no new newsroom story/i.test(String(error?.message || ''))){
+          outcome.newsroom='skipped';
+        }else{
+          outcome.newsroom='failed';
+          outcome.errors.push('Newsroom: '+String(error?.message || 'generation failed'));
+        }
+      }
+
+      try{
+        const podcastPayload=buildPodcastGenerationPayload(baseState,targetPublicationId);
+        const generated=await generatePodcastScript({
+          idToken,
+          payload:podcastPayload,
+          prepareAudio:false,
+        });
+        const normalized=normalizeGeneratedPodcast({
+          generated:generated.episode,
+          payload:podcastPayload,
+          model:generated.model,
+        });
+        const priorEpisode=(baseState.podcastEpisodes || []).find((entry)=>previewMatchesPublication(
+          entry,
+          targetPublicationId,
+          targetSeason,
+          targetWeek,
+        ));
+        podcastEpisode={
+          ...normalized,
+          audioStatus:priorEpisode?.audioStatus==='ready' ? 'stale' : 'not-generated',
+          ...(priorEpisode?.audioStatus==='ready' ? {audioStaleAt:new Date().toISOString()} : {}),
+        };
+        outcome.podcast='generated';
+      }catch(error){
+        outcome.podcast='failed';
+        outcome.errors.push('Podcast: '+String(error?.message || 'transcript generation failed'));
+      }
+
+      if(newsroomEdition || podcastEpisode){
+        await runTransaction(db,async(transaction)=>{
+          const loaded=await readHydratedCareerInTransaction({
+            transaction,
+            db,
+            appId:productionAppId,
+            userId:signedInUser.uid,
+          });
+          if(!loaded) throw new Error('DynastyHQ could not reload the career to attach generated coverage.');
+
+          const remote=loaded.state;
+          const target=findPublishedWeekConflict(remote,{
+            season:targetSeason,
+            week:targetWeek,
+            weekKey:targetPublicationId,
+          });
+          if(!target) throw new Error('The selected week changed before generated coverage could be attached.');
+
+          let nextState=remote;
+          if(newsroomEdition){
+            nextState=applyGeneratedNewsroomEdition(nextState,targetPublicationId,newsroomEdition);
+            const savedIssue=(nextState.newsroomIssues || []).find((issue)=>previewMatchesPublication(
+              issue,
+              targetPublicationId,
+              targetSeason,
+              targetWeek,
+            ));
+            if(
+              savedIssue?.editorialStatus!=='generated'
+              || savedIssue?.editorialGeneratedAt!==newsroomEdition.generatedAt
+            ){
+              throw new Error('The generated Newsroom edition could not be attached to the selected week.');
+            }
+          }
+
+          if(podcastEpisode){
+            nextState=upsertPodcastEpisode(nextState,podcastEpisode);
+            const savedEpisode=(nextState.podcastEpisodes || []).find((episode)=>previewMatchesPublication(
+              episode,
+              targetPublicationId,
+              targetSeason,
+              targetWeek,
+            ));
+            if(
+              !savedEpisode?.segments?.length
+              || savedEpisode?.generatedAt!==podcastEpisode.generatedAt
+            ){
+              throw new Error('The generated Podcast transcript could not be attached to the selected week.');
+            }
+          }
+
+          const regression=detectDestructiveCareerRegression(remote,nextState);
+          if(regression.blocked){
+            throw new Error('DynastyHQ blocked generated coverage because the save would regress career history. '+regression.reason);
+          }
+
+          const remoteRevision=Number(loaded.rawMain?._sync?.revision)||0;
+          const savedAt=new Date().toISOString();
+          nextState={
+            ...nextState,
+            _sync:{
+              revision:remoteRevision+1,
+              deviceId:PREVIEW_WEEK_PROCESSOR_DEVICE_ID,
+              updatedAt:savedAt,
+            },
+          };
+
+          const storagePreview=splitCareerStateForStorage(nextState,savedAt);
+          const mainBytes=estimatedJsonBytes(storagePreview.mainState);
+          const largestArchiveBytes=storagePreview.archives.reduce(
+            (largest,archive)=>Math.max(largest,estimatedJsonBytes(archive)),
+            0,
+          );
+          if(mainBytes>=950*1024 || largestArchiveBytes>=950*1024){
+            throw new Error('Generated coverage was not attached because the resulting DynastyHQ storage shard would be too large.');
+          }
+
+          writeHydratedCareerInTransaction({
+            transaction,
+            db,
+            appId:productionAppId,
+            userId:signedInUser.uid,
+            state:nextState,
+          });
+        });
+      }
+
+      const completed={...outcome};
+      setCoverageRefreshResult(completed);
+      if(outcome.errors.length){
+        setCoverageRefreshError(outcome.errors.join(' · '));
+      }else{
+        notify(
+          outcome.newsroom==='generated' && outcome.podcast==='generated'
+            ? 'Newsroom coverage and The Huddle transcript are ready.'
+            : 'Postgame coverage refresh is complete.',
+        );
+      }
+      return completed;
+    }catch(error){
+      const message=error?.message || 'The week was saved, but postgame coverage could not be refreshed.';
+      setCoverageRefreshError(message);
+      const failed={
+        newsroom:outcome.newsroom==='pending'?'failed':outcome.newsroom,
+        podcast:outcome.podcast==='pending'?'failed':outcome.podcast,
+        errors:[...outcome.errors,message],
+      };
+      setCoverageRefreshResult(failed);
+      return failed;
+    }finally{
+      setCoverageRefreshBusy(false);
+    }
   };
 
   const publishVerifiedPacket=async()=>{
@@ -2020,11 +2236,17 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
       setPublishResult(result);
       setPublishConfirm(false);
+      setPublishing(false);
       notify(
         result.action==='updated'
-          ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Coverage that depended on changed facts may need regeneration.`
-          : `Season ${targetSeason}, Week ${targetWeek} was safely published to your live DynastyHQ career.`,
+          ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Refreshing Newsroom and Podcast coverage now.`
+          : `Season ${targetSeason}, Week ${targetWeek} was safely published. Building Newsroom and Podcast coverage now.`,
       );
+      await refreshPublishedCoverage({
+        targetPublicationId,
+        targetSeason,
+        targetWeek,
+      });
     }catch(error){
       setPublishError(error?.message || 'DynastyHQ could not publish this verified week. Nothing was intentionally changed.');
     }finally{
@@ -2033,7 +2255,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   };
 
   const closeSafe=()=>{
-    if(scanning || rtgScanning || coverageScanning || publishing) return;
+    if(scanning || rtgScanning || coverageScanning || publishing || coverageRefreshBusy) return;
     revokeFiles(files);
     onClose();
   };
@@ -2291,14 +2513,30 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
             {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts. A safety checkpoint was created before the write.</small></span></div>}
 
+            {publishResult && coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>BUILDING POSTGAME COVERAGE</b><small>Writing the Newsroom edition and full Podcast transcript from the verified saved week. NotebookLM material updates with the transcript. Audio is not generated here.</small></span></div>}
+
+            {publishResult && !coverageRefreshBusy && coverageRefreshResult && <div className={'coverage-refresh-card '+(coverageRefreshError?'warning':'success')}>
+              {coverageRefreshError?<Shield/>:<Check/>}
+              <span>
+                <b>{coverageRefreshError?'WEEK SAVED · COVERAGE NEEDS ATTENTION':'POSTGAME COVERAGE READY'}</b>
+                <small>Newsroom: {coverageRefreshResult.newsroom==='generated'?'generated':coverageRefreshResult.newsroom==='skipped'?'no new story needed':'not generated'} · Podcast transcript: {coverageRefreshResult.podcast==='generated'?'generated':'not generated'}.</small>
+                {coverageRefreshError && <em>{coverageRefreshError}</em>}
+              </span>
+              {coverageRefreshError && <button disabled={coverageRefreshBusy} onClick={()=>refreshPublishedCoverage({
+                targetPublicationId:publishResult.publicationId,
+                targetSeason:Number(data.season)||1,
+                targetWeek:Number(game.week)||0,
+              })}><Sparkles/>RETRY COVERAGE</button>}
+            </div>}
+
             {publishConfirm && !publishResult && <section className="publish-confirm-card">
               <ShieldCheck/>
               <div>
                 <span>FINAL OWNER CONFIRMATION</span>
                 <h3>{hasSavedGame?'Update this published week?':'Publish this verified week?'}</h3>
                 <p>{hasSavedGame
-                  ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. Dependent Newsroom/Podcast material is marked for regeneration when verified facts change.'
-                  : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle + Newsroom base issue, and save optional Coverage Data.'}</p>
+                  ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. After the protected save, the Newsroom edition and Podcast transcript/NotebookLM material will regenerate automatically from the corrected verified facts. Existing audio is never regenerated automatically.'
+                  : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle, save optional Coverage Data, then automatically write the Newsroom edition and Podcast transcript/NotebookLM material. Audio remains an explicit owner step.'}</p>
               </div>
               <div>
                 <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('')}}>CANCEL</button>
@@ -2309,7 +2547,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-actions centered">
               {!publishResult && <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('');setPhase('coverage')}}><ChevronLeft/>BACK</button>}
               {publishResult
-                ? <button className="primary ready-button" onClick={closeSafe}>CLOSE & VIEW SAVED WEEK<ChevronRight/></button>
+                ? <button className="primary ready-button" disabled={coverageRefreshBusy} onClick={closeSafe}>{coverageRefreshBusy?'BUILDING COVERAGE…':'CLOSE & VIEW SAVED WEEK'}<ChevronRight/></button>
                 : <button className="primary ready-button" disabled={publishing} onClick={()=>{setPublishError('');setPublishConfirm(true)}}>{hasSavedGame?'UPDATE VERIFIED WEEK':'PUBLISH VERIFIED WEEK'}<ChevronRight/></button>}
             </div>
           </section>}

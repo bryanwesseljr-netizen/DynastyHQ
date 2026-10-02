@@ -3154,9 +3154,32 @@ function homeHeroStory(data){
   return {state:'postgame',status:'FINAL',line1,line2};
 }
 
+const liveCareerTarget=(data)=>{
+  const state=data?.state || {};
+  const season=Number(state.currentSeason || data?.season || 1) || 1;
+  const week=Number(state.currentWeek ?? data?.week ?? 0) || 0;
+  const setup=state.currentWeekSetup || {};
+  const seasonSchedule=(state.seasonSchedules || []).find((entry)=>Number(entry?.season || 1)===season) || {};
+  const entries=Array.isArray(seasonSchedule.entries)
+    ? seasonSchedule.entries
+    : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
+  const scheduled=entries.find((entry)=>Number(entry?.week)===week) || null;
+  const isBye=Boolean(setup.isBye || scheduled?.isBye);
+  const selectedIsLive=Number(data?.season)===season && Number(data?.week)===week;
+  const fallbackOpponent=selectedIsLive
+    ? data?.game?.opponent
+    : (Number(data?.next?.week)===week ? data?.next?.opponent : '');
+  return {
+    season,
+    week,
+    isBye,
+    opponent:String(setup.opponent || scheduled?.opponent || fallbackOpponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
+  };
+};
+
 function ScoreRibbon({data}){
   const game=data.game;
-  const next=data.next;
+  const liveTarget=liveCareerTarget(data);
   const pregame=!data.selection?.hasGame;
   return <div className={'score-ribbon '+(pregame?'pregame-ribbon':'')}>
     <div><span>W{game.week}</span><b>{pregame?(data.selection?.isCurrent?'UPCOMING':'SCHEDULED'):'FINAL'}</b></div>
@@ -3170,7 +3193,7 @@ function ScoreRibbon({data}){
       <div className="score-team away"><strong>{game.them}</strong><Logo team={game.opponent}/><span>{game.opponent}</span></div>
     </>}
     <div className="score-sep"/>
-    <div className="upnext"><b>{pregame?'ON DECK':'UP NEXT'}</b><span>W{next.week}</span><Logo team={next.opponent}/><strong>{next.opponent}</strong></div>
+    <div className="upnext"><b>LIVE CAREER</b><span>W{liveTarget.week}</span>{!liveTarget.isBye&&<Logo team={liveTarget.opponent}/>}<strong>{liveTarget.isBye?'BYE':liveTarget.opponent}</strong></div>
   </div>;
 }
 
@@ -3285,10 +3308,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
   const pregame=!data.selection?.hasGame;
   const team=data.game.team || {};
   const scoring=data.game.scoring || {};
-  const activeOpponent=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
-  const liveCurrentSeason=Number(data.state?.currentSeason || data.season);
-  const liveCurrentWeek=Number(data.state?.currentWeek ?? data.week);
-  const prepIsCurrent=Number(data.season)===liveCurrentSeason && Number(activeOpponent.week)===liveCurrentWeek;
+  const activeOpponent=liveCareerTarget(data);
+  const prepIsCurrent=true;
   const verifiedFacts=data.podcast?.sourceFacts || [];
   const rtg=data.rtg || {};
   const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
@@ -3393,8 +3414,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
     </section>
 
     <section className="hub-bottom">
-      <div><b>{prepIsCurrent?'THIS WEEK':'UP NEXT'}</b><span>• WEEK {activeOpponent.week}</span><Logo team={activeOpponent.opponent}/><strong>{activeOpponent.opponent}</strong></div>
-      <button className="yellow" onClick={()=>setDetailOpen('prep')}><CalendarDays/>{prepIsCurrent?`PREPARE THIS WEEK · W${activeOpponent.week}`:`PREPARE WEEK ${activeOpponent.week}`}<ChevronRight/></button>
+      <div><b>THIS WEEK</b><span>• WEEK {activeOpponent.week}</span>{!activeOpponent.isBye&&<Logo team={activeOpponent.opponent}/>}<strong>{activeOpponent.isBye?'BYE':activeOpponent.opponent}</strong></div>
+      <button className="yellow" onClick={()=>activeOpponent.isBye?notify(`Week ${activeOpponent.week} is a bye week in the live career.`):setDetailOpen('prep')}><CalendarDays/>{activeOpponent.isBye?`CURRENT WEEK · W${activeOpponent.week} BYE`:`PREPARE THIS WEEK · W${activeOpponent.week}`}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
 
@@ -3407,7 +3428,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
 
         {detailOpen==='prep' && <div className="game-detail-body week-prep-detail">
           <section className="week-prep-matchup">
-            <div><small>{prepIsCurrent?'ACTIVE MATCHUP':'UPCOMING MATCHUP'}</small><b>WEEK {activeOpponent.week}</b></div>
+            <div><small>LIVE CAREER MATCHUP</small><b>WEEK {activeOpponent.week}</b></div>
             <Logo team={data.player.school}/>
             <strong>{data.player.school}</strong>
             <em>VS</em>

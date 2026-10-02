@@ -3286,6 +3286,9 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
   const team=data.game.team || {};
   const scoring=data.game.scoring || {};
   const activeOpponent=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
+  const liveCurrentSeason=Number(data.state?.currentSeason || data.season);
+  const liveCurrentWeek=Number(data.state?.currentWeek ?? data.week);
+  const prepIsCurrent=Number(data.season)===liveCurrentSeason && Number(activeOpponent.week)===liveCurrentWeek;
   const verifiedFacts=data.podcast?.sourceFacts || [];
   const rtg=data.rtg || {};
   const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
@@ -3326,7 +3329,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
   return <div className="page gamehub-page">
     <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / {pregame?'PREGAME':'POSTGAME'}</p></div>
-      <button className="yellow import" onClick={openProcessing}><Upload/>PROCESS WEEK</button>
+      <button className="yellow import" onClick={openProcessing}>{pregame?<Upload/>:<Pencil/>}{pregame?`PROCESS WEEK ${data.game.week}`:`REVIEW / UPDATE WEEK ${data.game.week}`}</button>
     </section>
 
     <section className={'complete-strip '+(pregame?'pregame-strip':'')}>
@@ -3390,21 +3393,21 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
     </section>
 
     <section className="hub-bottom">
-      <div><b>{pregame?'THIS WEEK':'UP NEXT'}</b><span>• WEEK {activeOpponent.week}</span><Logo team={activeOpponent.opponent}/><strong>{activeOpponent.opponent}</strong></div>
-      <button className="yellow" onClick={()=>setDetailOpen('prep')}><CalendarDays/>{pregame?'PREPARE THIS WEEK':'PREPARE NEXT WEEK'}<ChevronRight/></button>
+      <div><b>{prepIsCurrent?'THIS WEEK':'UP NEXT'}</b><span>• WEEK {activeOpponent.week}</span><Logo team={activeOpponent.opponent}/><strong>{activeOpponent.opponent}</strong></div>
+      <button className="yellow" onClick={()=>setDetailOpen('prep')}><CalendarDays/>{prepIsCurrent?`PREPARE THIS WEEK · W${activeOpponent.week}`:`PREPARE WEEK ${activeOpponent.week}`}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
 
     {detailOpen && <div className="game-detail-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setDetailOpen('')}}>
       <section className="game-detail-modal" role="dialog" aria-modal="true" aria-label="Game Hub details">
         <header>
-          <div><span>SEASON {data.season} · WEEK {data.game.week}</span><h2>{detailOpen==='prep'?'Week Prep':detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
+          <div><span>SEASON {data.season} · WEEK {detailOpen==='prep'?activeOpponent.week:data.game.week}</span><h2>{detailOpen==='prep'?'Week Prep':detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
           <button onClick={()=>setDetailOpen('')} aria-label="Close details"><X/></button>
         </header>
 
         {detailOpen==='prep' && <div className="game-detail-body week-prep-detail">
           <section className="week-prep-matchup">
-            <div><small>{pregame?'ACTIVE MATCHUP':'NEXT MATCHUP'}</small><b>WEEK {activeOpponent.week}</b></div>
+            <div><small>{prepIsCurrent?'ACTIVE MATCHUP':'UPCOMING MATCHUP'}</small><b>WEEK {activeOpponent.week}</b></div>
             <Logo team={data.player.school}/>
             <strong>{data.player.school}</strong>
             <em>VS</em>

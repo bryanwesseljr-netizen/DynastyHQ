@@ -684,6 +684,9 @@ function App(){
   const [podcastArtBusy,setPodcastArtBusy] = useState('');
   const [shareOpen,setShareOpen] = useState(false);
   const [shareBusy,setShareBusy] = useState(false);
+  const [searchOpen,setSearchOpen] = useState(false);
+  const [searchQuery,setSearchQuery] = useState('');
+  const [notificationsOpen,setNotificationsOpen] = useState(false);
   const [shareUrl,setShareUrl] = useState('');
   const [shareEnabled,setShareEnabled] = useState(false);
   const [shareLastSynced,setShareLastSynced] = useState('');
@@ -867,6 +870,167 @@ function App(){
     window.scrollTo({top:0,behavior:'smooth'});
   };
   const notify = (message) => { setToast(message); window.setTimeout(()=>setToast(''),2200); };
+
+  const currentCareerData=live.data || data;
+  const searchItems=useMemo(()=>{
+    const items=pages.map(([id,label])=>({
+      id:'page-'+id,
+      kind:'page',
+      title:label,
+      meta:id==='home'?'Current career dashboard':id==='gamehub'?'Weekly game data and preparation':id==='newsroom'?'Saved journalism and weekly editions':id==='podcast'?'The Huddle episodes, transcript and NotebookLM':id==='offseason'?'Season review and next chapter':id==='career'?'Player dossier, totals and milestones':'Career archive and signature moments',
+      target:id,
+    }));
+    const entries=Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[];
+    entries.forEach((entry,index)=>{
+      const entrySeason=Number(entry?.season)||1;
+      const entryWeek=Number(entry?.week)||0;
+      const baseId=String(entry?.id || entry?.publicationId || entrySeason+'-'+entryWeek+'-'+index);
+      if(entry?.game){
+        const totalYds=(Number(entry.game.passYds)||0)+(Number(entry.game.rushYds)||0);
+        const totalTD=(Number(entry.game.passTD)||0)+(Number(entry.game.rushTD)||0);
+        items.push({
+          id:'game-'+baseId,
+          kind:'game',
+          title:'Week '+entryWeek+' vs '+String(entry.game.opponent || 'Opponent'),
+          meta:'Season '+entrySeason+' · '+String(entry.game.result || 'Game')+' · '+totalYds+' total yards · '+totalTD+' total TD',
+          season:entrySeason,week:entryWeek,target:'gamehub',
+        });
+      }
+      if(entry?.media?.newsroom){
+        items.push({
+          id:'news-'+baseId,
+          kind:'news',
+          title:String(entry.media.newsroom.headline || 'Saved Newsroom edition'),
+          meta:'Newsroom · Season '+entrySeason+' · Week '+entryWeek+(entry.media.newsroom.dek?' · '+entry.media.newsroom.dek:''),
+          season:entrySeason,week:entryWeek,target:'newsroom',
+        });
+      }
+      if(entry?.media?.podcast){
+        items.push({
+          id:'podcast-'+baseId,
+          kind:'podcast',
+          title:String(entry.media.podcast.title || 'The Huddle'),
+          meta:'Podcast · Season '+entrySeason+' · Week '+entryWeek+(entry.media.podcast.finished?' · Audio ready':' · Transcript'),
+          season:entrySeason,week:entryWeek,target:'podcast',tab:'episode',
+        });
+      }
+      if(entry?.signature){
+        items.push({
+          id:'signature-'+baseId,
+          kind:'chronicle',
+          title:String(entry.signatureLabel || 'Signature career moment'),
+          meta:'Chronicle · Season '+entrySeason+' · Week '+entryWeek+' · '+String(entry.signatureReasons?.join(' · ') || ''),
+          season:entrySeason,week:entryWeek,target:'chronicle',
+        });
+      }
+    });
+    (data.career?.honors || []).forEach((honor,index)=>items.push({
+      id:'honor-'+String(honor.id || index),
+      kind:'honor',
+      title:String(honor.name || honor.title || 'Career honor'),
+      meta:'Career honor'+(honor.year || honor.season ? ' · '+String(honor.year || honor.season) : ''),
+      target:'career',
+    }));
+    return items.slice(0,160);
+  },[data.chronicle,data.career]);
+
+  const searchResults=useMemo(()=>{
+    const query=searchQuery.trim().toLowerCase();
+    if(!query) return searchItems.slice(0,16);
+    return searchItems
+      .map((item)=>{
+        const haystack=(item.title+' '+item.meta+' '+item.kind).toLowerCase();
+        const title=item.title.toLowerCase();
+        const score=title===query?0:title.startsWith(query)?1:title.includes(query)?2:haystack.includes(query)?3:99;
+        return {item,score};
+      })
+      .filter(({score})=>score<99)
+      .sort((a,b)=>a.score-b.score)
+      .slice(0,24)
+      .map(({item})=>item);
+  },[searchItems,searchQuery]);
+
+  const notificationItems=useMemo(()=>{
+    const latest=currentCareerData || {};
+    const items=[];
+    if(live.status!=='connected'){
+      items.push({id:'connect',kind:'account',title:'Connect your real DynastyHQ career',detail:'Search, alerts and archive actions become fully career-aware after sign-in.',action:'connect'});
+      return items;
+    }
+    if(latest.selection?.isUpcoming){
+      items.push({
+        id:'upcoming-week',
+        kind:'week',
+        title:'Week '+latest.week+' vs '+latest.game?.opponent+' is waiting',
+        detail:'Play the matchup normally. After the final, Week Processing will capture the verified game packet.',
+        season:latest.season,week:latest.week,target:'gamehub',
+      });
+    }
+    if(latest.selection?.hasGame && !latest.selection?.hasNewsroom){
+      items.push({
+        id:'newsroom-missing',
+        kind:'news',
+        title:'Newsroom coverage is not attached to the latest saved week',
+        detail:'Open the saved week to review its coverage state.',
+        season:latest.season,week:latest.week,target:'newsroom',
+      });
+    }
+    if(latest.selection?.hasGame && latest.podcast?.segments?.length && !latest.podcast?.audioReady){
+      items.push({
+        id:'podcast-audio',
+        kind:'podcast',
+        title:'The Huddle transcript is ready for final audio',
+        detail:'Download the NotebookLM source pack or attach the finished master audio in Podcast Studio.',
+        season:latest.season,week:latest.week,target:'podcast',tab:'episode',
+      });
+    }else if(latest.selection?.hasGame && !latest.podcast?.segments?.length){
+      items.push({
+        id:'podcast-missing',
+        kind:'podcast',
+        title:'The latest saved week has no Podcast transcript',
+        detail:'Open The Huddle to review the saved episode state.',
+        season:latest.season,week:latest.week,target:'podcast',tab:'transcript',
+      });
+    }
+    if(latest.offseason?.seasonComplete){
+      items.push({id:'offseason-ready',kind:'offseason',title:'Season review is ready',detail:'The verified season is complete. Review the Off-Season workspace and career decision state.',target:'offseason'});
+    }
+    return items.slice(0,8);
+  },[currentCareerData,live.status]);
+
+  const openUtilityItem=(item)=>{
+    setSearchOpen(false);
+    setNotificationsOpen(false);
+    setMobileMenu(false);
+    setMobileMoreOpen(false);
+    if(item?.action==='connect'){
+      setLiveAuthOpen(true);
+      return;
+    }
+    if(Number.isFinite(Number(item?.season)) && Number.isFinite(Number(item?.week))){
+      openArchiveMoment(Number(item.season),Number(item.week),item.target || 'gamehub',item.tab || 'episode');
+      return;
+    }
+    if(item?.target==='podcast') openPodcast(item.tab || 'episode');
+    else go(item?.target || 'home');
+  };
+
+  useEffect(()=>{
+    const onKeyDown=(event)=>{
+      if((event.metaKey || event.ctrlKey) && event.key.toLowerCase()==='k'){
+        event.preventDefault();
+        setNotificationsOpen(false);
+        setSearchOpen(true);
+      }
+      if(event.key==='Escape'){
+        setSearchOpen(false);
+        setNotificationsOpen(false);
+      }
+    };
+    window.addEventListener('keydown',onKeyDown);
+    return ()=>window.removeEventListener('keydown',onKeyDown);
+  },[]);
+
   const publishFollowerShare=async()=>{
     if(!live.user?.uid || !live.data || !db){
       notify('Connect your real DynastyHQ career before creating a follower link.');
@@ -896,6 +1060,22 @@ function App(){
       notify('Share link copied.');
     }catch{
       notify('Copy failed. Select the link manually.');
+    }
+  };
+  const disableFollowerShare=async()=>{
+    if(!live.user?.uid || !db) return;
+    setShareBusy(true);
+    try{
+      const publicRef=doc(db,'artifacts',productionAppId,'public','data','shared_dynasties',live.user.uid);
+      await setDoc(publicRef,{redesignFollower:null},{merge:true});
+      setShareEnabled(false);
+      setShareLastSynced('');
+      window.localStorage.removeItem('dynastyhq-redesign-follow-share-'+live.user.uid);
+      notify('Read-only career follow link disabled.');
+    }catch(error){
+      notify(error?.message || 'DynastyHQ could not disable the follower link.');
+    }finally{
+      setShareBusy(false);
     }
   };
   const visualFor = (id) => {
@@ -1128,8 +1308,8 @@ function App(){
         </nav>
 
         <div className="header-actions">
-          <button className="icon-btn" aria-label="Search" onClick={()=>notify('Search preview') }><Search size={19}/></button>
-          <button className="icon-btn" aria-label="Notifications" onClick={()=>notify('No new notifications in the mockup.') }><Bell size={19}/></button>
+          <button className="icon-btn" aria-label="Search DynastyHQ" title="Search DynastyHQ · Ctrl/⌘ K" onClick={()=>{setNotificationsOpen(false);setSearchOpen(true)}}><Search size={19}/></button>
+          <button className={'icon-btn notification-trigger '+(notificationItems.length?'has-alerts':'')} aria-label="Career notifications" onClick={()=>{setSearchOpen(false);setNotificationsOpen(v=>!v)}}><Bell size={19}/>{notificationItems.length>0 && <span>{notificationItems.length}</span>}</button>
           <button className="icon-btn share-career-trigger" aria-label="Share career" title="Share read-only career follow link" onClick={()=>setShareOpen(true)}><Share2 size={18}/></button>
           <Logo team={data.player.school}/>
           <button className="menu-btn" onClick={()=>setMobileMenu(v=>!v)} aria-label="Menu">{mobileMenu?<X/>:<Menu/>}</button>
@@ -1138,8 +1318,8 @@ function App(){
 
       <div className={'mobile-drawer '+(mobileMenu?'open':'')}>
         {pages.map(([id,label,Icon])=><button key={id} onClick={()=>go(id)}><Icon size={17}/>{label}</button>)}
-        <button onClick={()=>notify('Search preview')}><Search size={17}/>Search</button>
-        <button onClick={()=>notify('No new notifications in the mockup.')}><Bell size={17}/>Notifications</button>
+        <button onClick={()=>{setMobileMenu(false);setNotificationsOpen(false);setSearchOpen(true)}}><Search size={17}/>Search</button>
+        <button onClick={()=>{setMobileMenu(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell size={17}/>Notifications{notificationItems.length>0?' ('+notificationItems.length+')':''}</button>
         <button onClick={()=>{setShareOpen(true);setMobileMenu(false)}}><Share2 size={17}/>Share career</button>
         <button className="mobile-visual-entry" onClick={()=>openVisualEditor(page)}><Camera size={17}/>Page photo</button>
       </div>
@@ -1185,7 +1365,7 @@ function App(){
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
       {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
       {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage data={data} visual={visualFor('career')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openArchiveMoment={openArchiveMoment}/>} 
@@ -1200,8 +1380,8 @@ function App(){
           <button onClick={()=>go('career')}><UserRound/><span><b>Career</b><small>Player dossier and career progress</small></span></button>
           <button onClick={()=>go('chronicle')}><BookOpen/><span><b>Chronicle</b><small>Full career archive and museum</small></span></button>
           <button onClick={()=>openVisualEditor(page)}><Camera/><span><b>Page photo</b><small>Customize this page’s visual</small></span></button>
-          <button onClick={()=>{notify('Search preview');setMobileMoreOpen(false)}}><Search/><span><b>Search</b><small>Search DynastyHQ</small></span></button>
-          <button onClick={()=>{notify('No new notifications in the mockup.');setMobileMoreOpen(false)}}><Bell/><span><b>Notifications</b><small>Updates and alerts</small></span></button>
+          <button onClick={()=>{setMobileMoreOpen(false);setNotificationsOpen(false);setSearchOpen(true)}}><Search/><span><b>Search</b><small>Find games, stories, episodes and milestones</small></span></button>
+          <button onClick={()=>{setMobileMoreOpen(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell/><span><b>Notifications{notificationItems.length?' · '+notificationItems.length:''}</b><small>Current career attention items</small></span></button>
         </div>
         <div className="mobile-more-status"><LockKeyhole/><span><b>Dynasty mode</b><small>Locked during this Road to Glory career</small></span></div>
       </section>
@@ -1214,6 +1394,22 @@ function App(){
       <button className={page==='podcast'?'active':''} onClick={()=>openPodcast('episode')}><Headphones/><span>Podcast</span></button>
       <button className={['offseason','career','chronicle'].includes(page)||mobileMoreOpen?'active':''} onClick={()=>setMobileMoreOpen(v=>!v)}><Menu/><span>More</span></button>
     </nav>
+
+    <GlobalSearchModal
+      open={searchOpen}
+      query={searchQuery}
+      setQuery={setSearchQuery}
+      results={searchResults}
+      onClose={()=>{setSearchOpen(false);setSearchQuery('')}}
+      onOpen={openUtilityItem}
+    />
+
+    <NotificationPanel
+      open={notificationsOpen}
+      items={notificationItems}
+      onClose={()=>setNotificationsOpen(false)}
+      onOpen={openUtilityItem}
+    />
 
     <WeekProcessingCenter
       open={processingOpen}
@@ -1257,13 +1453,68 @@ function App(){
       onClose={()=>setShareOpen(false)}
       onPublish={publishFollowerShare}
       onCopy={copyFollowerShare}
+      onDisable={disableFollowerShare}
     />
 
     {toast && <div className="toast" role="status">{toast}</div>}
   </div>;
 }
 
-function ShareCareerModal({open,busy,url,enabled,lastSynced,onClose,onPublish,onCopy}){
+function GlobalSearchModal({open,query,setQuery,results,onClose,onOpen}){
+  if(!open) return null;
+  const iconFor=(kind)=>{
+    if(kind==='game') return <BarChart3/>;
+    if(kind==='news') return <Newspaper/>;
+    if(kind==='podcast') return <Headphones/>;
+    if(kind==='chronicle') return <BookOpen/>;
+    if(kind==='honor') return <Trophy/>;
+    return <Search/>;
+  };
+  return <div className="global-search-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)onClose()}}>
+    <section className="global-search-modal" role="dialog" aria-modal="true" aria-label="Search DynastyHQ">
+      <header>
+        <Search/>
+        <input autoFocus value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Search games, articles, podcasts, milestones…" aria-label="Search DynastyHQ"/>
+        <button onClick={onClose} aria-label="Close search"><X/></button>
+      </header>
+      <div className="global-search-hint"><span>{query.trim()?'SEARCH RESULTS':'QUICK DESTINATIONS + RECENT CAREER HISTORY'}</span><small>Ctrl/⌘ K opens search anywhere</small></div>
+      <div className="global-search-results">
+        {results.length ? results.map((item)=><button key={item.id} onClick={()=>onOpen(item)}>
+          <i>{iconFor(item.kind)}</i>
+          <span><b>{item.title}</b><small>{item.meta}</small></span>
+          <ChevronRight/>
+        </button>) : <div className="global-search-empty"><Search/><b>No DynastyHQ matches</b><span>Try an opponent, week, article headline, podcast title, or page name.</span></div>}
+      </div>
+    </section>
+  </div>;
+}
+
+function NotificationPanel({open,items,onClose,onOpen}){
+  if(!open) return null;
+  const iconFor=(kind)=>{
+    if(kind==='week') return <CalendarDays/>;
+    if(kind==='news') return <Newspaper/>;
+    if(kind==='podcast') return <Headphones/>;
+    if(kind==='offseason') return <Target/>;
+    if(kind==='account') return <ShieldCheck/>;
+    return <Bell/>;
+  };
+  return <div className="notification-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)onClose()}}>
+    <section className="notification-panel" role="dialog" aria-modal="true" aria-label="Career notifications">
+      <header><div><span>DYNASTYHQ</span><h2>Career alerts</h2></div><button onClick={onClose} aria-label="Close notifications"><X/></button></header>
+      <p>These are live attention items from the connected career—not fake unread messages.</p>
+      <div className="notification-list">
+        {items.length ? items.map((item)=><button key={item.id} onClick={()=>onOpen(item)}>
+          <i>{iconFor(item.kind)}</i>
+          <span><b>{item.title}</b><small>{item.detail}</small></span>
+          <ChevronRight/>
+        </button>) : <div className="notification-empty"><Check/><span><b>Nothing needs your attention.</b><small>Your connected career is caught up.</small></span></div>}
+      </div>
+    </section>
+  </div>;
+}
+
+function ShareCareerModal({open,busy,url,enabled,lastSynced,onClose,onPublish,onCopy,onDisable}){
   if(!open) return null;
   const syncedLabel=lastSynced
     ? new Date(lastSynced).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
@@ -1283,8 +1534,9 @@ function ShareCareerModal({open,busy,url,enabled,lastSynced,onClose,onPublish,on
       </div> : <div className="share-link-empty"><ShieldCheck/><span><b>No public follower link yet.</b><small>Create it once and the same link can stay with the career.</small></span></div>}
 
       <div className="share-career-actions">
-        <button className="share-primary" disabled={busy} onClick={onPublish}><Share2/>{busy?'PUBLISHING…':enabled?'UPDATE SHARE NOW':'CREATE SHARE LINK'}</button>
+        <button className="share-primary" disabled={busy} onClick={onPublish}><Share2/>{busy?'WORKING…':enabled?'UPDATE SHARE NOW':url?'ENABLE SHARE LINK':'CREATE SHARE LINK'}</button>
         {url && <button className="share-secondary" onClick={()=>window.open(url,'_blank','noopener,noreferrer')}>OPEN FOLLOWER VIEW<ChevronRight/></button>}
+        {enabled && <button className="share-disable" disabled={busy} onClick={onDisable}><LockKeyhole/>DISABLE FOLLOW LINK</button>}
       </div>
 
       <div className="share-sync-note"><ShieldCheck/><span><b>{enabled?'AUTO-SYNC ON':'READ-ONLY BY DESIGN'}</b><small>{enabled?'When your connected career changes while DynastyHQ is open, the lightweight follower snapshot refreshes automatically.':'Creating the link publishes only a compact follower snapshot, not your editable master save.'}{syncedLabel ? ' · Last synced '+syncedLabel : ''}</small></span></div>
@@ -2650,7 +2902,7 @@ function LiveDataBar({live,open,setOpen,email,setEmail,password,setPassword,onCo
   return <section className={'live-data-bar '+(connected?'is-connected':'')}>
     <div className="live-data-status">
       <ShieldCheck/>
-      <span><b>{connected?'REAL CAREER DATA · SAFE PREVIEW':'SAMPLE PREVIEW DATA'}</b><small>{connected?'The redesign reads your live career. Only explicit owner actions such as attaching master audio or publishing the follower link write anything.':'Connect your DynastyHQ account to populate this redesign from your real career without changing live data.'}</small></span>
+      <span><b>{connected?'REAL CAREER DATA · SAFE PREVIEW':'SAMPLE PREVIEW DATA'}</b><small>{connected?'The redesign reads your live career. Writes happen only after explicit owner actions: confirmed Week Processing, master-audio attachment, or career sharing.':'Connect your DynastyHQ account to populate this redesign from your real career without changing live data.'}</small></span>
     </div>
     {connected
       ? <button className="live-data-action" onClick={live.disconnect}>Disconnect</button>
@@ -3037,6 +3289,23 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
   const verifiedFacts=data.podcast?.sourceFacts || [];
   const rtg=data.rtg || {};
   const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
+  const copyPrepChecklist=async()=>{
+    const checklist=[
+      'DynastyHQ Week '+activeOpponent.week+' vs '+activeOpponent.opponent,
+      'CORE POSTGAME: Final score',
+      'CORE POSTGAME: Player stats',
+      'CORE POSTGAME: Team stats',
+      'OPTIONAL: Scoring summary',
+      'OPTIONAL: RTG Overview / Academics / Leadership / Health / Fitness / Brand if changed',
+      'OPTIONAL COVERAGE: teammate/opponent Player Stats, Team Stats, scoring context',
+    ].join('\n');
+    try{
+      await navigator.clipboard.writeText(checklist);
+      notify('Week '+activeOpponent.week+' capture checklist copied.');
+    }catch{
+      notify('Your browser could not copy the prep checklist.');
+    }
+  };
   const rtgRows=[
     ['Overall',data.player.overall],
     ['Depth chart',rtg.rank],
@@ -3122,16 +3391,44 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
 
     <section className="hub-bottom">
       <div><b>{pregame?'THIS WEEK':'UP NEXT'}</b><span>• WEEK {activeOpponent.week}</span><Logo team={activeOpponent.opponent}/><strong>{activeOpponent.opponent}</strong></div>
-      <button className="yellow" onClick={()=>notify(`Week ${activeOpponent.week} preparation workspace is not part of the redesigned RTG flow yet.`)}><CalendarDays/>{pregame?'PREPARE THIS WEEK':'PREPARE NEXT WEEK'}<ChevronRight/></button>
+      <button className="yellow" onClick={()=>setDetailOpen('prep')}><CalendarDays/>{pregame?'PREPARE THIS WEEK':'PREPARE NEXT WEEK'}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
 
     {detailOpen && <div className="game-detail-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setDetailOpen('')}}>
       <section className="game-detail-modal" role="dialog" aria-modal="true" aria-label="Game Hub details">
         <header>
-          <div><span>SEASON {data.season} · WEEK {data.game.week}</span><h2>{detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
+          <div><span>SEASON {data.season} · WEEK {data.game.week}</span><h2>{detailOpen==='prep'?'Week Prep':detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
           <button onClick={()=>setDetailOpen('')} aria-label="Close details"><X/></button>
         </header>
+
+        {detailOpen==='prep' && <div className="game-detail-body week-prep-detail">
+          <section className="week-prep-matchup">
+            <div><small>{pregame?'ACTIVE MATCHUP':'NEXT MATCHUP'}</small><b>WEEK {activeOpponent.week}</b></div>
+            <Logo team={data.player.school}/>
+            <strong>{data.player.school}</strong>
+            <em>VS</em>
+            <Logo team={activeOpponent.opponent}/>
+            <strong>{activeOpponent.opponent}</strong>
+          </section>
+          <section><h3>CURRENT PLAYER CHECK</h3><div className="game-detail-grid">
+            {[
+              ['Overall',data.player.overall],
+              ['Role',rtg.rank || rtg.role || '—'],
+              ['Coach trust',rtg.coachTrust ?? rtg.trust ?? '—'],
+              ['Skill points',rtg.skillPoints ?? '—'],
+            ].map(([label,value])=><div key={label}><span>{label}</span><b>{showStat(value)}</b></div>)}
+          </div></section>
+          <section><h3>POSTGAME CAPTURE CHECKLIST</h3><div className="week-prep-checklist">
+            <div><Check/><span><b>Final score</b><small>Core · one clear final/game summary screen</small></span></div>
+            <div><Check/><span><b>Player stats</b><small>Core · your verified individual line</small></span></div>
+            <div><Check/><span><b>Team stats</b><small>Core · team context and totals</small></span></div>
+            <div><PlusIcon/><span><b>Scoring summary</b><small>Optional · improves game-flow coverage</small></span></div>
+            <div><PlusIcon/><span><b>RTG status screens</b><small>Optional · upload only the areas that changed</small></span></div>
+            <div><PlusIcon/><span><b>Coverage screens</b><small>Optional · teammates, opponent and editorial context</small></span></div>
+          </div></section>
+          <div className="week-prep-note"><ShieldCheck/><span><b>Play first. Upload after the final.</b><small>Week Processing remains locked behind your final review and confirmation. This prep view does not write anything.</small></span><button onClick={copyPrepChecklist}><Copy/>COPY CHECKLIST</button></div>
+        </div>}
 
         {detailOpen==='box' && <div className="game-detail-body">
           <section><h3>{data.player.name}</h3><div className="game-detail-grid">
@@ -3283,6 +3580,18 @@ function PodcastPage({
     setPodcastTab(tab);
     setStudioOpen(false);
     setTimeout(()=>document.querySelector('.podcast-workspace')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
+  };
+  const openChapter=(chapter,index)=>{
+    setPodcastTab('transcript');
+    setStudioOpen(false);
+    const chapterId=String(chapter?.id || '');
+    window.setTimeout(()=>{
+      const sections=[...document.querySelectorAll('.transcript-paper [data-podcast-chapter]')];
+      const target=(chapterId ? sections.find((node)=>node.getAttribute('data-podcast-chapter')===chapterId) : null)
+        || sections[Math.max(0,Number(chapter?.segmentStart)||index||0)]
+        || document.querySelector('.transcript-paper');
+      target?.scrollIntoView({behavior:'smooth',block:'center'});
+    },90);
   };
   const seekEpisode=(nextValue)=>{
     const audio=audioRef.current;
@@ -3672,10 +3981,10 @@ function PodcastPage({
           <p className="pod-episode-summary">{episode.summary || 'The episode uses the saved verified game packet and career context for this week.'}</p>
 
           <div className="pod-chapter-list">
-            {chapters.map((chapter,index)=><button key={chapter.id||chapter.title||index} onClick={()=>notify(`Chapter ${index+1}: ${chapter.title || 'Episode chapter'}`)}>
+            {chapters.map((chapter,index)=><button key={chapter.id||chapter.title||index} onClick={()=>openChapter(chapter,index)}>
               <span className="pod-chapter-time">{String(index+1).padStart(2,'0')}</span>
               <span className="pod-chapter-copy"><strong>{chapter.title || `Chapter ${index+1}`}</strong><small>{chapter.summary || 'Saved episode chapter.'}</small></span>
-              <Play/>
+              <ChevronRight/>
             </button>)}
           </div>
         </article>
@@ -3715,7 +4024,9 @@ function PodcastPage({
             <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `Week ${game.week} Recap`}</h2><p>Season {data.season} • Week {game.week} • {data.player.school} {game.us}, {game.opponent} {game.them}</p></div>
             <div className="transcript-head-actions"><button className="ghost" onClick={downloadTranscript}><FileText/>DOWNLOAD TRANSCRIPT</button><button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button></div>
           </div>
-          {transcript.map(([title,body],index)=><section key={`${title}-${index}`}><h3>{title}</h3><p>{body}</p></section>)}
+          {episode.segments?.length
+            ? episode.segments.map((segment,index)=><section key={segment.id||index} data-podcast-chapter={segment.chapterId||''}><h3>{segment.speaker || `HOST ${index+1}`}</h3><p>{segment.text}</p></section>)
+            : transcript.map(([title,body],index)=><section key={`${title}-${index}`} data-podcast-chapter=""><h3>{title}</h3><p>{body}</p></section>)}
           <div className="transcript-note">{episode.segments?.length ? 'This is the complete saved DynastyHQ transcript for the selected real career week.' : 'No generated transcript is saved for this week yet; only verified game context is shown.'}</div>
         </article>
         <aside className="transcript-sidebar">
@@ -3853,7 +4164,7 @@ function OffseasonPage({data,visual,go,openPodcast,openArticle,notify}){
         <div><span>SKILL POINTS</span><strong>{status.skillPoints ?? '—'}</strong><small>Saved RTG status</small></div>
         <div><span>FOLLOWERS</span><strong>{status.followers ?? '—'}</strong><small>Saved RTG status</small></div>
       </div>
-      <button className="offseason-secondary" onClick={()=>notify('Offseason RTG capture stays disabled in this read-only stage.')}><Upload/>CAPTURE OFFSEASON UPDATE<ChevronRight/></button>
+      <button className="offseason-secondary" onClick={()=>go('career')}><TrendingUp/>REVIEW CURRENT DEVELOPMENT<ChevronRight/></button>
     </section>
 
     <section className="offseason-section offseason-coverage">
@@ -4134,8 +4445,9 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
   const news=data.news || {};
+  const [archiveOpen,setArchiveOpen]=useState(false);
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
   const articles=Array.isArray(news.articles)?news.articles:[];
@@ -4145,6 +4457,10 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   const nationalStory=articles.find((entry)=>entry.id===news.nationalArticleId) || null;
   const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
   const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
+  const newsroomArchive=(Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[])
+    .filter((entry)=>entry?.media?.newsroom)
+    .slice()
+    .sort((a,b)=>(Number(b.season)||1)-(Number(a.season)||1) || (Number(b.week)||0)-(Number(a.week)||0));
 
   const switchSavedStory=(story)=>{
     if(!story) return;
@@ -4156,6 +4472,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   };
 
   const openSavedStory=(story,label)=>{
+    setArchiveOpen(false);
     if(!story){
       notify(`No saved ${label} article exists for this edition yet.`);
       return;
@@ -4174,14 +4491,30 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
         <div className="journal-tabs">
-          <button className={!articleOpen?'active':''} onClick={()=>{setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
+          <button className={!articleOpen&&!archiveOpen?'active':''} onClick={()=>{setArchiveOpen(false);setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
           <button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>
           <button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>
-          <button onClick={()=>notify(`${articles.length} saved Newsroom article${articles.length===1?'':'s'} are attached to Season ${data.season}, Week ${news.week || game.week}. Full archive browsing is coming in the archive workflow pass.`)}>Archive</button>
+          <button className={archiveOpen?'active':''} onClick={()=>{setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
         </div>
       </header>
 
-      {articleOpen ? (
+      {archiveOpen ? (
+        <section className="newsroom-archive-browser">
+          <header><div><span>NEWSROOM ARCHIVE</span><h2>Every saved edition</h2><p>Jump directly to the real Newsroom coverage attached to any preserved career week.</p></div><b>{newsroomArchive.length} EDITIONS</b></header>
+          <div className="newsroom-archive-grid">
+            {newsroomArchive.length ? newsroomArchive.map((entry)=>{
+              const item=entry.media.newsroom;
+              const current=Number(entry.season)===Number(data.season) && Number(entry.week)===Number(news.week || game.week);
+              return <button key={entry.id||entry.publicationId||entry.season+'-'+entry.week} className={current?'current':''} onClick={()=>{setArchiveOpen(false);openArchiveMoment(entry.season,entry.week,'newsroom')}}>
+                <span>SEASON {entry.season} · WEEK {entry.week}{current?' · CURRENT VIEW':''}</span>
+                <h3>{item.headline || 'Saved Newsroom edition'}</h3>
+                <p>{item.dek || entry.summary || 'Open this preserved career week to read its attached Newsroom edition.'}</p>
+                <div><em>{entry.game?.opponent?'vs '+entry.game.opponent:'Career update'}</em><ChevronRight/></div>
+              </button>;
+            }) : <div className="newsroom-archive-empty"><Archive/><b>No saved Newsroom editions yet.</b><span>Published editions will collect here automatically.</span></div>}
+          </div>
+        </section>
+      ) : articleOpen ? (
         <NewsroomArticle
           data={data}
           visual={visual}

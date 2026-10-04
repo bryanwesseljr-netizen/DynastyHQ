@@ -149,7 +149,8 @@ test('EA SPORTS Network coverage is promoted as a first-class official artifact'
 });
 
 
-test('homepage navigation uses explicit targets and flexible cards',()=>{
+test('homepage navigation uses explicit targets and flexible cards',async ()=>{
+  const [source,css] = await Promise.all([readFile(sourceUrl,'utf8'),readFile(cssUrl,'utf8')]);
   assert.match(source, /onClick=\{\(\)=>openArticle\(data\.news\?\.article\?\.id \|\| ''\)\}/);
   assert.match(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
   assert.match(css, /flexible homepage cards/);

@@ -119,8 +119,8 @@ test('Coverage Data receiving scans preserve visible REC and YDS columns for eve
   assert.match(scanner, /RECEIVING TABLE GUARANTEE/);
   assert.match(scanner, /YDS means receiving yards/);
   assert.match(scanner, /\['yds', 'Receiving yards'\]/);
-  assert.match(scanner, /augmentCoverageReceivingFacts/);
-  assert.match(scanner, /analysis = augmentCoverageReceivingFacts\(analysis\)/);
+  assert.match(scanner, /augmentCoveragePlayerStatFacts/);
+  assert.match(scanner, /analysis = augmentCoveragePlayerStatFacts\(analysis\)/);
 });
 
 

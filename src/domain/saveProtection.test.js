@@ -10,6 +10,7 @@ const base = () => ({
   weeklyUpdates: [],
   gameLogs: [],
   newsroomIssues: [],
+  eaSportsNetworkArticles: [],
   podcastEpisodes: [],
   careerChronicle: [],
   factLedger: [],
@@ -25,6 +26,16 @@ test('published career progress uses the furthest preserved season/week archive 
     newsroomIssues: [{ season: 4, week: 6 }],
   };
   assert.deepEqual(publishedCareerProgress(state), { season: 4, week: 7, ordinal: 407 });
+});
+
+
+test('official EA Sports Network articles count as preserved published progress', () => {
+  const state = {
+    ...base(),
+    eaSportsNetworkArticles: [{ publicationId: 'season-4-week-8', season: 4, week: 8 }],
+  };
+
+  assert.deepEqual(publishedCareerProgress(state), { season: 4, week: 8, ordinal: 408 });
 });
 
 test('stale lower-progress whole-save replacement is blocked', () => {

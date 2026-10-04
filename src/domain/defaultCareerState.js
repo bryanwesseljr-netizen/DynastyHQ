@@ -113,6 +113,7 @@ export const DEFAULT_CAREER_STATE = {
   careerMilestones: [],
   careerChronicle: [],
   newsroomIssues: [],
+  eaSportsNetworkArticles: [],
   postgameFrontPages: [],
   newsroomMediaLibrary: [],
   newsroomMediaSettings: {

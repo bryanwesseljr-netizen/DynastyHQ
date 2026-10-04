@@ -25,6 +25,9 @@ const state = {
   newsroomIssues: [
     { id: 'season-4-week-8', publicationId: 'season-4-week-8', season: 4, week: 8, articles: [{ headline: 'Ohio State' }] },
   ],
+  eaSportsNetworkArticles: [
+    { id: 'ea8', publicationId: 'season-4-week-8', season: 4, week: 8, headline: 'Official recap' },
+  ],
   podcastEpisodes: [
     { id: 'p8', publicationId: 'season-4-week-8', season: 4, week: 8, transcript: 'Long transcript' },
   ],
@@ -54,6 +57,7 @@ test('shards bulky per-week career arrays while keeping core career state in mai
   assert.equal(week8.weeklyUpdates.length, 1);
   assert.equal(week8.factLedger.length, 1);
   assert.equal(week8.newsroomIssues.length, 1);
+  assert.equal(week8.eaSportsNetworkArticles.length, 1);
   assert.equal(week8.podcastEpisodes.length, 1);
   assert.equal(week9.weeklyUpdates.length, 1);
   assert.equal(week9.factLedger.length, 1);
@@ -67,6 +71,7 @@ test('hydrates sharded archives back into the same application shape', () => {
   assert.deepEqual(hydrated.weeklyUpdates, state.weeklyUpdates);
   assert.deepEqual(hydrated.factLedger, state.factLedger);
   assert.deepEqual(hydrated.newsroomIssues, state.newsroomIssues);
+  assert.deepEqual(hydrated.eaSportsNetworkArticles, state.eaSportsNetworkArticles);
   assert.deepEqual(hydrated.podcastEpisodes, state.podcastEpisodes);
   assert.deepEqual(hydrated.careerChronicle, state.careerChronicle);
   assert.deepEqual(hydrated.postgameFrontPages, state.postgameFrontPages);

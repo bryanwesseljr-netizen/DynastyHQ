@@ -383,6 +383,7 @@ test('deleting a game also removes every publication artifact derived from that 
     facts: [{ id: 'pass', key: 'game.passYds', label: 'Passing yards', value: 250, confidence: 0.92, sourceId: 'box' }],
   });
   published.podcastEpisodes = [{ id: 'podcast-season-1-week-1', publicationId: 'season-1-week-1' }];
+  published.eaSportsNetworkArticles = [{ id: 'ea-season-1-week-1', publicationId: 'season-1-week-1', season: 1, week: 1, headline: 'Official recap' }];
   published.postgameFrontPages = [{ id: 'front-page-season-1-week-1', publicationId: 'season-1-week-1' }];
 
   const reset = removePublishedGame(published, 0);
@@ -393,6 +394,7 @@ test('deleting a game also removes every publication artifact derived from that 
   assert.deepEqual(reset.weeklyUpdates, []);
   assert.deepEqual(reset.factLedger, []);
   assert.deepEqual(reset.newsroomIssues, []);
+  assert.deepEqual(reset.eaSportsNetworkArticles, []);
   assert.deepEqual(reset.podcastEpisodes, []);
   assert.deepEqual(reset.postgameFrontPages, []);
   assert.deepEqual(reset.newsroomMediaLibrary, [{ id: 'reusable-photo' }]);

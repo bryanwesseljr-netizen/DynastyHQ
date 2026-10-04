@@ -17,6 +17,7 @@ export const publishedCareerProgress = (state = {}) => {
     ...list(state.weeklyUpdates),
     ...list(state.gameLogs),
     ...list(state.newsroomIssues),
+    ...list(state.eaSportsNetworkArticles),
     ...list(state.podcastEpisodes),
     ...list(state.careerChronicle),
     ...list(state.factLedger),
@@ -34,6 +35,7 @@ export const careerArchiveCounts = (state = {}) => ({
   weeklyUpdates: list(state.weeklyUpdates).length,
   gameLogs: list(state.gameLogs).length,
   newsroomIssues: list(state.newsroomIssues).length,
+  eaSportsNetworkArticles: list(state.eaSportsNetworkArticles).length,
   podcastEpisodes: list(state.podcastEpisodes).length,
   careerChronicle: list(state.careerChronicle).length,
   factLedger: list(state.factLedger).length,
@@ -56,7 +58,7 @@ export const detectDestructiveCareerRegression = (remoteState = {}, nextState = 
     };
   }
 
-  const criticalArchiveShrink = ['newsroomIssues', 'podcastEpisodes', 'weeklyUpdates']
+  const criticalArchiveShrink = ['newsroomIssues', 'eaSportsNetworkArticles', 'podcastEpisodes', 'weeklyUpdates']
     .filter((key) => nextCounts[key] < remoteCounts[key]);
   if (criticalArchiveShrink.length >= 2 && next.ordinal <= remote.ordinal) {
     return {

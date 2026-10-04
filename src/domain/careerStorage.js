@@ -8,6 +8,7 @@ export const SHARDED_CAREER_FIELDS = Object.freeze([
   'weeklyUpdates',
   'factLedger',
   'newsroomIssues',
+  'eaSportsNetworkArticles',
   'podcastEpisodes',
   'careerChronicle',
   'postgameFrontPages',

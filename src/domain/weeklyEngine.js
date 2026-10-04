@@ -141,6 +141,9 @@ export const removePublishedGame = (state, gameIndex) => {
     newsroomIssues: (state.newsroomIssues || []).filter(
       (entry) => !matchesPublication(entry, publicationId, season, week),
     ),
+    eaSportsNetworkArticles: (state.eaSportsNetworkArticles || []).filter(
+      (entry) => !matchesPublication(entry, publicationId, season, week),
+    ),
     postgameFrontPages: (state.postgameFrontPages || []).filter(
       (entry) => entry.publicationId !== publicationId,
     ),
@@ -1488,6 +1491,7 @@ export const migrateCareerState = (state, defaults) => ({
   careerMilestones: state?.careerMilestones || [],
   careerChronicle: state?.careerChronicle || [],
   newsroomIssues: state?.newsroomIssues || [],
+  eaSportsNetworkArticles: state?.eaSportsNetworkArticles || [],
   postgameFrontPages: (state?.postgameFrontPages || []).map(normalizePostgameFrontPage),
   newsroomMediaLibrary: state?.newsroomMediaLibrary || [],
   newsroomMediaSettings: {

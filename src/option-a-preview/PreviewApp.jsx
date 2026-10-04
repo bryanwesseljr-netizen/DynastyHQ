@@ -40,7 +40,9 @@ import { generatePodcastScript } from '../services/podcastClient.js';
 import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot } from '../domain/rtgProgress.js';
 import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
 import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
-import { auth, db, productionAppId } from '../firebase.js';
+import { auth, db, firebaseApp, productionAppId } from '../firebase.js';
+import { uploadNewsroomMedia } from '../services/newsroomMediaStorage.js';
+import { assignNewsroomMedia, createNewsroomMediaAsset, NEWSROOM_MEDIA_ORIGINS } from '../domain/newsroomMedia.js';
 import {
   loadPodcastAudioCloud,
   loadPodcastAudioLocal,
@@ -79,6 +81,7 @@ const PREVIEW_MASTER_AUDIO_MAX_BYTES = 30_000_000;
 const PREVIEW_MASTER_AUDIO_EXTENSIONS = new Set(['mp3','m4a','wav','aac','ogg']);
 const PREVIEW_MASTER_AUDIO_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'option-a-master-audio';
 const PREVIEW_WEEK_PROCESSOR_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'option-a-week-processor';
+const PREVIEW_NEWSROOM_PHOTO_DEVICE_ID = globalThis.crypto?.randomUUID?.() || 'option-a-newsroom-photo';
 
 const previewAudioMimeFor = (file) => {
   const supplied=String(file?.type || '').trim().toLowerCase();
@@ -128,69 +131,167 @@ const downloadPreviewText = (contentValue,fileName,type='text/plain') => {
   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 
-const notebookSourcePackText = ({data,episode,facts,scoringFacts,developmentFacts}) => {
+const NOTEBOOK_CANONICAL_GAME_KEYS = new Set([
+  'game.opponent','game.result','game.homeScore','game.awayScore',
+  'game.passYds','game.passTD','game.rushYds','game.rushTD','game.int',
+  'game.teamTotalYards','game.opponentTotalYards','game.teamFirstDowns','game.opponentFirstDowns',
+  'game.teamTurnovers','game.opponentTurnovers','game.teamRushYds','game.opponentRushYds',
+  'game.teamPassYds','game.opponentPassYds','game.teamPossession','game.opponentPossession',
+]);
+
+const notebookNormalizeToken=(value)=>String(value ?? '')
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g,' ')
+  .trim();
+
+const notebookIsRtgFact=(fact)=>{
+  const key=String(fact?.key || '').toLowerCase();
+  const label=String(fact?.label || '').toLowerCase();
+  return key.startsWith('rtg.')
+    || key==='profile.player.overall'
+    || key.startsWith('player.development')
+    || /\b(overall|ovr|coach trust|skill points?|energy|gpa|wear|followers?|brand|nil|depth chart|development|progression|regression)\b/i.test(label);
+};
+
+const notebookIsScoringFact=(fact)=>(
+  /(?:^|\.)scoring(?:\.|$)/i.test(String(fact?.key || ''))
+  || /scor|touchdown|field goal|extra point|drive/i.test(`${fact?.label||''} ${fact?.evidence||''}`)
+);
+
+const notebookIsCanonicalStatDuplicate=(fact,data={})=>{
+  const key=String(fact?.key || '');
+  if(NOTEBOOK_CANONICAL_GAME_KEYS.has(key)) return true;
+  const label=notebookNormalizeToken(fact?.label || key);
+  const category=notebookNormalizeToken(fact?.category || fact?.sourceType || '');
+  const subject=notebookNormalizeToken(fact?.subject || fact?.player || '');
+  const playerName=notebookNormalizeToken(data?.player?.name || '');
+  const statLike=/\b(score|result|points|total offense|total yards|passing yards|pass yards|passing touchdowns|pass td|rushing yards|rush yards|rushing touchdowns|rush td|interceptions|first downs|turnovers|possession)\b/.test(label);
+  if(!statLike) return false;
+  if(playerName && (subject===playerName || (subject && (playerName.includes(subject) || subject.includes(playerName))) || label.includes(playerName))) return true;
+  if(/team|game/.test(category)) return true;
+  if(!subject && /score|result|points|total offense|first downs|turnovers|possession/.test(label)) return true;
+
+  const factValue=notebookNormalizeToken(fact?.value ?? fact?.displayValue ?? fact?.text ?? '');
+  const game=data?.game || {};
+  const team=game?.team || {};
+  const canonicalValues=[
+    [/passing yards|pass yards/,game.pass],
+    [/passing yards|pass yards/,team.passYards],
+    [/passing yards|pass yards/,team.opponentPassYards],
+    [/rushing yards|rush yards/,game.rush],
+    [/rushing yards|rush yards/,team.rushYards],
+    [/rushing yards|rush yards/,team.opponentRushYards],
+    [/passing touchdowns|pass td/,game.passTD],
+    [/rushing touchdowns|rush td/,game.rushTD],
+    [/interceptions/,game.interceptions],
+    [/total offense|total yards/,game.total],
+    [/total offense|total yards/,team.totalYards],
+    [/total offense|total yards/,team.opponentTotalYards],
+    [/first downs/,team.firstDowns],
+    [/first downs/,team.opponentFirstDowns],
+    [/turnovers/,team.turnovers],
+    [/turnovers/,team.opponentTurnovers],
+  ];
+  if(factValue && canonicalValues.some(([pattern,value])=>(
+    value!==null && value!==undefined && value!==''
+    && pattern.test(label)
+    && notebookNormalizeToken(value)===factValue
+  ))) return true;
+  return false;
+};
+
+const notebookUniqueFacts=(facts=[])=>{
+  const seen=new Set();
+  return facts.filter((fact)=>{
+    const subject=notebookNormalizeToken(fact?.subject || fact?.player || '');
+    const team=notebookNormalizeToken(fact?.team || '');
+    const label=notebookNormalizeToken(fact?.label || fact?.key || '');
+    const value=notebookNormalizeToken(fact?.value ?? fact?.displayValue ?? fact?.text ?? '');
+    const signature=[team,subject,label,value].join('|');
+    if(!label && !value) return false;
+    if(seen.has(signature)) return false;
+    seen.add(signature);
+    return true;
+  });
+};
+
+const notebookFactLine=(fact,index)=>{
+  const subject=[fact?.team,fact?.subject || fact?.player].filter(Boolean).join(' · ');
+  const label=String(fact?.label || fact?.key || ('Context '+(index+1)));
+  const value=fact?.value ?? fact?.displayValue ?? fact?.text ?? fact?.evidence ?? '';
+  return '- '+(subject ? subject+' · ' : '')+label+': '+String(value);
+};
+
+const notebookSourcePackText = ({data,episode,facts=[]}) => {
   const game=data.game || {};
   const team=game.team || {};
-  const rtg=data.rtg || {};
   const transcript=episode.transcript || '';
-  const factLines=(facts || []).map((fact,index)=>{
-    const label=String(fact?.label || fact?.key || ('Fact '+(index+1)));
-    const value=fact?.value ?? fact?.displayValue ?? fact?.text ?? '';
-    const evidence=String(fact?.evidence || fact?.sourceName || fact?.sourceType || '');
-    return '- '+label+': '+String(value)+(evidence ? ' | Evidence: '+evidence : '');
-  });
-  const scoringLines=(scoringFacts || []).map((fact,index)=>'- '+String(fact?.label || fact?.key || ('Scoring reference '+(index+1)))+': '+String(fact?.value ?? fact?.displayValue ?? fact?.evidence ?? ''));
-  const developmentLines=(developmentFacts || []).map((fact,index)=>'- '+String(fact?.label || fact?.key || ('Development reference '+(index+1)))+': '+String(fact?.value ?? fact?.displayValue ?? fact?.evidence ?? ''));
-  const chapterLines=(episode.chapters || []).map((chapter,index)=>String(index+1)+'. '+String(chapter?.title || ('Chapter '+(index+1)))+(chapter?.summary ? ' — '+chapter.summary : ''));
+  const usableFacts=notebookUniqueFacts(
+    facts.filter((fact)=>!notebookIsRtgFact(fact)),
+  );
+  const scoringFacts=notebookUniqueFacts(usableFacts.filter((fact)=>(
+    notebookIsScoringFact(fact)
+    && !notebookIsCanonicalStatDuplicate(fact,data)
+  )));
+  const additionalFacts=notebookUniqueFacts(usableFacts.filter((fact)=>(
+    !notebookIsCanonicalStatDuplicate(fact,data)
+    && !notebookIsScoringFact(fact)
+  )));
+  const additionalLines=additionalFacts.map(notebookFactLine);
+  const scoringLines=scoringFacts.map(notebookFactLine);
+  const chapterLines=(episode.chapters || []).map((chapter,index)=>String(index+1)+'. '+String(chapter?.title || ('Chapter '+(index+1))));
+
+  const lineIf=(label,value,suffix='')=>(
+    value===null || value===undefined || value==='' ? null : label+': '+String(value)+suffix
+  );
+  const teamLines=[
+    lineIf(data.player.school+' total offense',team.totalYards,' yards'),
+    lineIf(game.opponent+' total offense',team.opponentTotalYards,' yards'),
+    lineIf(data.player.school+' passing',team.passYards,' yards'),
+    lineIf(game.opponent+' passing',team.opponentPassYards,' yards'),
+    lineIf(data.player.school+' rushing',team.rushYards,' yards'),
+    lineIf(game.opponent+' rushing',team.opponentRushYards,' yards'),
+    lineIf(data.player.school+' first downs',team.firstDowns),
+    lineIf(game.opponent+' first downs',team.opponentFirstDowns),
+    lineIf(data.player.school+' turnovers',team.turnovers),
+    lineIf(game.opponent+' turnovers',team.opponentTurnovers),
+    lineIf(data.player.school+' possession',team.possession),
+    lineIf(game.opponent+' possession',team.opponentPossession),
+  ].filter(Boolean);
 
   return [
     'DYNASTYHQ · THE HUDDLE · NOTEBOOKLM SOURCE PACK',
     'Season '+data.season+' · Week '+game.week+' · '+data.player.school+' vs. '+game.opponent,
     '',
-    'EPISODE',
-    String(episode.title || ('Week '+game.week+' Recap')),
-    String(episode.summary || ''),
-    '',
     'GAME RESULT',
     data.player.school+' '+game.us+' — '+game.them+' '+game.opponent,
     '',
-    'PLAYER STAT LINE',
+    'MY PLAYER STAT LINE',
     'Passing: '+String(game.pass ?? '—')+' yards · '+String(game.passTD ?? '—')+' TD',
     'Rushing: '+String(game.rush ?? '—')+' yards · '+String(game.rushTD ?? '—')+' TD',
     'Total offense: '+String(game.total ?? '—')+' yards',
     'Total touchdowns: '+String(game.td ?? '—'),
     'Interceptions: '+String(game.interceptions ?? '—'),
     '',
-    'TEAM CONTEXT',
-    'Points: '+String(team.points ?? '—'),
-    'Total offense: '+String(team.totalYards ?? '—'),
-    'Passing yards: '+String(team.passYards ?? '—'),
-    'Rushing yards: '+String(team.rushYards ?? '—'),
-    'First downs: '+String(team.firstDowns ?? '—'),
-    'Turnovers: '+String(team.turnovers ?? '—'),
+    'TEAM STATS',
+    ...(teamLines.length ? teamLines : ['No separate team-stat totals were saved for this week.']),
     '',
-    'CURRENT RTG STATUS',
-    'Overall: '+String(data.player.overall ?? '—'),
-    'Depth-chart role: '+String(rtg.rank || '—'),
-    'Coach trust: '+String(rtg.coachTrust ?? '—')+(rtg.trustToNext!==undefined ? ' / '+String(rtg.trustToNext) : ''),
-    'Skill points: '+String(rtg.skillPoints ?? '—'),
-    'Energy: '+String(rtg.energy ?? '—'),
-    'GPA: '+String(rtg.gpa ?? '—'),
+    'OTHER VERIFIED INDIVIDUAL / GAME CONTEXT',
+    ...(additionalLines.length ? additionalLines : ['No additional non-duplicate context facts were saved.']),
+    '',
+    'SCORING SUMMARY',
+    ...(scoringLines.length ? scoringLines : ['No separate scoring-summary facts were saved.']),
     '',
     'EPISODE CHAPTERS',
     ...(chapterLines.length ? chapterLines : ['No saved chapter list.']),
     '',
-    'VERIFIED SOURCE FACTS',
-    ...(factLines.length ? factLines : ['No verified source facts are saved for this selected week.']),
-    '',
-    'SCORING REFERENCES',
-    ...(scoringLines.length ? scoringLines : ['No separate scoring references are saved.']),
-    '',
-    'PLAYER DEVELOPMENT REFERENCES',
-    ...(developmentLines.length ? developmentLines : ['No separate development references are saved.']),
-    '',
     'FULL PODCAST TRANSCRIPT',
     transcript || 'No generated transcript is saved for this selected week.',
+    '',
+    'SOURCE PACK RULES',
+    '- RTG status and development facts are intentionally excluded.',
+    '- Structured game, team, and player statistics appear only once outside the full transcript.',
     '',
     'END SOURCE PACK',
   ].join('\n');
@@ -1636,6 +1737,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const inputRef=useRef(null);
   const rtgInputRef=useRef(null);
   const coverageInputRef=useRef(null);
+  const officialInputRef=useRef(null);
   const [phase,setPhase]=useState('game');
   const [files,setFiles]=useState([]);
   const [dragging,setDragging]=useState(false);
@@ -1647,6 +1749,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [scanDraft,setScanDraft]=useState(null);
   const [reviewRows,setReviewRows]=useState([]);
   const [officialArticles,setOfficialArticles]=useState([]);
+  const [officialScanning,setOfficialScanning]=useState(false);
+  const [officialProgress,setOfficialProgress]=useState('');
+  const [officialError,setOfficialError]=useState('');
 
   const [rtgScanning,setRtgScanning]=useState(false);
   const [rtgProgress,setRtgProgress]=useState('');
@@ -1703,6 +1808,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setScanDraft(null);
     setReviewRows([]);
     setOfficialArticles([]);
+    setOfficialScanning(false);
+    setOfficialProgress('');
+    setOfficialError('');
     setRtgScanning(false);
     setRtgProgress('');
     setRtgFacts([]);
@@ -1935,6 +2043,70 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   };
 
   const updateRtgFact=(id,patch)=>setRtgFacts((current)=>current.map((fact)=>fact.id===id?{...fact,...patch}:fact));
+
+  const scanOfficialArticleFiles=async(fileList)=>{
+    const selected=[...(fileList||[])].filter((file)=>file?.type?.startsWith('image/')).slice(0,4);
+    if(!selected.length || officialScanning) return;
+    if(!user){
+      setOfficialError('Connect your DynastyHQ account before scanning an EA Sports Network article.');
+      return;
+    }
+    setOfficialScanning(true);
+    setOfficialError('');
+    try{
+      const idToken=await user.getIdToken();
+      const found=[];
+      for(let index=0;index<selected.length;index+=1){
+        const file=selected[index];
+        setOfficialProgress(`Analyzing EA article ${index+1} of ${selected.length}: ${file.name}`);
+        const imageDataUrl=await compressImage(file,2400,0.9);
+        const result=await analyzeScreenshot({
+          idToken,
+          imageDataUrl,
+          fileName:file.name,
+          careerPhase:career.careerPhase || 'Player',
+          player:career.player || {},
+          recruitingSchools:(career.recruiting || []).map(({name})=>({name})),
+          rosterPlayers:(career.retentionBoard || []).map(({name})=>({name})),
+          uploadContext:null,
+          suppressAnalysisEvent:true,
+        });
+        const analysis=result?.analysis || {};
+        const official=analysis.officialArticle || null;
+        const recognized=(analysis.screenTypes || []).includes('ea_sports_network_article') || Boolean(official);
+        if(!recognized) continue;
+        found.push({
+          fileName:file.name,
+          headline:official?.headline || analysis.screenTitle || 'EA SPORTS Network article',
+          body:official?.body || '',
+          byline:official?.byline || '',
+          pageLabel:official?.pageLabel || '',
+        });
+      }
+      if(!found.length){
+        setOfficialError('No EA Sports Network article was recognized. Use a clear screenshot of the full in-game article page.');
+        return;
+      }
+      setOfficialArticles((current)=>{
+        const bySignature=new Map();
+        [...current,...found].forEach((entry)=>{
+          const signature=[
+            String(entry?.headline || '').trim().toLowerCase(),
+            String(entry?.body || '').trim().slice(0,160).toLowerCase(),
+          ].join('|');
+          bySignature.set(signature,entry);
+        });
+        return [...bySignature.values()];
+      });
+      setCoverageSkipped(false);
+      notify(found.length===1 ? 'EA Sports Network article added to this week’s packet.' : found.length+' EA Sports Network article pages added.');
+    }catch(error){
+      setOfficialError(error?.message || 'The EA Sports Network article could not be scanned.');
+    }finally{
+      setOfficialScanning(false);
+      setOfficialProgress('');
+    }
+  };
 
   const scanCoverageFiles=async(fileList)=>{
     const selected=[...(fileList||[])].filter((file)=>file?.type?.startsWith('image/')).slice(0,12);
@@ -2721,10 +2893,21 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               </div>)}
             </div>}
 
-            <section className="official-feed-card">
+            <section className="official-feed-card official-upload-card">
               <RadioIcon/>
-              <div><span>EA SPORTS NETWORK</span><h3>{officialSaved?'Official in-game coverage is present for this week.':'No official article has been detected in this preview packet yet.'}</h3><p>Article pages are recognized in the Game Data lane and remain separate from DynastyHQ-generated journalism.</p></div>
-              <b className={officialSaved?'saved':''}>{officialSaved?'DETECTED':'OPTIONAL'}</b>
+              <div>
+                <span>EA SPORTS NETWORK · OPTIONAL</span>
+                <h3>{officialSaved?'Official in-game coverage is attached to this week.':'Add the in-game EA Sports Network article.'}</h3>
+                <p>Upload the article page here. DynastyHQ preserves it as official source coverage in the Newsroom without mixing it into generated journalism.</p>
+                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'}</small>)}</div>}
+                {officialProgress && <em className="official-upload-progress">{officialProgress}</em>}
+                {officialError && <em className="official-upload-error">{officialError}</em>}
+              </div>
+              <div className="official-upload-actions">
+                <b className={officialSaved?'saved':''}>{officialSaved?'ATTACHED':'OPTIONAL'}</b>
+                <button type="button" disabled={officialScanning} onClick={()=>officialInputRef.current?.click()}><Upload/>{officialScanning?'SCANNING…':'UPLOAD EA ARTICLE'}</button>
+                <input ref={officialInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{scanOfficialArticleFiles(event.target.files);event.target.value=''}}/>
+              </div>
             </section>
 
             <div className="coverage-boundary-note"><ShieldCheck/><span><b>Coverage-only boundary</b><small>Nothing reviewed here can overwrite the player line, team result, or career totals.</small></span></div>
@@ -2732,7 +2915,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('rtg')}><ChevronLeft/>RTG STATUS</button>
               {!coverageAdded && <button className="secondary" onClick={()=>{setCoverageSkipped(true);setPhase('ready')}}>SKIP OPTIONAL COVERAGE</button>}
-              <button className="primary" disabled={coverageScanning || (!coverageAdded && !coverageSkipped)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':'CONTINUE'}<ChevronRight/></button>
+              <button className="primary" disabled={coverageScanning || officialScanning || (!coverageAdded && !coverageSkipped && !officialSaved)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':officialSaved?'CONTINUE WITH EA ARTICLE':'CONTINUE'}<ChevronRight/></button>
             </div>
           </section>}
 
@@ -3549,9 +3732,16 @@ function PodcastPage({
       {title:'What Comes Next',summary:`The Week ${data.next.week} setup against ${data.next.opponent}.`},
     ];
   const facts=episode.sourceFacts || [];
-  const scoringFacts=facts.filter((fact)=>/scor|drive|touchdown|field goal/i.test(`${fact?.key||''} ${fact?.label||''}`));
-  const developmentFacts=facts.filter((fact)=>String(fact?.key||'').startsWith('rtg.') || String(fact?.key||'').includes('overall') || String(fact?.key||'').includes('development'));
-  const notebookPack=notebookSourcePackText({data,episode,facts,scoringFacts,developmentFacts});
+  const notebookFacts=notebookUniqueFacts(facts.filter((fact)=>!notebookIsRtgFact(fact)));
+  const scoringFacts=notebookUniqueFacts(notebookFacts.filter((fact)=>(
+    notebookIsScoringFact(fact)
+    && !notebookIsCanonicalStatDuplicate(fact,data)
+  )));
+  const notebookContextFacts=notebookUniqueFacts(notebookFacts.filter((fact)=>(
+    !notebookIsCanonicalStatDuplicate(fact,data)
+    && !notebookIsScoringFact(fact)
+  )));
+  const notebookPack=notebookSourcePackText({data,episode,facts});
   const downloadNotebookPack=()=>downloadPreviewText(notebookPack,'DynastyHQ-S'+data.season+'-W'+game.week+'-NotebookLM-Source-Pack.txt');
   const downloadTranscript=()=>downloadPreviewText(episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt');
   const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
@@ -4024,8 +4214,8 @@ function PodcastPage({
             <span>THIS EPISODE</span>
             <div><Check/><b>{facts.length}</b><small>verified source facts</small></div>
             <div><Check/><b>{episode.segments?.length || 0}</b><small>transcript segments</small></div>
-            <div><Check/><b>{scoringFacts.length}</b><small>scoring references</small></div>
-            <div><Check/><b>{developmentFacts.length}</b><small>development references</small></div>
+            <div><Check/><b>{scoringFacts.length}</b><small>unique scoring references</small></div>
+            <div><Check/><b>{notebookContextFacts.length}</b><small>unique supporting facts</small></div>
           </section>
 
           <section className="pod-owner-shortcut">
@@ -4070,11 +4260,12 @@ function PodcastPage({
           <h2>Week {game.week} • {game.opponent}</h2>
           <p>This view is grounded in the same saved facts and transcript attached to the real DynastyHQ week.</p>
           <div className="source-list">
-            <div><Check/><span><b>Game overview</b><small>{data.player.school} {game.us}–{game.them} {game.opponent} · Season {data.season}, Week {game.week}.</small></span></div>
-            <div><Check/><span><b>Verified source facts</b><small>{facts.length} saved verified facts are attached to this publication.</small></span></div>
-            <div><Check/><span><b>Scoring summary</b><small>{scoringFacts.length} saved facts reference scoring, drives, touchdowns, or field goals.</small></span></div>
-            <div><Check/><span><b>Player development</b><small>{developmentFacts.length} saved facts reference RTG status, overall, or development.</small></span></div>
-            <div><Check/><span><b>Podcast transcript</b><small>{episode.segments?.length || 0} saved transcript segments are available for source material.</small></span></div>
+            <div><Check/><span><b>Game result</b><small>{data.player.school} {game.us}–{game.them} {game.opponent} · one canonical result line.</small></span></div>
+            <div><Check/><span><b>My player stat line</b><small>Passing, rushing, total offense, touchdowns and interceptions appear once.</small></span></div>
+            <div><Check/><span><b>Team stats</b><small>Saved team/opponent totals appear once with duplicate source facts removed.</small></span></div>
+            <div><Check/><span><b>Other individual + scoring context</b><small>{notebookContextFacts.length} unique supporting facts · {scoringFacts.length} unique scoring references.</small></span></div>
+            <div><Check/><span><b>RTG facts excluded</b><small>No overall, coach trust, skill points, wear, GPA, brand or other RTG status is exported.</small></span></div>
+            <div><Check/><span><b>Podcast transcript</b><small>{episode.segments?.length || 0} saved transcript segments remain complete and unchanged.</small></span></div>
           </div>
           <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD NOTEBOOKLM SOURCE PACK<ChevronRight/></button>
         </article>
@@ -4082,7 +4273,7 @@ function PodcastPage({
           <BookOpen/>
           <span>SOURCE PACK READY</span>
           <h3>Same saved week. Exportable source material.</h3>
-          <p>The download includes the selected game line, team context, current RTG status, verified facts, scoring/development references, chapters, and the complete saved transcript.</p>
+          <p>The download keeps one canonical copy of the result, your stat line and team stats, then adds only de-duplicated supporting individual/scoring context, chapter titles and the complete transcript. RTG facts are excluded.</p>
         </aside>
       </div>}
     </section>
@@ -4472,6 +4663,9 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
 function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const [archiveOpen,setArchiveOpen]=useState(false);
+  const articlePhotoInputRef=useRef(null);
+  const articlePhotoTargetRef=useRef(null);
+  const [articlePhotoBusy,setArticlePhotoBusy]=useState(false);
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
   const articles=Array.isArray(news.articles)?news.articles:[];
@@ -4481,6 +4675,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   const nationalStory=articles.find((entry)=>entry.id===news.nationalArticleId) || null;
   const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
   const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
+  const officialStories=Array.isArray(news.officialArticles)?news.officialArticles:[];
   const newsroomArchive=(Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[])
     .filter((entry)=>entry?.media?.newsroom)
     .slice()
@@ -4510,7 +4705,131 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
     window.scrollTo({top:0,behavior:'smooth'});
   };
 
+  const chooseArticlePhoto=(story)=>{
+    if(!story?.id) return;
+    articlePhotoTargetRef.current=story;
+    articlePhotoInputRef.current?.click();
+  };
+
+  const uploadArticlePhoto=async(file)=>{
+    const target=articlePhotoTargetRef.current;
+    if(!file || !target?.id || articlePhotoBusy) return;
+    if(!file.type?.match(/^image\/(png|jpe?g|webp)$/i)){
+      notify('Choose a PNG, JPEG, or WebP image for this article.');
+      return;
+    }
+    if(file.size>12_000_000){
+      notify('That article photo is larger than 12 MB. Choose a smaller image.');
+      return;
+    }
+    const signedInUser=auth.currentUser;
+    if(!signedInUser || signedInUser.isAnonymous){
+      notify('Sign in with your DynastyHQ owner account before changing article photos.');
+      return;
+    }
+
+    const targetPublicationId=String(news.publicationId || createWeekKey(data.season,news.week || game.week));
+    const targetSeason=Number(data.season)||1;
+    const targetWeek=Number(news.week || game.week)||0;
+    setArticlePhotoBusy(true);
+    try{
+      const assetId=globalThis.crypto?.randomUUID?.() || `article-photo-${Date.now()}`;
+      const imageDataUrl=await compressImage(file,2000,0.9);
+      const uploaded=await uploadNewsroomMedia({
+        firebaseApp,
+        appId:productionAppId,
+        userId:signedInUser.uid,
+        assetId,
+        imageDataUrl,
+        fileName:file.name,
+        origin:NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+      });
+      const asset=createNewsroomMediaAsset({
+        id:assetId,
+        ...uploaded,
+        fileName:file.name,
+        origin:NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+        photoType:'general',
+        careerFolder:targetPublicationId,
+        allowAutoAssign:false,
+      });
+
+      await runTransaction(db,async(transaction)=>{
+        const loaded=await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+        });
+        if(!loaded) throw new Error('The live DynastyHQ career could not be loaded.');
+        const remote=loaded.state;
+        const issue=(remote.newsroomIssues || []).find((entry)=>previewMatchesPublication(
+          entry,
+          targetPublicationId,
+          targetSeason,
+          targetWeek,
+        ));
+        if(!issue) throw new Error('This Newsroom edition is no longer available.');
+        const savedArticle=(issue.articles || []).find((entry)=>String(entry?.id || '')===String(target.id));
+        if(!savedArticle) throw new Error('This article changed before the photo could be attached.');
+
+        let nextState={
+          ...remote,
+          newsroomMediaLibrary:[...(remote.newsroomMediaLibrary || []),asset],
+          newsroomIssues:assignNewsroomMedia({
+            issues:remote.newsroomIssues || [],
+            publicationId:issue.publicationId || issue.id || targetPublicationId,
+            articleId:target.id,
+            asset,
+          }),
+        };
+        const regression=detectDestructiveCareerRegression(remote,nextState);
+        if(regression.blocked) throw new Error('DynastyHQ blocked the photo update because the career changed unexpectedly. '+regression.reason);
+
+        const savedAt=new Date().toISOString();
+        nextState={
+          ...nextState,
+          _sync:{
+            revision:(Number(loaded.rawMain?._sync?.revision)||0)+1,
+            deviceId:PREVIEW_NEWSROOM_PHOTO_DEVICE_ID,
+            updatedAt:savedAt,
+          },
+        };
+        const storagePreview=splitCareerStateForStorage(nextState,savedAt);
+        const mainBytes=estimatedJsonBytes(storagePreview.mainState);
+        const largestArchiveBytes=storagePreview.archives.reduce((largest,archive)=>Math.max(largest,estimatedJsonBytes(archive)),0);
+        if(mainBytes>=950*1024 || largestArchiveBytes>=950*1024){
+          throw new Error('The article photo assignment would make the DynastyHQ save too large. Nothing was written.');
+        }
+        writeHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+          state:nextState,
+        });
+      });
+      notify('Photo updated for this article only.');
+    }catch(error){
+      notify(error?.message || 'The article photo could not be updated.');
+    }finally{
+      setArticlePhotoBusy(false);
+      articlePhotoTargetRef.current=null;
+    }
+  };
+
   return <div className="page newsroom-page">
+    <input
+      ref={articlePhotoInputRef}
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      hidden
+      onChange={(event)=>{
+        const file=event.target.files?.[0];
+        event.target.value='';
+        if(file) uploadArticlePhoto(file);
+      }}
+    />
     <section className="journal">
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
@@ -4546,6 +4865,8 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           articles={articles}
           onSelectStory={switchSavedStory}
           onBack={()=>{setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}
+          onChangeArticlePhoto={chooseArticlePhoto}
+          articlePhotoBusy={articlePhotoBusy}
           go={go}
           openPodcast={openPodcast}
         />
@@ -4583,6 +4904,18 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
             })}
           </section>
 
+          {officialStories.length>0 && <section className="ea-network-newsroom">
+            <header><RadioIcon/><div><span>OFFICIAL IN-GAME COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} SAVED</b></header>
+            <div>
+              {officialStories.map((entry,index)=><article key={entry.id || entry.headline || index}>
+                <span>{entry.pageLabel || 'EA SPORTS NETWORK'}</span>
+                <h3>{entry.headline || 'Official in-game article'}</h3>
+                {(entry.byline || entry.sourceFileName) && <small>{[entry.byline,entry.sourceFileName].filter(Boolean).join(' · ')}</small>}
+                {entry.body && <p>{entry.body}</p>}
+              </article>)}
+            </div>
+          </section>}
+
           <section className="journal-lower">
             <article className="journal-box inside reference-journal-box">
               <CardHeader title="INSIDE THE GAME" light/>
@@ -4611,7 +4944,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   </div>;
 }
 
-function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,openPodcast}){
+function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,onChangeArticlePhoto,articlePhotoBusy,go,openPodcast}){
   const news=data.news || {};
   const game=data.game || {};
   const lastName=data.player.name.split(' ').at(-1);
@@ -4685,7 +5018,9 @@ function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,go,ope
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
       <span>{audienceLabel} • WEEK {news.week || game.week}</span>
+      <button className="article-photo-owner-button" disabled={articlePhotoBusy} onClick={()=>onChangeArticlePhoto?.(selected)}><Camera/>{articlePhotoBusy?'UPLOADING…':'CHANGE THIS ARTICLE PHOTO'}</button>
     </div>
+    <div className="article-photo-owner-note"><ShieldCheck/><span>Photo changes apply only to this article. Every other Newsroom story keeps its own photo or week fallback.</span></div>
 
     {outletSwitcher}
     {publicationBanner}

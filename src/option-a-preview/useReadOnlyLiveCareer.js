@@ -430,6 +430,23 @@ export const derivePreviewData = (state, selection = {}) => {
     : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
   const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle);
+  const officialArticles = (state.eaSportsNetworkArticles || [])
+    .filter((entry)=>(
+      (publicationId && publicationIdFor(entry)===publicationId)
+      || matchesSeasonWeek(entry,season,week)
+    ))
+    .map((entry,index)=>({
+      id:clean(entry?.id, `ea-network-${season}-${week}-${index+1}`),
+      publicationId:clean(entry?.publicationId, publicationId),
+      season:numeric(entry?.season,season),
+      week:numeric(entry?.week,week),
+      headline:clean(entry?.headline,'EA SPORTS Network article'),
+      body:clean(entry?.body),
+      byline:clean(entry?.byline),
+      pageLabel:clean(entry?.pageLabel,'EA SPORTS NETWORK'),
+      sourceFileName:clean(entry?.sourceFileName),
+      capturedAt:clean(entry?.capturedAt),
+    }));
   const facts = factsForPublication(state, publicationId, season, week);
   const coverageFacts = facts.filter((fact) => fact?.sourceType === 'coverage-reference' || fact?.editorialOnly === true);
   const scoringFacts = coverageFacts.filter((fact) => (
@@ -493,9 +510,13 @@ export const derivePreviewData = (state, selection = {}) => {
         turnovers: optionalNumber(game?.teamTurnovers),
         rushYards: optionalNumber(game?.teamRushYds),
         passYards: optionalNumber(game?.teamPassYds),
+        possession: clean(game?.teamPossession),
         opponentTotalYards: optionalNumber(game?.opponentTotalYards),
         opponentFirstDowns: optionalNumber(game?.opponentFirstDowns),
         opponentTurnovers: optionalNumber(game?.opponentTurnovers),
+        opponentRushYards: optionalNumber(game?.opponentRushYds),
+        opponentPassYards: optionalNumber(game?.opponentPassYds),
+        opponentPossession: clean(game?.opponentPossession),
       },
       scoring: {
         playCount: scoringFacts.length || null,
@@ -531,6 +552,7 @@ export const derivePreviewData = (state, selection = {}) => {
       localArticle,
       nationalArticle,
       weeklyPhoto,
+      officialArticles,
     },
     podcast: {
       episode,

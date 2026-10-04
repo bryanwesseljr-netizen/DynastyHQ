@@ -97,6 +97,10 @@ export const createNewsroomMediaAsset = ({
   conferenceTag = '',
   sceneTag = '',
   generatedFrom = null,
+  weekPublicationId = '',
+  weekSeason = null,
+  week = null,
+  opponent = '',
 }) => {
   const assetId = cleanText(id, 120);
   const url = cleanText(downloadUrl, 2400);
@@ -123,6 +127,10 @@ export const createNewsroomMediaAsset = ({
     teamTag: cleanText(teamTag, 120),
     conferenceTag: cleanText(conferenceTag, 120),
     sceneTag: normalizeNewsroomSceneTag(sceneTag),
+    weekPublicationId: cleanText(weekPublicationId, 120),
+    weekSeason: weekSeason === null || weekSeason === undefined || weekSeason === '' || !Number.isFinite(Number(weekSeason)) ? null : Number(weekSeason),
+    week: week === null || week === undefined || week === '' || !Number.isFinite(Number(week)) ? null : Number(week),
+    opponent: cleanText(opponent, 120),
     generatedFrom: generatedFrom ? {
       publicationId: cleanText(generatedFrom.publicationId, 120),
       articleId: cleanText(generatedFrom.articleId, 120),
@@ -210,7 +218,10 @@ export const getNewsroomArticlePhotoPreferences = (article = {}) => {
 
 export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue = {} } = {}) => {
   if (!asset?.id) return -Infinity;
-  let score = 0;
+  const publicationId = cleanText(issue.publicationId || issue.id, 120);
+  const weekPublicationId = cleanText(asset.weekPublicationId, 120);
+  if (weekPublicationId && (!publicationId || weekPublicationId !== publicationId)) return -Infinity;
+  let score = weekPublicationId && weekPublicationId === publicationId ? 220 : 0;
   const issueFolder = getNewsroomIssueFolder(issue);
   if (getNewsroomMediaFolder(asset) === issueFolder) score += 100;
   else score -= 80;
@@ -243,7 +254,6 @@ export const scoreNewsroomMediaForArticle = ({ asset = {}, article = {}, issue =
     score += assetScene === requestedScene ? 45 : -12;
   }
 
-  const publicationId = issue.publicationId || issue.id || '';
   if (asset.generatedFrom?.articleId && asset.generatedFrom.articleId === article.id) score += 80;
   if (asset.generatedFrom?.publicationId && asset.generatedFrom.publicationId === publicationId) score += 20;
   if (asset.isReference) score -= 500;
@@ -357,12 +367,14 @@ export const assignLibraryPhotosToEdition = ({ issues = [], publicationId, media
 
   const targetIssue = issues[targetIndex];
   const targetFolder = getNewsroomIssueFolder(targetIssue);
+  const targetPublicationId = cleanText(targetIssue.publicationId || targetIssue.id, 120);
   const candidates = mediaLibrary.filter((asset) => (
     (asset?.origin === NEWSROOM_MEDIA_ORIGINS.UPLOAD || asset?.allowAutoAssign === true)
     && !asset.isReference
     && asset.id
     && asset.downloadUrl
     && getNewsroomMediaFolder(asset) === targetFolder
+    && (!cleanText(asset.weekPublicationId, 120) || cleanText(asset.weekPublicationId, 120) === targetPublicationId)
   ));
   const recentlyUsed = recentLibraryAssignments(issues, targetIndex);
   const usage = libraryUsageHistory(issues, targetIndex);
@@ -516,9 +528,16 @@ export const buildNewsroomImageRequest = ({ issue, article, mediaLibrary = [] })
 };
 
 export const buildPublicNewsroomMediaLibrary = ({ issues = [], frontPages = [], mediaLibrary = [] }) => {
+  const publicationIds = new Set(
+    issues.map((issue) => cleanText(issue?.publicationId || issue?.id, 120)).filter(Boolean),
+  );
   const assignedIds = new Set([
     ...issues.flatMap((issue) => (issue.articles || []).map((article) => article.mediaAssetId).filter(Boolean)),
     ...getFrontPageMediaAssetIds(frontPages),
+    ...mediaLibrary
+      .filter((asset) => cleanText(asset?.weekPublicationId, 120) && publicationIds.has(cleanText(asset.weekPublicationId, 120)))
+      .map((asset) => asset.id)
+      .filter(Boolean),
   ]);
   return mediaLibrary
     .filter((asset) => assignedIds.has(asset.id))

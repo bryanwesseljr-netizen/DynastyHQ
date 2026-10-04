@@ -84,7 +84,12 @@ test('Career Chronicle 2.0 builds a schedule-backed season chapter and preserves
       headline: 'Baylor powers past Oregon',
       summary: 'Official in-game coverage preserved from College Football 27.',
     }],
-    newsroomMediaLibrary: [],
+    newsroomMediaLibrary: [{
+      id: 'week-2-photo',
+      downloadUrl: 'https://example.com/week-2.jpg',
+      fileName: 'Week 2 game.jpg',
+      weekPublicationId: 'season-1-week-2',
+    }],
     postgameFrontPages: [],
   };
 
@@ -101,4 +106,6 @@ test('Career Chronicle 2.0 builds a schedule-backed season chapter and preserves
   assert.equal(chronicle.signatureGames[0].media.official.headline, 'Baylor powers past Oregon');
   assert.equal(chronicle.signatureGames[0].media.newsroom.headline, 'Baylor hands Oregon a road loss');
   assert.equal(chronicle.signatureGames[0].media.podcast.finished, true);
+  assert.equal(chronicle.signatureGames[0].media.photos.length, 1);
+  assert.equal(chronicle.signatureGames[0].media.photos[0].id, 'week-2-photo');
 });

@@ -67,3 +67,18 @@ test('new workflow surfaces have mobile styles', async () => {
   assert.match(css, /\.week-prep-checklist/);
   assert.match(css, /\.newsroom-archive-grid/);
 });
+
+
+test('Week Processing exposes a strict week-scoped Game Photos lane and full-box archive selectors', async () => {
+  const [source,css] = await Promise.all([readFile(sourceUrl,'utf8'),readFile(cssUrl,'utf8')]);
+
+  assert.match(source, /\['photos','Game Photos',Camera\]/);
+  assert.match(source, /STRICT WEEK BOUNDARY/);
+  assert.match(source, /weekPublicationId:targetPublicationId/);
+  assert.match(source, /assignLibraryPhotosToEdition/);
+  assert.match(source, /\['home','gamehub','newsroom','podcast','chronicle'\]\.includes\(pageId\)\?'auto':'manual'/);
+  assert.match(source, /className="archive-select"/);
+  assert.match(css, /\.archive-select>select\{/);
+  assert.match(css, /inset:0!important/);
+  assert.match(css, /\.game-photo-grid/);
+});

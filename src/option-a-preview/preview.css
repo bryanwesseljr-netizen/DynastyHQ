@@ -14312,3 +14312,160 @@ select optgroup{
     grid-template-columns:1fr;
   }
 }
+
+
+/* Precision match pass v52 — week-scoped game photos + full selector hit areas */
+.archive-select{
+  position:relative!important;
+}
+.archive-select>b{
+  position:relative;
+  z-index:1;
+  min-width:18px;
+  color:#fff;
+  font:900 9px/1 var(--condensed);
+  pointer-events:none;
+}
+.archive-select>select{
+  position:absolute!important;
+  z-index:3;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  opacity:0!important;
+  cursor:pointer;
+}
+.archive-select:focus-within{
+  outline:2px solid rgba(255,228,0,.72);
+  outline-offset:1px;
+}
+.archive-select>svg{
+  position:relative;
+  z-index:2;
+  pointer-events:none!important;
+}
+.game-photo-boundary{
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr);
+  gap:9px;
+  align-items:center;
+  margin:14px 24px 0;
+  padding:10px 12px;
+  border:1px solid #416a5e;
+  border-radius:7px;
+  background:#0a2922;
+}
+.game-photo-boundary>svg{width:17px;color:#76d7af}
+.game-photo-boundary>span{display:grid;gap:2px}
+.game-photo-boundary b{font-size:6.8px;letter-spacing:.55px}
+.game-photo-boundary small{color:#82978f;font-size:5.8px;line-height:1.4}
+.game-photo-upload-card{
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  margin:10px 24px 0;
+  padding:14px;
+  border:1px solid #2f6b59;
+  border-radius:8px;
+  background:linear-gradient(135deg,#0b352a,#08271f);
+}
+.game-photo-upload-card>svg{
+  width:42px;
+  height:42px;
+  padding:10px;
+  border:1px solid #3e7d68;
+  border-radius:50%;
+  background:#0b4636;
+  color:#7cddb8;
+}
+.game-photo-upload-card>div{display:grid;gap:3px}
+.game-photo-upload-card span{color:var(--yellow);font-size:5.5px;font-weight:950;letter-spacing:.8px}
+.game-photo-upload-card h3{margin:0;font-family:var(--condensed);font-size:16px}
+.game-photo-upload-card p{margin:0;color:#82978f;font-size:6.2px;line-height:1.45}
+.game-photo-upload-card>button{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:0 11px;
+  border:1px solid #4b8a75;
+  border-radius:5px;
+  background:#0d4e3b;
+  color:#fff;
+  font-size:5.8px;
+  font-weight:950;
+  letter-spacing:.45px;
+}
+.game-photo-upload-card>button svg{width:12px}
+.game-photo-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:10px 24px 16px;
+}
+.game-photo-grid article{
+  position:relative;
+  min-width:0;
+  overflow:hidden;
+  border:1px solid #315d51;
+  border-radius:7px;
+  background:#081f1a;
+}
+.game-photo-grid img{
+  width:100%;
+  height:122px;
+  display:block;
+  object-fit:cover;
+  background:#0b2820;
+}
+.game-photo-grid article>span{
+  min-width:0;
+  display:grid;
+  gap:2px;
+  padding:8px 34px 9px 9px;
+  text-align:left;
+}
+.game-photo-grid b{overflow:hidden;color:#eaf3ef;font-size:6.3px;text-overflow:ellipsis;white-space:nowrap}
+.game-photo-grid small{color:#728980;font-size:5.3px}
+.game-photo-grid article>button{
+  position:absolute;
+  right:6px;
+  bottom:7px;
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border:1px solid #4e655e;
+  border-radius:50%;
+  background:#102d26;
+  color:#c8d6d1;
+}
+.game-photo-grid article>button svg{width:11px}
+.ready-status-grid{grid-template-columns:repeat(5,1fr)}
+@media(max-width:700px){
+  .processing-steps>button{width:15%}
+  .mobile-context-row .archive-select>b{
+    min-width:0;
+    font-size:9px;
+    text-align:center;
+  }
+  .game-photo-boundary{margin:10px 10px 0}
+  .game-photo-upload-card{
+    grid-template-columns:44px 1fr;
+    gap:9px;
+    margin:8px 10px 0;
+    padding:11px;
+  }
+  .game-photo-upload-card>svg{width:40px;height:40px}
+  .game-photo-upload-card>button{grid-column:1/3}
+  .game-photo-grid{grid-template-columns:1fr 1fr;margin:8px 10px 14px}
+  .game-photo-grid img{height:105px}
+  .ready-status-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:390px){
+  .game-photo-grid{grid-template-columns:1fr}
+}

@@ -17,6 +17,10 @@ const matchWeek = (entry = {}, season = 1, week = 0, publicationId = publication
 const gameMediaFor = (state = {}, issue = null, season = 1, week = 0) => {
   const assets = list(state.newsroomMediaLibrary);
   const wanted = new Set();
+  const weekPublicationId = publicationIdFor(season, week);
+  assets
+    .filter((asset) => clean(asset?.weekPublicationId, 120) === weekPublicationId)
+    .forEach((asset) => wanted.add(asset.id));
   const frontPage = list(state.postgameFrontPages).find((entry) => matchWeek(entry, season, week));
   if (frontPage?.gamePhotoAssetId) wanted.add(frontPage.gamePhotoAssetId);
   if (frontPage?.player?.headshotAssetId) wanted.add(frontPage.player.headshotAssetId);

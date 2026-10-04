@@ -272,8 +272,29 @@ const newsroomArticleViews = (state = {}, issue = null) => {
 const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
   const library = Array.isArray(state.newsroomMediaLibrary) ? state.newsroomMediaLibrary : [];
   if (!library.length || !issue) return null;
-  const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
 
+  const publicationId = publicationIdFor(issue);
+  const scoped = library
+    .filter((asset) => (
+      asset
+      && !asset.isReference
+      && clean(asset.downloadUrl)
+      && publicationId
+      && clean(asset.weekPublicationId) === publicationId
+    ))
+    .sort((a,b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))[0];
+
+  if (scoped) {
+    return {
+      id: clean(scoped.id),
+      url: clean(scoped.downloadUrl),
+      fileName: clean(scoped.fileName, 'Weekly game photo'),
+      photoType: clean(scoped.photoType, 'general'),
+      source: 'week-game-photo',
+    };
+  }
+
+  const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
   const directIds = [
     article?.mediaAssetId,
     ...(issue.articles || []).map((entry) => entry?.mediaAssetId),
@@ -292,7 +313,6 @@ const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
     }
   }
 
-  const publicationId = publicationIdFor(issue);
   const generated = library
     .filter((asset) => (
       asset

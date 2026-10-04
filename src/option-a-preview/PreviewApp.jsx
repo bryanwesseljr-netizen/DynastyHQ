@@ -41,8 +41,8 @@ import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot } from '../domain/r
 import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
 import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
 import { auth, db, firebaseApp, productionAppId } from '../firebase.js';
-import { uploadNewsroomMedia } from '../services/newsroomMediaStorage.js';
-import { assignNewsroomMedia, createNewsroomMediaAsset, NEWSROOM_MEDIA_ORIGINS } from '../domain/newsroomMedia.js';
+import { deleteNewsroomMedia, uploadNewsroomMedia } from '../services/newsroomMediaStorage.js';
+import { assignLibraryPhotosToEdition, assignNewsroomMedia, createNewsroomMediaAsset, NEWSROOM_MEDIA_ORIGINS } from '../domain/newsroomMedia.js';
 import {
   loadPodcastAudioCloud,
   loadPodcastAudioLocal,
@@ -610,7 +610,7 @@ const defaultPageVisual = (pageId) => ({
   image:playerPhoto,
   position:PAGE_VISUAL_POSITIONS[pageId] || '50%',
   custom:false,
-  mode:pageId==='home'?'auto':'manual',
+  mode:['home','gamehub','newsroom','podcast','chronicle'].includes(pageId)?'auto':'manual',
   autoAvailable:false,
   sourceLabel:'Default player photo',
 });
@@ -1434,13 +1434,15 @@ function App(){
       <div className="career-row">
         <div className="career-copy"><b>ROAD TO GLORY</b><i/>{data.player.name} #{data.player.number}<i/>{data.player.school}</div>
         <div className="selectors">
-          <label>SEASON
-            <select value={season} onChange={e=>chooseSeason(e.target.value)}>
+          <label className="archive-select">SEASON
+            <b>{season}</b>
+            <select aria-label="Season" value={season} onChange={e=>chooseSeason(e.target.value)}>
               {seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}
             </select><ChevronDown size={13}/>
           </label>
-          <label>WEEK
-            <select value={week} onChange={e=>chooseWeek(e.target.value)}>
+          <label className="archive-select">WEEK
+            <b>{week}</b>
+            <select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>
               {weekOptions.map(value=><option key={value} value={value}>{value}</option>)}
             </select><ChevronDown size={13}/>
           </label>
@@ -1449,8 +1451,8 @@ function App(){
       </div>
 
       <div className="mobile-context-row" aria-label="Career archive controls">
-        <label><span>SEASON</span><select value={season} onChange={e=>chooseSeason(e.target.value)}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
-        <label><span>WEEK</span><select value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label className="archive-select"><span>SEASON</span><b>{season}</b><select aria-label="Season" value={season} onChange={e=>chooseSeason(e.target.value)}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label className="archive-select"><span>WEEK</span><b>{week}</b><select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
         <button onClick={()=>setMobileMoreOpen(true)}><Menu/><span>MORE</span></button>
       </div>
 
@@ -1744,6 +1746,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const rtgInputRef=useRef(null);
   const coverageInputRef=useRef(null);
   const officialInputRef=useRef(null);
+  const gamePhotoInputRef=useRef(null);
   const [phase,setPhase]=useState('game');
   const [files,setFiles]=useState([]);
   const [dragging,setDragging]=useState(false);
@@ -1772,6 +1775,13 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [coverageScreens,setCoverageScreens]=useState([]);
   const [coverageError,setCoverageError]=useState('');
   const [coverageSkipped,setCoverageSkipped]=useState(false);
+
+  const [gamePhotos,setGamePhotos]=useState([]);
+  const [gamePhotoError,setGamePhotoError]=useState('');
+  const [gamePhotoUploading,setGamePhotoUploading]=useState(false);
+  const [gamePhotoProgress,setGamePhotoProgress]=useState('');
+  const [gamePhotosSkipped,setGamePhotosSkipped]=useState(false);
+
   const [publishConfirm,setPublishConfirm]=useState(false);
   const [publishing,setPublishing]=useState(false);
   const [publishError,setPublishError]=useState('');
@@ -1795,6 +1805,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     ['review','Review',ShieldCheck],
     ['rtg','RTG Status',Sparkles],
     ['coverage','Coverage',Newspaper],
+    ['photos','Game Photos',Camera],
     ['ready','Process Week',Zap],
   ];
   const phaseIndex=Math.max(0,steps.findIndex(([id])=>id===phase));
@@ -1829,6 +1840,12 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setCoverageScreens([]);
     setCoverageError('');
     setCoverageSkipped(false);
+    revokeFiles(gamePhotos);
+    setGamePhotos([]);
+    setGamePhotoError('');
+    setGamePhotoUploading(false);
+    setGamePhotoProgress('');
+    setGamePhotosSkipped(false);
     setPublishConfirm(false);
     setPublishing(false);
     setPublishError('');
@@ -1868,6 +1885,83 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
       if(target?.url) URL.revokeObjectURL(target.url);
       return current.filter((entry)=>entry.id!==id);
     });
+  };
+
+  const addGamePhotos=(fileList)=>{
+    const selected=[...(fileList||[])].filter((file)=>file?.type?.match(/^image\/(png|jpe?g|webp)$/i)).slice(0,12);
+    if(!selected.length){
+      setGamePhotoError('Choose PNG, JPEG, or WebP game photos.');
+      return;
+    }
+    const mapped=selected.map((file,index)=>({
+      id:`game-photo-${file.name}-${file.size}-${file.lastModified}-${index}`,
+      name:file.name,
+      size:file.size,
+      url:URL.createObjectURL(file),
+      file,
+    }));
+    setGamePhotoError('');
+    setGamePhotosSkipped(false);
+    setGamePhotos((current)=>{
+      const keyed=new Map(current.map((entry)=>[`${entry.name}:${entry.size}:${entry.file?.lastModified||entry.id}`,entry]));
+      mapped.forEach((entry)=>keyed.set(`${entry.name}:${entry.size}:${entry.file?.lastModified||entry.id}`,entry));
+      return [...keyed.values()].slice(0,12);
+    });
+  };
+
+  const removeGamePhoto=(id)=>{
+    setGamePhotos((current)=>{
+      const target=current.find((entry)=>entry.id===id);
+      if(target?.url) URL.revokeObjectURL(target.url);
+      return current.filter((entry)=>entry.id!==id);
+    });
+  };
+
+  const uploadGamePhotoAssets=async({signedInUser,targetPublicationId,targetSeason,targetWeek})=>{
+    if(!gamePhotos.length) return [];
+    const assets=[];
+    setGamePhotoUploading(true);
+    setGamePhotoError('');
+    try{
+      for(let index=0;index<gamePhotos.length;index+=1){
+        const entry=gamePhotos[index];
+        setGamePhotoProgress(`Uploading game photo ${index+1} of ${gamePhotos.length}: ${entry.name}`);
+        const assetId=globalThis.crypto?.randomUUID?.() || `week-game-photo-${targetSeason}-${targetWeek}-${Date.now()}-${index}`;
+        const imageDataUrl=await compressImage(entry.file,2400,0.88);
+        const uploaded=await uploadNewsroomMedia({
+          firebaseApp,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+          assetId,
+          imageDataUrl,
+          fileName:entry.name,
+          origin:NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+        });
+        assets.push(createNewsroomMediaAsset({
+          id:assetId,
+          ...uploaded,
+          fileName:entry.name,
+          origin:NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+          referenceLabel:`Season ${targetSeason} Week ${targetWeek} vs ${data.game?.opponent || 'opponent'} game photo`,
+          careerFolder:String(career.careerPhase || '').toLowerCase().includes('coach')
+            ? 'coaching'
+            : (String(data.game?.stage || '').toLowerCase().includes('high-school') ? 'high-school' : 'college'),
+          allowAutoAssign:true,
+          teamTag:data.player?.school || '',
+          weekPublicationId:targetPublicationId,
+          weekSeason:targetSeason,
+          week:targetWeek,
+          opponent:data.game?.opponent || '',
+        }));
+      }
+      return assets;
+    }catch(error){
+      await Promise.allSettled(assets.map((asset)=>deleteNewsroomMedia({firebaseApp,storagePath:asset.storagePath})));
+      throw error;
+    }finally{
+      setGamePhotoUploading(false);
+      setGamePhotoProgress('');
+    }
   };
 
   const loadSavedDemo=()=>{
@@ -2162,6 +2256,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const coverageApproved=coverageFacts.filter((fact)=>fact.selected && String(fact.value??'').trim()!=='');
   const coverageAdded=coverageApproved.length>0;
   const officialSaved=currentOfficialSaved || officialArticles.length>0;
+  const readyGamePhotoCount=Number(publishResult?.gamePhotoCount ?? gamePhotos.length)||0;
 
   const rtg=data.rtg || {};
   const rtgCards=[
@@ -2283,6 +2378,14 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           let nextState=remote;
           if(newsroomEdition){
             nextState=applyGeneratedNewsroomEdition(nextState,targetPublicationId,newsroomEdition);
+            nextState={
+              ...nextState,
+              newsroomIssues:assignLibraryPhotosToEdition({
+                issues:nextState.newsroomIssues || [],
+                publicationId:targetPublicationId,
+                mediaLibrary:nextState.newsroomMediaLibrary || [],
+              }),
+            };
             const savedIssue=(nextState.newsroomIssues || []).find((issue)=>previewMatchesPublication(
               issue,
               targetPublicationId,
@@ -2395,12 +2498,21 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     const approvedRtgFacts=rtgApproved.map(previewCleanFact);
     const approvedCoverageFacts=coverageApproved.map(previewCleanFact);
     const checkpointId=`before-redesign-${targetPublicationId}-${Date.now()}`;
+    let uploadedGamePhotoAssets=[];
+    let careerWriteCompleted=false;
 
     setPublishing(true);
     setPublishError('');
     setPublishResult(null);
 
     try{
+      uploadedGamePhotoAssets=await uploadGamePhotoAssets({
+        signedInUser,
+        targetPublicationId,
+        targetSeason,
+        targetWeek,
+      });
+
       const result=await runTransaction(db,async(transaction)=>{
         const loaded=await readHydratedCareerInTransaction({
           transaction,
@@ -2555,6 +2667,17 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           articles:officialArticles,
         });
 
+        if(uploadedGamePhotoAssets.length){
+          const existingIds=new Set((nextState.newsroomMediaLibrary || []).map((asset)=>asset?.id).filter(Boolean));
+          nextState={
+            ...nextState,
+            newsroomMediaLibrary:[
+              ...(nextState.newsroomMediaLibrary || []),
+              ...uploadedGamePhotoAssets.filter((asset)=>!existingIds.has(asset.id)),
+            ],
+          };
+        }
+
         const regression=detectDestructiveCareerRegression(remote,nextState);
         if(regression.blocked){
           const error=new Error('DynastyHQ blocked the save because it would remove or roll back published career history. '+regression.reason);
@@ -2660,12 +2783,17 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           rtgFactCount:approvedRtgFacts.length,
           coverageFactCount:approvedCoverageFacts.length,
           officialArticleCount:officialArticles.length,
+          gamePhotoCount:uploadedGamePhotoAssets.length,
           checkpointId,
         };
       });
 
+      careerWriteCompleted=true;
       setPublishResult(result);
       setPublishConfirm(false);
+      revokeFiles(gamePhotos);
+      setGamePhotos([]);
+      setGamePhotosSkipped(false);
       setPublishing(false);
       notify(
         result.action==='updated'
@@ -2678,6 +2806,10 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         targetWeek,
       });
     }catch(error){
+      if(!careerWriteCompleted && uploadedGamePhotoAssets.length){
+        await Promise.allSettled(uploadedGamePhotoAssets.map((asset)=>deleteNewsroomMedia({firebaseApp,storagePath:asset.storagePath})));
+      }
+      setGamePhotoError(error?.message || '');
       setPublishError(error?.message || 'DynastyHQ could not publish this verified week. Nothing was intentionally changed.');
     }finally{
       setPublishing(false);
@@ -2685,8 +2817,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   };
 
   const closeSafe=()=>{
-    if(scanning || rtgScanning || coverageScanning || publishing || coverageRefreshBusy) return;
+    if(scanning || rtgScanning || coverageScanning || gamePhotoUploading || publishing || coverageRefreshBusy) return;
     revokeFiles(files);
+    revokeFiles(gamePhotos);
     onClose();
   };
 
@@ -2921,13 +3054,47 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('rtg')}><ChevronLeft/>RTG STATUS</button>
               {!coverageAdded && <button className="secondary" onClick={()=>{setCoverageSkipped(true);setPhase('ready')}}>SKIP OPTIONAL COVERAGE</button>}
-              <button className="primary" disabled={coverageScanning || officialScanning || (!coverageAdded && !coverageSkipped && !officialSaved)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':officialSaved?'CONTINUE WITH EA ARTICLE':'CONTINUE'}<ChevronRight/></button>
+              <button className="primary" disabled={coverageScanning || officialScanning || (!coverageAdded && !coverageSkipped && !officialSaved)} onClick={()=>setPhase('photos')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':officialSaved?'CONTINUE WITH EA ARTICLE':'CONTINUE'}<ChevronRight/></button>
+            </div>
+          </section>}
+
+          {phase==='photos' && <section className="processing-stage processing-photos">
+            <div className="processing-stage-head">
+              <span>STEP 5 · GAME PHOTOS</span>
+              <h1>BUILD THIS WEEK'S PHOTO POOL.</h1>
+              <p>Add up to 12 screenshots or game photos from this exact matchup. They stay tied to Season {data.season}, Week {game.week} and {game.opponent}, and DynastyHQ will prefer them automatically anywhere this week's imagery is needed.</p>
+            </div>
+
+            <div className="game-photo-boundary"><ShieldCheck/><span><b>STRICT WEEK BOUNDARY</b><small>These photos can auto-fill this week only. They cannot appear in another season or week unless you manually choose one for a specific article.</small></span></div>
+
+            <div className="game-photo-upload-card">
+              <Camera/>
+              <div><span>WEEK {game.week} PHOTO POOL · OPTIONAL</span><h3>{gamePhotos.length ? `${gamePhotos.length} photo${gamePhotos.length===1?'':'s'} ready` : 'Add game photos for this matchup.'}</h3><p>Choose them now. Cloud upload happens only after your final Process Week confirmation.</p></div>
+              <button type="button" disabled={gamePhotoUploading} onClick={()=>gamePhotoInputRef.current?.click()}><Upload/>{gamePhotos.length?'ADD MORE PHOTOS':'CHOOSE GAME PHOTOS'}</button>
+              <input ref={gamePhotoInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{addGamePhotos(event.target.files);event.target.value=''}}/>
+            </div>
+
+            {gamePhotos.length>0 && <div className="game-photo-grid">
+              {gamePhotos.map((entry,index)=><article key={entry.id}>
+                <img src={entry.url} alt={`Week ${game.week} game photo ${index+1}`}/>
+                <span><b>{entry.name}</b><small>Season {data.season} · Week {game.week} · {game.opponent}</small></span>
+                <button type="button" onClick={()=>removeGamePhoto(entry.id)} aria-label={`Remove ${entry.name}`}><X/></button>
+              </article>)}
+            </div>}
+
+            {gamePhotoError && <div className="scanner-error scanner-inline"><Shield/><span>{gamePhotoError}</span></div>}
+            {gamePhotoProgress && <div className="scanner-inline-status"><Upload/><span>{gamePhotoProgress}</span></div>}
+
+            <div className="processing-actions">
+              <button className="secondary" onClick={()=>setPhase('coverage')}><ChevronLeft/>COVERAGE</button>
+              {!gamePhotos.length && <button className="secondary" onClick={()=>{setGamePhotosSkipped(true);setPhase('ready')}}>SKIP GAME PHOTOS</button>}
+              <button className="primary" disabled={gamePhotoUploading} onClick={()=>setPhase('ready')}>{gamePhotos.length?'ACCEPT PHOTO POOL':'CONTINUE WITHOUT PHOTOS'}<ChevronRight/></button>
             </div>
           </section>}
 
           {phase==='ready' && <section className="processing-stage processing-ready">
             <div className="ready-check"><Check/></div>
-            <span className="ready-kicker">STEP 5 · PROCESS WEEK</span>
+            <span className="ready-kicker">STEP 6 · PROCESS WEEK</span>
             <h1>WEEK {game.week} IS READY.</h1>
             <p>Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.</p>
 
@@ -2936,6 +3103,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               <div className={rtgApproved.length?'done':'skipped'}><Sparkles/><span><small>RTG STATUS</small><strong>{rtgApproved.length?`${rtgApproved.length} FACTS READY`:(rtgSkipped?'NO CHANGES':'NOT SCANNED')}</strong></span></div>
               <div className={coverageAdded?'done':'skipped'}><Newspaper/><span><small>COVERAGE DATA</small><strong>{coverageAdded?`${coverageApproved.length} FACTS READY`:'OPTIONAL · SKIPPED'}</strong></span></div>
               <div className={officialSaved?'official':'skipped'}><Shield/><span><small>EA SPORTS NETWORK</small><strong>{officialSaved?'DETECTED':'NOT INCLUDED'}</strong></span></div>
+              <div className={readyGamePhotoCount?'done':'skipped'}><Camera/><span><small>GAME PHOTOS</small><strong>{readyGamePhotoCount?`${readyGamePhotoCount} ${publishResult?'SAVED':'READY'}`:(gamePhotosSkipped?'OPTIONAL · SKIPPED':'NOT INCLUDED')}</strong></span></div>
             </div>
 
             <section className="ready-builds">
@@ -2952,7 +3120,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
             {publishError && <div className="publish-result-card error"><Shield/><span><b>WEEK NOT SAVED</b><small>{publishError}</small></span></div>}
 
-            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts. A safety checkpoint was created before the write.</small></span></div>}
+            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts · {publishResult.gamePhotoCount || 0} game photos. A safety checkpoint was created before the write.</small></span></div>}
 
             {publishResult && coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>BUILDING POSTGAME COVERAGE</b><small>Writing the Newsroom edition and full Podcast transcript from the verified saved week. NotebookLM material updates with the transcript. Audio is not generated here.</small></span></div>}
 

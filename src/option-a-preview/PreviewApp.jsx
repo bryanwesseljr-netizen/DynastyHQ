@@ -5,7 +5,7 @@ import {
   Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, Copy, FileText, Headphones, Home, Image as ImageIcon, Link2, LockKeyhole, Menu,
   Mic2, MoreHorizontal, Newspaper, Pause, Pencil, Play, Search, Share2, Shield, ShieldCheck, Sparkles, Target,
-  TrendingUp, Trophy, Upload, UserRound, X, Zap
+  TrendingUp, Trophy, Trash2, Upload, UserRound, X, Zap
 } from 'lucide-react';
 import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
@@ -413,6 +413,33 @@ const savePreviewViewState = (state) => {
   }
 };
 
+const NOTIFICATION_STATE_STORAGE_PREFIX='dynastyhq-redesign-notifications-v1:';
+
+const loadNotificationState=(scope='guest')=>{
+  if(typeof window==='undefined') return {readIds:{},dismissedIds:{}};
+  try{
+    const saved=JSON.parse(window.localStorage.getItem(NOTIFICATION_STATE_STORAGE_PREFIX+scope) || '{}');
+    return {
+      readIds:saved?.readIds && typeof saved.readIds==='object' ? saved.readIds : {},
+      dismissedIds:saved?.dismissedIds && typeof saved.dismissedIds==='object' ? saved.dismissedIds : {},
+    };
+  }catch{
+    return {readIds:{},dismissedIds:{}};
+  }
+};
+
+const saveNotificationState=(scope='guest',state={})=>{
+  if(typeof window==='undefined') return;
+  try{
+    window.localStorage.setItem(NOTIFICATION_STATE_STORAGE_PREFIX+scope,JSON.stringify({
+      readIds:state?.readIds || {},
+      dismissedIds:state?.dismissedIds || {},
+    }));
+  }catch{
+    // Notification persistence is convenience-only; never interrupt DynastyHQ if browser storage is unavailable.
+  }
+};
+
 const followerViewIdFromLocation = () => {
   if (typeof window === 'undefined') return '';
   return new URLSearchParams(window.location.search).get('follow') || '';
@@ -723,6 +750,7 @@ function App(){
   const [searchOpen,setSearchOpen] = useState(false);
   const [searchQuery,setSearchQuery] = useState('');
   const [notificationsOpen,setNotificationsOpen] = useState(false);
+  const [notificationState,setNotificationState] = useState(()=>loadNotificationState('guest'));
   const [shareUrl,setShareUrl] = useState('');
   const [shareEnabled,setShareEnabled] = useState(false);
   const [shareLastSynced,setShareLastSynced] = useState('');
@@ -731,6 +759,12 @@ function App(){
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
   const scrollRestoredRef=useRef(false);
   const live = useReadOnlyLiveCareer();
+  const notificationScope=live.user?.uid || 'guest';
+
+  useEffect(()=>{
+    setNotificationState(loadNotificationState(notificationScope));
+  },[notificationScope]);
+
   const data = useMemo(
     () => live.career
       ? (derivePreviewData(live.career,{season,week}) || live.data || fallbackData)
@@ -986,16 +1020,19 @@ function App(){
       .map(({item})=>item);
   },[searchItems,searchQuery]);
 
-  const notificationItems=useMemo(()=>{
+  const notificationCandidates=useMemo(()=>{
     const latest=currentCareerData || {};
     const items=[];
     if(live.status!=='connected'){
       items.push({id:'connect',kind:'account',title:'Connect your real DynastyHQ career',detail:'Search, alerts and archive actions become fully career-aware after sign-in.',action:'connect'});
       return items;
     }
+    const seasonId=Number(latest.season)||0;
+    const weekId=Number(latest.week)||0;
+    const weekScope='s'+seasonId+'-w'+weekId;
     if(latest.selection?.isUpcoming){
       items.push({
-        id:'upcoming-week',
+        id:'upcoming-week:'+weekScope,
         kind:'week',
         title:'Week '+latest.week+' vs '+latest.game?.opponent+' is waiting',
         detail:'Play the matchup normally. After the final, Week Processing will capture the verified game packet.',
@@ -1004,7 +1041,7 @@ function App(){
     }
     if(latest.selection?.hasGame && !latest.selection?.hasNewsroom){
       items.push({
-        id:'newsroom-missing',
+        id:'newsroom-missing:'+weekScope,
         kind:'news',
         title:'Newsroom coverage is not attached to the latest saved week',
         detail:'Open the saved week to review its coverage state.',
@@ -1013,7 +1050,7 @@ function App(){
     }
     if(latest.selection?.hasGame && latest.podcast?.segments?.length && !latest.podcast?.audioReady){
       items.push({
-        id:'podcast-audio',
+        id:'podcast-audio:'+weekScope,
         kind:'podcast',
         title:'The Huddle transcript is ready for final audio',
         detail:'Download the NotebookLM source pack or attach the finished master audio in Podcast Studio.',
@@ -1021,7 +1058,7 @@ function App(){
       });
     }else if(latest.selection?.hasGame && !latest.podcast?.segments?.length){
       items.push({
-        id:'podcast-missing',
+        id:'podcast-missing:'+weekScope,
         kind:'podcast',
         title:'The latest saved week has no Podcast transcript',
         detail:'Open The Huddle to review the saved episode state.',
@@ -1029,10 +1066,68 @@ function App(){
       });
     }
     if(latest.offseason?.seasonComplete){
-      items.push({id:'offseason-ready',kind:'offseason',title:'Season review is ready',detail:'The verified season is complete. Review the Off-Season workspace and career decision state.',target:'offseason'});
+      items.push({
+        id:'offseason-ready:s'+seasonId,
+        kind:'offseason',
+        title:'Season review is ready',
+        detail:'The verified season is complete. Review the Off-Season workspace and career decision state.',
+        target:'offseason',
+      });
     }
     return items.slice(0,8);
   },[currentCareerData,live.status]);
+
+  const notificationItems=useMemo(()=>notificationCandidates
+    .filter((item)=>!notificationState.dismissedIds?.[item.id])
+    .map((item)=>({...item,read:Boolean(notificationState.readIds?.[item.id])})),
+  [notificationCandidates,notificationState]);
+
+  const unreadNotificationCount=useMemo(
+    ()=>notificationItems.filter((item)=>!item.read).length,
+    [notificationItems],
+  );
+
+  const updateNotificationState=(updater)=>{
+    setNotificationState((current)=>{
+      const next={
+        readIds:{...(current?.readIds || {})},
+        dismissedIds:{...(current?.dismissedIds || {})},
+      };
+      updater(next);
+      saveNotificationState(notificationScope,next);
+      return next;
+    });
+  };
+
+  const markNotificationRead=(id)=>{
+    if(!id) return;
+    updateNotificationState((next)=>{next.readIds[id]=true;});
+  };
+
+  const markAllNotificationsRead=()=>{
+    if(!notificationItems.length) return;
+    updateNotificationState((next)=>{
+      notificationItems.forEach((item)=>{next.readIds[item.id]=true;});
+    });
+  };
+
+  const deleteNotification=(id)=>{
+    if(!id) return;
+    updateNotificationState((next)=>{
+      next.dismissedIds[id]=true;
+      delete next.readIds[id];
+    });
+  };
+
+  const clearAllNotifications=()=>{
+    if(!notificationItems.length) return;
+    updateNotificationState((next)=>{
+      notificationItems.forEach((item)=>{
+        next.dismissedIds[item.id]=true;
+        delete next.readIds[item.id];
+      });
+    });
+  };
 
   const openUtilityItem=(item)=>{
     setSearchOpen(false);
@@ -1049,6 +1144,11 @@ function App(){
     }
     if(item?.target==='podcast') openPodcast(item.tab || 'episode');
     else go(item?.target || 'home');
+  };
+
+  const openNotificationItem=(item)=>{
+    markNotificationRead(item?.id);
+    openUtilityItem(item);
   };
 
   useEffect(()=>{
@@ -1345,7 +1445,12 @@ function App(){
 
         <div className="header-actions">
           <button className="icon-btn" aria-label="Search DynastyHQ" title="Search DynastyHQ · Ctrl/⌘ K" onClick={()=>{setNotificationsOpen(false);setSearchOpen(true)}}><Search size={19}/></button>
-          <button className={'icon-btn notification-trigger '+(notificationItems.length?'has-alerts':'')} aria-label="Career notifications" onClick={()=>{setSearchOpen(false);setNotificationsOpen(v=>!v)}}><Bell size={19}/>{notificationItems.length>0 && <span>{notificationItems.length}</span>}</button>
+          <button
+            className={'icon-btn notification-trigger '+(unreadNotificationCount?'has-unread':'')}
+            aria-label={'Career notifications, '+unreadNotificationCount+' unread'}
+            title={unreadNotificationCount ? unreadNotificationCount+' unread notification'+(unreadNotificationCount===1?'':'s') : 'No unread notifications'}
+            onClick={()=>{setSearchOpen(false);setNotificationsOpen(v=>!v)}}
+          ><Bell size={19}/>{unreadNotificationCount>0 && <span aria-hidden="true">{unreadNotificationCount>99?'99+':unreadNotificationCount}</span>}</button>
           <button className="icon-btn share-career-trigger" aria-label="Share career" title="Share read-only career follow link" onClick={()=>setShareOpen(true)}><Share2 size={18}/></button>
           <Logo team={data.player.school}/>
           <button className="menu-btn" onClick={()=>setMobileMenu(v=>!v)} aria-label="Menu">{mobileMenu?<X/>:<Menu/>}</button>
@@ -1355,7 +1460,7 @@ function App(){
       <div className={'mobile-drawer '+(mobileMenu?'open':'')}>
         {pages.map(([id,label,Icon])=><button key={id} onClick={()=>go(id)}><Icon size={17}/>{label}</button>)}
         <button onClick={()=>{setMobileMenu(false);setNotificationsOpen(false);setSearchOpen(true)}}><Search size={17}/>Search</button>
-        <button onClick={()=>{setMobileMenu(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell size={17}/>Notifications{notificationItems.length>0?' ('+notificationItems.length+')':''}</button>
+        <button onClick={()=>{setMobileMenu(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell size={17}/>Notifications{unreadNotificationCount>0?' ('+unreadNotificationCount+' unread)':''}</button>
         <button onClick={()=>{setShareOpen(true);setMobileMenu(false)}}><Share2 size={17}/>Share career</button>
         <button className="mobile-visual-entry" onClick={()=>openVisualEditor(page)}><Camera size={17}/>Page photo</button>
       </div>
@@ -1419,7 +1524,7 @@ function App(){
           <button onClick={()=>go('chronicle')}><BookOpen/><span><b>Chronicle</b><small>Full career archive and museum</small></span></button>
           <button onClick={()=>openVisualEditor(page)}><Camera/><span><b>Page photo</b><small>Customize this page’s visual</small></span></button>
           <button onClick={()=>{setMobileMoreOpen(false);setNotificationsOpen(false);setSearchOpen(true)}}><Search/><span><b>Search</b><small>Find games, stories, episodes and milestones</small></span></button>
-          <button onClick={()=>{setMobileMoreOpen(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell/><span><b>Notifications{notificationItems.length?' · '+notificationItems.length:''}</b><small>Current career attention items</small></span></button>
+          <button onClick={()=>{setMobileMoreOpen(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell/><span><b>Notifications{unreadNotificationCount?' · '+unreadNotificationCount+' unread':''}</b><small>{unreadNotificationCount?'Current career attention items':'No unread career alerts'}</small></span></button>
         </div>
         <div className="mobile-more-status"><LockKeyhole/><span><b>Dynasty mode</b><small>Locked during this Road to Glory career</small></span></div>
       </section>
@@ -1445,8 +1550,12 @@ function App(){
     <NotificationPanel
       open={notificationsOpen}
       items={notificationItems}
+      unreadCount={unreadNotificationCount}
       onClose={()=>setNotificationsOpen(false)}
-      onOpen={openUtilityItem}
+      onOpen={openNotificationItem}
+      onDelete={deleteNotification}
+      onMarkAllRead={markAllNotificationsRead}
+      onClearAll={clearAllNotifications}
     />
 
     <WeekProcessingCenter
@@ -1527,7 +1636,7 @@ function GlobalSearchModal({open,query,setQuery,results,onClose,onOpen}){
   </div>;
 }
 
-function NotificationPanel({open,items,onClose,onOpen}){
+function NotificationPanel({open,items,unreadCount,onClose,onOpen,onDelete,onMarkAllRead,onClearAll}){
   if(!open) return null;
   const iconFor=(kind)=>{
     if(kind==='week') return <CalendarDays/>;
@@ -1537,16 +1646,29 @@ function NotificationPanel({open,items,onClose,onOpen}){
     if(kind==='account') return <ShieldCheck/>;
     return <Bell/>;
   };
+  const statusLabel=items.length
+    ? (unreadCount ? unreadCount+' unread · '+items.length+' total' : 'All read · '+items.length+' total')
+    : 'All caught up';
   return <div className="notification-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)onClose()}}>
     <section className="notification-panel" role="dialog" aria-modal="true" aria-label="Career notifications">
       <header><div><span>DYNASTYHQ</span><h2>Career alerts</h2></div><button onClick={onClose} aria-label="Close notifications"><X/></button></header>
-      <p>These are live attention items from the connected career—not fake unread messages.</p>
+      <div className="notification-toolbar">
+        <span>{statusLabel}</span>
+        <div>
+          <button onClick={onMarkAllRead} disabled={!unreadCount} title="Mark every visible notification as read"><Check/>MARK ALL READ</button>
+          <button onClick={onClearAll} disabled={!items.length} title="Delete every visible notification"><Trash2/>CLEAR ALL</button>
+        </div>
+      </div>
+      <p>Live career attention items. Reading or deleting alerts is remembered on this device. Deleting an alert only clears the notification—it does not change your career data.</p>
       <div className="notification-list">
-        {items.length ? items.map((item)=><button key={item.id} onClick={()=>onOpen(item)}>
-          <i>{iconFor(item.kind)}</i>
-          <span><b>{item.title}</b><small>{item.detail}</small></span>
-          <ChevronRight/>
-        </button>) : <div className="notification-empty"><Check/><span><b>Nothing needs your attention.</b><small>Your connected career is caught up.</small></span></div>}
+        {items.length ? items.map((item)=><div key={item.id} className={'notification-item '+(item.read?'is-read':'is-unread')}>
+          <button className="notification-open" onClick={()=>onOpen(item)}>
+            <i>{iconFor(item.kind)}</i>
+            <span><b>{item.title}<em>{item.read?'READ':'NEW'}</em></b><small>{item.detail}</small></span>
+            <ChevronRight/>
+          </button>
+          <button className="notification-delete" onClick={()=>onDelete(item.id)} aria-label={'Delete notification: '+item.title} title="Delete notification"><Trash2/></button>
+        </div>) : <div className="notification-empty"><Check/><span><b>All caught up.</b><small>No unread or saved career alerts.</small></span></div>}
       </div>
     </section>
   </div>;

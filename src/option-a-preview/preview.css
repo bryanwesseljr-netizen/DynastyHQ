@@ -13848,9 +13848,11 @@ select optgroup{
 
 /* Precision match pass v50 — utility workflow batch */
 .notification-trigger{position:relative}
+.notification-trigger.has-unread{color:#fff}
 .notification-trigger>span{
-  position:absolute;top:-4px;right:-5px;min-width:14px;height:14px;display:grid;place-items:center;padding:0 3px;
-  border:2px solid #06261d;border-radius:999px;background:var(--yellow);color:#102019;font-size:6px;font-weight:950
+  position:absolute;z-index:3;top:-8px;right:-9px;min-width:19px;height:19px;display:grid;place-items:center;padding:0 5px;
+  border:2px solid #06261d;border-radius:999px;background:var(--yellow);color:#071812;font-size:8px;font-weight:1000;line-height:1;
+  box-shadow:0 2px 7px rgba(0,0,0,.35)
 }
 .global-search-backdrop,.notification-backdrop{
   position:fixed;inset:0;z-index:145;padding:76px 16px 24px;background:rgba(0,18,13,.73);backdrop-filter:blur(8px)
@@ -13905,30 +13907,58 @@ select optgroup{
 }
 .notification-panel>header span{color:#0a6c50;font-size:5.5px;font-weight:950;letter-spacing:.8px}
 .notification-panel>header h2{margin:2px 0 0;font-family:Georgia,serif;font-size:18px}
+.notification-toolbar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid #d9d5cb;background:#ece9df
+}
+.notification-toolbar>span{color:#436158;font-size:6px;font-weight:950;letter-spacing:.45px;text-transform:uppercase}
+.notification-toolbar>div{display:flex;gap:5px}
+.notification-toolbar button{
+  min-height:27px;display:flex;align-items:center;gap:4px;padding:0 7px;border:1px solid #aeb8b3;border-radius:5px;background:#fffdf8;color:#174c3c;
+  font-size:5.5px;font-weight:950;letter-spacing:.25px
+}
+.notification-toolbar button svg{width:11px}
+.notification-toolbar button:disabled{opacity:.38;cursor:default}
+.notification-toolbar button:not(:disabled):hover{background:#e3ece7}
 .notification-panel>p{
   margin:0;padding:9px 13px;border-bottom:1px solid #ddd8ce;color:#737b77;font-family:Georgia,serif;font-size:6.5px;line-height:1.45
 }
-.notification-list{max-height:calc(100vh - 196px);overflow:auto;padding:6px}
-.notification-list>button{
-  width:100%;display:grid;grid-template-columns:32px minmax(0,1fr) 16px;gap:8px;align-items:center;padding:10px 8px;
-  border:0;border-bottom:1px solid #e0dcd2;background:transparent;color:#173229;text-align:left
+.notification-list{max-height:calc(100vh - 236px);overflow:auto;padding:6px}
+.notification-item{
+  position:relative;display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:stretch;border-bottom:1px solid #e0dcd2
 }
-.notification-list>button:hover{border-radius:6px;background:#e7eee9}
-.notification-list>button>i{
+.notification-item.is-unread{background:#fffdf7}
+.notification-item.is-read{background:rgba(231,235,231,.48)}
+.notification-open{
+  min-width:0;display:grid;grid-template-columns:32px minmax(0,1fr) 16px;gap:8px;align-items:center;padding:10px 8px;
+  border:0;background:transparent;color:#173229;text-align:left
+}
+.notification-item:hover{border-radius:6px;background:#e7eee9}
+.notification-open>i{
   width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:#0b6048;color:#fff
 }
-.notification-list>button>i svg{width:14px}
-.notification-list>button>span{display:grid;gap:2px}
-.notification-list b{font-size:7px}
-.notification-list small{color:#737b77;font-family:Georgia,serif;font-size:6.2px;line-height:1.35}
-.notification-list>button>svg{width:13px}
+.notification-item.is-read .notification-open>i{background:#85948e}
+.notification-open>i svg{width:14px}
+.notification-open>span{min-width:0;display:grid;gap:3px}
+.notification-open b{display:flex;align-items:flex-start;gap:6px;font-size:7px;line-height:1.3}
+.notification-open b em{
+  flex:0 0 auto;margin-top:1px;padding:2px 4px;border-radius:999px;background:#d8dedb;color:#65736d;font-size:4.5px;font-style:normal;font-weight:1000;letter-spacing:.45px
+}
+.notification-item.is-unread .notification-open b em{background:var(--yellow);color:#0a2319}
+.notification-open small{color:#737b77;font-family:Georgia,serif;font-size:6.2px;line-height:1.35}
+.notification-item.is-read .notification-open small{color:#89908d}
+.notification-open>svg{width:13px}
+.notification-delete{
+  align-self:center;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:#8a6a62
+}
+.notification-delete svg{width:13px}
+.notification-delete:hover{background:#f1dfd9;color:#8f3023}
 .notification-empty{
-  min-height:160px;display:grid;grid-template-columns:30px auto;place-content:center;align-items:center;gap:8px;color:#356c59
+  min-height:180px;display:grid;grid-template-columns:30px auto;place-content:center;align-items:center;gap:8px;color:#356c59
 }
 .notification-empty>svg{width:22px}
 .notification-empty>span{display:grid;gap:2px}
 .notification-empty b{font-size:8px}
-.notification-empty small{color:#78827d;font-family:Georgia,serif;font-size:6.5px}
+.notification-empty small{color:#78827d;font-family:Georgia,serif;font-size:6.5px
 .share-career-actions .share-disable{border:1px solid #7e514a;background:#fff9f4;color:#8b3d32}
 .share-career-actions .share-disable svg{width:13px}
 .week-prep-detail{gap:16px}
@@ -14549,4 +14579,13 @@ select optgroup{
 @media(max-width:700px){
   .notebook-actions{display:grid}
   .notebook-actions button{width:100%}
+}
+
+
+/* Precision match pass v53 — notification center clarity */
+@media(max-width:700px){
+  .notification-toolbar{align-items:flex-start;flex-direction:column}
+  .notification-toolbar>div{width:100%}
+  .notification-toolbar button{flex:1;justify-content:center}
+  .notification-list{max-height:calc(86vh - 196px)}
 }

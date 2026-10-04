@@ -65,7 +65,17 @@ test('Week 12 Wisconsin Producer Pack backfills the user-provided screenshot tab
   assert.match(pack.text,/NOTEBOOKLM PRODUCER PACK 2\.0/);
   assert.match(pack.text,/Week: 12/);
   assert.match(pack.text,/Opponent: Wisconsin/);
+  assert.match(pack.text,/AUDIO PRIORITY MAP/);
+  assert.match(pack.text,/GAME AT A GLANCE/);
   assert.match(pack.text,/COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
+  assert.match(pack.text,/AUTHORITATIVE INDIVIDUAL-STAT REFERENCE/);
+  assert.match(pack.text,/## SEASON CONTEXT/);
+  assert.match(pack.text,/### PREVIOUS GAME/);
+  assert.match(pack.text,/### RECENT COMPLETED GAMES/);
+  assert.match(pack.text,/STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT/);
+  assert.match(pack.text,/SOURCE RULES — READ BEFORE GENERATING/);
+  assert.doesNotMatch(pack.text,/## EPISODE FOCUS/);
+  assert.doesNotMatch(pack.text,/## CURRENT GAME — VERIFIED SNAPSHOT/);
 
   assert.match(pack.text,/### PASSING/);
   assert.match(pack.text,/ORE · B\.Wessel — Passer Rating: 201\.6 · Completions: 26 · Attempts: 34 · Passing yards: 334 · Completion %: 76 · Passing TDs: 5 · Interceptions: 1 · AVG \(yards\/attempt\): 9\.8 · Longest completion: 42/);

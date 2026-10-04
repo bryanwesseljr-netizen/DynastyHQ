@@ -26,9 +26,13 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(producer, /TEAM STATISTICAL COMPARISON/);
   assert.match(producer, /SCORING TIMELINE \/ DRIVE DETAILS/);
   assert.match(producer, /COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
-  assert.match(producer, /PREVIOUS-GAME COMPARISON/);
-  assert.match(producer, /RECENT SEASON CONTEXT/);
-  assert.match(producer, /DYNASTYHQ GENERATED TRANSCRIPT — COMPLETE/);
+  assert.match(producer, /AUDIO PRIORITY MAP/);
+  assert.match(producer, /GAME AT A GLANCE/);
+  assert.match(producer, /SEASON CONTEXT/);
+  assert.match(producer, /PREVIOUS GAME/);
+  assert.match(producer, /RECENT COMPLETED GAMES/);
+  assert.match(producer, /STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT/);
+  assert.match(producer, /SOURCE RULES — READ BEFORE GENERATING/);
   assert.doesNotMatch(producer, /RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
   assert.match(producer, /OPENING REQUIREMENT:/);
   assert.match(producer, /Brief Deep Dive/);

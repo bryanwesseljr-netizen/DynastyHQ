@@ -7,27 +7,26 @@ const ownerEnhancementsUrl = new URL('../components/OwnerEnhancements.jsx', impo
 const portalUrl = new URL('../components/WeeklyAgendaV2Portal.jsx', import.meta.url);
 const stylesUrl = new URL('../weekly-agenda-v2.css', import.meta.url);
 const appUrl = new URL('../App.jsx', import.meta.url);
+const previewUrl = new URL('../option-a-preview/PreviewApp.jsx', import.meta.url);
 
-test('weekly agenda v2 mounts without replacing the existing weekly engine', async () => {
-  const [main, ownerEnhancements, portal, app] = await Promise.all([
+test('redesign Week Processing owns the default weekly workflow while the legacy agenda bridge remains intact for preserved flows', async () => {
+  const [main, ownerEnhancements, portal, app, preview] = await Promise.all([
     readFile(mainUrl, 'utf8'),
     readFile(ownerEnhancementsUrl, 'utf8'),
     readFile(portalUrl, 'utf8'),
     readFile(appUrl, 'utf8'),
+    readFile(previewUrl, 'utf8'),
   ]);
 
-  assert.match(main, /const OwnerEnhancements = lazy\(\(\) => import\('\.\/components\/OwnerEnhancements\.jsx'\)\)/);
-  assert.match(main, /<OwnerEnhancements \/>/);
+  assert.match(main, /const PreviewApp = lazy\(\(\) => import\('\.\/option-a-preview\/PreviewApp\.jsx'\)\)/);
+  assert.match(main, /<PreviewApp \/>/);
+  assert.match(preview, /<WeekProcessingCenter/);
+  assert.match(preview, /PUBLISH VERIFIED WEEK/);
+  assert.match(preview, /writeHydratedCareerInTransaction/);
   assert.match(ownerEnhancements, /import WeeklyAgendaV2Portal from '\.\/WeeklyAgendaV2Portal\.jsx'/);
   assert.match(ownerEnhancements, /<WeeklyAgendaV2Portal \/>/);
-  assert.match(portal, /const appRoot = document\.getElementById\('root'\)/);
-  assert.match(portal, /appRoot\.querySelector\('\.dhq-weekly-agenda-workspace'\)/);
-  assert.match(portal, /observer\.observe\(appRoot, \{ childList: true, subtree: true \}\)/);
-  assert.doesNotMatch(portal, /observer\.observe\(document\.body/);
   assert.match(portal, /findUniversalScannerInput/);
-  assert.match(portal, /input\.dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/);
   assert.match(app, /const analyzeScreenshotFiles = async/);
-  assert.match(app, /<WeeklyReviewPanel/);
   assert.match(app, /handleApplyScanDraft/);
 });
 

@@ -44,5 +44,5 @@ test('podcast artwork supports one default show cover with per-episode overrides
   assert.match(source, /DEFAULT SHOW COVER/);
   assert.match(source, /EPISODE COVER/);
   assert.match(source, /USE SHOW COVER/);
-  assert.match(source, /Default show cover \+ optional episode override/);
+  assert.match(source, /Show default \\+ optional weekly override/);
 });

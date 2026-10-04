@@ -25,7 +25,7 @@ test('redesign preview validates the existing master-audio contract and scopes t
   assert.match(source, /new Set\(\['mp3','m4a','wav','aac','ogg'\]\)/);
   assert.match(source, /accept="audio\/mpeg,audio\/mp4,audio\/x-m4a,audio\/wav,audio\/x-wav,audio\/aac,audio\/ogg,\.mp3,\.m4a,\.wav,\.aac,\.ogg"/);
   assert.match(source, /Create this week’s transcript before attaching master audio/);
-  assert.match(source, /Uploads are scoped only to Season/);
+  assert.match(source, /Audio attaches only to Season \{data\.season\}, Week \{game\.week\}/);
 });
 
 test('redesign preview player loads the selected episode audio from local or cloud storage', async () => {
@@ -35,5 +35,5 @@ test('redesign preview player loads the selected episode audio from local or clo
   assert.match(source, /loadPodcastAudioCloud\(\{/);
   assert.match(source, /URL\.createObjectURL\(podcastAudioBlob\(segments\)\)/);
   assert.match(source, /<audio/);
-  assert.match(source, /onEnded=\{\(\)=>setPlaying\(false\)\}/);
+  assert.match(source, /onEnded=\{\(\)=>\{setPlaying\(false\);setAudioCurrentTime\(audioDuration\)\}\}/);
 });

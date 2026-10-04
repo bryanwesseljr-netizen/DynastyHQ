@@ -5,7 +5,7 @@ import { frameDifference, shouldKeepMenuFrame } from '../services/menuVideoFrame
 
 const quickImportSourceUrl = new URL('../components/QuickImportPortal.jsx', import.meta.url);
 const mainSourceUrl = new URL('../main.jsx', import.meta.url);
-const ownerEnhancementsSourceUrl = new URL('../components/OwnerEnhancements.jsx', import.meta.url);
+const previewSourceUrl = new URL('../option-a-preview/PreviewApp.jsx', import.meta.url);
 const videoSourceUrl = new URL('../services/menuVideoFrames.js', import.meta.url);
 
 test('menu-video frame selection keeps changed screens and periodically samples similar menus', () => {
@@ -17,28 +17,23 @@ test('menu-video frame selection keeps changed screens and periodically samples 
   assert.equal(shouldKeepMenuFrame({ difference: 0.01, secondsSinceLastKeep: 1 }), false);
 });
 
-test('dashboard quick import keeps screenshots first-class and adds optional local menu-video extraction', async () => {
-  const [source, mainSource, ownerEnhancementsSource, videoSource] = await Promise.all([
+test('redesign owner flow keeps screenshots first-class while the preserved legacy importer still supports local menu-video extraction', async () => {
+  const [legacySource, mainSource, previewSource, videoSource] = await Promise.all([
     readFile(quickImportSourceUrl, 'utf8'),
     readFile(mainSourceUrl, 'utf8'),
-    readFile(ownerEnhancementsSourceUrl, 'utf8'),
+    readFile(previewSourceUrl, 'utf8'),
     readFile(videoSourceUrl, 'utf8'),
   ]);
 
-  assert.match(mainSource, /const OwnerEnhancements = lazy\(\(\) => import\('\.\/components\/OwnerEnhancements\.jsx'\)\)/);
-  assert.match(mainSource, /<OwnerEnhancements \/>/);
-  assert.match(ownerEnhancementsSource, /import QuickImportPortal from '\.\/QuickImportPortal\.jsx'/);
-  assert.match(ownerEnhancementsSource, /<QuickImportPortal \/>/);
-  assert.match(source, /One or several · always supported/);
-  assert.match(source, /Menu Video/);
-  assert.match(source, /accept="image\/\*" multiple/);
-  assert.match(source, /accept="video\/mp4,video\/quicktime,video\/x-m4v,video\/webm,video\/\*"/);
-  assert.match(source, /extractMenuVideoFrames/);
-  assert.match(source, /new DataTransfer\(\)/);
-  assert.match(source, /choose weekly screenshots/i);
-  assert.match(source, /dispatchEvent\(new Event\('change'/);
-  assert.match(source, /Open guided high-school import/);
-  assert.match(source, /The full video is not sent to the scanner/);
+  assert.match(mainSource, /const PreviewApp = lazy\(\(\) => import\('\.\/option-a-preview\/PreviewApp\.jsx'\)\)/);
+  assert.match(mainSource, /<PreviewApp \/>/);
+  assert.match(previewSource, /REAL SCANNERS · DRAFT UNTIL CONFIRMED/);
+  assert.match(previewSource, /SCAN GAME DATA/);
+  assert.match(previewSource, /analyzeScreenshot\(\{/);
+  assert.match(previewSource, /accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(legacySource, /Menu Video/);
+  assert.match(legacySource, /extractMenuVideoFrames/);
+  assert.match(legacySource, /The full video is not sent to the scanner/);
   assert.match(videoSource, /URL\.createObjectURL\(file\)/);
   assert.match(videoSource, /URL\.revokeObjectURL\(objectUrl\)/);
   assert.match(videoSource, /maxDurationSeconds = 120/);

@@ -2,7 +2,7 @@ const norm=(value)=>String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+
 
 const screenshotValue=(label,value)=>{
   if(typeof value!=='number') return String(value);
-  if(/(^AVG$|average|passer rating|sacks$)/i.test(String(label))) return value.toFixed(1);
+  if(/(\bAVG\b|average|passer rating|sacks$)/i.test(String(label))) return value.toFixed(1);
   return String(value);
 };
 

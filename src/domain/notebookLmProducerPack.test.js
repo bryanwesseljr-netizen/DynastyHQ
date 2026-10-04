@@ -25,6 +25,13 @@ const data={
   state,
   season:4,
   player:{name:'Bryan Wessel',school:'Oregon',pos:'QB'},
+  news:{officialArticles:[{
+    headline:'Statement Win',
+    byline:'EA SPORTS Network',
+    pageLabel:'EA SPORTS NETWORK',
+    body:'Oregon rolled past Wisconsin 59-17 behind a season-high scoring performance.',
+    screenshotUrl:'https://example.com/week-12-ea.jpg',
+  }]},
   game:{
     raw:state.gameLogs[1],
     week:12,opponent:'Wisconsin',result:'W',us:59,them:17,
@@ -67,6 +74,9 @@ test('Week 12 Wisconsin Producer Pack backfills the user-provided screenshot tab
   assert.match(pack.text,/Opponent: Wisconsin/);
   assert.match(pack.text,/AUDIO PRIORITY MAP/);
   assert.match(pack.text,/GAME AT A GLANCE/);
+  assert.match(pack.text,/OFFICIAL IN-GAME MEDIA — EA SPORTS NETWORK/);
+  assert.match(pack.text,/Statement Win/);
+  assert.match(pack.text,/Oregon rolled past Wisconsin 59-17/);
   assert.match(pack.text,/COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
   assert.match(pack.text,/AUTHORITATIVE INDIVIDUAL-STAT REFERENCE/);
   assert.match(pack.text,/## SEASON CONTEXT/);
@@ -112,6 +122,7 @@ test('Week 12 Wisconsin Producer Pack backfills the user-provided screenshot tab
   assert.doesNotMatch(pack.text,/Coach Trust/);
   assert.equal(pack.meta.week,12);
   assert.equal(pack.meta.opponent,'Wisconsin');
+  assert.equal(pack.meta.officialArticleCount,1);
   assert.ok(pack.meta.screenshotBackfillCount>0);
   assert.ok(pack.meta.screenshotStatCount>150);
   assert.equal(pack.meta.suggestedFileName,'DynastyHQ-S4-W12-Wisconsin-NotebookLM-Producer-Pack.txt');

@@ -113,6 +113,27 @@ const previewFileToBase64 = (file) => new Promise((resolve,reject)=>{
   reader.readAsDataURL(file);
 });
 
+const previewAudioDurationForFile = (file) => new Promise((resolve)=>{
+  if(!file || typeof document==='undefined') return resolve(0);
+  const audio=document.createElement('audio');
+  const objectUrl=URL.createObjectURL(file);
+  let settled=false;
+  const finish=(value)=>{
+    if(settled) return;
+    settled=true;
+    window.clearTimeout(timer);
+    audio.removeAttribute('src');
+    audio.load();
+    URL.revokeObjectURL(objectUrl);
+    resolve(Number.isFinite(Number(value))?Number(value):0);
+  };
+  const timer=window.setTimeout(()=>finish(0),12000);
+  audio.preload='metadata';
+  audio.onloadedmetadata=()=>finish(audio.duration);
+  audio.onerror=()=>finish(0);
+  audio.src=objectUrl;
+});
+
 const formatPreviewClock = (seconds) => {
   const safe=Math.max(0,Number(seconds)||0);
   const mins=Math.floor(safe/60);
@@ -356,21 +377,16 @@ const applyCorrectedRtgSnapshot = (state,{publicationId,season,week,facts=[]}) =
 const appendOfficialNetworkArticles = (state,{publicationId,season,week,articles=[]}) => {
   if(!articles.length) return state;
   const current=[...(state.eaSportsNetworkArticles || [])];
-  const signatures=new Set(current.map((entry)=>[
-    entry?.publicationId || '',
-    String(entry?.headline || '').trim().toLowerCase(),
-    String(entry?.body || '').trim().slice(0,160).toLowerCase(),
-  ].join('|')));
-  const additions=articles.flatMap((article,index)=>{
-    const signature=[
-      publicationId,
-      String(article?.headline || '').trim().toLowerCase(),
-      String(article?.body || '').trim().slice(0,160).toLowerCase(),
-    ].join('|');
-    if(signatures.has(signature)) return [];
-    signatures.add(signature);
-    return [{
-      id:`${publicationId}-ea-network-${Date.now()}-${index}`,
+  const signatureFor=(article)=>[
+    article?.publicationId || publicationId || '',
+    String(article?.headline || '').trim().toLowerCase(),
+    String(article?.body || '').trim().slice(0,160).toLowerCase(),
+  ].join('|');
+  const indexBySignature=new Map(current.map((entry,index)=>[signatureFor(entry),index]));
+  let changed=false;
+
+  articles.forEach((article,index)=>{
+    const normalized={
       publicationId,
       season:Number(season)||1,
       week:Number(week)||0,
@@ -378,11 +394,38 @@ const appendOfficialNetworkArticles = (state,{publicationId,season,week,articles
       body:String(article?.body || '').trim(),
       byline:String(article?.byline || '').trim(),
       pageLabel:String(article?.pageLabel || '').trim(),
-      sourceFileName:String(article?.fileName || '').trim(),
-      capturedAt:new Date().toISOString(),
-    }];
+      sourceFileName:String(article?.fileName || article?.sourceFileName || '').trim(),
+      screenshotUrl:String(article?.screenshotUrl || '').trim(),
+      screenshotStoragePath:String(article?.screenshotStoragePath || '').trim(),
+      screenshotMimeType:String(article?.screenshotMimeType || '').trim(),
+      screenshotSizeBytes:Number(article?.screenshotSizeBytes)||0,
+      capturedAt:String(article?.capturedAt || new Date().toISOString()).trim(),
+    };
+    const signature=signatureFor(normalized);
+    const existingIndex=indexBySignature.get(signature);
+    if(existingIndex!==undefined){
+      const existing=current[existingIndex] || {};
+      const merged={
+        ...existing,
+        ...Object.fromEntries(Object.entries(normalized).filter(([,value])=>value!=='' && value!==0)),
+        capturedAt:existing.capturedAt || normalized.capturedAt,
+      };
+      if(JSON.stringify(merged)!==JSON.stringify(existing)){
+        current[existingIndex]=merged;
+        changed=true;
+      }
+      return;
+    }
+    const entry={
+      id:`${publicationId}-ea-network-${Date.now()}-${index}`,
+      ...normalized,
+    };
+    indexBySignature.set(signature,current.length);
+    current.push(entry);
+    changed=true;
   });
-  return additions.length ? {...state,eaSportsNetworkArticles:[...current,...additions]} : state;
+
+  return changed ? {...state,eaSportsNetworkArticles:current} : state;
 };
 
 const loadPreviewViewState = () => {
@@ -1506,7 +1549,7 @@ function App(){
 
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
-      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
+      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
       {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
       {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
@@ -2015,6 +2058,47 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     }
   };
 
+  const uploadOfficialArticleScreenshots=async({signedInUser,targetPublicationId,targetSeason,targetWeek})=>{
+    if(!officialArticles.length) return {articles:[],uploaded:[]};
+    const uploaded=[];
+    const prepared=[];
+    try{
+      for(let index=0;index<officialArticles.length;index+=1){
+        const article=officialArticles[index] || {};
+        const {imageDataUrl,...rest}=article;
+        if(!imageDataUrl){
+          prepared.push(rest);
+          continue;
+        }
+        setOfficialProgress(`Preserving EA SPORTS Network page ${index+1} of ${officialArticles.length}…`);
+        const assetId=globalThis.crypto?.randomUUID?.() || `ea-network-${targetSeason}-${targetWeek}-${Date.now()}-${index}`;
+        const saved=await uploadNewsroomMedia({
+          firebaseApp,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+          assetId,
+          imageDataUrl,
+          fileName:article.fileName || `EA-Sports-Network-S${targetSeason}-W${targetWeek}.jpg`,
+          origin:'ea-sports-network',
+        });
+        uploaded.push(saved);
+        prepared.push({
+          ...rest,
+          screenshotUrl:saved.downloadUrl,
+          screenshotStoragePath:saved.storagePath,
+          screenshotMimeType:saved.mimeType,
+          screenshotSizeBytes:saved.sizeBytes,
+        });
+      }
+      return {articles:prepared,uploaded};
+    }catch(error){
+      await Promise.allSettled(uploaded.map((entry)=>deleteNewsroomMedia({firebaseApp,storagePath:entry.storagePath})));
+      throw error;
+    }finally{
+      setOfficialProgress('');
+    }
+  };
+
   const loadSavedDemo=()=>{
     const demo=[
       ['final-score','Final score'],
@@ -2102,6 +2186,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               body:analysis.officialArticle?.body || '',
               byline:analysis.officialArticle?.byline || '',
               pageLabel:analysis.officialArticle?.pageLabel || '',
+              imageDataUrl:compressedImage,
             });
           }
           const normalized=normalizeGameScreenshotAnalysis({
@@ -2232,6 +2317,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           body:official?.body || '',
           byline:official?.byline || '',
           pageLabel:official?.pageLabel || '',
+          imageDataUrl,
         });
       }
       if(!found.length){
@@ -2550,6 +2636,8 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     const approvedCoverageFacts=coverageApproved.map(previewCleanFact);
     const checkpointId=`before-redesign-${targetPublicationId}-${Date.now()}`;
     let uploadedGamePhotoAssets=[];
+    let uploadedOfficialArticleMedia=[];
+    let publishedOfficialArticles=officialArticles;
     let careerWriteCompleted=false;
 
     setPublishing(true);
@@ -2563,6 +2651,14 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         targetSeason,
         targetWeek,
       });
+      const officialUpload=await uploadOfficialArticleScreenshots({
+        signedInUser,
+        targetPublicationId,
+        targetSeason,
+        targetWeek,
+      });
+      publishedOfficialArticles=officialUpload.articles;
+      uploadedOfficialArticleMedia=officialUpload.uploaded;
 
       const result=await runTransaction(db,async(transaction)=>{
         const loaded=await readHydratedCareerInTransaction({
@@ -2715,7 +2811,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           publicationId:targetPublicationId,
           season:targetSeason,
           week:targetWeek,
-          articles:officialArticles,
+          articles:publishedOfficialArticles,
         });
 
         if(uploadedGamePhotoAssets.length){
@@ -2833,7 +2929,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           gameFactCount:approvedGameFacts.length,
           rtgFactCount:approvedRtgFacts.length,
           coverageFactCount:approvedCoverageFacts.length,
-          officialArticleCount:officialArticles.length,
+          officialArticleCount:publishedOfficialArticles.length,
           gamePhotoCount:uploadedGamePhotoAssets.length,
           checkpointId,
         };
@@ -2859,6 +2955,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     }catch(error){
       if(!careerWriteCompleted && uploadedGamePhotoAssets.length){
         await Promise.allSettled(uploadedGamePhotoAssets.map((asset)=>deleteNewsroomMedia({firebaseApp,storagePath:asset.storagePath})));
+      }
+      if(!careerWriteCompleted && uploadedOfficialArticleMedia.length){
+        await Promise.allSettled(uploadedOfficialArticleMedia.map((entry)=>deleteNewsroomMedia({firebaseApp,storagePath:entry.storagePath})));
       }
       setGamePhotoError(error?.message || '');
       setPublishError(error?.message || 'DynastyHQ could not publish this verified week. Nothing was intentionally changed.');
@@ -3605,11 +3704,13 @@ function ScoreRibbon({data}){
   </div>;
 }
 
-function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,notify}){
+function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,openArchiveMoment,notify}){
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
   const matchup=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
   const seasonTD=(Number(data.totals?.passTD)||0)+(Number(data.totals?.rushTD)||0);
+  const officialStories=Array.isArray(data.news?.officialArticles)?data.news.officialArticles:[];
+  const latestOfficial=officialStories[0] || null;
   return <div className={'page home-page '+(pregame?'pregame-home':'postgame-home')}>
     <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="hero-overlay"/>
@@ -3641,10 +3742,10 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
 
         <div className="hero-actions">
           {pregame ? <>
-            <button className="yellow" onClick={()=>go('gamehub')}><CalendarDays/>Open Week {data.game.week} Hub<ChevronRight/></button>
+            <button className="yellow" onClick={()=>openArchiveMoment(data.season,data.game.week,'gamehub')}><CalendarDays/>Open Week {data.game.week} Hub<ChevronRight/></button>
             <button className="outline" onClick={()=>go('career')}><TrendingUp/>View season progress</button>
           </> : <>
-            <button className="yellow" onClick={openArticle}><CalendarDays/>Open game recap<ChevronRight/></button>
+            <button className="yellow" onClick={()=>openArticle(data.news?.article?.id || '')}><CalendarDays/>Open game recap<ChevronRight/></button>
             <button className="outline" onClick={()=>go('gamehub')}><BarChart3/>View verified stats</button>
           </>}
         </div>
@@ -3665,7 +3766,10 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
           <div><small>WEEK {matchup.week}</small><h3>{matchup.opponent}</h3></div>
         </div>
         <p>{pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'Keep building. Prepare for your next opponent in your career journey.'}</p>
-        <button className="yellow" onClick={()=>go('gamehub')}><CalendarDays/>{pregame?'Open this week':'Prepare next week'}<ChevronRight/></button>
+        <button className="yellow" onClick={()=>pregame
+          ? openArchiveMoment(data.season,data.game.week,'gamehub')
+          : openArchiveMoment(data.next?.season || data.season,data.next?.week,'gamehub')
+        }><CalendarDays/>{pregame?'Open this week':'Prepare next week'}<ChevronRight/></button>
       </article>
 
       <article className="dark-card wrap-card reference-wrap">
@@ -3688,6 +3792,9 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
           <div><h3>{pregame?`WEEK ${data.game.week} COVERAGE AWAITS`:data.news.headline}</h3><p>{pregame?'The Newsroom story and Huddle episode will populate after this game is completed and archived.':data.news.dek}</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/>
         </div>
+        {!pregame && latestOfficial && <button className="home-official-coverage" onClick={()=>go('newsroom')}>
+          <RadioIcon/><span><b>EA SPORTS NETWORK</b><small>{latestOfficial.headline || 'Official in-game coverage'}</small></span><em>OFFICIAL<ChevronRight/></em>
+        </button>}
         <button className={'pod-mini '+(pregame?'pending-media':'')} onClick={()=>pregame?notify('The Huddle will unlock after this week is completed.'):openPodcast('episode')}>
           <img src={podcastEpisodeCover || podcastCover} alt="The Huddle"/>
           <span className="pod-copy"><b>THE HUDDLE</b><small>{pregame?'Episode generates after the final':data.podcast.title}</small><em>{pregame?'WAITING':data.podcast.duration}</em></span>
@@ -3719,6 +3826,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
   const activeOpponent=liveCareerTarget(data);
   const prepIsCurrent=true;
   const verifiedFacts=data.podcast?.sourceFacts || [];
+  const officialStories=Array.isArray(data.news?.officialArticles)?data.news.officialArticles:[];
+  const latestOfficial=officialStories[0] || null;
   const rtg=data.rtg || {};
   const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
   const copyPrepChecklist=async()=>{
@@ -3808,6 +3917,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
           <CoverageRow icon={Newspaper} title="Newsroom edition" sub={pregame?'Generates after the completed week.':'Game recap and analysis.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Newsroom coverage will unlock after the game.'):go('newsroom')}/>
           <CoverageRow icon={Mic2} title="Podcast transcript" sub={pregame?'Generates after the completed week.':'Full episode transcript.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Podcast coverage will unlock after the game.'):openPodcast('transcript')}/>
           <CoverageRow icon={BookOpen} title="NotebookLM pack" sub={pregame?'Generates after the completed week.':'Game files and key moments.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('NotebookLM material will unlock after the game.'):openPodcast('notebook')}/>
+          {!pregame && latestOfficial && <CoverageRow icon={RadioIcon} title="EA SPORTS Network" sub={latestOfficial.headline || 'Official in-game coverage attached.'} status="READY" onClick={()=>go('newsroom')}/>}
           <button className="yellow full" onClick={()=>pregame?notify('Coverage opens after the final is processed.'):go('newsroom')}><Zap/>{pregame?'COVERAGE AFTER GAME':'OPEN COVERAGE'}<ChevronRight/></button>
         </article>
 
@@ -4018,6 +4128,8 @@ function PodcastPage({
   };
   const downloadTranscript=()=>downloadPreviewText(episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt');
   const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
+  const actualAudioDurationSeconds=Number(audioDuration || episode.masterAudioDurationSeconds)||0;
+  const featuredDuration=episode.audioReady && actualAudioDurationSeconds>0 ? formatPreviewClock(actualAudioDurationSeconds) : (episode.duration || '—');
   const hasTranscript=Boolean(episode.segments?.length);
   const masterFileName=episode.masterAudioFileName || '';
   const masterSize=episode.masterAudioSizeBytes ? `${(episode.masterAudioSizeBytes/1024/1024).toFixed(1)} MB` : '';
@@ -4216,6 +4328,7 @@ function PodcastPage({
 
     try{
       await patchMasterEpisode({audioStatus:'uploading-master'});
+      const masterAudioDurationSeconds=await previewAudioDurationForFile(file);
       const dataBase64=await previewFileToBase64(file);
       const mimeType=previewAudioMimeFor(file);
       const piece={
@@ -4251,6 +4364,7 @@ function PodcastPage({
         masterAudioFileName:file.name || 'NotebookLM Audio Overview',
         masterAudioMimeType:mimeType,
         masterAudioSizeBytes:file.size,
+        masterAudioDurationSeconds:masterAudioDurationSeconds>0?Math.round(masterAudioDurationSeconds):0,
         masterAudioUploadedAt:savedAt,
       });
 
@@ -4413,7 +4527,7 @@ function PodcastPage({
           <h2>{episode.title || `Week ${game.week} Recap`}</h2>
           <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
           <div className="pod-embed-meta">
-            <b>{episode.duration || '—'}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
+            <b>{featuredDuration}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
           </div>
         </div>
         <button className="pod-embed-play" onClick={playEpisode} aria-label={playing?'Pause episode':'Play episode'}>
@@ -4434,7 +4548,7 @@ function PodcastPage({
           />}
           <div>
             <span>{episode.audioReady?(audioLoading?'LOADING':playing?'PLAYING':'AUDIO READY'):'SCRIPT ONLY'}</span>
-            <b>{episode.audioReady && audioDuration ? `${formatPreviewClock(audioCurrentTime)} / ${formatPreviewClock(audioDuration)}` : (episode.duration || '—')}</b>
+            <b>{episode.audioReady && actualAudioDurationSeconds ? `${formatPreviewClock(audioCurrentTime)} / ${formatPreviewClock(actualAudioDurationSeconds)}` : featuredDuration}</b>
           </div>
         </div>
         {audioUrl && <audio
@@ -4685,7 +4799,7 @@ function OffseasonPage({data,visual,go,openPodcast,openArticle,notify}){
     <section className="offseason-section offseason-coverage">
       <div className="offseason-section-head"><div><span>SEASON COVERAGE</span><h2>How the season was told</h2></div><Newspaper/></div>
       <div className="offseason-coverage-grid">
-        <article><Newspaper/><span>NEWSROOM · WEEK {data.news.week || data.game.week}</span><strong>{data.news.headline}</strong><p>{data.news.dek}</p><button onClick={openArticle}>READ COVERAGE<ChevronRight/></button></article>
+        <article><Newspaper/><span>NEWSROOM · WEEK {data.news.week || data.game.week}</span><strong>{data.news.headline}</strong><p>{data.news.dek}</p><button onClick={()=>openArticle(data.news?.article?.id || '')}>READ COVERAGE<ChevronRight/></button></article>
         <article><Headphones/><span>THE HUDDLE · WEEK {data.game.week}</span><strong>{data.podcast.title}</strong><p>{data.podcast.summary}</p><button onClick={()=>openPodcast('episode')}>OPEN THE HUDDLE<ChevronRight/></button></article>
         <article><BookOpen/><span>CAREER CHRONICLE</span><strong>Season {o.season || data.season} Archive</strong><p>{data.chronicle?.latestSeason?.entries?.length || 0} saved Chronicle entries are attached to the current season.</p><button onClick={()=>go('chronicle')}>OPEN CHRONICLE<ChevronRight/></button></article>
       </div>
@@ -4852,6 +4966,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   const highRush=careerHigh((g)=>Number(g.rushYds)||0);
   const programs=[...new Set(seasons.map((item)=>item.school).filter(Boolean))];
   const mediaCount=seasons.reduce((sum,item)=>sum+(Number(item.mediaCount)||0),0);
+  const officialMediaCount=allEntries.filter((entry)=>entry?.media?.official).length;
   const activeSeasonNumber=Number(active?.season || activeSeason.season || data.season);
   const activeWeekNumber=Number(active?.week ?? data.week);
 
@@ -4911,6 +5026,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
         <div className="chronicle-media-actions">
           <button onClick={()=>active?.media?.newsroom ? openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom') : notify('No Newsroom edition is attached to this career entry.')}><Newspaper/>READ NEWSROOM</button>
           <button onClick={()=>active?.media?.podcast ? openArchiveMoment(activeSeasonNumber,activeWeekNumber,'podcast','episode') : notify('No podcast episode is attached to this career entry.')}><Headphones/>PLAY THE HUDDLE</button>
+          {active?.media?.official && <button onClick={()=>openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom')}><RadioIcon/>OFFICIAL COVERAGE</button>}
           <button onClick={()=>openArchiveMoment(activeSeasonNumber,activeWeekNumber,'gamehub')}><BarChart3/>OPEN GAME DATA</button>
         </div>
       </div>
@@ -4918,6 +5034,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
         <span>MEMORY STACK</span>
         <article><Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>{active?.media?.newsroom?.headline || 'No article attached'}</strong><p>{active?.media?.newsroom?.dek || 'Newsroom coverage will appear when it exists for this entry.'}</p></div></article>
         <article><Headphones/><div><small>THE HUDDLE</small><strong>{active?.media?.podcast?.title || 'No episode attached'}</strong><p>{active?.media?.podcast ? (active.media.podcast.finished?'Saved episode with audio ready.':'Saved episode/script attached to this week.') : 'Podcast coverage will appear when it exists for this entry.'}</p></div></article>
+        <article className={active?.media?.official?'official-memory':'muted-memory'}><RadioIcon/><div><small>EA SPORTS NETWORK</small><strong>{active?.media?.official?.headline || 'No official article attached'}</strong><p>{active?.media?.official?.summary || 'Official in-game coverage will appear here when it was preserved with the week.'}</p></div></article>
         <article><ImageIcon/><div><small>PHOTO LIBRARY</small><strong>{active?.media?.photos?.length || 0} linked image{active?.media?.photos?.length===1?'':'s'}</strong><p>Career photos remain attached to the week where they were used.</p></div></article>
       </aside>
     </section>
@@ -4927,7 +5044,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
       <div>
         {entries.length ? entries.map((entry,index)=>{
           const id=String(entry.id||entry.publicationId||`entry-${index}`);
-          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>W{entry.week ?? 0}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}<ChevronRight/></button>;
+          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>W{entry.week ?? 0}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}{entry.media?.official?<RadioIcon/>:<i/>}<ChevronRight/></button>;
         }) : <div className="chronicle-empty-state">No Chronicle entries are saved for this season yet.</div>}
       </div>
     </section>
@@ -4950,6 +5067,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
         {museumTab==='media' && <div className="museum-record-grid">
           <article><Newspaper/><strong>{(data.state?.newsroomIssues||[]).length || data.news?.articles?.length || 0}</strong><span>NEWSROOM EDITIONS</span><small>Saved career coverage</small></article>
           <article><Headphones/><strong>{(data.state?.podcastEpisodes||[]).length || 0}</strong><span>HUDDLE EPISODES</span><small>Saved scripts and shows</small></article>
+          <article><RadioIcon/><strong>{officialMediaCount}</strong><span>OFFICIAL ARTICLES</span><small>EA SPORTS Network artifacts</small></article>
           <article><Camera/><strong>{mediaCount}</strong><span>LINKED MEDIA</span><small>Coverage + photos across Chronicle</small></article>
         </div>}
         {museumTab==='stops' && <div className="museum-signature-grid">
@@ -4963,6 +5081,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
 function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const [archiveOpen,setArchiveOpen]=useState(false);
+  const [officialOpen,setOfficialOpen]=useState(null);
   const articlePhotoInputRef=useRef(null);
   const articlePhotoTargetRef=useRef(null);
   const [articlePhotoBusy,setArticlePhotoBusy]=useState(false);
@@ -4992,6 +5111,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
 
   const openSavedStory=(story,label)=>{
     setArchiveOpen(false);
+    setOfficialOpen(null);
     if(!story){
       notify(`No saved ${label} article exists for this edition yet.`);
       return;
@@ -5134,10 +5254,10 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
         <div className="journal-tabs">
-          <button className={!articleOpen&&!archiveOpen?'active':''} onClick={()=>{setArchiveOpen(false);setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
+          <button className={!articleOpen&&!archiveOpen&&!officialOpen?'active':''} onClick={()=>{setArchiveOpen(false);setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
           <button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>
           <button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>
-          <button className={archiveOpen?'active':''} onClick={()=>{setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
+          <button className={archiveOpen?'active':''} onClick={()=>{setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
         </div>
       </header>
 
@@ -5157,6 +5277,14 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
             }) : <div className="newsroom-archive-empty"><Archive/><b>No saved Newsroom editions yet.</b><span>Published editions will collect here automatically.</span></div>}
           </div>
         </section>
+      ) : officialOpen ? (
+        <OfficialCoverageReader
+          story={officialOpen}
+          season={data.season}
+          week={news.week || game.week}
+          opponent={game.opponent}
+          onBack={()=>{setOfficialOpen(null);window.scrollTo({top:0,behavior:'smooth'})}}
+        />
       ) : articleOpen ? (
         <NewsroomArticle
           data={data}
@@ -5207,11 +5335,15 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           {officialStories.length>0 && <section className="ea-network-newsroom">
             <header><RadioIcon/><div><span>OFFICIAL IN-GAME COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} SAVED</b></header>
             <div>
-              {officialStories.map((entry,index)=><article key={entry.id || entry.headline || index}>
-                <span>{entry.pageLabel || 'EA SPORTS NETWORK'}</span>
-                <h3>{entry.headline || 'Official in-game article'}</h3>
-                {(entry.byline || entry.sourceFileName) && <small>{[entry.byline,entry.sourceFileName].filter(Boolean).join(' · ')}</small>}
-                {entry.body && <p>{entry.body}</p>}
+              {officialStories.map((entry,index)=><article key={entry.id || entry.headline || index} className={entry.screenshotUrl?'has-original':''}>
+                {entry.screenshotUrl && <button className="ea-network-thumb" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}} aria-label={'Open original EA SPORTS Network article: '+entry.headline}><img src={entry.screenshotUrl} alt="Original EA SPORTS Network in-game article screenshot"/></button>}
+                <div className="ea-network-card-copy">
+                  <span>{entry.pageLabel || 'EA SPORTS NETWORK'}</span>
+                  <h3>{entry.headline || 'Official in-game article'}</h3>
+                  {entry.byline && <small>{entry.byline}</small>}
+                  {entry.body && <p>{entry.body}</p>}
+                  <button className="ea-network-read" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}}>READ OFFICIAL ARTICLE<ChevronRight/></button>
+                </div>
               </article>)}
             </div>
           </section>}
@@ -5242,6 +5374,33 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
       )}
     </section>
   </div>;
+}
+
+function OfficialCoverageReader({story,season,week,opponent,onBack}){
+  const [showOriginal,setShowOriginal]=useState(false);
+  const body=String(story?.body || '').trim();
+  const paragraphs=body ? body.split(/\n\s*\n/).map((item)=>item.trim()).filter(Boolean) : [];
+  return <section className="ea-official-reader">
+    <div className="ea-official-reader-tools">
+      <button onClick={onBack}><ChevronLeft/>BACK TO FRONT PAGE</button>
+      <span>SEASON {season} · WEEK {week}{opponent?' · VS '+opponent:''}</span>
+      {story?.screenshotUrl && <button className="ea-original-toggle" onClick={()=>setShowOriginal((value)=>!value)}>{showOriginal?<FileText/>:<ImageIcon/>}{showOriginal?'READ FORMATTED ARTICLE':'VIEW ORIGINAL SCREENSHOT'}</button>}
+    </div>
+    <header>
+      <RadioIcon/>
+      <div><span>OFFICIAL IN-GAME COVERAGE</span><b>EA SPORTS NETWORK</b></div>
+    </header>
+    {showOriginal && story?.screenshotUrl ? <figure className="ea-original-artifact">
+      <img src={story.screenshotUrl} alt="Original EA SPORTS Network article captured from College Football 27"/>
+      <figcaption>Original in-game screenshot preserved exactly as uploaded.</figcaption>
+    </figure> : <article className="ea-formatted-article">
+      <span>{story?.pageLabel || 'EA SPORTS NETWORK'}</span>
+      <h1>{story?.headline || 'Official in-game article'}</h1>
+      {story?.byline && <small>{story.byline}</small>}
+      <div>{paragraphs.length ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <p>No extracted article body was saved for this older capture.</p>}</div>
+      {!story?.screenshotUrl && <aside><ImageIcon/><span><b>Original screenshot not preserved on this older import.</b><small>Re-upload this EA SPORTS Network page through Week Processing to attach the authentic game screenshot without creating a duplicate article.</small></span></aside>}
+    </article>}
+  </section>;
 }
 
 function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,onChangeArticlePhoto,articlePhotoBusy,go,openPodcast}){

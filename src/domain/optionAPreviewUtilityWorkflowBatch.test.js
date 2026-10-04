@@ -115,3 +115,40 @@ test('weekly photo resolver remains safe when the selected week has no Newsroom 
   assert.match(source, /\.\.\.\(issue\?\.articles \|\| \[\]\)\.map/);
   assert.doesNotMatch(source, /\.\.\.\(issue\.articles \|\| \[\]\)\.map/);
 });
+
+
+
+test('home next-week action selects the upcoming week before opening Game Hub',()=>{
+  assert.match(source, /openArchiveMoment=\{openArchiveMoment\}/);
+  assert.match(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
+  assert.doesNotMatch(source, /Prepare next week'\}<ChevronRight\/><\/button>\s*\)\s*:\s*null/);
+});
+
+test('Podcast Featured Episode prefers the real master-audio runtime',()=>{
+  assert.match(source, /previewAudioDurationForFile/);
+  assert.match(source, /masterAudioDurationSeconds/);
+  assert.match(source, /const featuredDuration=episode\.audioReady && actualAudioDurationSeconds>0/);
+  assert.match(source, /<b>\{featuredDuration\}<\/b>/);
+});
+
+test('EA SPORTS Network coverage is promoted as a first-class official artifact',()=>{
+  assert.match(source, /uploadOfficialArticleScreenshots/);
+  assert.match(source, /screenshotStoragePath/);
+  assert.match(source, /home-official-coverage/);
+  assert.match(source, /EA SPORTS NETWORK/);
+  assert.match(source, /OfficialCoverageReader/);
+  assert.match(source, /VIEW ORIGINAL SCREENSHOT/);
+  assert.match(source, /OFFICIAL COVERAGE/);
+  assert.match(source, /OFFICIAL ARTICLES/);
+  assert.match(css, /official EA coverage as a first-class career artifact/);
+  assert.match(css, /\.ea-official-reader/);
+  assert.match(css, /\.ea-original-artifact/);
+});
+
+
+test('homepage navigation uses explicit targets and flexible cards',()=>{
+  assert.match(source, /onClick=\{\(\)=>openArticle\(data\.news\?\.article\?\.id \|\| ''\)\}/);
+  assert.match(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
+  assert.match(css, /flexible homepage cards/);
+  assert.match(css, /\.home-page \.reference-newsroom-card\{[\s\S]*height:auto!important/);
+});

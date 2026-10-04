@@ -105,3 +105,22 @@ test('Podcast Studio expands into document flow, keeps the page scrollable, and 
   assert.match(source, /const closeStudio=\(\)=>/);
   assert.match(source, /scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
 });
+
+
+test('official in-game coverage preserves its screenshot and is surfaced across DynastyHQ', async () => {
+  const [source, hook, producer, chronicle, api] = await Promise.all([
+    readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../option-a-preview/useReadOnlyLiveCareer.js', import.meta.url), 'utf8'),
+    readFile(new URL('./notebookLmProducerPack.js', import.meta.url), 'utf8'),
+    readFile(new URL('./careerChronicle2.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../api/newsroom-media.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /screenshotUrl/);
+  assert.match(source, /OFFICIAL IN-GAME COVERAGE/);
+  assert.match(source, /VIEW ORIGINAL SCREENSHOT/);
+  assert.match(source, /EA SPORTS NETWORK/);
+  assert.match(hook, /screenshotStoragePath/);
+  assert.match(producer, /OFFICIAL IN-GAME MEDIA — EA SPORTS NETWORK/);
+  assert.match(chronicle, /screenshotUrl/);
+  assert.match(api, /const mediaNamespace = \(\) => 'dynasty-hq'/);
+});

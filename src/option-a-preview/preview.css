@@ -14589,3 +14589,126 @@ select optgroup{
   .notification-toolbar button{flex:1;justify-content:center}
   .notification-list{max-height:calc(86vh - 196px)}
 }
+
+
+/* Precision match pass v54 — official EA coverage as a first-class career artifact */
+.home-official-coverage{
+  width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:9px;
+  margin:8px 0;padding:9px 10px;border:1px solid #9fb4ac;border-radius:6px;background:#e4ebe7;color:#173e31;text-align:left
+}
+.home-official-coverage>.processing-radio{width:28px;height:28px;padding-bottom:6px;color:#176b52;border-color:#789b8f}
+.home-official-coverage>span{display:grid;gap:2px;min-width:0}
+.home-official-coverage>span>b{font-size:6px;letter-spacing:.8px}
+.home-official-coverage>span>small{overflow:hidden;color:#5f7069;font-family:Georgia,"Times New Roman",serif;font-size:6.4px;text-overflow:ellipsis;white-space:nowrap}
+.home-official-coverage>em{display:flex;align-items:center;gap:3px;color:#176b52;font-size:5.4px;font-style:normal;font-weight:950;letter-spacing:.55px}
+.home-official-coverage>em svg{width:11px}
+
+.ea-network-newsroom article.has-original{
+  display:grid;grid-template-columns:minmax(130px,36%) minmax(0,1fr);gap:0;padding:0;overflow:hidden
+}
+.ea-network-thumb{
+  min-height:100%;padding:0;border:0;border-right:1px solid #c9cfcc;background:#091611;overflow:hidden
+}
+.ea-network-thumb img{width:100%;height:100%;min-height:170px;display:block;object-fit:cover;object-position:center}
+.ea-network-card-copy{min-width:0;padding:11px}
+.ea-network-card-copy>span{
+  color:#477267;font-size:5.2px;font-weight:950;letter-spacing:.7px
+}
+.ea-network-card-copy h3{margin:4px 0;font-family:Georgia,"Times New Roman",serif;font-size:14px;line-height:1.15}
+.ea-network-card-copy small{display:block;color:#78817d;font-size:5.6px}
+.ea-network-card-copy p{
+  display:-webkit-box;margin:7px 0 8px;overflow:hidden;color:#4e5854;font-family:Georgia,"Times New Roman",serif;font-size:7px;line-height:1.5;
+  -webkit-line-clamp:5;-webkit-box-orient:vertical
+}
+.ea-network-read{
+  display:flex;align-items:center;gap:4px;margin-top:8px;padding:0;border:0;background:transparent;color:#116047;
+  font-size:5.7px;font-weight:950;letter-spacing:.45px
+}
+.ea-network-read svg{width:11px}
+
+.ea-official-reader{
+  margin:0;background:#f1eee5;color:#18342a;border-top:1px solid #d7d0c4
+}
+.ea-official-reader-tools{
+  min-height:42px;display:flex;align-items:center;gap:8px;padding:6px 11px;border-bottom:1px solid #d4cec2;background:#e9e5db
+}
+.ea-official-reader-tools>button{
+  min-height:28px;display:flex;align-items:center;gap:4px;padding:0 8px;border:1px solid #aab5af;border-radius:4px;background:#f9f7f1;color:#174c3c;
+  font-size:5.4px;font-weight:950;letter-spacing:.35px
+}
+.ea-official-reader-tools>button svg{width:11px}
+.ea-official-reader-tools>span{margin:auto;color:#68766f;font-size:5.2px;font-weight:900;letter-spacing:.55px}
+.ea-official-reader-tools>.ea-original-toggle{margin-left:auto;background:#0d5c45;color:#fff;border-color:#0d5c45}
+.ea-official-reader>header{
+  display:grid;grid-template-columns:36px minmax(0,1fr);align-items:center;gap:9px;padding:11px 16px;border-bottom:1px solid #cbd1cd;background:#e1e8e4
+}
+.ea-official-reader>header>.processing-radio{width:31px;height:31px;padding-bottom:6px;color:#176b52;border-color:#789b8f}
+.ea-official-reader>header>div{display:grid;gap:1px}
+.ea-official-reader>header span{color:#587169;font-size:5.3px;font-weight:950;letter-spacing:.85px}
+.ea-official-reader>header b{color:#173e31;font:950 16px/1 var(--condensed)}
+
+.ea-formatted-article{
+  width:min(760px,calc(100% - 32px));margin:18px auto 26px;padding:24px 28px;border:1px solid #d1ccc1;border-radius:5px;background:#fffefa;
+  box-shadow:0 8px 24px rgba(30,47,39,.07)
+}
+.ea-formatted-article>span{color:#527269;font-size:5.4px;font-weight:950;letter-spacing:.9px}
+.ea-formatted-article h1{margin:6px 0 8px;color:#172c25;font:700 29px/1.05 Georgia,"Times New Roman",serif}
+.ea-formatted-article>small{display:block;padding-bottom:13px;border-bottom:1px solid #ddd8cf;color:#78817d;font-size:6.2px}
+.ea-formatted-article>div{padding-top:7px}
+.ea-formatted-article p{margin:11px 0;color:#394943;font:400 11px/1.68 Georgia,"Times New Roman",serif}
+.ea-formatted-article aside{
+  display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;align-items:center;margin-top:18px;padding:10px;border:1px dashed #aab6b0;border-radius:5px;background:#eef2ef;color:#4f665e
+}
+.ea-formatted-article aside>svg{width:20px}
+.ea-formatted-article aside>span{display:grid;gap:2px}
+.ea-formatted-article aside b{font-size:6.4px}
+.ea-formatted-article aside small{font:400 6.1px/1.4 Georgia,"Times New Roman",serif}
+
+.ea-original-artifact{
+  margin:18px auto 26px;width:min(1060px,calc(100% - 24px));padding:10px;border:1px solid #aeb9b5;border-radius:6px;background:#13231d
+}
+.ea-original-artifact img{width:100%;display:block;border-radius:3px}
+.ea-original-artifact figcaption{padding:7px 3px 1px;color:#b8c8c1;font-size:5.4px;letter-spacing:.45px;text-align:center}
+
+.chronicle-memory-stack .official-memory{border-color:#9eb2aa;background:#edf2ef}
+.chronicle-memory-stack .official-memory>svg{color:#176b52}
+.chronicle-memory-stack .muted-memory{opacity:.72}
+
+@media(max-width:700px){
+  .home-official-coverage{grid-template-columns:30px minmax(0,1fr);padding:8px}
+  .home-official-coverage>em{grid-column:2}
+  .ea-network-newsroom article.has-original{grid-template-columns:1fr}
+  .ea-network-thumb{border-right:0;border-bottom:1px solid #c9cfcc}
+  .ea-network-thumb img{height:auto;min-height:0;aspect-ratio:16/9;object-fit:cover}
+  .ea-official-reader-tools{align-items:stretch;flex-wrap:wrap}
+  .ea-official-reader-tools>span{order:3;width:100%;text-align:center}
+  .ea-official-reader-tools>.ea-original-toggle{margin-left:auto}
+  .ea-formatted-article{width:calc(100% - 16px);margin:8px auto 16px;padding:17px 15px}
+  .ea-formatted-article h1{font-size:22px}
+  .ea-formatted-article p{font-size:9px}
+  .ea-original-artifact{width:calc(100% - 12px);margin:8px auto 16px;padding:6px}
+}
+
+
+/* Precision match pass v55 — flexible homepage cards */
+@media(min-width:701px){
+  .home-page .home-cards{
+    align-items:stretch!important;
+    grid-auto-rows:auto!important;
+  }
+  .home-page .reference-next-week,
+  .home-page .reference-wrap,
+  .home-page .reference-newsroom-card{
+    height:auto!important;
+    min-height:226px!important;
+    overflow:hidden!important;
+  }
+}
+@media(max-width:700px){
+  .home-page .reference-next-week,
+  .home-page .reference-wrap,
+  .home-page .reference-newsroom-card{
+    height:auto!important;
+    overflow:hidden!important;
+  }
+}

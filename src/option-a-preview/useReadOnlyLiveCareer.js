@@ -213,6 +213,11 @@ const careerOverview = (state = {}) => {
 };
 
 const durationLabel = (episode = {}) => {
+  const masterSeconds = Number(episode.masterAudioDurationSeconds || episode.audioDurationSeconds);
+  if (Number.isFinite(masterSeconds) && masterSeconds > 0) {
+    const rounded = Math.round(masterSeconds);
+    return `${Math.floor(rounded/60)}:${String(rounded%60).padStart(2, '0')}`;
+  }
   const explicit = clean(episode.duration || episode.runtime);
   if (explicit) return explicit;
   const minutes = Number(episode.estimatedMinutes);
@@ -355,6 +360,7 @@ const previousEpisodes = (state, currentEpisode) => [...(state.podcastEpisodes |
     title: clean(entry.title, 'Archived episode'),
     summary: clean(entry.summary),
     duration: durationLabel(entry),
+    masterAudioDurationSeconds: numeric(entry.masterAudioDurationSeconds || entry.audioDurationSeconds, 0),
     audioReady: entry.audioStatus === 'ready',
     coverUrl: clean(entry.coverImageUrl || entry.coverUrl || entry.artworkUrl || entry.imageUrl),
   }));
@@ -465,6 +471,9 @@ export const derivePreviewData = (state, selection = {}) => {
       byline:clean(entry?.byline),
       pageLabel:clean(entry?.pageLabel,'EA SPORTS NETWORK'),
       sourceFileName:clean(entry?.sourceFileName),
+      screenshotUrl:clean(entry?.screenshotUrl || entry?.imageUrl || entry?.sourceImageUrl),
+      screenshotStoragePath:clean(entry?.screenshotStoragePath || entry?.storagePath),
+      screenshotMimeType:clean(entry?.screenshotMimeType || entry?.mimeType),
       capturedAt:clean(entry?.capturedAt),
     }));
   const facts = factsForPublication(state, publicationId, season, week);
@@ -580,6 +589,7 @@ export const derivePreviewData = (state, selection = {}) => {
       title: clean(episode?.title || issue?.podcastBrief?.title, episode ? `Week ${week} episode` : `No Huddle episode saved for Week ${week}`),
       summary: clean(episode?.summary || issue?.podcastBrief?.summary, episode ? 'The saved DynastyHQ episode is tied to this career week.' : 'Choose another saved week to open its podcast episode.'),
       duration: durationLabel(episode || {}),
+      masterAudioDurationSeconds: numeric(episode?.masterAudioDurationSeconds || episode?.audioDurationSeconds, 0),
       estimatedMinutes: numeric(episode?.estimatedMinutes, 0),
       status: clean(episode?.status, episode ? 'scripted' : 'not-generated'),
       audioStatus: clean(episode?.audioStatus, 'not-generated'),

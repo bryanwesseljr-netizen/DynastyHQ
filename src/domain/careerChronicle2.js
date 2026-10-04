@@ -103,7 +103,11 @@ const buildMedia = (state = {}, season = 1, week = 0, issue = null) => {
     official: ['official', 'source'].includes(official.kind) ? {
       publicationId,
       headline: clean(official.entry?.headline, 260),
-      summary: clean(official.entry?.summary, 900),
+      summary: clean(official.entry?.summary || official.entry?.dek || official.entry?.body, 900),
+      body: clean(official.entry?.body, 5000),
+      byline: clean(official.entry?.byline, 220),
+      pageLabel: clean(official.entry?.pageLabel, 220),
+      screenshotUrl: clean(official.entry?.screenshotUrl || official.entry?.imageUrl || official.entry?.sourceImageUrl, 1200),
       outlet: 'EA SPORTS Network',
       kind: official.kind,
     } : null,

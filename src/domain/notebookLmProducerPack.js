@@ -502,6 +502,27 @@ const chapterLines=(episode={})=>{
   }):['No saved chapter list.'];
 };
 
+const officialCoverageLines=(data={})=>{
+  const stories=Array.isArray(data?.news?.officialArticles)?data.news.officialArticles:[];
+  if(!stories.length) return [];
+  return stories.flatMap((story,index)=>{
+    const headline=clean(story?.headline,'Official in-game article');
+    const byline=clean(story?.byline);
+    const pageLabel=clean(story?.pageLabel,'EA SPORTS NETWORK');
+    const body=clean(story?.body);
+    return [
+      '### OFFICIAL ARTICLE '+(index+1),
+      '- Outlet: EA SPORTS Network',
+      '- Page label: '+pageLabel,
+      '- Headline: '+headline,
+      ...(byline?['- Byline: '+byline]:[]),
+      body?'':null,
+      body||'No extracted article body was saved.',
+      '',
+    ].filter((line)=>line!==null);
+  });
+};
+
 const customizePromptFor=(data={})=>{
   const game=data.game||{};
   const school=clean(data?.player?.school,'the current team');
@@ -527,6 +548,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
   const previousGame=previousGameFor(data);
   const storylines=storylinesFor(data,episode,previousGame);
   const recent=recentLines(data);
+  const officialCoverage=officialCoverageLines(data);
   const school=clean(data?.player?.school,'Team');
   const opponent=clean(game.opponent,'Opponent');
   const title=clean(episode.title||rawEpisode.title,school+' Week '+num(game.week,0)+': the game and what it means');
@@ -586,6 +608,12 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     '## SCORING TIMELINE / DRIVE DETAILS',
     ...(scoringLines.length?scoringLines:['No separate verified scoring-summary facts were saved for this week.']),
     '',
+    ...(officialCoverage.length?[
+      '## OFFICIAL IN-GAME MEDIA — EA SPORTS NETWORK',
+      'This is preserved in-game media coverage from College Football 27. Use it as an additional narrative/source perspective, while verified game and stat sections remain authoritative if wording conflicts.',
+      '',
+      ...officialCoverage,
+    ]:[]),
     '## COMPLETE VERIFIED SCREENSHOT STAT TABLES',
     'AUTHORITATIVE INDIVIDUAL-STAT REFERENCE: Every verified individual statistic published from the uploaded game screenshots is preserved below, including visible zero values.',
     'Use these rows as research evidence, not as a read-aloud checklist. The game’s displayed completion percentage is preserved when available and is calculated from verified completions and attempts only as a fallback; passer rating is preserved exactly when it was uploaded.',
@@ -638,6 +666,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
       screenshotStatCount:screenshotStats.statCount,
       screenshotStatCategories:screenshotStats.categoryCounts,
       recentGameCount:recent.length,
+      officialArticleCount:Array.isArray(data?.news?.officialArticles)?data.news.officialArticles.length:0,
       hasTranscript:Boolean(transcript),
       screenshotBackfillCount:screenshotBackfillFacts.length,
       suggestedFileName:'DynastyHQ-S'+num(data.season,1)+'-W'+num(game.week,0)+'-'+safeOpponent+'-NotebookLM-Producer-Pack.txt',

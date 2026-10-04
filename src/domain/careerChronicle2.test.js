@@ -83,6 +83,10 @@ test('Career Chronicle 2.0 builds a schedule-backed season chapter and preserves
       outlet: 'EA SPORTS Network',
       headline: 'Baylor powers past Oregon',
       summary: 'Official in-game coverage preserved from College Football 27.',
+      body: 'Baylor controlled the night from start to finish.',
+      byline: 'EA SPORTS Network Staff',
+      pageLabel: 'College Football',
+      screenshotUrl: 'https://example.com/ea-week-2.jpg',
     }],
     newsroomMediaLibrary: [{
       id: 'week-2-photo',
@@ -104,6 +108,8 @@ test('Career Chronicle 2.0 builds a schedule-backed season chapter and preserves
   assert.ok(chronicle.signatureGames[0].signatureReasons.includes('First recorded college appearance'));
   assert.ok(chronicle.signatureGames[0].signatureReasons.includes('Starting-role chapter began'));
   assert.equal(chronicle.signatureGames[0].media.official.headline, 'Baylor powers past Oregon');
+  assert.equal(chronicle.signatureGames[0].media.official.screenshotUrl, 'https://example.com/ea-week-2.jpg');
+  assert.match(chronicle.signatureGames[0].media.official.body, /controlled the night/);
   assert.equal(chronicle.signatureGames[0].media.newsroom.headline, 'Baylor hands Oregon a road loss');
   assert.equal(chronicle.signatureGames[0].media.podcast.finished, true);
   assert.equal(chronicle.signatureGames[0].media.photos.length, 1);

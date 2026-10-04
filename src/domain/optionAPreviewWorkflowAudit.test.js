@@ -72,11 +72,17 @@ test('EA Sports Network coverage has a dedicated optional upload lane and appear
   assert.match(source, /without mixing it into generated journalism/);
 });
 
-test('Podcast Studio expands into document flow so the page itself remains scrollable', async () => {
-  const css = await readFile(cssUrl, 'utf8');
+test('Podcast Studio expands into document flow, keeps the page scrollable, and returns to its anchor when closed', async () => {
+  const [source, css] = await Promise.all([
+    readFile(sourceUrl, 'utf8'),
+    readFile(cssUrl, 'utf8'),
+  ]);
 
   assert.match(css, /pre-live media, source-pack and Studio cleanup/);
   assert.match(css, /\.pod-owner-drawer\{[\s\S]*position:relative;[\s\S]*max-height:none;[\s\S]*overflow:visible;[\s\S]*display:none;/);
   assert.match(css, /\.pod-owner-drawer\.open\{[\s\S]*display:block;/);
-  assert.match(css, /\.pod-owner-drawer \.pod-studio-title\{[\s\S]*position:static;/);
+  assert.match(css, /\.pod-owner-drawer \.pod-studio-title\{[\s\S]*position:sticky;/);
+  assert.match(source, /const studioAnchorRef=useRef\(null\)/);
+  assert.match(source, /const closeStudio=\(\)=>/);
+  assert.match(source, /scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
 });

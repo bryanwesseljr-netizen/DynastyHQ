@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import './preview.css';
 import { doc, onSnapshot, runTransaction, setDoc } from 'firebase/firestore';
 import {
   Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronLeft, ChevronRight,
@@ -175,6 +176,12 @@ const notebookIsCanonicalStatDuplicate=(fact,data={})=>{
   const factValue=notebookNormalizeToken(fact?.value ?? fact?.displayValue ?? fact?.text ?? '');
   const game=data?.game || {};
   const team=game?.team || {};
+  const school=notebookNormalizeToken(data?.player?.school || '');
+  const opponent=notebookNormalizeToken(game?.opponent || '');
+  const subjectIsCanonicalEntity=!subject
+    || (playerName && (subject===playerName || playerName.includes(subject) || subject.includes(playerName)))
+    || (school && (subject===school || school.includes(subject) || subject.includes(school)))
+    || (opponent && (subject===opponent || opponent.includes(subject) || subject.includes(opponent)));
   const canonicalValues=[
     [/passing yards|pass yards/,game.pass],
     [/passing yards|pass yards/,team.passYards],
@@ -193,7 +200,7 @@ const notebookIsCanonicalStatDuplicate=(fact,data={})=>{
     [/turnovers/,team.turnovers],
     [/turnovers/,team.opponentTurnovers],
   ];
-  if(factValue && canonicalValues.some(([pattern,value])=>(
+  if(subjectIsCanonicalEntity && factValue && canonicalValues.some(([pattern,value])=>(
     value!==null && value!==undefined && value!==''
     && pattern.test(label)
     && notebookNormalizeToken(value)===factValue
@@ -3712,6 +3719,7 @@ function PodcastPage({
   const [audioDuration,setAudioDuration]=useState(0);
   const [masterBusy,setMasterBusy]=useState(false);
   const [studioOpen,setStudioOpen]=useState(false);
+  const studioAnchorRef=useRef(null);
   const audioRef=useRef(null);
   const masterInputRef=useRef(null);
   const showCoverInputRef=useRef(null);
@@ -3806,6 +3814,10 @@ function PodcastPage({
         || document.querySelector('.transcript-paper');
       target?.scrollIntoView({behavior:'smooth',block:'center'});
     },90);
+  };
+  const closeStudio=()=>{
+    setStudioOpen(false);
+    window.requestAnimationFrame(()=>studioAnchorRef.current?.scrollIntoView({behavior:'smooth',block:'start'}));
   };
   const seekEpisode=(nextValue)=>{
     const audio=audioRef.current;
@@ -3999,11 +4011,11 @@ function PodcastPage({
 
   return <div className="page podcast-page podcast-page-v2">
     <section className="pod-show-shell" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
-      <div className="pod-network-bar">
+      <div ref={studioAnchorRef} className="pod-network-bar">
         <span><Mic2/>DYNASTYHQ SPORTS NETWORK</span>
         <div className="pod-network-actions">
           <b>{episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
-          <button type="button" className={studioOpen?'active':''} onClick={()=>setStudioOpen(value=>!value)} aria-expanded={studioOpen}>
+          <button type="button" className={studioOpen?'active':''} onClick={()=>studioOpen?closeStudio():setStudioOpen(true)} aria-expanded={studioOpen}>
             <LockKeyhole/>STUDIO<ChevronDown/>
           </button>
         </div>
@@ -4012,7 +4024,7 @@ function PodcastPage({
       <section className={'pod-owner-drawer '+(studioOpen?'open':'')} aria-hidden={!studioOpen}>
         <div className="pod-studio-title">
           <span><LockKeyhole/>OWNER STUDIO</span>
-          <button type="button" className="pod-owner-close" onClick={()=>setStudioOpen(false)} aria-label="Close owner studio"><X/></button>
+          <button type="button" className="pod-owner-close" onClick={closeStudio} aria-label="Close owner studio"><X/></button>
         </div>
 
         <div className="pod-artwork-controls">

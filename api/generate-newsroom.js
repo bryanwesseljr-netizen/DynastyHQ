@@ -128,6 +128,16 @@ const validatePayload = (body = {}) => {
   const program = body.coveragePlan?.program || {};
   const programGames = Number(program.games) || 0;
   const sharedPlayerPolicy = text(body.coveragePlan?.playerMentionPolicy || coverageDecision.playerMentionPolicy, 80);
+  const officialCoverage = Array.isArray(body.officialCoverage)
+    ? body.officialCoverage.slice(0,4).map((entry,index)=>({
+        id:text(entry?.id || `ea-network-${index+1}`,120),
+        headline:text(entry?.headline,240),
+        body:text(entry?.body,5000),
+        byline:text(entry?.byline,160),
+        pageLabel:text(entry?.pageLabel || 'EA SPORTS NETWORK',120),
+        sourceFileName:text(entry?.sourceFileName,160),
+      })).filter((entry)=>entry.headline || entry.body)
+    : [];
 
   return {
     publicationId: text(body.publicationId, 140),
@@ -174,6 +184,7 @@ const validatePayload = (body = {}) => {
       number: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.number, 20),
       archetype: sharedPlayerPolicy === 'omit' && coverageStage === 'college-player' ? '' : text(body.player?.archetype, 80),
     },
+    officialCoverage,
     facts,
     articleBriefs,
   };
@@ -245,6 +256,13 @@ CENTRAL COLLEGE PHILOSOPHY:
 - The tracked player becomes the story only when his football relevance makes him the story.
 - If coveragePlan.playerMentionPolicy is "omit", do not name or discuss the tracked player at all and do not build a quarterback story around his backup status.
 - Legitimate player events include promotion/demotion, first appearance, meaningful playing time, a start, meaningful production, transfer decision, award, milestone, or another consequential supplied football event.
+
+OFFICIAL IN-GAME COVERAGE:
+- officialCoverage contains optional EA SPORTS Network article text captured from the game.
+- Treat it as an additional editorial source for framing, quotes, and context, not as a replacement for the verified structured facts.
+- Never copy its prose verbatim or mimic its wording closely. Write a fresh DynastyHQ article in the assigned outlet voice.
+- Numeric/stat claims must remain consistent with the verified facts in the packet. If officialCoverage conflicts with structured facts, use the structured facts.
+- Keep EA SPORTS Network coverage visibly separate from DynastyHQ-generated journalism in the product even when it helps inform the generated story.
 
 EDITORIAL SALIENCE:
 - Factual does not automatically mean newsworthy. Lead with consequence, change, tension, performance and meaningful football questions.

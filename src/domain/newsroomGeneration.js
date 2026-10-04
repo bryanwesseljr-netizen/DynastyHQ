@@ -231,6 +231,19 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const facts = sourceFactsFor(state, issue, coverageContext);
   if (!facts.length) throw new Error('This edition has no published football facts available for writing.');
 
+  const officialCoverage = (state.eaSportsNetworkArticles || [])
+    .filter((entry) => matchesPublication(entry, issue.publicationId || issue.id))
+    .slice(-4)
+    .map((entry, index) => ({
+      id: clean(entry?.id, 120) || `ea-network-${index + 1}`,
+      headline: clean(entry?.headline, 240),
+      body: clean(entry?.body, 5000),
+      byline: clean(entry?.byline, 160),
+      pageLabel: clean(entry?.pageLabel, 120) || 'EA SPORTS NETWORK',
+      sourceFileName: clean(entry?.sourceFileName, 160),
+    }))
+    .filter((entry) => entry.headline || entry.body);
+
   const programSchool = clean(
     coverageContext?.program?.school
     || issue?.outletProfile?.school
@@ -326,6 +339,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       number: clean(state.player?.number, 20),
       archetype: clean(state.player?.archetype, 80),
     },
+    officialCoverage,
     facts,
     articleBriefs: cappedBriefs,
   };

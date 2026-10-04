@@ -14040,8 +14040,13 @@ select optgroup{
   transform:none;
   pointer-events:auto;
 }
+.pod-network-bar{
+  scroll-margin-top:72px;
+}
 .pod-owner-drawer .pod-studio-title{
-  position:static;
+  position:sticky;
+  top:58px;
+  z-index:5;
 }
 
 /* Every Newsroom article owns its media assignment independently. */

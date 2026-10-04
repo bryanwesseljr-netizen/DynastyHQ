@@ -46,6 +46,32 @@ test('builds a recruiting-writer brief from current published facts', () => {
   assert.ok(payload.facts.every((fact) => !fact.id.startsWith('undefined')));
 });
 
+test('includes saved EA Sports Network article text as separate editorial context for the generated Newsroom packet', async () => {
+  const withOfficialCoverage = {
+    ...state,
+    eaSportsNetworkArticles: [{
+      id: 'ea-official-1',
+      publicationId,
+      season: 1,
+      week: 0,
+      headline: 'Official game-world headline',
+      body: 'Official in-game coverage body used only as extra editorial context.',
+      byline: 'EA Sports Network',
+      pageLabel: 'EA SPORTS NETWORK',
+      sourceFileName: 'ea-article.png',
+    }],
+  };
+  const payload = buildNewsroomGenerationPayload(withOfficialCoverage, publicationId);
+  assert.equal(payload.officialCoverage.length, 1);
+  assert.equal(payload.officialCoverage[0].headline, 'Official game-world headline');
+  assert.match(payload.officialCoverage[0].body, /extra editorial context/);
+
+  const apiSource = await readFile(new URL('../../api/generate-newsroom.js', import.meta.url), 'utf8');
+  assert.match(apiSource, /const officialCoverage = Array\.isArray\(body\.officialCoverage\)/);
+  assert.match(apiSource, /OFFICIAL IN-GAME COVERAGE/);
+  assert.match(apiSource, /Never copy its prose verbatim/);
+});
+
 test('merges generated editorial copy while preserving article identity and media', () => {
   const payload = buildNewsroomGenerationPayload(state, publicationId);
   const generated = {

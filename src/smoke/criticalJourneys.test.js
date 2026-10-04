@@ -27,9 +27,10 @@ test('smoke: canonical navigation keeps every primary DynastyHQ destination addr
   assert.equal(normalizeNavigationTarget('Offseason War Room'), 'offseason');
 });
 
-test('smoke: owner boot and public read-only routes remain separated and lazy-loaded', async () => {
-  const [main, publicProfile] = await Promise.all([
+test('smoke: redesign owner boot and public read-only routes remain separated and lazy-loaded', async () => {
+  const [main, preview, publicProfile] = await Promise.all([
     readFile(mainUrl, 'utf8'),
+    readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8'),
     readFile(publicProfileUrl, 'utf8'),
   ]);
 
@@ -40,10 +41,12 @@ test('smoke: owner boot and public read-only routes remain separated and lazy-lo
   assert.equal(shared.isReadOnly, true);
   assert.equal(shared.ownerEnhancementsAllowed, false);
 
-  assert.match(main, /const OwnerEnhancements = lazy\(\(\) => import\('\.\/components\/OwnerEnhancements\.jsx'\)\)/);
+  assert.match(main, /const PreviewApp = lazy\(\(\) => import\('\.\/option-a-preview\/PreviewApp\.jsx'\)\)/);
+  assert.match(main, /const PublicShareGuard = lazy\(\(\) => import\('\.\/components\/PublicShareGuard\.jsx'\)\)/);
   assert.match(main, /const PublicNewsroomArticlePage = lazy\(\(\) => import\('\.\/components\/PublicNewsroomArticlePage\.jsx'\)\)/);
   assert.match(main, /const PublicMediaProfilePage = lazy\(\(\) => import\('\.\/components\/PublicMediaProfilePage\.jsx'\)\)/);
-  assert.match(main, /viewContext\.isPublicShare \? <PublicShareGuard \/> : <OwnerEnhancements \/>/);
+  assert.match(main, /viewContext\.isPublicShare \? \([\s\S]*<LegacyPublicShareShell \/>[\s\S]*\) : \([\s\S]*<PreviewApp \/>/);
+  assert.match(preview, /import '\.\/preview\.css';/);
   assert.match(publicProfile, /const GroundedNewsroom = lazy\(\(\) => import\('\.\/GroundedNewsroom'\)\)/);
   assert.match(publicProfile, /const PodcastStudio = lazy\(\(\) => import\('\.\/PodcastStudio'\)\)/);
   assert.match(publicProfile, /readOnly/);

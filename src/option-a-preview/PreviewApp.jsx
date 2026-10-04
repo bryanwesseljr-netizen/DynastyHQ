@@ -3729,7 +3729,10 @@ const liveCareerTarget=(data)=>{
     ? seasonSchedule.entries
     : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
   const scheduled=entries.find((entry)=>Number(entry?.week)===week) || null;
-  const isBye=Boolean(setup.isBye || scheduled?.isBye);
+  // The season schedule is the authoritative source for the active week.
+  // currentWeekSetup can lag behind after schedule/week updates, so only
+  // fall back to it when no schedule row exists for the live week.
+  const isBye=scheduled ? Boolean(scheduled.isBye) : Boolean(setup.isBye);
   const selectedIsLive=Number(data?.season)===season && Number(data?.week)===week;
   const fallbackOpponent=selectedIsLive
     ? data?.game?.opponent
@@ -3738,7 +3741,7 @@ const liveCareerTarget=(data)=>{
     season,
     week,
     isBye,
-    opponent:String(setup.opponent || scheduled?.opponent || fallbackOpponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
+    opponent:String(scheduled?.opponent || setup.opponent || fallbackOpponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
   };
 };
 

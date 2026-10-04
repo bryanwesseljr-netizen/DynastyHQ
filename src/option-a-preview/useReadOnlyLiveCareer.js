@@ -269,11 +269,11 @@ const newsroomArticleViews = (state = {}, issue = null) => {
   });
 };
 
-const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
+const weeklyNewsroomPhoto = (state = {}, issue = null, article = null, fallbackPublicationId = '') => {
   const library = Array.isArray(state.newsroomMediaLibrary) ? state.newsroomMediaLibrary : [];
-  if (!library.length || !issue) return null;
+  if (!library.length) return null;
 
-  const publicationId = publicationIdFor(issue);
+  const publicationId = publicationIdFor(issue) || clean(fallbackPublicationId);
   const scoped = library
     .filter((asset) => (
       asset
@@ -449,7 +449,7 @@ export const derivePreviewData = (state, selection = {}) => {
     ? exactEpisodeFor(state, issue, season, week)
     : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
-  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle);
+  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle, publicationId);
   const officialArticles = (state.eaSportsNetworkArticles || [])
     .filter((entry)=>(
       (publicationId && publicationIdFor(entry)===publicationId)

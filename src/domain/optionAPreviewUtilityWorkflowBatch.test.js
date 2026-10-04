@@ -82,3 +82,12 @@ test('Week Processing exposes a strict week-scoped Game Photos lane and full-box
   assert.match(css, /inset:0!important/);
   assert.match(css, /\.game-photo-grid/);
 });
+
+
+test('week photo fallback does not depend on Newsroom generation succeeding', async () => {
+  const source = await readFile(new URL('../option-a-preview/useReadOnlyLiveCareer.js', import.meta.url), 'utf8');
+
+  assert.match(source, /weeklyNewsroomPhoto = \(state = \{\}, issue = null, article = null, fallbackPublicationId = ''\)/);
+  assert.match(source, /publicationIdFor\(issue\) \|\| clean\(fallbackPublicationId\)/);
+  assert.match(source, /weeklyNewsroomPhoto\(state, issue, rawArticle, publicationId\)/);
+});

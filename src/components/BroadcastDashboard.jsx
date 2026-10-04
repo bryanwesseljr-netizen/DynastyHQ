@@ -123,7 +123,10 @@ const BroadcastDashboard = ({ state = {}, onNavigate, readOnly = false }) => {
   const gameDate = formatDate(latestGame?.publishedAt || latestGame?.date || latestGame?.occurredAt);
   const stageLabel = model.stage === 'OC' ? 'OFFENSIVE COORDINATOR' : model.stage === 'HC' ? 'HEAD COACH' : model.stage === 'Retired' ? 'LEGACY' : display(player.pos, 'PLAYER');
   const open = (target, detail = {}) => {
-    if (requestNavigation(target, detail)) return;
+    const hasDetail = Boolean(detail && Object.keys(detail).length);
+    if (!hasDetail) {
+      if (requestNavigation(target)) return;
+    } else if (requestNavigation(target, detail)) return;
     onNavigate?.(target, detail);
   };
   const upcomingSiteLabel = immersion.upcomingGame?.homeAway === 'home'

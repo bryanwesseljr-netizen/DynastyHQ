@@ -1,3 +1,5 @@
+import { notebookLegacyScreenshotFacts } from './notebookLegacyScreenshotBackfill.js';
+
 const clean=(value,fallback='')=>{
   const text=String(value ?? '').trim();
   return text || fallback;
@@ -223,7 +225,8 @@ const screenshotStatCategory=(parts={},fact={},qbEntities=new Set())=>{
 const canonicalStatLabel=(category,label)=>{
   const normalized=norm(label);
   if(category==='PASSING'){
-    if(/^(rtg|passer rating)$/.test(normalized)||/passer rating/.test(normalized)) return 'RTG (Passer Rating)';
+    if(/^(rating|rtg|passer rating)$/.test(normalized)||/passer rating/.test(normalized)) return 'Passer Rating';
+    if(/completion|comp pct|comp percent/.test(normalized)) return 'Completion %';
     if(normalized==='avg'||/yards attempt|passing average/.test(normalized)) return 'AVG (yards/attempt)';
     if(/^(att|attempts?)$/.test(normalized)) return 'Attempts';
     if(/^(cmp|comp|completions?)$/.test(normalized)) return 'Completions';
@@ -232,7 +235,7 @@ const canonicalStatLabel=(category,label)=>{
     if(/^(att|attempts?|carries)$/.test(normalized)) return 'ATT (Carries)';
     if(normalized==='avg'||/yards carry|rushing average/.test(normalized)) return 'AVG (yards/carry)';
     if(normalized==='btk'||/broken tackles?/.test(normalized)) return 'BTK (Broken tackles)';
-    if(normalized==='fum'||/^fumbles?$/.test(normalized)) return 'FUM (Fumbles)';
+    if(normalized==='fum'||normalized==='fumb'||/^fumbles?$/.test(normalized)) return 'FUMB (Fumbles)';
     if(normalized==='yac'||/yards after carry/.test(normalized)) return 'YAC';
     if(/20\+\s*yds|20 plus/.test(normalized)) return '20+ YDS';
   }
@@ -246,9 +249,9 @@ const canonicalStatLabel=(category,label)=>{
 };
 
 const completionPercentage=(details=[])=>{
-  const byLabel=new Map(details.map((detail)=>[norm(detail.label),detail]));
-  const existing=byLabel.get('completion %')||byLabel.get('completion percentage')||byLabel.get('completion pct');
+  const existing=details.find((detail)=>/completion\s*%|completion percentage|comp\s*%|comp pct/i.test(clean(detail.label)));
   if(existing) return '';
+  const byLabel=new Map(details.map((detail)=>[norm(detail.label),detail]));
   const completions=Number(byLabel.get('completions')?.value);
   const attempts=Number(byLabel.get('attempts')?.value);
   if(!Number.isFinite(completions)||!Number.isFinite(attempts)||attempts<=0) return '';
@@ -518,7 +521,8 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
   const game=data.game||{};
   const rawEpisode=episode?.episode||episode||{};
   const transcript=clean(episode.transcript||rawEpisode.transcript);
-  const usable=uniqueFacts((facts||[]).filter((fact)=>!isRtgFact(fact)));
+  const screenshotBackfillFacts=notebookLegacyScreenshotFacts(data);
+  const usable=uniqueFacts([...(facts||[]),...screenshotBackfillFacts].filter((fact)=>!isRtgFact(fact)));
   const scoringFacts=uniqueFacts(usable.filter((fact)=>isScoringFact(fact)&&!isCanonicalDuplicate(fact,data)));
   const scoringLines=scoringLinesFor(scoringFacts);
   const screenshotStats=organizedScreenshotStats(usable);
@@ -640,6 +644,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
       screenshotStatCategories:screenshotStats.categoryCounts,
       recentGameCount:recent.length,
       hasTranscript:Boolean(transcript),
+      screenshotBackfillCount:screenshotBackfillFacts.length,
       suggestedFileName:'DynastyHQ-S'+num(data.season,1)+'-W'+num(game.week,0)+'-'+safeOpponent+'-NotebookLM-Producer-Pack.txt',
     },
   };

@@ -17,6 +17,7 @@ import { analyzeRtgStatusScreenshot } from '../services/rtgStatusScannerClient.j
 import { analyzeCoverageReference } from '../services/coverageReferenceClient.js';
 import { compressImage } from '../services/imageCompression.js';
 import { createFailedScreenshotResult, normalizeScreenshotAnalysis as normalizeGameScreenshotAnalysis } from '../domain/screenshotAnalysis.js';
+import { mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
 import {
   correctPublishedWeek,
   createEmptyScanDraft,
@@ -399,6 +400,8 @@ const appendOfficialNetworkArticles = (state,{publicationId,season,week,articles
       screenshotStoragePath:String(article?.screenshotStoragePath || '').trim(),
       screenshotMimeType:String(article?.screenshotMimeType || '').trim(),
       screenshotSizeBytes:Number(article?.screenshotSizeBytes)||0,
+      pageCount:Number(article?.pageCount)||0,
+      sourcePages:Array.isArray(article?.sourcePages)?article.sourcePages:[],
       capturedAt:String(article?.capturedAt || new Date().toISOString()).trim(),
     };
     const signature=signatureFor(normalized);
@@ -2063,31 +2066,64 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     const uploaded=[];
     const prepared=[];
     try{
-      for(let index=0;index<officialArticles.length;index+=1){
-        const article=officialArticles[index] || {};
-        const {imageDataUrl,...rest}=article;
-        if(!imageDataUrl){
-          prepared.push(rest);
-          continue;
+      for(let articleIndex=0;articleIndex<officialArticles.length;articleIndex+=1){
+        const article=officialArticles[articleIndex] || {};
+        const sourcePages=Array.isArray(article.sourcePages) && article.sourcePages.length
+          ? article.sourcePages
+          : [{
+            pageNumber:1,
+            fileName:article.fileName || article.sourceFileName || '',
+            body:article.body || '',
+            imageDataUrl:article.imageDataUrl || '',
+            screenshotUrl:article.screenshotUrl || '',
+            screenshotStoragePath:article.screenshotStoragePath || '',
+            screenshotMimeType:article.screenshotMimeType || '',
+            screenshotSizeBytes:Number(article.screenshotSizeBytes)||0,
+          }];
+        const savedPages=[];
+
+        for(let pageIndex=0;pageIndex<sourcePages.length;pageIndex+=1){
+          const page=sourcePages[pageIndex] || {};
+          const {imageDataUrl:pageImageDataUrl,...pageWithoutImageData}=page;
+          if(pageImageDataUrl){
+            setOfficialProgress(`Preserving EA SPORTS Network page ${pageIndex+1} of ${sourcePages.length}…`);
+            const assetId=globalThis.crypto?.randomUUID?.() || `ea-network-${targetSeason}-${targetWeek}-${Date.now()}-${articleIndex}-${pageIndex}`;
+            const saved=await uploadNewsroomMedia({
+              firebaseApp,
+              appId:productionAppId,
+              userId:signedInUser.uid,
+              assetId,
+              imageDataUrl:pageImageDataUrl,
+              fileName:page.fileName || `EA-Sports-Network-S${targetSeason}-W${targetWeek}-P${pageIndex+1}.jpg`,
+              origin:'ea-sports-network',
+            });
+            uploaded.push(saved);
+            savedPages.push({
+              ...pageWithoutImageData,
+              pageNumber:pageIndex+1,
+              screenshotUrl:saved.downloadUrl,
+              screenshotStoragePath:saved.storagePath,
+              screenshotMimeType:saved.mimeType,
+              screenshotSizeBytes:saved.sizeBytes,
+            });
+          }else{
+            savedPages.push({...pageWithoutImageData,pageNumber:pageIndex+1});
+          }
         }
-        setOfficialProgress(`Preserving EA SPORTS Network page ${index+1} of ${officialArticles.length}…`);
-        const assetId=globalThis.crypto?.randomUUID?.() || `ea-network-${targetSeason}-${targetWeek}-${Date.now()}-${index}`;
-        const saved=await uploadNewsroomMedia({
-          firebaseApp,
-          appId:productionAppId,
-          userId:signedInUser.uid,
-          assetId,
-          imageDataUrl,
-          fileName:article.fileName || `EA-Sports-Network-S${targetSeason}-W${targetWeek}.jpg`,
-          origin:'ea-sports-network',
-        });
-        uploaded.push(saved);
+
+        const merged=mergeOfficialCoveragePages([{
+          ...article,
+          sourcePages:savedPages,
+        }]) || article;
+        const firstImage=savedPages.find((page)=>page.screenshotUrl) || {};
         prepared.push({
-          ...rest,
-          screenshotUrl:saved.downloadUrl,
-          screenshotStoragePath:saved.storagePath,
-          screenshotMimeType:saved.mimeType,
-          screenshotSizeBytes:saved.sizeBytes,
+          ...merged,
+          pageCount:savedPages.length,
+          sourcePages:savedPages,
+          screenshotUrl:firstImage.screenshotUrl || merged.screenshotUrl || '',
+          screenshotStoragePath:firstImage.screenshotStoragePath || merged.screenshotStoragePath || '',
+          screenshotMimeType:firstImage.screenshotMimeType || merged.screenshotMimeType || '',
+          screenshotSizeBytes:Number(firstImage.screenshotSizeBytes || merged.screenshotSizeBytes)||0,
         });
       }
       return {articles:prepared,uploaded};
@@ -2217,7 +2253,8 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         .map((fact)=>({...fact,selected:true}));
       setScanDraft(draft);
       setReviewRows(rows);
-      setOfficialArticles(official);
+      const mergedOfficial=mergeOfficialCoveragePages(official);
+      setOfficialArticles(mergedOfficial?[mergedOfficial]:[]);
       const failed=(draft.sources || []).filter((source)=>source.error).length;
       if(!rows.length && !official.length){
         setScanError(failed ? `No reliable game facts were found; ${failed} screen${failed===1?'':'s'} failed.` : 'No reliable game facts were found. Try tighter screenshots.');
@@ -2325,18 +2362,11 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         return;
       }
       setOfficialArticles((current)=>{
-        const bySignature=new Map();
-        [...current,...found].forEach((entry)=>{
-          const signature=[
-            String(entry?.headline || '').trim().toLowerCase(),
-            String(entry?.body || '').trim().slice(0,160).toLowerCase(),
-          ].join('|');
-          bySignature.set(signature,entry);
-        });
-        return [...bySignature.values()];
+        const merged=mergeOfficialCoveragePages([...current,...found]);
+        return merged?[merged]:[];
       });
       setCoverageSkipped(false);
-      notify(found.length===1 ? 'EA Sports Network article added to this week’s packet.' : found.length+' EA Sports Network article pages added.');
+      notify(found.length===1 ? 'EA Sports Network article page added.' : found.length+' EA Sports Network pages stitched into one article.');
     }catch(error){
       setOfficialError(error?.message || 'The EA Sports Network article could not be scanned.');
     }finally{
@@ -3187,8 +3217,8 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               <div>
                 <span>EA SPORTS NETWORK · OPTIONAL</span>
                 <h3>{officialSaved?'Official in-game coverage is attached to this week.':'Add the in-game EA Sports Network article.'}</h3>
-                <p>Upload the article page here. DynastyHQ preserves it as official source coverage in the Newsroom without mixing it into generated journalism.</p>
-                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'}</small>)}</div>}
+                <p>Upload every screenshot page for the same EA SPORTS Network article at once, in reading order. DynastyHQ stitches the visible text into one recap, removes overlap, and preserves each original page.</p>
+                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'} · {entry.pageCount || entry.sourcePages?.length || 1} PAGE{(entry.pageCount || entry.sourcePages?.length || 1)===1?'':'S'}</small>)}</div>
                 {officialProgress && <em className="official-upload-progress">{officialProgress}</em>}
                 {officialError && <em className="official-upload-error">{officialError}</em>}
               </div>
@@ -5388,8 +5418,10 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           {officialStories.length>0 && <section className="ea-network-newsroom">
             <header><RadioIcon/><div><span>OFFICIAL IN-GAME COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} SAVED</b></header>
             <div>
-              {officialStories.map((entry,index)=><article key={entry.id || entry.headline || index} className={entry.screenshotUrl?'has-original':''}>
-                {entry.screenshotUrl && <button className="ea-network-thumb" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}} aria-label={'Open original EA SPORTS Network article: '+entry.headline}><img src={entry.screenshotUrl} alt="Original EA SPORTS Network in-game article screenshot"/></button>}
+              {officialStories.map((entry,index)=>{
+                const cardScreenshot=entry.screenshotUrl || entry.sourcePages?.find((page)=>page?.screenshotUrl)?.screenshotUrl || '';
+                return <article key={entry.id || entry.headline || index} className={cardScreenshot?'has-original':''}>
+                {cardScreenshot && <button className="ea-network-thumb" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}} aria-label={'Open original EA SPORTS Network article: '+entry.headline}><img src={cardScreenshot} alt="Original EA SPORTS Network in-game article screenshot"/></button>}
                 <div className="ea-network-card-copy">
                   <span>{entry.pageLabel || 'EA SPORTS NETWORK'}</span>
                   <h3>{entry.headline || 'Official in-game article'}</h3>
@@ -5397,7 +5429,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
                   {entry.body && <p>{entry.body}</p>}
                   <button className="ea-network-read" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}}>READ OFFICIAL ARTICLE<ChevronRight/></button>
                 </div>
-              </article>)}
+              </article>})}
             </div>
           </section>}
 
@@ -5431,27 +5463,41 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
 
 function OfficialCoverageReader({story,season,week,opponent,onBack}){
   const [showOriginal,setShowOriginal]=useState(false);
+  const [originalPage,setOriginalPage]=useState(0);
   const body=String(story?.body || '').trim();
   const paragraphs=body ? body.split(/\n\s*\n/).map((item)=>item.trim()).filter(Boolean) : [];
+  const sourcePages=Array.isArray(story?.sourcePages)?story.sourcePages:[];
+  const originalPages=sourcePages.filter((page)=>page?.screenshotUrl);
+  if(!originalPages.length && story?.screenshotUrl){
+    originalPages.push({pageNumber:1,screenshotUrl:story.screenshotUrl});
+  }
+  const currentOriginal=originalPages[Math.min(originalPage,Math.max(0,originalPages.length-1))] || null;
   return <section className="ea-official-reader">
     <div className="ea-official-reader-tools">
       <button onClick={onBack}><ChevronLeft/>BACK TO FRONT PAGE</button>
-      <span>SEASON {season} · WEEK {week}{opponent?' · VS '+opponent:''}</span>
-      {story?.screenshotUrl && <button className="ea-original-toggle" onClick={()=>setShowOriginal((value)=>!value)}>{showOriginal?<FileText/>:<ImageIcon/>}{showOriginal?'READ FORMATTED ARTICLE':'VIEW ORIGINAL SCREENSHOT'}</button>}
+      <span>SEASON {season} · WEEK {week}{opponent?' · VS '+opponent:''}{story?.pageCount>1?' · '+story.pageCount+' SOURCE PAGES':''}</span>
+      {originalPages.length>0 && <button className="ea-original-toggle" onClick={()=>setShowOriginal((value)=>!value)}>{showOriginal?<FileText/>:<ImageIcon/>}{showOriginal?'READ FORMATTED ARTICLE':'VIEW ORIGINAL SCREENSHOTS'}</button>}
     </div>
     <header>
       <RadioIcon/>
       <div><span>OFFICIAL IN-GAME COVERAGE</span><b>EA SPORTS NETWORK</b></div>
     </header>
-    {showOriginal && story?.screenshotUrl ? <figure className="ea-original-artifact">
-      <img src={story.screenshotUrl} alt="Original EA SPORTS Network article captured from College Football 27"/>
-      <figcaption>Original in-game screenshot preserved exactly as uploaded.</figcaption>
-    </figure> : <article className="ea-formatted-article">
+    {showOriginal && currentOriginal ? <div className="ea-original-gallery">
+      {originalPages.length>1 && <nav>
+        <button disabled={originalPage<=0} onClick={()=>setOriginalPage((page)=>Math.max(0,page-1))}><ChevronLeft/>PREVIOUS</button>
+        <span>PAGE {originalPage+1} OF {originalPages.length}</span>
+        <button disabled={originalPage>=originalPages.length-1} onClick={()=>setOriginalPage((page)=>Math.min(originalPages.length-1,page+1))}>NEXT<ChevronRight/></button>
+      </nav>}
+      <figure className="ea-original-artifact">
+        <img src={currentOriginal.screenshotUrl} alt={'Original EA SPORTS Network article page '+(originalPage+1)+' of '+originalPages.length}/>
+        <figcaption>Original in-game screenshot · Page {originalPage+1} of {originalPages.length}</figcaption>
+      </figure>
+    </div> : <article className="ea-formatted-article">
       <span>{story?.pageLabel || 'EA SPORTS NETWORK'}</span>
       <h1>{story?.headline || 'Official in-game article'}</h1>
       {story?.byline && <small>{story.byline}</small>}
       <div>{paragraphs.length ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <p>No extracted article body was saved for this older capture.</p>}</div>
-      {!story?.screenshotUrl && <aside><ImageIcon/><span><b>Original screenshot not preserved on this older import.</b><small>Re-upload this EA SPORTS Network page through Week Processing to attach the authentic game screenshot without creating a duplicate article.</small></span></aside>}
+      {!originalPages.length && <aside><ImageIcon/><span><b>Original screenshot pages were not stored with this older import.</b><small>The complete verified article text is preserved. Re-upload the original EA SPORTS Network screenshots through Week Processing if you want the source-page gallery attached too.</small></span></aside>}
     </article>}
   </section>;
 }

@@ -9,6 +9,7 @@ import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
 import { buildCareerChronicle2 } from '../domain/careerChronicle2.js';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation.js';
+import { applyOfficialCoverageLegacyBackfill, mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
   hydrateCareerStateFromArchives,
@@ -456,26 +457,24 @@ export const derivePreviewData = (state, selection = {}) => {
     : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
   const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle, publicationId);
-  const officialArticles = (state.eaSportsNetworkArticles || [])
+  const officialEntries = (state.eaSportsNetworkArticles || [])
     .filter((entry)=>(
       (publicationId && publicationIdFor(entry)===publicationId)
       || matchesSeasonWeek(entry,season,week)
-    ))
-    .map((entry,index)=>({
-      id:clean(entry?.id, `ea-network-${season}-${week}-${index+1}`),
-      publicationId:clean(entry?.publicationId, publicationId),
-      season:numeric(entry?.season,season),
-      week:numeric(entry?.week,week),
-      headline:clean(entry?.headline,'EA SPORTS Network article'),
-      body:clean(entry?.body),
-      byline:clean(entry?.byline),
-      pageLabel:clean(entry?.pageLabel,'EA SPORTS NETWORK'),
-      sourceFileName:clean(entry?.sourceFileName),
-      screenshotUrl:clean(entry?.screenshotUrl || entry?.imageUrl || entry?.sourceImageUrl),
-      screenshotStoragePath:clean(entry?.screenshotStoragePath || entry?.storagePath),
-      screenshotMimeType:clean(entry?.screenshotMimeType || entry?.mimeType),
-      capturedAt:clean(entry?.capturedAt),
-    }));
+    ));
+  const mergedOfficialArticle=mergeOfficialCoveragePages(officialEntries);
+  const officialArticles = mergedOfficialArticle ? [{
+    ...applyOfficialCoverageLegacyBackfill(mergedOfficialArticle,{
+      season,
+      week,
+      opponent:game?.opponent || '',
+    }),
+    id:clean(officialEntries[0]?.id, `ea-network-${season}-${week}-1`),
+    publicationId:clean(officialEntries[0]?.publicationId, publicationId),
+    season,
+    week,
+    sourcePages:Array.isArray(mergedOfficialArticle.sourcePages)?mergedOfficialArticle.sourcePages:[],
+  }] : [];
   const facts = factsForPublication(state, publicationId, season, week);
   const coverageFacts = facts.filter((fact) => fact?.sourceType === 'coverage-reference' || fact?.editorialOnly === true);
   const scoringFacts = coverageFacts.filter((fact) => (

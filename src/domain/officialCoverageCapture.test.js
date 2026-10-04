@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  applyOfficialCoverageLegacyBackfill,
+  mergeOfficialCoveragePages,
   officialCoverageCandidateFromAnalysis,
   officialCoverageForWeek,
 } from './officialCoverageCapture.js';
@@ -83,4 +85,66 @@ test('legacy imported weeks no longer claim the official article was never captu
   assert.equal(resolved.kind, 'legacy-import');
   assert.equal(resolved.sourceCount, 9);
   assert.equal(resolved.coverageFactCount, 97);
+});
+
+
+test('stitches multiple EA SPORTS Network screenshot pages into one article in upload order', () => {
+  const merged=mergeOfficialCoveragePages([
+    {
+      fileName:'page-1.jpg',
+      headline:'STATEMENT WIN',
+      body:'First paragraph.\n\nSecond paragraph continues the recap.',
+      imageDataUrl:'data:image/jpeg;base64,page1',
+    },
+    {
+      fileName:'page-2.jpg',
+      headline:'',
+      body:'The win improved Oregon\'s record to 7-3.\n\nLooking ahead, Oregon and Washington will face off.',
+      imageDataUrl:'data:image/jpeg;base64,page2',
+    },
+  ]);
+  assert.equal(merged.headline,'STATEMENT WIN');
+  assert.equal(merged.pageCount,2);
+  assert.equal(merged.sourcePages.length,2);
+  assert.match(merged.body,/Second paragraph continues/);
+  assert.match(merged.body,/The win improved Oregon's record to 7-3/);
+  assert.match(merged.body,/Looking ahead, Oregon and Washington/);
+});
+
+test('removes repeated overlap when adjacent article screenshots share visible text', () => {
+  const merged=mergeOfficialCoveragePages([
+    {headline:'Overlap Test',body:'Oregon controlled the second half and pulled away late in the fourth quarter.'},
+    {headline:'',body:'pulled away late in the fourth quarter. The Ducks then turned their attention to next week.'},
+  ]);
+  const occurrences=(merged.body.match(/pulled away late in the fourth quarter/gi)||[]).length;
+  assert.equal(occurrences,1);
+  assert.match(merged.body,/turned their attention to next week/);
+});
+
+test('backfills the complete Week 12 Wisconsin official recap from the verified two-page source', () => {
+  const repaired=applyOfficialCoverageLegacyBackfill({
+    season:4,
+    week:12,
+    headline:'STATEMENT WIN',
+    body:'Winning is always nice, but doing so behind a season-high score is even better (just ask Oregon). The Ducks took their contest on Saturday with ease, bagging a 59-17 win over the Wisconsin Badgers.',
+  },{season:4,week:12,opponent:'Wisconsin'});
+  assert.equal(repaired.pageCount,2);
+  assert.match(repaired.body,/Brandon Smith helped Wessel out on the ground/);
+  assert.match(repaired.body,/The win improved Oregon's record to 7-3/);
+  assert.match(repaired.body,/Oregon and Washington will face off in a Big Ten clash/);
+  assert.match(repaired.body,/Nobody's giving us a chance, which is exactly how we like it/);
+});
+
+test('week resolver merges separately saved official pages before returning Chronicle media', () => {
+  const state={
+    eaSportsNetworkArticles:[
+      {publicationId:'season-3-week-5',season:3,week:5,headline:'Two Page Story',body:'Page one body.'},
+      {publicationId:'season-3-week-5',season:3,week:5,headline:'',body:'Page two body.'},
+    ],
+  };
+  const resolved=officialCoverageForWeek(state,3,5);
+  assert.equal(resolved.kind,'official');
+  assert.equal(resolved.entry.pageCount,2);
+  assert.match(resolved.entry.body,/Page one body/);
+  assert.match(resolved.entry.body,/Page two body/);
 });

@@ -124,3 +124,22 @@ test('official in-game coverage preserves its screenshot and is surfaced across 
   assert.match(chronicle, /screenshotUrl/);
   assert.match(api, /const mediaNamespace = \(\) => 'dynasty-hq'/);
 });
+
+
+test('EA SPORTS official coverage supports multi-page stitching and original screenshot browsing', async () => {
+  const [source,css,domain,scanner] = await Promise.all([
+    readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../option-a-preview/preview.css', import.meta.url), 'utf8'),
+    readFile(new URL('./officialCoverageCapture.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../api/analyze-coverage-reference.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source,/mergeOfficialCoveragePages/);
+  assert.match(source,/sourcePages/);
+  assert.match(source,/pages stitched into one article/);
+  assert.match(source,/VIEW ORIGINAL SCREENSHOTS/);
+  assert.match(source,/PAGE \{originalPage\+1\} OF \{originalPages\.length\}/);
+  assert.match(css,/multi-page official EA article gallery/);
+  assert.match(domain,/mergeTextWithOverlap/);
+  assert.match(domain,/s4-w12-wisconsin-ea-network/);
+  assert.match(scanner,/DynastyHQ stitches multiple uploaded pages after extraction/);
+});

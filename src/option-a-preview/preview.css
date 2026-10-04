@@ -14743,3 +14743,24 @@ select optgroup{
   .chronicle-memory-card{grid-template-columns:28px minmax(0,1fr) 14px}
   .museum-media-grid>button{min-height:112px}
 }
+
+
+/* Precision match pass v57 — multi-page official EA article gallery */
+.ea-original-gallery{width:min(1080px,calc(100% - 20px));margin:12px auto 24px}
+.ea-original-gallery>nav{
+  display:grid;grid-template-columns:120px 1fr 120px;align-items:center;gap:8px;margin-bottom:8px;padding:7px;
+  border:1px solid #9eaaa5;border-radius:5px;background:#e6ebe8
+}
+.ea-original-gallery>nav>span{text-align:center;color:#49645a;font-size:5.6px;font-weight:950;letter-spacing:.7px}
+.ea-original-gallery>nav>button{
+  min-height:28px;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #9ca9a4;border-radius:4px;
+  background:#fffefa;color:#17523f;font-size:5.4px;font-weight:950
+}
+.ea-original-gallery>nav>button svg{width:11px}
+.ea-original-gallery>nav>button:disabled{opacity:.35;cursor:default}
+.ea-original-gallery .ea-original-artifact{width:100%;margin:0}
+@media(max-width:700px){
+  .ea-original-gallery{width:calc(100% - 10px);margin:7px auto 16px}
+  .ea-original-gallery>nav{grid-template-columns:1fr auto 1fr}
+  .ea-original-gallery>nav>button{padding:0 6px}
+}

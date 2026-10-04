@@ -4429,7 +4429,7 @@ function PodcastPage({
             <div><Check/><span><b>Producer brief + story hierarchy</b><small>{notebookProducerPack.meta.storylineCount} verified/current-week angles tell NotebookLM what deserves the most discussion.</small></span></div>
             <div><Check/><span><b>Canonical game + team comparison</b><small>Result, tracked-player core line and team/opponent stats are presented once instead of repeated in several forms.</small></span></div>
             <div><Check/><span><b>Scoring timeline / drives</b><small>{notebookProducerPack.meta.scoringCount} de-duplicated scoring references are kept as football chronology.</small></span></div>
-            <div><Check/><span><b>Supporting cast + opponent detail</b><small>{notebookProducerPack.meta.supportingFactCount} unique supporting facts are grouped by player/team for easier NotebookLM interpretation.</small></span></div>
+            <div><Check/><span><b>Complete uploaded screenshot stats</b><small>{notebookProducerPack.meta.screenshotStatCount || notebookProducerPack.meta.supportingFactCount} published screenshot stats are preserved and organized into passing, rushing, receiving, defense, kicking, punting, returns and other verified data.</small></span></div>
             <div><Check/><span><b>Previous-game + recent trend context</b><small>{notebookProducerPack.meta.recentGameCount} recent completed games can provide continuity without replacing the current game.</small></span></div>
             <div><Check/><span><b>RTG mechanics excluded</b><small>No overall, coach trust, skill points, wear, GPA, followers, NIL systems or progression-menu data is exported.</small></span></div>
             <div><Check/><span><b>Full DynastyHQ transcript</b><small>{notebookProducerPack.meta.hasTranscript?'Complete saved transcript included as a secondary editorial reference.':'No saved transcript exists for this game yet; the verified research packet still downloads.'}</small></span></div>
@@ -4437,7 +4437,7 @@ function PodcastPage({
 
           <div className="notebook-actions">
             <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD WEEK {notebookProducerPack.meta.week} PRODUCER PACK<ChevronRight/></button>
-            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY NOTEBOOKLM CUSTOMIZE PROMPT</button>
+            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY OPTIONAL 4–5 MINUTE PROMPT</button>
             {latestNotebookIsDifferent && latestNotebookPack && <button className="ghost latest-pack" onClick={downloadLatestNotebookPack}><Archive/>DOWNLOAD LATEST GAME · W{latestNotebookPack.meta.week} {latestNotebookPack.meta.opponent}</button>}
           </div>
         </article>
@@ -4446,11 +4446,11 @@ function PodcastPage({
           <BookOpen/>
           <span>BUILT FOR NOTEBOOKLM AUDIO OVERVIEW</span>
           <h3>Producer brief first. Deep research underneath.</h3>
-          <p>The pack now tells NotebookLM what the episode is actually about before giving it the full verified research reservoir. Use the copied Customize prompt with a Longer Deep Dive Audio Overview for the most immersive result.</p>
+          <p>The downloaded pack already contains the show, host-opening and research guidance. In NotebookLM, choose the Brief Deep Dive length for your normal 4–5 minute show. The copy button is optional extra reinforcement, not something that has to live inside every source pack.</p>
           <div className="notebook-tip-stats">
             <span><b>{notebookProducerPack.meta.storylineCount}</b> storylines</span>
             <span><b>{notebookProducerPack.meta.scoringCount}</b> scoring references</span>
-            <span><b>{notebookProducerPack.meta.supportingFactCount}</b> supporting facts</span>
+            <span><b>{notebookProducerPack.meta.screenshotStatCount || notebookProducerPack.meta.supportingFactCount}</b> screenshot stats</span>
           </div>
         </aside>
       </div>}

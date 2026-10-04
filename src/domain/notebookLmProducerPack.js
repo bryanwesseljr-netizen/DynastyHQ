@@ -198,40 +198,92 @@ const factParts=(fact={},index=0)=>{
   return {entity:[team,subject].filter(Boolean).join(' · '),label,value};
 };
 
-const isUsefulSupportingDetail=(parts={})=>{
+const SCREENSHOT_IDENTITY_LABELS=/^(team rank|player|school|committed college|opponent|result|final score|season|week)$/i;
+const SCREENSHOT_STAT_CATEGORY_ORDER=['PASSING','RUSHING','RECEIVING','DEFENSE','KICKING','PUNTING','RETURNS','OTHER'];
+
+const screenshotStatCategory=(parts={},fact={},qbEntities=new Set())=>{
   const label=norm(parts.label);
-  const value=clean(parts.value);
-  if(!label) return false;
-  if(/^(team rank|player|school|committed college)$/.test(label)) return false;
-  if(/receiving average|rac average|rac yards/.test(label)) return false;
-  if(/receiving tds|rushing touchdowns|drops/.test(label) && /^0(?:\.0)?$/.test(value)) return false;
-  if(/receptions|receiving yards|receiving tds|long reception|rushing yards|rushing touchdowns|completions|attempts|interceptions|passer rating|total tackles|solo tackles|tackles for loss|sacks|punts|punting average|longest punt|punts inside 20|drops|longest completion/.test(label)) return true;
-  return !/^0(?:\.0)?$/.test(value);
+  const key=norm(fact.key);
+  const entityKey=norm(parts.entity);
+  if(/passing/.test(key)) return 'PASSING';
+  if(/rushing/.test(key)) return 'RUSHING';
+  if(/receiving/.test(key)) return 'RECEIVING';
+  if(/defen/.test(key)) return 'DEFENSE';
+  if(/completions|attempts|passing|pass yards|pass touchdowns|pass tds|passer rating|longest completion|long completion|sacked/.test(label)) return 'PASSING';
+  if(/^interceptions?$/.test(label) && qbEntities.has(entityKey)) return 'PASSING';
+  if(/rushing|rush yards|rush attempts|carries|yards per carry|long rush|longest rush/.test(label)) return 'RUSHING';
+  if(/receptions|receiving|rac|yards after catch|drops|long reception|longest reception/.test(label)) return 'RECEIVING';
+  if(/total tackles|solo tackles|assisted tackles|assists|tackles for loss|tfl|sacks|interceptions|interception return|int return|pass deflections|passes defended|deflections|forced fumbles|fumble recoveries|fumble return|defensive touchdowns|safeties|qb hurries|pressures/.test(label)) return 'DEFENSE';
+  if(/field goals|field goal|fg made|fg attempts|extra points|xp made|xp attempts|kickoffs|touchbacks/.test(label)) return 'KICKING';
+  if(/punts|punting|longest punt|punts inside 20|punt average/.test(label)) return 'PUNTING';
+  if(/kick returns|kick return|punt returns|punt return|return yards|return average|long return/.test(label)) return 'RETURNS';
+  return 'OTHER';
 };
 
-const groupedFactLines=(facts=[])=>{
-  const groups=new Map();
-  const loose=[];
-  facts.forEach((fact,index)=>{
-    const parts=factParts(fact,index);
-    if(!isUsefulSupportingDetail(parts)) return;
-    const detail=parts.label+': '+(parts.value||'verified');
-    if(!parts.entity){
-      loose.push('- '+detail);
-      return;
-    }
-    const key=norm(parts.entity);
-    if(!groups.has(key)) groups.set(key,{entity:parts.entity,details:[]});
-    const group=groups.get(key);
-    if(!group.details.some((entry)=>norm(entry)===norm(detail))) group.details.push(detail);
+const completionPercentage=(details=[])=>{
+  const byLabel=new Map(details.map((detail)=>[norm(detail.label),detail]));
+  const existing=byLabel.get('completion %')||byLabel.get('completion percentage')||byLabel.get('completion pct');
+  if(existing) return '';
+  const completions=Number(byLabel.get('completions')?.value);
+  const attempts=Number(byLabel.get('attempts')?.value);
+  if(!Number.isFinite(completions)||!Number.isFinite(attempts)||attempts<=0) return '';
+  return ((completions/attempts)*100).toFixed(1)+'%';
+};
+
+const organizedScreenshotStats=(facts=[])=>{
+  const categories=new Map(SCREENSHOT_STAT_CATEGORY_ORDER.map((category)=>[category,new Map()]));
+  const prepared=uniqueFacts(facts).map((fact,index)=>({fact,parts:factParts(fact,index)}));
+  const qbEntities=new Set(
+    prepared
+      .filter(({parts})=>/completions|attempts|passer rating|passing yards|passing touchdowns|longest completion/i.test(parts.label))
+      .map(({parts})=>norm(parts.entity))
+      .filter(Boolean),
+  );
+  let statCount=0;
+
+  prepared.forEach(({fact,parts})=>{
+    if(isRtgFact(fact) || isScoringEventFact(fact)) return;
+    if(CANONICAL_KEYS.has(clean(fact.key))) return;
+    if(!parts.label || SCREENSHOT_IDENTITY_LABELS.test(parts.label)) return;
+
+    const category=screenshotStatCategory(parts,fact,qbEntities);
+    const entity=parts.entity || 'OTHER VERIFIED DATA';
+    const groupKey=norm(entity);
+    const bucket=categories.get(category);
+    if(!bucket.has(groupKey)) bucket.set(groupKey,{entity,details:[]});
+    const group=bucket.get(groupKey);
+    const signature=norm(parts.label)+'|'+norm(parts.value);
+    if(group.details.some((detail)=>detail.signature===signature)) return;
+    group.details.push({label:parts.label,value:parts.value||'0',signature});
+    statCount+=1;
   });
+
   const lines=[];
-  groups.forEach(({entity,details})=>{
-    for(let index=0;index<details.length;index+=6){
-      lines.push('- '+entity+' — '+details.slice(index,index+6).join(' · '));
-    }
+  const categoryCounts={};
+  SCREENSHOT_STAT_CATEGORY_ORDER.forEach((category)=>{
+    const groups=categories.get(category);
+    if(!groups?.size) return;
+    const categoryLines=[];
+    groups.forEach(({entity,details})=>{
+      const displayDetails=[...details];
+      if(category==='PASSING'){
+        const pct=completionPercentage(details);
+        if(pct){
+          const attemptIndex=displayDetails.findIndex((detail)=>norm(detail.label)==='attempts');
+          displayDetails.splice(attemptIndex>=0?attemptIndex+1:displayDetails.length,0,{
+            label:'Completion %',
+            value:pct,
+            signature:'derived-completion-percentage',
+          });
+        }
+      }
+      categoryLines.push('- '+entity+' — '+displayDetails.map((detail)=>detail.label+': '+detail.value).join(' · '));
+    });
+    categoryCounts[category]=categoryLines.length;
+    lines.push('### '+category,...categoryLines,'');
   });
-  return [...lines,...loose];
+
+  return {lines,statCount,categoryCounts};
 };
 
 const scoringOrder=(fact={},index=0)=>{
@@ -423,11 +475,12 @@ const customizePromptFor=(data={},storylines=[])=>{
   const school=clean(data?.player?.school,'the current team');
   const focus=storylines.slice(0,4).map((entry)=>entry.label.toLowerCase()).join(', ');
   return [
-    'Create a Longer Deep Dive episode of The Huddle Podcast about '+school+"'s Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+'.',
-    'Prioritize the Producer Brief and Key Storylines, then use the full research packet as supporting evidence.',
+    'Create a concise Brief Deep Dive episode of The Huddle Podcast, targeting roughly 4–5 minutes, about '+school+"'s Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+'.',
+    'Always begin with a natural show introduction that identifies the podcast and both hosts, such as: "Welcome to another episode of The Huddle Podcast. We are your hosts, Mark Thompson and Sarah Chen." Then transition immediately into the current game.',
+    'Prioritize the Producer Brief and Key Storylines, then use the complete verified stat tables as supporting evidence.',
     'Mark Thompson and Sarah Chen should sound like knowledgeable local college-football hosts who cover this program every week: conversational, analytical, willing to react to each other, and never like they are reading a box score.',
-    focus?'Spend most of the discussion explaining the football meaning behind: '+focus+'.':'Spend most of the discussion explaining the biggest verified football takeaways from the game.',
-    'Use exact statistics selectively when they support a point. Connect the current game to prior verified games only when the comparison is useful.',
+    focus?'Spend most of the limited runtime explaining the football meaning behind: '+focus+'.':'Spend most of the limited runtime explaining the biggest verified football takeaways from the game.',
+    'Use exact statistics selectively when they strengthen a point. Quarterback completion percentage and passer rating are especially useful when available. Connect prior games only when the comparison adds real context.',
     'Do not discuss Road to Glory game mechanics, ratings, coach trust, skill points, GPA, wear, followers, NIL systems, or progression menus.',
     'Do not invent injuries, quotes, locker-room reactions, coaching decisions, play calls, strategy, motives, emotions, or facts that are not in the source pack.',
     'Treat the DynastyHQ generated transcript as style reference only; verified research sections outrank it whenever the transcript adds interpretation that is not explicitly supported.',
@@ -441,9 +494,8 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
   const transcript=clean(episode.transcript||rawEpisode.transcript);
   const usable=uniqueFacts((facts||[]).filter((fact)=>!isRtgFact(fact)));
   const scoringFacts=uniqueFacts(usable.filter((fact)=>isScoringFact(fact)&&!isCanonicalDuplicate(fact,data)));
-  const supportingFacts=uniqueFacts(usable.filter((fact)=>!isScoringFact(fact)&&!isCanonicalDuplicate(fact,data)));
   const scoringLines=scoringLinesFor(scoringFacts);
-  const supportingLines=groupedFactLines(supportingFacts);
+  const screenshotStats=organizedScreenshotStats(usable);
   const previousGame=previousGameFor(data);
   const storylines=storylinesFor(data,episode,previousGame);
   const recent=recentLines(data);
@@ -482,6 +534,8 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     '## PRODUCER BRIEF — READ THIS FIRST',
     'Build the episode from the CURRENT completed game first. Older games are context only and must never replace the newest game as the lead story.',
     'The show is The Huddle Podcast, hosted by Mark Thompson and Sarah Chen.',
+    'OPENING REQUIREMENT: Always begin with a natural show introduction that identifies the show and both hosts, such as "Welcome to another episode of The Huddle Podcast. We are your hosts, Mark Thompson and Sarah Chen." A small wording variation is fine, but the show name and both host names should be stated before the game discussion begins.',
+    'Target a concise 4–5 minute Brief Deep Dive. Get to the current game quickly and spend the limited runtime on the strongest verified football angles.',
     'Sound like two knowledgeable local college-football hosts who follow this program every week. They should react to each other, ask natural follow-up questions, occasionally disagree, and move between football ideas instead of taking turns reading data.',
     'Use statistics as evidence for football conclusions. Do not recite complete stat tables unless a number is genuinely important to the discussion.',
     'Explain what changed, what mattered, which players influenced the game, how the scoring unfolded, and how this result fits the verified season context.',
@@ -510,8 +564,10 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     '## SCORING TIMELINE / DRIVE DETAILS',
     ...(scoringLines.length?scoringLines:['No separate verified scoring-summary facts were saved for this week.']),
     '',
-    '## SUPPORTING CAST, OPPONENT AND OTHER VERIFIED DETAIL',
-    ...(supportingLines.length?supportingLines:['No additional non-duplicate individual or game context was saved for this week.']),
+    '## COMPLETE VERIFIED SCREENSHOT STAT TABLES',
+    'Every verified individual statistic published from the uploaded game screenshots is preserved below, including visible zero values. These sections are organized as research, not as a required read-aloud script. Completion percentage is calculated from verified completions and attempts when both are available; passer rating is preserved exactly when it was uploaded.',
+    '',
+    ...(screenshotStats.lines.length?screenshotStats.lines:['No additional published screenshot statistics were saved for this week.']),
     '',
     '## PREVIOUS-GAME COMPARISON',
     ...previousLines(previousGame),
@@ -534,10 +590,9 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     '- Keep team and game context as the frame; the tracked player can be central when his verified production makes him central to the football story.',
     '- Do not invent missing player names, quotes, injuries, strategy, motives, or off-field information.',
     '- Road to Glory mechanics and progression-menu facts are intentionally excluded.',
-    '- Structured game/team/player statistics are kept canonical, while supporting individual and scoring detail is de-duplicated.',
-    '',
-    '## RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT',
-    prompt,
+    '- Every published screenshot statistic is available in the organized stat tables; use only the ones that help the conversation.',
+    '- For quarterbacks, completion percentage is derived only from verified completions and attempts, and passer rating is used only when it was actually uploaded.',
+    '- The episode should open by identifying The Huddle Podcast and both hosts before moving into the game.',
     '',
     'END PRODUCER PACK',
   ].join('\n');
@@ -553,8 +608,10 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
       title,
       storylineCount:storylines.length,
       scoringCount:scoringLines.length,
-      supportingFactCount:supportingFacts.length,
-      groupedSupportingLineCount:supportingLines.length,
+      supportingFactCount:screenshotStats.statCount,
+      groupedSupportingLineCount:screenshotStats.lines.filter((line)=>line.startsWith('- ')).length,
+      screenshotStatCount:screenshotStats.statCount,
+      screenshotStatCategories:screenshotStats.categoryCounts,
       recentGameCount:recent.length,
       hasTranscript:Boolean(transcript),
       suggestedFileName:'DynastyHQ-S'+num(data.season,1)+'-W'+num(game.week,0)+'-'+safeOpponent+'-NotebookLM-Producer-Pack.txt',

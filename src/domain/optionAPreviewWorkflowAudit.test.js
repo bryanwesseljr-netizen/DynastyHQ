@@ -17,7 +17,7 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(source, /notebookUsesLatestFallback/);
   assert.match(source, /DOWNLOAD PRODUCER PACK/);
   assert.match(source, /DOWNLOAD WEEK \{notebookProducerPack\.meta\.week\} PRODUCER PACK/);
-  assert.match(source, /COPY NOTEBOOKLM CUSTOMIZE PROMPT/);
+  assert.match(source, /COPY OPTIONAL 4–5 MINUTE PROMPT/);
   assert.match(source, /DOWNLOAD LATEST GAME/);
 
   assert.match(producer, /NOTEBOOKLM PRODUCER PACK 2\.0/);
@@ -25,11 +25,14 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(producer, /KEY STORYLINES/);
   assert.match(producer, /TEAM STATISTICAL COMPARISON/);
   assert.match(producer, /SCORING TIMELINE \/ DRIVE DETAILS/);
-  assert.match(producer, /SUPPORTING CAST, OPPONENT AND OTHER VERIFIED DETAIL/);
+  assert.match(producer, /COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
   assert.match(producer, /PREVIOUS-GAME COMPARISON/);
   assert.match(producer, /RECENT SEASON CONTEXT/);
   assert.match(producer, /DYNASTYHQ GENERATED TRANSCRIPT — COMPLETE/);
-  assert.match(producer, /RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
+  assert.doesNotMatch(producer, /RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
+  assert.match(producer, /OPENING REQUIREMENT:/);
+  assert.match(producer, /Brief Deep Dive/);
+  assert.match(producer, /Completion %/);
   assert.match(producer, /Road to Glory game mechanics/);
   assert.match(producer, /Structured game\/team\/player statistics are kept canonical/);
 });

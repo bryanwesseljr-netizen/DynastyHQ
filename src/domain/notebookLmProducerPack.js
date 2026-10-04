@@ -211,6 +211,8 @@ const screenshotStatCategory=(parts={},fact={},qbEntities=new Set())=>{
   if(/rushing/.test(key)) return 'RUSHING';
   if(/receiving/.test(key)) return 'RECEIVING';
   if(/defen/.test(key)) return 'DEFENSE';
+  if(/punting/.test(key)) return 'PUNTING';
+  if(/kicking/.test(key)) return 'KICKING';
   if(/completions|attempts|passing|pass yards|pass touchdowns|pass tds|passer rating|longest completion|long completion|sacked/.test(label)) return 'PASSING';
   if(/^interceptions?$/.test(label) && qbEntities.has(entityKey)) return 'PASSING';
   if(/rushing|rush yards|rush attempts|carries|yards per carry|long rush|longest rush/.test(label)) return 'RUSHING';

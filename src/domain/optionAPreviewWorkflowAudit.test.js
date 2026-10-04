@@ -17,7 +17,7 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(source, /notebookUsesLatestFallback/);
   assert.match(source, /DOWNLOAD PRODUCER PACK/);
   assert.match(source, /DOWNLOAD WEEK \{notebookProducerPack\.meta\.week\} PRODUCER PACK/);
-  assert.match(source, /COPY OPTIONAL 4–5 MINUTE PROMPT/);
+  assert.match(source, /COPY OPTIONAL DEEP DIVE FOCUS/);
   assert.match(source, /DOWNLOAD LATEST GAME/);
 
   assert.match(producer, /NOTEBOOKLM PRODUCER PACK 2\.0/);
@@ -35,7 +35,8 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(producer, /SOURCE RULES — READ BEFORE GENERATING/);
   assert.doesNotMatch(producer, /RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
   assert.match(producer, /OPENING REQUIREMENT:/);
-  assert.match(producer, /Brief Deep Dive/);
+  assert.match(producer, /Deep Dive/);
+  assert.match(producer, /Short length setting/);
   assert.match(producer, /Completion %/);
   assert.match(producer, /Road to Glory game mechanics/);
   assert.match(producer, /Every published screenshot statistic is available in the organized stat tables/);

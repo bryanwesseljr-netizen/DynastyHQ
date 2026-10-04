@@ -100,8 +100,9 @@ test('Week 12 Wisconsin Producer Pack backfills the user-provided screenshot tab
 
   assert.match(pack.text,/OPENING REQUIREMENT:/);
   assert.match(pack.text,/Welcome to another episode of The Huddle Podcast/);
-  assert.match(pack.customizePrompt,/Brief Deep Dive/);
-  assert.match(pack.customizePrompt,/4–5 minutes/);
+  assert.match(pack.customizePrompt,/Deep Dive/);
+  assert.match(pack.customizePrompt,/Short length setting/);
+  assert.doesNotMatch(pack.customizePrompt,/4–5 minutes|Brief Deep Dive/);
   assert.doesNotMatch(pack.text,/RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
 
   assert.doesNotMatch(pack.text,/9999/);

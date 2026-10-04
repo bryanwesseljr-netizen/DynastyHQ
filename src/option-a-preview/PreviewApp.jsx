@@ -4437,7 +4437,7 @@ function PodcastPage({
 
           <div className="notebook-actions">
             <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD WEEK {notebookProducerPack.meta.week} PRODUCER PACK<ChevronRight/></button>
-            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY OPTIONAL 4–5 MINUTE PROMPT</button>
+            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY OPTIONAL DEEP DIVE FOCUS</button>
             {latestNotebookIsDifferent && latestNotebookPack && <button className="ghost latest-pack" onClick={downloadLatestNotebookPack}><Archive/>DOWNLOAD LATEST GAME · W{latestNotebookPack.meta.week} {latestNotebookPack.meta.opponent}</button>}
           </div>
         </article>
@@ -4446,7 +4446,7 @@ function PodcastPage({
           <BookOpen/>
           <span>BUILT FOR NOTEBOOKLM AUDIO OVERVIEW</span>
           <h3>Producer brief first. Deep research underneath.</h3>
-          <p>The downloaded pack already contains the show, host-opening and research guidance. In NotebookLM, choose the Brief Deep Dive length for your normal 4–5 minute show. The copy button is optional extra reinforcement, not something that has to live inside every source pack.</p>
+          <p>The downloaded pack already contains the show, host-opening and research guidance. In NotebookLM, choose Deep Dive and set the length to Short. The copy button is optional extra reinforcement, not something that has to live inside every source pack.</p>
           <div className="notebook-tip-stats">
             <span><b>{notebookProducerPack.meta.storylineCount}</b> storylines</span>
             <span><b>{notebookProducerPack.meta.scoringCount}</b> scoring references</span>

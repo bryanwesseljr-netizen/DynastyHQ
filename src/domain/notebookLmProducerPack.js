@@ -507,7 +507,7 @@ const customizePromptFor=(data={},storylines=[])=>{
   const school=clean(data?.player?.school,'the current team');
   const focus=storylines.slice(0,4).map((entry)=>entry.label.toLowerCase()).join(', ');
   return [
-    'Create a concise Brief Deep Dive episode of The Huddle Podcast, targeting roughly 4–5 minutes, about '+school+"'s Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+'.',
+    'Create a Deep Dive episode of The Huddle Podcast using NotebookLM’s Short length setting, about '+school+"'s Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+'.',
     'Always begin with a natural show introduction that identifies the podcast and both hosts, such as: "Welcome to another episode of The Huddle Podcast. We are your hosts, Mark Thompson and Sarah Chen." Then transition immediately into the current game.',
     'Prioritize the Producer Brief and Key Storylines, then use the complete verified stat tables as supporting evidence.',
     'Mark Thompson and Sarah Chen should sound like knowledgeable local college-football hosts who cover this program every week: conversational, analytical, willing to react to each other, and never like they are reading a box score.',
@@ -562,7 +562,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     'Build the episode from the CURRENT completed game first. Older games are context only and must never replace the newest game as the lead story.',
     'The show is The Huddle Podcast, hosted by Mark Thompson and Sarah Chen.',
     'OPENING REQUIREMENT: Always begin with a natural show introduction that identifies the show and both hosts, such as "Welcome to another episode of The Huddle Podcast. We are your hosts, Mark Thompson and Sarah Chen." A small wording variation is fine, but the show name and both host names should be stated before the game discussion begins.',
-    'Target a concise 4–5 minute Brief Deep Dive. Get to the current game quickly and spend the limited runtime on the strongest verified football angles.',
+    'Use NotebookLM Deep Dive with the Short length setting. Get to the current game quickly and spend the limited runtime on the strongest verified football angles.',
     'Sound like two knowledgeable local college-football hosts who follow this program every week. They should react to each other, ask natural follow-up questions, occasionally disagree, and move between football ideas instead of taking turns reading data.',
     'Use statistics as evidence for football conclusions. Do not recite complete stat tables unless a number is genuinely important to the discussion.',
     'Use full player names when they are supplied in the packet. If only an initial is supplied, do not invent a first name.',

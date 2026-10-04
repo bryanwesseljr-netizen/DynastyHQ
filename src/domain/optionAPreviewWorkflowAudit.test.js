@@ -88,7 +88,7 @@ test('EA Sports Network coverage has a dedicated optional upload lane and appear
   assert.match(source, /officialStories=Array\.isArray\(news\.officialArticles\)/);
   assert.match(source, /OFFICIAL IN-GAME COVERAGE/);
   assert.match(source, /EA SPORTS NETWORK/);
-  assert.match(source, /without mixing it into generated journalism/);
+  assert.match(source, /stitches the visible text into one recap/);
 });
 
 test('Podcast Studio expands into document flow, keeps the page scrollable, and returns to its anchor when closed', async () => {
@@ -119,7 +119,7 @@ test('official in-game coverage preserves its screenshot and is surfaced across 
   assert.match(source, /OFFICIAL IN-GAME COVERAGE/);
   assert.match(source, /VIEW ORIGINAL SCREENSHOT/);
   assert.match(source, /EA SPORTS NETWORK/);
-  assert.match(hook, /screenshotStoragePath/);
+  assert.match(hook, /sourcePages/);
   assert.match(producer, /OFFICIAL IN-GAME MEDIA — EA SPORTS NETWORK/);
   assert.match(chronicle, /screenshotUrl/);
   assert.match(api, /const mediaNamespace = \(\) => 'dynasty-hq'/);

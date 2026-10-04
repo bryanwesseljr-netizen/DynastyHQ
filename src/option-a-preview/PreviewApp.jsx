@@ -3218,7 +3218,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
                 <span>EA SPORTS NETWORK · OPTIONAL</span>
                 <h3>{officialSaved?'Official in-game coverage is attached to this week.':'Add the in-game EA Sports Network article.'}</h3>
                 <p>Upload every screenshot page for the same EA SPORTS Network article at once, in reading order. DynastyHQ stitches the visible text into one recap, removes overlap, and preserves each original page.</p>
-                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'} · {entry.pageCount || entry.sourcePages?.length || 1} PAGE{(entry.pageCount || entry.sourcePages?.length || 1)===1?'':'S'}</small>)}</div>
+                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'} · {entry.pageCount || entry.sourcePages?.length || 1} PAGE{(entry.pageCount || entry.sourcePages?.length || 1)===1?'':'S'}</small>)}</div>}
                 {officialProgress && <em className="official-upload-progress">{officialProgress}</em>}
                 {officialError && <em className="official-upload-error">{officialError}</em>}
               </div>

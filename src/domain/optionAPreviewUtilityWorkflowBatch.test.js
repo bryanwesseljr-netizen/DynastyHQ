@@ -91,3 +91,11 @@ test('week photo fallback does not depend on Newsroom generation succeeding', as
   assert.match(source, /publicationIdFor\(issue\) \|\| clean\(fallbackPublicationId\)/);
   assert.match(source, /weeklyNewsroomPhoto\(state, issue, rawArticle, publicationId\)/);
 });
+
+
+test('weekly photo resolver remains safe when the selected week has no Newsroom issue', async () => {
+  const source = await readFile(new URL('../option-a-preview/useReadOnlyLiveCareer.js', import.meta.url), 'utf8');
+
+  assert.match(source, /\.\.\.\(issue\?\.articles \|\| \[\]\)\.map/);
+  assert.doesNotMatch(source, /\.\.\.\(issue\.articles \|\| \[\]\)\.map/);
+});

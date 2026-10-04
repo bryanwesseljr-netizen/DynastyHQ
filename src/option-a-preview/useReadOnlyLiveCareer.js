@@ -297,7 +297,7 @@ const weeklyNewsroomPhoto = (state = {}, issue = null, article = null, fallbackP
   const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
   const directIds = [
     article?.mediaAssetId,
-    ...(issue.articles || []).map((entry) => entry?.mediaAssetId),
+    ...(issue?.articles || []).map((entry) => entry?.mediaAssetId),
   ].map((value) => String(value || '').trim()).filter(Boolean);
 
   for (const assetId of directIds) {

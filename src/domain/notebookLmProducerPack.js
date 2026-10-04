@@ -220,6 +220,31 @@ const screenshotStatCategory=(parts={},fact={},qbEntities=new Set())=>{
   return 'OTHER';
 };
 
+const canonicalStatLabel=(category,label)=>{
+  const normalized=norm(label);
+  if(category==='PASSING'){
+    if(/^(rtg|passer rating)$/.test(normalized)||/passer rating/.test(normalized)) return 'RTG (Passer Rating)';
+    if(normalized==='avg'||/yards attempt|passing average/.test(normalized)) return 'AVG (yards/attempt)';
+    if(/^(att|attempts?)$/.test(normalized)) return 'Attempts';
+    if(/^(cmp|comp|completions?)$/.test(normalized)) return 'Completions';
+  }
+  if(category==='RUSHING'){
+    if(/^(att|attempts?|carries)$/.test(normalized)) return 'ATT (Carries)';
+    if(normalized==='avg'||/yards carry|rushing average/.test(normalized)) return 'AVG (yards/carry)';
+    if(normalized==='btk'||/broken tackles?/.test(normalized)) return 'BTK (Broken tackles)';
+    if(normalized==='fum'||/^fumbles?$/.test(normalized)) return 'FUM (Fumbles)';
+    if(normalized==='yac'||/yards after carry/.test(normalized)) return 'YAC';
+    if(/20\+\s*yds|20 plus/.test(normalized)) return '20+ YDS';
+  }
+  if(category==='RECEIVING' && (normalized==='avg'||/receiving average|yards catch/.test(normalized))) return 'AVG (yards/catch)';
+  if(category==='DEFENSE'){
+    if(/tackles for loss|^tfl$/.test(normalized)) return 'TFL';
+    if(/^sacks?$/.test(normalized)) return 'Sacks';
+    if(/^ints?$|^interceptions?$/.test(normalized)) return 'Interceptions';
+  }
+  return clean(label);
+};
+
 const completionPercentage=(details=[])=>{
   const byLabel=new Map(details.map((detail)=>[norm(detail.label),detail]));
   const existing=byLabel.get('completion %')||byLabel.get('completion percentage')||byLabel.get('completion pct');
@@ -252,9 +277,10 @@ const organizedScreenshotStats=(facts=[])=>{
     const bucket=categories.get(category);
     if(!bucket.has(groupKey)) bucket.set(groupKey,{entity,details:[]});
     const group=bucket.get(groupKey);
-    const signature=norm(parts.label)+'|'+norm(parts.value);
+    const displayLabel=canonicalStatLabel(category,parts.label);
+    const signature=norm(displayLabel)+'|'+norm(parts.value);
     if(group.details.some((detail)=>detail.signature===signature)) return;
-    group.details.push({label:parts.label,value:parts.value||'0',signature});
+    group.details.push({label:displayLabel,value:parts.value||'0',signature});
     statCount+=1;
   });
 

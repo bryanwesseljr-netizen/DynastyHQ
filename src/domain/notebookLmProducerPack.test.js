@@ -64,16 +64,18 @@ const facts=[
 
   {key:'program.coverage.passing.ore.comp',label:'ORE · B.Wessel · Completions',value:26,verified:true},
   {key:'program.coverage.passing.ore.att',label:'ORE · B.Wessel · Attempts',value:34,verified:true},
-  {key:'program.coverage.passing.ore.rating',label:'ORE · B.Wessel · Passer Rating',value:181.4,verified:true},
+  {key:'program.coverage.passing.ore.avg',label:'ORE · B.Wessel · AVG',value:9.8,verified:true},
+  {key:'program.coverage.passing.ore.rating',label:'ORE · B.Wessel · RTG',value:181.4,verified:true},
   {key:'program.coverage.passing.ore.long',label:'ORE · B.Wessel · Longest Completion',value:42,verified:true},
   {key:'program.coverage.passing.wisc.comp',label:'WISC · H.Hendrix · Completions',value:20,verified:true},
   {key:'program.coverage.passing.wisc.att',label:'WISC · H.Hendrix · Attempts',value:38,verified:true},
   {key:'program.coverage.passing.wisc.int',label:'WISC · H.Hendrix · Interceptions',value:2,verified:true},
-  {key:'program.coverage.passing.wisc.rating',label:'WISC · H.Hendrix · Passer Rating',value:93.4,verified:true},
+  {key:'program.coverage.passing.wisc.avg',label:'WISC · H.Hendrix · AVG',value:5.1,verified:true},
+  {key:'program.coverage.passing.wisc.rating',label:'WISC · H.Hendrix · RTG',value:93.4,verified:true},
 
   {key:'program.coverage.player.1',label:'ORE · Marco Ortiz · Receptions',value:6,verified:true},
   {key:'program.coverage.player.2',label:'ORE · Marco Ortiz · Receiving yards',value:101,verified:true},
-  {key:'program.coverage.player.2-average',label:'ORE · Marco Ortiz · Receiving average',value:16.8,verified:true},
+  {key:'program.coverage.receiving.2-average',label:'ORE · Marco Ortiz · AVG',value:16.8,verified:true},
   {key:'program.coverage.player.2-rac',label:'ORE · Marco Ortiz · RAC yards',value:22,verified:true},
   {key:'program.coverage.player.2-drops',label:'ORE · Marco Ortiz · Drops',value:0,verified:true},
 
@@ -90,6 +92,13 @@ const facts=[
   {key:'program.coverage.defense.11',label:'WISC · D.Jones · Total Tackles',value:9,verified:true},
   {key:'program.coverage.defense.12',label:'WISC · D.Jones · Tackles For Loss',value:2,verified:true},
   {key:'program.coverage.defense.13',label:'WISC · D.Jones · Sacks',value:1,verified:true},
+  {key:'program.coverage.rushing.ore.att',label:'ORE · B.Smith · ATT',value:18,verified:true},
+  {key:'program.coverage.rushing.ore.yds',label:'ORE · B.Smith · Rushing yards',value:125,verified:true},
+  {key:'program.coverage.rushing.ore.avg',label:'ORE · B.Smith · AVG',value:6.9,verified:true},
+  {key:'program.coverage.rushing.ore.btk',label:'ORE · B.Smith · BTK',value:4,verified:true},
+  {key:'program.coverage.rushing.ore.fum',label:'ORE · B.Smith · FUM',value:0,verified:true},
+  {key:'program.coverage.rushing.ore.yac',label:'ORE · B.Smith · YAC',value:47,verified:true},
+  {key:'program.coverage.rushing.ore.twenty',label:'ORE · B.Smith · 20+ YDS',value:2,verified:true},
   {key:'program.coverage.defense.14',label:'WISC · D.Jones · Pass Deflections',value:1,verified:true},
 ];
 
@@ -109,16 +118,19 @@ test('Producer Pack 2.0 preserves all screenshot stats, organizes defense, enric
 
   assert.match(pack.text,/COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
   assert.match(pack.text,/### PASSING/);
-  assert.match(pack.text,/ORE · B\.Wessel — Completions: 26 · Attempts: 34 · Completion %: 76\.5% · Passer Rating: 181\.4 · Longest Completion: 42/);
-  assert.match(pack.text,/WISC · H\.Hendrix — Completions: 20 · Attempts: 38 · Completion %: 52\.6% · Interceptions: 2 · Passer Rating: 93\.4/);
+  assert.match(pack.text,/ORE · B\.Wessel — Completions: 26 · Attempts: 34 · Completion %: 76\.5% · AVG \(yards\/attempt\): 9\.8 · RTG \(Passer Rating\): 181\.4 · Longest Completion: 42/);
+  assert.match(pack.text,/WISC · H\.Hendrix — Completions: 20 · Attempts: 38 · Completion %: 52\.6% · Interceptions: 2 · AVG \(yards\/attempt\): 5\.1 · RTG \(Passer Rating\): 93\.4/);
+
+  assert.match(pack.text,/### RUSHING/);
+  assert.match(pack.text,/ORE · B\.Smith — ATT \(Carries\): 18 · Rushing yards: 125 · AVG \(yards\/carry\): 6\.9 · BTK \(Broken tackles\): 4 · FUM \(Fumbles\): 0 · YAC: 47 · 20\+ YDS: 2/);
 
   assert.match(pack.text,/### RECEIVING/);
-  assert.match(pack.text,/ORE · Marco Ortiz — Receptions: 6 · Receiving yards: 101 · Receiving average: 16\.8 · RAC yards: 22 · Drops: 0/);
+  assert.match(pack.text,/ORE · Marco Ortiz — Receptions: 6 · Receiving yards: 101 · AVG \(yards\/catch\): 16\.8 · RAC yards: 22 · Drops: 0/);
 
   assert.match(pack.text,/### DEFENSE/);
-  assert.match(pack.text,/ORE · K\.Hicks — Total Tackles: 8 · Solo Tackles: 6 · Assisted Tackles: 2 · Tackles For Loss: 1 · Sacks: 0 · Interceptions: 1/);
+  assert.match(pack.text,/ORE · K\.Hicks — Total Tackles: 8 · Solo Tackles: 6 · Assisted Tackles: 2 · TFL: 1 · Sacks: 0 · Interceptions: 1/);
   assert.match(pack.text,/ORE · K\.Hicks — .*Interception Return Yards: 42.*Pass Deflections: 2.*Forced Fumbles: 1.*Fumble Recoveries: 0/);
-  assert.match(pack.text,/WISC · D\.Jones — Total Tackles: 9 · Tackles For Loss: 2 · Sacks: 1 · Pass Deflections: 1/);
+  assert.match(pack.text,/WISC · D\.Jones — Total Tackles: 9 · TFL: 2 · Sacks: 1 · Pass Deflections: 1/);
 
   assert.match(pack.text,/WINNING STREAK — Oregon has won 2 straight completed games/);
   assert.doesNotMatch(pack.text,/CONTINUING STORYLINE — ROLE PROMOTION/);

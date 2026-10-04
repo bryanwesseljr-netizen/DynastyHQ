@@ -191,3 +191,15 @@ test('saved weeks can bypass fresh uploads and attach only optional media',async
   assert.match(css, /saved-week optional media shortcut/);
   assert.match(css, /\.processing-saved-shortcut/);
 });
+
+
+test('Week Processing exposes one EA SPORTS Network upload path in Coverage only',async ()=>{
+  const source=await readFile(sourceUrl,'utf8');
+  const uploadButtons=source.match(/UPLOAD EA ARTICLE/g) || [];
+  assert.equal(uploadButtons.length,1);
+  assert.match(source,/EA SPORTS NETWORK · OPTIONAL/);
+  assert.match(source,/use the single optional EA upload in Coverage/);
+  assert.match(source,/SKIP TO OPTIONAL COVERAGE/);
+  assert.doesNotMatch(source,/Final score · Player stats · Team stats · EA SPORTS Network pages/);
+  assert.doesNotMatch(source,/\['EA SPORTS Network','Recognizes article pages without treating them as stats\.'/);
+});

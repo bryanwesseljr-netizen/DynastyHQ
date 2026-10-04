@@ -2185,7 +2185,6 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setScanStatus('Preparing scanner…');
     setScanError('');
     setReviewRows([]);
-    setOfficialArticles([]);
     try{
       const idToken=await user.getIdToken();
       let draft=createEmptyScanDraft({
@@ -2194,7 +2193,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         careerPhase:career.careerPhase || 'Player',
         isCommitted:Boolean(career.player?.isCommitted),
       });
-      const official=[];
+      let officialDetected=0;
 
       for(let index=0;index<actual.length;index+=1){
         const entry=actual[index];
@@ -2216,14 +2215,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           });
           const analysis=result?.analysis || {};
           if((analysis.screenTypes || []).includes('ea_sports_network_article')){
-            official.push({
-              fileName:entry.name,
-              headline:analysis.officialArticle?.headline || analysis.screenTitle || 'EA SPORTS Network article',
-              body:analysis.officialArticle?.body || '',
-              byline:analysis.officialArticle?.byline || '',
-              pageLabel:analysis.officialArticle?.pageLabel || '',
-              imageDataUrl:compressedImage,
-            });
+            officialDetected+=1;
+            setScanProgress(Math.round(((index+1)/actual.length)*100));
+            continue;
           }
           const normalized=normalizeGameScreenshotAnalysis({
             analysis,
@@ -2253,11 +2247,16 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         .map((fact)=>({...fact,selected:true}));
       setScanDraft(draft);
       setReviewRows(rows);
-      const mergedOfficial=mergeOfficialCoveragePages(official);
-      setOfficialArticles(mergedOfficial?[mergedOfficial]:[]);
       const failed=(draft.sources || []).filter((source)=>source.error).length;
-      if(!rows.length && !official.length){
-        setScanError(failed ? `No reliable game facts were found; ${failed} screen${failed===1?'':'s'} failed.` : 'No reliable game facts were found. Try tighter screenshots.');
+      if(officialDetected){
+        notify(officialDetected===1
+          ? 'EA SPORTS Network page detected in Game Data. It was not attached here—use the single optional EA upload in Coverage.'
+          : officialDetected+' EA SPORTS Network pages were detected in Game Data. They were not attached here—use the single optional EA upload in Coverage.');
+      }
+      if(!rows.length){
+        setScanError(officialDetected
+          ? 'Only EA SPORTS Network coverage was detected. Continue to Coverage and use the dedicated optional EA SPORTS Network uploader.'
+          : failed ? `No reliable game facts were found; ${failed} screen${failed===1?'':'s'} failed.` : 'No reliable game facts were found. Try tighter screenshots.');
       }else{
         setPhase('review');
       }
@@ -3062,7 +3061,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
                 <button className={'processing-drop '+(dragging?'dragging':'')} onClick={()=>inputRef.current?.click()} onDragEnter={(event)=>{event.preventDefault();setDragging(true)}} onDragOver={(event)=>event.preventDefault()} onDragLeave={(event)=>{event.preventDefault();setDragging(false)}} onDrop={(event)=>{event.preventDefault();setDragging(false);addFiles(event.dataTransfer.files)}}>
                   <span><Upload/></span>
                   <strong>{files.length?'ADD MORE GAME SCREENS':'DROP GAME SCREENSHOTS HERE'}</strong>
-                  <small>Final score · Player stats · Team stats · EA SPORTS Network pages</small>
+                  <small>Final score · Player stats · Team stats · Scoring summary</small>
                   <em>Choose Screens</em>
                 </button>
                 <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(event)=>{addFiles(event.target.files);event.target.value=''}}/>
@@ -3094,7 +3093,6 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
                   ['Your player line','Pass YDS/TD, rush YDS/TD and interceptions.',true],
                   ['Team comparison','Total Offense, first downs, turnovers, rush/pass yards.',false],
                   ['Rankings','Only when visibly attached to the correct team.',false],
-                  ['EA SPORTS Network','Recognizes article pages without treating them as stats.',false],
                 ].map(([title,sub,required])=><div key={title}><i className={required?'required':''}>{required?<Check/>:<PlusIcon/>}</i><span><b>{title}</b><small>{sub}</small></span><em>{required?'CORE':'SUPPORTED'}</em></div>)}
                 <p><ShieldCheck/>Visible zeroes remain valid. Cropped or ambiguous values are omitted instead of guessed.</p>
               </aside>

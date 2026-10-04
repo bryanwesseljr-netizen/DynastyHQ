@@ -118,11 +118,16 @@ test('weekly photo resolver remains safe when the selected week has no Newsroom 
 
 
 
-test('home next-week action selects the upcoming week before opening Game Hub',async ()=>{
+test('home next-game card follows the live career instead of the archived week being viewed',async ()=>{
   const source = await readFile(sourceUrl,'utf8');
-  assert.match(source, /openArchiveMoment=\{openArchiveMoment\}/);
-  assert.match(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
-  assert.doesNotMatch(source, /Prepare next week'\}<ChevronRight\/><\/button>\s*\)\s*:\s*null/);
+  assert.match(source, /const liveCareerNextGame=\(data\)=>/);
+  assert.match(source, /Number\(entry\.week\)>=currentWeek/);
+  assert.match(source, /entry\.completed!==true/);
+  assert.match(source, /const matchup=liveNextGame/);
+  assert.match(source, /<CardHeader title="YOUR NEXT GAME"\/>/);
+  assert.match(source, /openArchiveMoment\(liveNextGame\.season,liveNextGame\.week,'gamehub'\)/);
+  assert.match(source, /PREPARE NEXT GAME/);
+  assert.doesNotMatch(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
 });
 
 test('Podcast Featured Episode prefers the real master-audio runtime',async ()=>{

@@ -3704,10 +3704,42 @@ function ScoreRibbon({data}){
   </div>;
 }
 
+const liveCareerNextGame=(data)=>{
+  const state=data?.state || {};
+  const season=Number(state.currentSeason || data?.season || 1) || 1;
+  const currentWeek=Number(state.currentWeek ?? data?.week ?? 0) || 0;
+  const seasonSchedule=(state.seasonSchedules || []).find((entry)=>Number(entry?.season || 1)===season) || {};
+  const entries=Array.isArray(seasonSchedule.entries)
+    ? seasonSchedule.entries
+    : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
+  const nextPlayable=entries
+    .filter((entry)=>entry && !entry.isBye && String(entry.opponent || '').trim())
+    .sort((a,b)=>(Number(a.week)||0)-(Number(b.week)||0))
+    .find((entry)=>{
+      const status=String(entry.status || '').trim().toLowerCase();
+      return Number(entry.week)>=currentWeek && entry.completed!==true && status!=='completed';
+    });
+  if(nextPlayable){
+    return {
+      season,
+      week:Number(nextPlayable.week)||currentWeek,
+      opponent:String(nextPlayable.opponent || 'NEXT OPPONENT').toUpperCase(),
+    };
+  }
+  const liveTarget=liveCareerTarget(data);
+  return {
+    season:liveTarget.season || season,
+    week:liveTarget.week || currentWeek,
+    opponent:liveTarget.isBye ? 'NEXT OPPONENT' : liveTarget.opponent,
+  };
+};
+
 function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,openArchiveMoment,notify}){
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
-  const matchup=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
+  const liveNextGame=liveCareerNextGame(data);
+  const selectedIsLive=Number(data?.season)===Number(liveNextGame.season) && Number(data?.week)===Number(liveNextGame.week);
+  const matchup=liveNextGame;
   const seasonTD=(Number(data.totals?.passTD)||0)+(Number(data.totals?.rushTD)||0);
   const officialStories=Array.isArray(data.news?.officialArticles)?data.news.officialArticles:[];
   const latestOfficial=officialStories[0] || null;
@@ -3760,16 +3792,13 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,op
 
     <section className="home-cards">
       <article className="dark-card next-week reference-next-week">
-        <CardHeader title={pregame?'THIS WEEK':'YOUR NEXT WEEK'}/>
+        <CardHeader title="YOUR NEXT GAME"/>
         <div className="next-body">
           <Logo team={matchup.opponent} type="big"/>
           <div><small>WEEK {matchup.week}</small><h3>{matchup.opponent}</h3></div>
         </div>
-        <p>{pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'Keep building. Prepare for your next opponent in your career journey.'}</p>
-        <button className="yellow" onClick={()=>pregame
-          ? openArchiveMoment(data.season,data.game.week,'gamehub')
-          : openArchiveMoment(data.next?.season || data.season,data.next?.week,'gamehub')
-        }><CalendarDays/>{pregame?'Open this week':'Prepare next week'}<ChevronRight/></button>
+        <p>{selectedIsLive && pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'This is the next unplayed game in your live career, even while you browse older weeks.'}</p>
+        <button className="yellow" onClick={()=>openArchiveMoment(liveNextGame.season,liveNextGame.week,'gamehub')}><CalendarDays/>{selectedIsLive && pregame?'OPEN THIS GAME':'PREPARE NEXT GAME'}<ChevronRight/></button>
       </article>
 
       <article className="dark-card wrap-card reference-wrap">

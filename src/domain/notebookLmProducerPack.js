@@ -596,7 +596,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     ...(scoringLines.length?scoringLines:['No separate verified scoring-summary facts were saved for this week.']),
     '',
     '## COMPLETE VERIFIED SCREENSHOT STAT TABLES',
-    'Every verified individual statistic published from the uploaded game screenshots is preserved below, including visible zero values. These sections are organized as research, not as a required read-aloud script. The game's displayed completion percentage is preserved when available and is calculated from verified completions and attempts only as a fallback; passer rating is preserved exactly when it was uploaded.',
+    'Every verified individual statistic published from the uploaded game screenshots is preserved below, including visible zero values. These sections are organized as research, not as a required read-aloud script. The game’s displayed completion percentage is preserved when available and is calculated from verified completions and attempts only as a fallback; passer rating is preserved exactly when it was uploaded.',
     '',
     ...(screenshotStats.lines.length?screenshotStats.lines:['No additional published screenshot statistics were saved for this week.']),
     '',

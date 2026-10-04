@@ -118,20 +118,23 @@ test('weekly photo resolver remains safe when the selected week has no Newsroom 
 
 
 
-test('home next-week action selects the upcoming week before opening Game Hub',()=>{
+test('home next-week action selects the upcoming week before opening Game Hub',async ()=>{
+  const source = await readFile(sourceUrl,'utf8');
   assert.match(source, /openArchiveMoment=\{openArchiveMoment\}/);
   assert.match(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
   assert.doesNotMatch(source, /Prepare next week'\}<ChevronRight\/><\/button>\s*\)\s*:\s*null/);
 });
 
-test('Podcast Featured Episode prefers the real master-audio runtime',()=>{
+test('Podcast Featured Episode prefers the real master-audio runtime',async ()=>{
+  const source = await readFile(sourceUrl,'utf8');
   assert.match(source, /previewAudioDurationForFile/);
   assert.match(source, /masterAudioDurationSeconds/);
   assert.match(source, /const featuredDuration=episode\.audioReady && actualAudioDurationSeconds>0/);
   assert.match(source, /<b>\{featuredDuration\}<\/b>/);
 });
 
-test('EA SPORTS Network coverage is promoted as a first-class official artifact',()=>{
+test('EA SPORTS Network coverage is promoted as a first-class official artifact',async ()=>{
+  const [source,css] = await Promise.all([readFile(sourceUrl,'utf8'),readFile(cssUrl,'utf8')]);
   assert.match(source, /uploadOfficialArticleScreenshots/);
   assert.match(source, /screenshotStoragePath/);
   assert.match(source, /home-official-coverage/);
@@ -151,4 +154,19 @@ test('homepage navigation uses explicit targets and flexible cards',()=>{
   assert.match(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
   assert.match(css, /flexible homepage cards/);
   assert.match(css, /\.home-page \.reference-newsroom-card\{[\s\S]*height:auto!important/);
+});
+
+
+test('Chronicle memory stack and media vault cards navigate to preserved content',async ()=>{
+  const [source,css] = await Promise.all([readFile(sourceUrl,'utf8'),readFile(cssUrl,'utf8')]);
+  assert.match(source, /className="chronicle-memory-card"/);
+  assert.match(source, /openArchiveMoment\(activeSeasonNumber,activeWeekNumber,'newsroom'\)/);
+  assert.match(source, /openArchiveMoment\(activeSeasonNumber,activeWeekNumber,'podcast','episode'\)/);
+  assert.match(source, /museum-media-grid/);
+  assert.match(source, /openChronicleMedia\(latestNewsroomEntry,'newsroom'\)/);
+  assert.match(source, /openChronicleMedia\(latestPodcastEntry,'podcast','episode'\)/);
+  assert.match(source, /openChronicleMedia\(latestOfficialEntry,'newsroom'\)/);
+  assert.match(css, /Chronicle cards are real archive shortcuts/);
+  assert.match(css, /\.chronicle-memory-card:not\(:disabled\):hover/);
+  assert.match(css, /\.museum-media-grid>button/);
 });

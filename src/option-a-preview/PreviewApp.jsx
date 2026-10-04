@@ -4969,6 +4969,22 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   const officialMediaCount=allEntries.filter((entry)=>entry?.media?.official).length;
   const activeSeasonNumber=Number(active?.season || activeSeason.season || data.season);
   const activeWeekNumber=Number(active?.week ?? data.week);
+  const latestWith=(selector)=>allEntries
+    .slice()
+    .sort((a,b)=>(Number(b.season)||0)-(Number(a.season)||0) || (Number(b.week)||0)-(Number(a.week)||0))
+    .find(selector) || null;
+  const latestNewsroomEntry=latestWith((entry)=>entry?.media?.newsroom);
+  const latestPodcastEntry=latestWith((entry)=>entry?.media?.podcast);
+  const latestOfficialEntry=latestWith((entry)=>entry?.media?.official);
+  const latestLinkedMediaEntry=latestWith((entry)=>entry?.media?.newsroom || entry?.media?.podcast || entry?.media?.official || entry?.media?.photos?.length);
+
+  const openChronicleMedia=(entry,target,tab='')=>{
+    if(!entry){
+      notify('No saved media is available for that Chronicle category yet.');
+      return;
+    }
+    openArchiveMoment(Number(entry.season)||data.season,Number(entry.week)||0,target,tab);
+  };
 
   return <div className="page chronicle-page">
     <section className="chronicle-hero-redesign" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
@@ -5032,10 +5048,18 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
       </div>
       <aside className="chronicle-memory-stack">
         <span>MEMORY STACK</span>
-        <article><Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>{active?.media?.newsroom?.headline || 'No article attached'}</strong><p>{active?.media?.newsroom?.dek || 'Newsroom coverage will appear when it exists for this entry.'}</p></div></article>
-        <article><Headphones/><div><small>THE HUDDLE</small><strong>{active?.media?.podcast?.title || 'No episode attached'}</strong><p>{active?.media?.podcast ? (active.media.podcast.finished?'Saved episode with audio ready.':'Saved episode/script attached to this week.') : 'Podcast coverage will appear when it exists for this entry.'}</p></div></article>
-        <article className={active?.media?.official?'official-memory':'muted-memory'}><RadioIcon/><div><small>EA SPORTS NETWORK</small><strong>{active?.media?.official?.headline || 'No official article attached'}</strong><p>{active?.media?.official?.summary || 'Official in-game coverage will appear here when it was preserved with the week.'}</p></div></article>
-        <article><ImageIcon/><div><small>PHOTO LIBRARY</small><strong>{active?.media?.photos?.length || 0} linked image{active?.media?.photos?.length===1?'':'s'}</strong><p>Career photos remain attached to the week where they were used.</p></div></article>
+        <button className="chronicle-memory-card" disabled={!active?.media?.newsroom} onClick={()=>active?.media?.newsroom && openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom')}>
+          <Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>{active?.media?.newsroom?.headline || 'No article attached'}</strong><p>{active?.media?.newsroom?.dek || 'Newsroom coverage will appear when it exists for this entry.'}</p></div><ChevronRight/>
+        </button>
+        <button className="chronicle-memory-card" disabled={!active?.media?.podcast} onClick={()=>active?.media?.podcast && openArchiveMoment(activeSeasonNumber,activeWeekNumber,'podcast','episode')}>
+          <Headphones/><div><small>THE HUDDLE</small><strong>{active?.media?.podcast?.title || 'No episode attached'}</strong><p>{active?.media?.podcast ? (active.media.podcast.finished?'Saved episode with audio ready.':'Saved episode/script attached to this week.') : 'Podcast coverage will appear when it exists for this entry.'}</p></div><ChevronRight/>
+        </button>
+        <button className={'chronicle-memory-card '+(active?.media?.official?'official-memory':'muted-memory')} disabled={!active?.media?.official} onClick={()=>active?.media?.official && openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom')}>
+          <RadioIcon/><div><small>EA SPORTS NETWORK</small><strong>{active?.media?.official?.headline || 'No official article attached'}</strong><p>{active?.media?.official?.summary || 'Official in-game coverage will appear here when it was preserved with the week.'}</p></div><ChevronRight/>
+        </button>
+        <button className="chronicle-memory-card" disabled={!(active?.media?.photos?.length)} onClick={()=>active?.media?.photos?.length && openArchiveMoment(activeSeasonNumber,activeWeekNumber,active?.media?.newsroom?'newsroom':'gamehub')}>
+          <ImageIcon/><div><small>PHOTO LIBRARY</small><strong>{active?.media?.photos?.length || 0} linked image{active?.media?.photos?.length===1?'':'s'}</strong><p>Open the preserved week where these career photos were used.</p></div><ChevronRight/>
+        </button>
       </aside>
     </section>
 
@@ -5064,11 +5088,11 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
           <article><strong>{highTD.value||0}</strong><span>TOTAL TD</span><small>{highTD.entry ? `Career high · S${highTD.entry.season} W${highTD.entry.week}` : 'No games yet'}</small></article>
           <article><strong>{highRush.value||0}</strong><span>RUSH YDS</span><small>{highRush.entry ? `Career high · S${highRush.entry.season} W${highRush.entry.week}` : 'No games yet'}</small></article>
         </div>}
-        {museumTab==='media' && <div className="museum-record-grid">
-          <article><Newspaper/><strong>{(data.state?.newsroomIssues||[]).length || data.news?.articles?.length || 0}</strong><span>NEWSROOM EDITIONS</span><small>Saved career coverage</small></article>
-          <article><Headphones/><strong>{(data.state?.podcastEpisodes||[]).length || 0}</strong><span>HUDDLE EPISODES</span><small>Saved scripts and shows</small></article>
-          <article><RadioIcon/><strong>{officialMediaCount}</strong><span>OFFICIAL ARTICLES</span><small>EA SPORTS Network artifacts</small></article>
-          <article><Camera/><strong>{mediaCount}</strong><span>LINKED MEDIA</span><small>Coverage + photos across Chronicle</small></article>
+        {museumTab==='media' && <div className="museum-record-grid museum-media-grid">
+          <button disabled={!latestNewsroomEntry} onClick={()=>openChronicleMedia(latestNewsroomEntry,'newsroom')}><Newspaper/><strong>{(data.state?.newsroomIssues||[]).length || data.news?.articles?.length || 0}</strong><span>NEWSROOM EDITIONS</span><small>{latestNewsroomEntry?'Open latest saved coverage':'No saved coverage yet'}</small><ChevronRight/></button>
+          <button disabled={!latestPodcastEntry} onClick={()=>openChronicleMedia(latestPodcastEntry,'podcast','episode')}><Headphones/><strong>{(data.state?.podcastEpisodes||[]).length || 0}</strong><span>HUDDLE EPISODES</span><small>{latestPodcastEntry?'Open latest saved episode':'No saved episode yet'}</small><ChevronRight/></button>
+          <button disabled={!latestOfficialEntry} onClick={()=>openChronicleMedia(latestOfficialEntry,'newsroom')}><RadioIcon/><strong>{officialMediaCount}</strong><span>OFFICIAL ARTICLES</span><small>{latestOfficialEntry?'Open latest EA SPORTS artifact':'No official article yet'}</small><ChevronRight/></button>
+          <button disabled={!latestLinkedMediaEntry} onClick={()=>openChronicleMedia(latestLinkedMediaEntry,latestLinkedMediaEntry?.media?.newsroom?'newsroom':'gamehub')}><Camera/><strong>{mediaCount}</strong><span>LINKED MEDIA</span><small>{latestLinkedMediaEntry?'Open latest preserved media week':'No linked media yet'}</small><ChevronRight/></button>
         </div>}
         {museumTab==='stops' && <div className="museum-signature-grid">
           {programs.length ? programs.map((school,index)=><article key={school}><span>CAREER STOP {index+1}</span><strong>{school}</strong><p>{seasons.filter((s)=>s.school===school).map((s)=>`Season ${s.season}`).join(' · ')}</p></article>) : <div className="chronicle-empty-state">Career programs will collect here as the journey grows.</div>}

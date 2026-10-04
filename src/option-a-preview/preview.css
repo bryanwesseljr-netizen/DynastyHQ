@@ -14712,3 +14712,34 @@ select optgroup{
     overflow:hidden!important;
   }
 }
+
+
+/* Precision match pass v56 — Chronicle cards are real archive shortcuts */
+.chronicle-memory-card{
+  width:100%;display:grid;grid-template-columns:30px minmax(0,1fr) 16px;gap:9px;align-items:center;padding:10px;
+  border:1px solid #d5d0c6;border-radius:6px;background:#fffdfa;color:#18372c;text-align:left
+}
+.chronicle-memory-card>svg:first-child{width:18px;color:#176b52}
+.chronicle-memory-card>svg:last-child{width:13px;color:#557069}
+.chronicle-memory-card>div{min-width:0;display:grid;gap:2px}
+.chronicle-memory-card small{color:#6d7b75;font-size:5.4px;font-weight:900;letter-spacing:.55px}
+.chronicle-memory-card strong{font-size:8px;line-height:1.2}
+.chronicle-memory-card p{margin:0;color:#6d7672;font:400 6.4px/1.35 Georgia,"Times New Roman",serif}
+.chronicle-memory-card:not(:disabled):hover{transform:translateY(-1px);border-color:#9dafaa;background:#eef4f0}
+.chronicle-memory-card:disabled{cursor:default;opacity:.55}
+.chronicle-memory-card.official-memory{border-color:#9eb2aa;background:#edf2ef}
+.museum-media-grid>button{
+  position:relative;min-height:132px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;
+  padding:14px;border:1px solid #cfc9bd;border-radius:6px;background:#fffdf8;color:#18372c;text-align:left
+}
+.museum-media-grid>button>svg:first-child{width:20px;color:#176b52}
+.museum-media-grid>button>svg:last-child{position:absolute;right:10px;bottom:10px;width:13px;color:#5d746b}
+.museum-media-grid>button strong{font-size:24px;line-height:1}
+.museum-media-grid>button span{font-size:6px;font-weight:950;letter-spacing:.55px}
+.museum-media-grid>button small{color:#6f7b76;font:400 6.2px/1.3 Georgia,"Times New Roman",serif}
+.museum-media-grid>button:not(:disabled):hover{transform:translateY(-1px);border-color:#91a79e;background:#eef4f0}
+.museum-media-grid>button:disabled{cursor:default;opacity:.52}
+@media(max-width:700px){
+  .chronicle-memory-card{grid-template-columns:28px minmax(0,1fr) 14px}
+  .museum-media-grid>button{min-height:112px}
+}

@@ -238,7 +238,7 @@ const canonicalStatLabel=(category,label)=>{
     if(normalized==='btk'||/broken tackles?/.test(normalized)) return 'BTK (Broken tackles)';
     if(normalized==='fum'||normalized==='fumb'||/^fumbles?$/.test(normalized)) return 'FUMB (Fumbles)';
     if(normalized==='yac'||/yards after carry/.test(normalized)) return 'YAC';
-    if(/20\+\s*yds|20 plus/.test(normalized)) return '20+ YDS';
+    if(/^20\+\s*yds$/i.test(rawLabel)||normalized==='20 yds'||/20 plus/.test(normalized)) return '20+ YDS';
   }
   if(category==='RECEIVING' && (normalized==='avg'||/receiving average|yards catch/.test(normalized))) return 'AVG (yards/catch)';
   if(category==='DEFENSE'){

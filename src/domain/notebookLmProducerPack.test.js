@@ -100,9 +100,12 @@ test('Week 12 Wisconsin Producer Pack backfills the user-provided screenshot tab
 
   assert.match(pack.text,/OPENING REQUIREMENT:/);
   assert.match(pack.text,/Welcome to another episode of The Huddle Podcast/);
-  assert.match(pack.customizePrompt,/Deep Dive/);
-  assert.match(pack.customizePrompt,/Short length setting/);
-  assert.doesNotMatch(pack.customizePrompt,/4–5 minutes|Brief Deep Dive/);
+  assert.match(pack.customizePrompt,/Focus on Oregon's current Season 4, Week 12 game against Wisconsin first/);
+  assert.match(pack.customizePrompt,/Audio Priority Map/);
+  assert.match(pack.customizePrompt,/The Huddle Podcast/);
+  assert.match(pack.customizePrompt,/Mark Thompson and Sarah Chen/);
+  assert.match(pack.customizePrompt,/without turning the episode into a box-score reading/);
+  assert.doesNotMatch(pack.customizePrompt,/Short length setting|4–5 minutes|Brief Deep Dive|Create a Deep Dive episode/);
   assert.doesNotMatch(pack.text,/RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
 
   assert.doesNotMatch(pack.text,/9999/);

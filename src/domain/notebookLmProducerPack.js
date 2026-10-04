@@ -502,21 +502,16 @@ const chapterLines=(episode={})=>{
   }):['No saved chapter list.'];
 };
 
-const customizePromptFor=(data={},storylines=[])=>{
+const customizePromptFor=(data={})=>{
   const game=data.game||{};
   const school=clean(data?.player?.school,'the current team');
-  const focus=storylines.slice(0,4).map((entry)=>entry.label.toLowerCase()).join(', ');
   return [
-    'Create a Deep Dive episode of The Huddle Podcast using NotebookLM’s Short length setting, about '+school+"'s Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+'.',
-    'Always begin with a natural show introduction that identifies the podcast and both hosts, such as: "Welcome to another episode of The Huddle Podcast. We are your hosts, Mark Thompson and Sarah Chen." Then transition immediately into the current game.',
-    'Prioritize the Producer Brief and Key Storylines, then use the complete verified stat tables as supporting evidence.',
-    'Mark Thompson and Sarah Chen should sound like knowledgeable local college-football hosts who cover this program every week: conversational, analytical, willing to react to each other, and never like they are reading a box score.',
-    focus?'Spend most of the limited runtime explaining the football meaning behind: '+focus+'.':'Spend most of the limited runtime explaining the biggest verified football takeaways from the game.',
-    'Use exact statistics selectively when they strengthen a point. Quarterback completion percentage and passer rating are especially useful when available. Connect prior games only when the comparison adds real context.',
-    'Do not discuss Road to Glory game mechanics, ratings, coach trust, skill points, GPA, wear, followers, NIL systems, or progression menus.',
-    'Do not invent injuries, quotes, locker-room reactions, coaching decisions, play calls, strategy, motives, emotions, or facts that are not in the source pack.',
-    'Treat the DynastyHQ generated transcript as style reference only; verified research sections outrank it whenever the transcript adds interpretation that is not explicitly supported.',
-    'Use full player names when supplied; never guess a missing first name.',
+    'Focus on '+school+"'s current Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+' first.',
+    'Use the Producer Brief, Audio Priority Map, and Key Storylines to decide what matters most.',
+    'Open by welcoming listeners to The Huddle Podcast and introducing Mark Thompson and Sarah Chen.',
+    'Explain why the game unfolded the way it did, using standout player and team stats as evidence without turning the episode into a box-score reading.',
+    'Use recent-game context only when it adds meaningful perspective.',
+    'Treat the verified research sections as authoritative and do not invent facts.',
   ].join(' ');
 };
 

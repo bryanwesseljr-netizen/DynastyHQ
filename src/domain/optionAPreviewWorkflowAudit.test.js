@@ -23,7 +23,7 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(producer, /NOTEBOOKLM PRODUCER PACK 2\.0/);
   assert.match(producer, /PRODUCER BRIEF — READ THIS FIRST/);
   assert.match(producer, /KEY STORYLINES/);
-  assert.match(producer, /TEAM STATISTICAL COMPARISON/);
+  assert.match(producer, /TEAM COMPARISON/);
   assert.match(producer, /SCORING TIMELINE \/ DRIVE DETAILS/);
   assert.match(producer, /COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
   assert.match(producer, /AUDIO PRIORITY MAP/);
@@ -39,7 +39,8 @@ test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and la
   assert.match(producer, /Completion %/);
   assert.match(producer, /Road to Glory game mechanics/);
   assert.match(producer, /Every published screenshot statistic is available in the organized stat tables/);
-  assert.match(producer, /passer rating is used only when it was actually uploaded/);
+  assert.match(producer, /prefer the game’s displayed completion percentage/);
+  assert.match(producer, /Use passer rating only when it was actually uploaded/);
 });
 test('Transcript can be downloaded as well as printed', async () => {
   const source = await readFile(sourceUrl, 'utf8');

@@ -4,14 +4,15 @@ import { readFile } from 'node:fs/promises';
 
 const sourceUrl = new URL('../option-a-preview/PreviewApp.jsx', import.meta.url);
 
-test('Game Hub distinguishes completed-week review from the active playable week', async () => {
+test('Game Hub keeps historical review context separate from the live playable week', async () => {
   const source = await readFile(sourceUrl, 'utf8');
 
   assert.match(source, /REVIEW \/ UPDATE WEEK/);
   assert.match(source, /PROCESS WEEK \$\{data\.game\.week\}/);
-  assert.match(source, /prepIsCurrent/);
+  assert.match(source, /const activeOpponent=liveCareerTarget\(data\)/);
+  assert.match(source, /<b>THIS WEEK<\/b>/);
   assert.match(source, /PREPARE THIS WEEK · W/);
   assert.match(source, /detailOpen==='prep'\?activeOpponent\.week:data\.game\.week/);
-  assert.match(source, /ACTIVE MATCHUP':'UPCOMING MATCHUP/);
+  assert.match(source, /LIVE CAREER MATCHUP/);
   assert.doesNotMatch(source, /PREPARE NEXT WEEK/);
 });

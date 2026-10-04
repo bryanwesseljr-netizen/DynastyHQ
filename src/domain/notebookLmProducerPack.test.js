@@ -39,12 +39,15 @@ const data={
 
 const episode={
   title:'Oregon Week 12: Wisconsin and the stretch run',
-  summary:'Oregon beat Wisconsin behind balanced offense and a four-touchdown day from Bryan Wessel.',
+  summary:'Oregon beat Wisconsin and Wessel looked more confident than ever.',
   transcript:'Mark Thompson: Oregon handled Wisconsin in Week 12.\n\nSarah Chen: The balance stood out.',
   chapters:[{title:'Opening Drive',summary:'Why Oregon won.'}],
   episode:{
     storylineThreads:[
-      {label:'Stretch-run momentum after another conference win'},
+      {label:'ROLE PROMOTION'},
+      {label:'IMPACT PERFORMANCE'},
+      {label:'WINNING STREAK'},
+      {label:'Stretch-run momentum',summary:'Oregon has kept stacking verified wins as the season enters the stretch run.'},
       {label:'Coach Trust climbed again and should be discussed'},
     ],
   },
@@ -54,9 +57,16 @@ const facts=[
   {key:'game.passYds',label:'Passing yards',value:287,verified:true},
   {key:'rtg.coachTrust',label:'Coach Trust',value:9999,verified:true},
   {key:'program.coverage.scoring.1',label:'Oregon · Marco Ortiz · 22-yard touchdown reception · 8:15 1st Quarter',value:'22-yard TD pass from Bryan Wessel',verified:true},
+  {key:'program.coverage.scoring.1-summary',label:'ORE · M.Ortiz · receiving touchdowns',value:1,verified:true},
+  {key:'program.coverage.scoring.2',label:'WIS · John Gruttadauria · 31 Yd FG · 2:46 2nd Quarter',value:'31-yard field goal',verified:true},
+  {key:'program.coverage.scoring.2-summary',label:'WIS · John Gruttadauria · Field Goal',value:'31 Yd',verified:true},
+  {key:'program.coverage.scoring.non-score',label:'ORE · K.Hicks · Interception Return Yards',value:42,verified:true},
   {key:'program.coverage.player.1',label:'ORE · Marco Ortiz · Receptions',value:6,verified:true},
   {key:'program.coverage.player.2',label:'ORE · Marco Ortiz · Receiving yards',value:101,verified:true},
-  {key:'program.coverage.player.3',label:'WIS · D.Jones · Tackles',value:9,verified:true},
+  {key:'program.coverage.player.2-average',label:'ORE · Marco Ortiz · Receiving average',value:16.8,verified:true},
+  {key:'program.coverage.player.2-rac',label:'ORE · Marco Ortiz · RAC yards',value:22,verified:true},
+  {key:'program.coverage.player.2-drops',label:'ORE · Marco Ortiz · Drops',value:0,verified:true},
+  {key:'program.coverage.player.3',label:'WIS · D.Jones · Total Tackles',value:9,verified:true},
 ];
 
 test('latest NotebookLM game selection resolves the most recent completed uploaded game',()=>{
@@ -72,6 +82,17 @@ test('Producer Pack 2.0 targets Week 12 Wisconsin and keeps rich football detail
   assert.match(pack.text,/TEAM STATISTICAL COMPARISON/);
   assert.match(pack.text,/SCORING TIMELINE \/ DRIVE DETAILS/);
   assert.match(pack.text,/ORE · Marco Ortiz — Receptions: 6 · Receiving yards: 101/);
+  assert.doesNotMatch(pack.text,/Receiving average: 16\.8/);
+  assert.doesNotMatch(pack.text,/RAC yards: 22/);
+  assert.doesNotMatch(pack.text,/Drops: 0/);
+  assert.doesNotMatch(pack.text,/receiving touchdowns: 1/);
+  assert.doesNotMatch(pack.text,/Interception Return Yards: 42/);
+  assert.equal((pack.text.match(/31 Yd FG/g)||[]).length,1);
+  assert.match(pack.text,/WINNING STREAK — Oregon has won 2 straight completed games/);
+  assert.doesNotMatch(pack.text,/CONTINUING STORYLINE — ROLE PROMOTION/);
+  assert.doesNotMatch(pack.text,/CONTINUING STORYLINE — IMPACT PERFORMANCE/);
+  assert.doesNotMatch(pack.text,/Editorial brief: .*more confident than ever/);
+  assert.match(pack.text,/generated editorial copy, not a verified fact source/i);
   assert.match(pack.text,/PREVIOUS-GAME COMPARISON/);
   assert.match(pack.text,/Previous opponent: Iowa/);
   assert.match(pack.text,/RECENT SEASON CONTEXT/);
@@ -80,6 +101,7 @@ test('Producer Pack 2.0 targets Week 12 Wisconsin and keeps rich football detail
   assert.match(pack.text,/RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
   assert.match(pack.customizePrompt,/Longer Deep Dive/);
   assert.match(pack.customizePrompt,/Mark Thompson and Sarah Chen/);
+  assert.match(pack.customizePrompt,/style reference only/);
   assert.doesNotMatch(pack.text,/9999/);
   assert.doesNotMatch(pack.text,/Coach Trust climbed/);
   assert.equal(pack.meta.week,12);

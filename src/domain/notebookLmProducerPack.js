@@ -36,6 +36,30 @@ const isScoringFact=(fact={})=>(
     clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence)
   )
 );
+
+const scoringEventKind=(fact={})=>{
+  const textValue=clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence);
+  if(/field goal|\bfg\b/i.test(textValue)) return 'field-goal';
+  if(/interception return/i.test(textValue) && /touchdown|returned interception/i.test(textValue)) return 'interception-return-td';
+  if(/fumble return/i.test(textValue) && /touchdown|returned fumble/i.test(textValue)) return 'fumble-return-td';
+  if(/kick return/i.test(textValue) && /touchdown/i.test(textValue)) return 'kick-return-td';
+  if(/punt return/i.test(textValue) && /touchdown/i.test(textValue)) return 'punt-return-td';
+  if(/pass from|touchdown reception|receiving touchdown|td reception/i.test(textValue)) return 'receiving-td';
+  if(/touchdown run|rushing touchdown|\b\d+\s*(?:yd|yard)s?\s+run\b/i.test(textValue)) return 'rushing-td';
+  return '';
+};
+
+const isScoringEventFact=(fact={})=>{
+  const textValue=clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence);
+  const label=clean(fact.label);
+  if(/interception return yards|receiving touchdowns|rushing touchdowns|\btouchdowns\s*:/i.test(label)) return false;
+  const kind=scoringEventKind(fact);
+  if(!kind) return false;
+  const hasDistance=/\b\d+\s*(?:yd|yard)s?\b/i.test(textValue);
+  const hasClock=/\b\d{1,2}:\d{2}\b/.test(textValue);
+  const hasPlayLanguage=/pass from|touchdown reception|touchdown run|returned interception|returned fumble|field goal|\bfg\b/i.test(textValue);
+  return hasDistance || hasClock || hasPlayLanguage;
+};
 const uniqueFacts=(facts=[])=>{
   const seen=new Set();
   return facts.filter((fact)=>{
@@ -174,11 +198,23 @@ const factParts=(fact={},index=0)=>{
   return {entity:[team,subject].filter(Boolean).join(' · '),label,value};
 };
 
+const isUsefulSupportingDetail=(parts={})=>{
+  const label=norm(parts.label);
+  const value=clean(parts.value);
+  if(!label) return false;
+  if(/^(team rank|player|school|committed college)$/.test(label)) return false;
+  if(/receiving average|rac average|rac yards/.test(label)) return false;
+  if(/receiving tds|rushing touchdowns|drops/.test(label) && /^0(?:\.0)?$/.test(value)) return false;
+  if(/receptions|receiving yards|receiving tds|long reception|rushing yards|rushing touchdowns|completions|attempts|interceptions|passer rating|total tackles|solo tackles|tackles for loss|sacks|punts|punting average|longest punt|punts inside 20|drops|longest completion/.test(label)) return true;
+  return !/^0(?:\.0)?$/.test(value);
+};
+
 const groupedFactLines=(facts=[])=>{
   const groups=new Map();
   const loose=[];
   facts.forEach((fact,index)=>{
     const parts=factParts(fact,index);
+    if(!isUsefulSupportingDetail(parts)) return;
     const detail=parts.label+': '+(parts.value||'verified');
     if(!parts.entity){
       loose.push('- '+detail);
@@ -208,19 +244,30 @@ const scoringOrder=(fact={},index=0)=>{
     index,
   };
 };
+const scoringSignature=(fact={})=>{
+  const parts=factParts(fact,0);
+  const textValue=clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence);
+  const distance=textValue.match(/\b(\d+)\s*(?:yd|yard)s?\b/i)?.[1]||'';
+  return [norm(parts.entity),scoringEventKind(fact),distance].join('|');
+};
+
+const scoringRichness=(fact={})=>{
+  const textValue=clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence);
+  let score=textValue.length;
+  if(/\b\d{1,2}:\d{2}\b/.test(textValue)) score+=100;
+  if(/\b[1-4](?:st|nd|rd|th)\s+quarter\b|\bq[1-4]\b/i.test(textValue)) score+=80;
+  if(/pass from|returned interception|returned fumble/i.test(textValue)) score+=50;
+  return score;
+};
+
 const scoringLinesFor=(facts=[])=>{
-  const accepted=[];
-  const seen=[];
-  uniqueFacts(facts).forEach((fact)=>{
-    const parts=factParts(fact,accepted.length);
-    const combined=norm(parts.entity+' '+parts.label+' '+parts.value);
-    if(!combined) return;
-    const duplicate=seen.some((old)=>old===combined||(old.length>28&&combined.length>28&&(old.includes(combined)||combined.includes(old))));
-    if(duplicate) return;
-    seen.push(combined);
-    accepted.push(fact);
+  const bestBySignature=new Map();
+  uniqueFacts(facts).filter(isScoringEventFact).forEach((fact)=>{
+    const signature=scoringSignature(fact);
+    const current=bestBySignature.get(signature);
+    if(!current || scoringRichness(fact)>scoringRichness(current)) bestBySignature.set(signature,fact);
   });
-  return accepted
+  return [...bestBySignature.values()]
     .map((fact,index)=>({fact,order:scoringOrder(fact,index)}))
     .sort((a,b)=>a.order.quarter-b.order.quarter||b.order.clock-a.order.clock||a.order.index-b.order.index)
     .map(({fact},index)=>{
@@ -265,9 +312,18 @@ const storylinesFor=(data={},episode={},previousGame=null)=>{
     const diff=num(team.rushYards)-num(team.opponentRushYards);
     if(Math.abs(diff)>=40) addStory(list,'RUSHING GAME',school+' rushed for '+team.rushYards+' yards while '+opponent+' rushed for '+team.opponentRushYards+'; the difference was '+Math.abs(diff)+' yards.');
   }
+  const seasonGames=recentGamesFor(data,99);
+  let winStreak=0;
+  for(let index=seasonGames.length-1;index>=0;index-=1){
+    if(clean(seasonGames[index]?.result).toUpperCase()!=='W') break;
+    winStreak+=1;
+  }
+  if(winStreak>=2) addStory(list,'WINNING STREAK',school+' has won '+winStreak+' straight completed games through Week '+num(game.week,0)+'.');
+
   const rawEpisode=episode?.episode||episode||{};
   (Array.isArray(rawEpisode.storylineThreads)?rawEpisode.storylineThreads:[]).slice(0,6).forEach((thread)=>{
-    const detail=clean(thread?.label||thread?.title||thread?.summary||thread?.detail||thread?.reason);
+    const detail=clean(thread?.summary||thread?.detail||thread?.reason||thread?.title||thread?.label);
+    if(/^(role promotion|impact performance|winning streak)$/i.test(detail)) return;
     addStory(list,'CONTINUING STORYLINE',detail);
   });
   if(previousGame){
@@ -374,6 +430,7 @@ const customizePromptFor=(data={},storylines=[])=>{
     'Use exact statistics selectively when they support a point. Connect the current game to prior verified games only when the comparison is useful.',
     'Do not discuss Road to Glory game mechanics, ratings, coach trust, skill points, GPA, wear, followers, NIL systems, or progression menus.',
     'Do not invent injuries, quotes, locker-room reactions, coaching decisions, play calls, strategy, motives, emotions, or facts that are not in the source pack.',
+    'Treat the DynastyHQ generated transcript as style reference only; verified research sections outrank it whenever the transcript adds interpretation that is not explicitly supported.',
     'Use full player names when supplied; never guess a missing first name.',
   ].join(' ');
 };
@@ -393,7 +450,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
   const school=clean(data?.player?.school,'Team');
   const opponent=clean(game.opponent,'Opponent');
   const title=clean(episode.title||rawEpisode.title,school+' Week '+num(game.week,0)+': the game and what it means');
-  const summary=clean(episode.summary||rawEpisode.summary);
+  const verifiedBrief=gameParagraph(data);
   const prompt=customizePromptFor(data,storylines);
   const raw=game.raw||{};
   const detail=[
@@ -434,7 +491,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     '',
     '## EPISODE FOCUS',
     'Working title: '+title,
-    'Editorial brief: '+(summary||gameParagraph(data)),
+    'Editorial brief: '+verifiedBrief,
     '',
     '## KEY STORYLINES',
     ...(storylines.length?storylines.map((entry,index)=>(index+1)+'. '+entry.label+' — '+entry.detail):['1. Use the verified result, player production, team comparison and scoring timeline below to identify the strongest football angles.']),
@@ -466,7 +523,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     ...chapterLines(episode),
     '',
     '## DYNASTYHQ GENERATED TRANSCRIPT — COMPLETE',
-    'Use this transcript as an additional editorial and conversational reference. It is not more authoritative than the verified research above, and NotebookLM does not need to repeat it verbatim.',
+    'Use this transcript only as an additional STYLE and conversational reference. It is generated editorial copy, not a verified fact source. If it adds claims about confidence, preparation, coaching trust, reads, pressure, emotions, locker-room atmosphere, short fields, strategy or motives that are not explicitly supported in the verified sections above, ignore those claims. NotebookLM does not need to repeat the transcript verbatim.',
     '',
     transcript||'No generated transcript is saved for this selected week.',
     '',

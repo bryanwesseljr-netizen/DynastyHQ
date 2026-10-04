@@ -223,10 +223,11 @@ const screenshotStatCategory=(parts={},fact={},qbEntities=new Set())=>{
 };
 
 const canonicalStatLabel=(category,label)=>{
+  const rawLabel=clean(label).toLowerCase().replace(/\s+/g,' ').trim();
   const normalized=norm(label);
   if(category==='PASSING'){
     if(/^(rating|rtg|passer rating)$/.test(normalized)||/passer rating/.test(normalized)) return 'Passer Rating';
-    if(/completion|comp pct|comp percent/.test(normalized)) return 'Completion %';
+    if(/^(completion\s*%|completion percentage|comp\s*%|comp pct|comp percent)$/.test(rawLabel)) return 'Completion %';
     if(normalized==='avg'||/yards attempt|passing average/.test(normalized)) return 'AVG (yards/attempt)';
     if(/^(att|attempts?)$/.test(normalized)) return 'Attempts';
     if(/^(cmp|comp|completions?)$/.test(normalized)) return 'Completions';
@@ -595,7 +596,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     ...(scoringLines.length?scoringLines:['No separate verified scoring-summary facts were saved for this week.']),
     '',
     '## COMPLETE VERIFIED SCREENSHOT STAT TABLES',
-    'Every verified individual statistic published from the uploaded game screenshots is preserved below, including visible zero values. These sections are organized as research, not as a required read-aloud script. Completion percentage is calculated from verified completions and attempts when both are available; passer rating is preserved exactly when it was uploaded.',
+    'Every verified individual statistic published from the uploaded game screenshots is preserved below, including visible zero values. These sections are organized as research, not as a required read-aloud script. The game's displayed completion percentage is preserved when available and is calculated from verified completions and attempts only as a fallback; passer rating is preserved exactly when it was uploaded.',
     '',
     ...(screenshotStats.lines.length?screenshotStats.lines:['No additional published screenshot statistics were saved for this week.']),
     '',

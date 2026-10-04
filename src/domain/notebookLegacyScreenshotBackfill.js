@@ -1,12 +1,18 @@
 const norm=(value)=>String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 
+const screenshotValue=(label,value)=>{
+  if(typeof value!=='number') return String(value);
+  if(/(^AVG$|average|passer rating|sacks$)/i.test(String(label))) return value.toFixed(1);
+  return String(value);
+};
+
 const rowFacts=(category,team,subject,stats=[])=>stats.map(([label,value],index)=>({
   key:'program.coverage.'+category+'.week12-wisconsin-backfill.'+norm(team+' '+subject+' '+label).replace(/\s+/g,'-')+'-'+index,
   category,
   team,
   subject,
   label,
-  value:String(value),
+  value:screenshotValue(label,value),
   confidence:1,
   evidence:'Verified from user-provided Week 12 Wisconsin postgame screenshot.',
   verified:true,

@@ -5,25 +5,34 @@ import { readFile } from 'node:fs/promises';
 const sourceUrl = new URL('../option-a-preview/PreviewApp.jsx', import.meta.url);
 const cssUrl = new URL('../option-a-preview/preview.css', import.meta.url);
 
-test('NotebookLM source pack keeps one canonical stat copy, removes RTG material, and preserves the full transcript', async () => {
-  const source = await readFile(sourceUrl, 'utf8');
+test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and latest-game aware', async () => {
+  const producerUrl = new URL('./notebookLmProducerPack.js', import.meta.url);
+  const [source, producer] = await Promise.all([
+    readFile(sourceUrl, 'utf8'),
+    readFile(producerUrl, 'utf8'),
+  ]);
 
-  assert.match(source, /NOTEBOOK_CANONICAL_GAME_KEYS/);
-  assert.match(source, /notebookUniqueFacts/);
-  assert.match(source, /notebookIsCanonicalStatDuplicate/);
-  assert.match(source, /MY PLAYER STAT LINE/);
-  assert.match(source, /TEAM STATS/);
-  assert.match(source, /OTHER VERIFIED INDIVIDUAL \/ GAME CONTEXT/);
-  assert.match(source, /SCORING SUMMARY/);
-  assert.match(source, /FULL PODCAST TRANSCRIPT/);
-  assert.match(source, /RTG status and development facts are intentionally excluded/);
-  assert.match(source, /Structured game, team, and player statistics appear only once outside the full transcript/);
-  assert.doesNotMatch(source, /'CURRENT RTG STATUS'/);
-  assert.doesNotMatch(source, /'PLAYER DEVELOPMENT REFERENCES'/);
-  assert.match(source, /DOWNLOAD NOTEBOOKLM SOURCE PACK/);
-  assert.match(source, /DOWNLOAD SOURCE PACK/);
+  assert.match(source, /buildNotebookLmProducerPack/);
+  assert.match(source, /latestNotebookGameSelection/);
+  assert.match(source, /notebookUsesLatestFallback/);
+  assert.match(source, /DOWNLOAD PRODUCER PACK/);
+  assert.match(source, /DOWNLOAD WEEK \{notebookProducerPack\.meta\.week\} PRODUCER PACK/);
+  assert.match(source, /COPY NOTEBOOKLM CUSTOMIZE PROMPT/);
+  assert.match(source, /DOWNLOAD LATEST GAME/);
+
+  assert.match(producer, /NOTEBOOKLM PRODUCER PACK 2\.0/);
+  assert.match(producer, /PRODUCER BRIEF — READ THIS FIRST/);
+  assert.match(producer, /KEY STORYLINES/);
+  assert.match(producer, /TEAM STATISTICAL COMPARISON/);
+  assert.match(producer, /SCORING TIMELINE \/ DRIVE DETAILS/);
+  assert.match(producer, /SUPPORTING CAST, OPPONENT AND OTHER VERIFIED DETAIL/);
+  assert.match(producer, /PREVIOUS-GAME COMPARISON/);
+  assert.match(producer, /RECENT SEASON CONTEXT/);
+  assert.match(producer, /DYNASTYHQ GENERATED TRANSCRIPT — COMPLETE/);
+  assert.match(producer, /RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
+  assert.match(producer, /Road to Glory game mechanics/);
+  assert.match(producer, /Structured game\/team\/player statistics are kept canonical/);
 });
-
 test('Transcript can be downloaded as well as printed', async () => {
   const source = await readFile(sourceUrl, 'utf8');
 

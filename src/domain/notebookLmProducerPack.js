@@ -1,0 +1,506 @@
+const clean=(value,fallback='')=>{
+  const text=String(value ?? '').trim();
+  return text || fallback;
+};
+const num=(value,fallback=0)=>{
+  const number=Number(value);
+  return Number.isFinite(number)?number:fallback;
+};
+const present=(value)=>value!==null && value!==undefined && value!=='';
+const norm=(value)=>clean(value).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const bySeasonWeek=(a={},b={})=>(
+  num(a.season,1)-num(b.season,1)
+  || num(a.week,0)-num(b.week,0)
+  || String(a.publishedAt||a.createdAt||'').localeCompare(String(b.publishedAt||b.createdAt||''))
+);
+
+const RTG_PATTERN=/\b(overall|ovr|coach trust|skill points?|energy|gpa|wear|followers?|brand|nil|depth chart|development|progression|regression|valuation|sponsorships?|fan milestone)\b/i;
+const CANONICAL_KEYS=new Set([
+  'game.opponent','game.result','game.homeScore','game.awayScore',
+  'game.passYds','game.passTD','game.rushYds','game.rushTD','game.int',
+  'game.teamTotalYards','game.opponentTotalYards','game.teamFirstDowns','game.opponentFirstDowns',
+  'game.teamTurnovers','game.opponentTurnovers','game.teamRushYds','game.opponentRushYds',
+  'game.teamPassYds','game.opponentPassYds','game.teamPossession','game.opponentPossession',
+]);
+
+const isRtgFact=(fact={})=>{
+  const key=clean(fact.key).toLowerCase();
+  return key.startsWith('rtg.')
+    || key==='profile.player.overall'
+    || key.startsWith('player.development')
+    || RTG_PATTERN.test(clean(fact.label));
+};
+const isScoringFact=(fact={})=>(
+  /(?:^|\.)scoring(?:\.|$)/i.test(clean(fact.key))
+  || /scor|touchdown|field goal|extra point|interception return|fumble return|drive/i.test(
+    clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence)
+  )
+);
+const uniqueFacts=(facts=[])=>{
+  const seen=new Set();
+  return facts.filter((fact)=>{
+    if(!fact) return false;
+    const signature=[
+      norm(fact.team),
+      norm(fact.subject||fact.player),
+      norm(fact.label||fact.key),
+      norm(fact.value ?? fact.displayValue ?? fact.text ?? fact.evidence),
+    ].join('|');
+    if(!signature.replace(/\|/g,'')) return false;
+    if(seen.has(signature)) return false;
+    seen.add(signature);
+    return true;
+  });
+};
+
+const isCanonicalDuplicate=(fact={},data={})=>{
+  const key=clean(fact.key);
+  if(CANONICAL_KEYS.has(key)) return true;
+  const label=norm(fact.label||key);
+  const category=norm(fact.category||fact.sourceType);
+  const subject=norm(fact.subject||fact.player);
+  const player=norm(data?.player?.name);
+  const game=data?.game||{};
+  const team=game.team||{};
+  const school=norm(data?.player?.school);
+  const opponent=norm(game.opponent);
+  const factValue=norm(fact.value ?? fact.displayValue ?? fact.text);
+  const statLike=/\b(score|result|points|total offense|total yards|passing yards|pass yards|passing touchdowns|pass td|rushing yards|rush yards|rushing touchdowns|rush td|interceptions|first downs|turnovers|possession)\b/.test(label);
+  if(!statLike) return false;
+  if(player && (subject===player || (subject && (player.includes(subject)||subject.includes(player))) || label.includes(player))) return true;
+  if(/team|game/.test(category)) return true;
+  if(!subject && /score|result|points|total offense|first downs|turnovers|possession/.test(label)) return true;
+  const canonicalEntity=!subject
+    || (player && (subject===player || player.includes(subject)||subject.includes(player)))
+    || (school && (subject===school || school.includes(subject)||subject.includes(school)))
+    || (opponent && (subject===opponent || opponent.includes(subject)||subject.includes(opponent)));
+  const values=[
+    [/passing yards|pass yards/,game.pass],
+    [/passing yards|pass yards/,team.passYards],
+    [/passing yards|pass yards/,team.opponentPassYards],
+    [/rushing yards|rush yards/,game.rush],
+    [/rushing yards|rush yards/,team.rushYards],
+    [/rushing yards|rush yards/,team.opponentRushYards],
+    [/passing touchdowns|pass td/,game.passTD],
+    [/rushing touchdowns|rush td/,game.rushTD],
+    [/interceptions/,game.interceptions],
+    [/total offense|total yards/,game.total],
+    [/total offense|total yards/,team.totalYards],
+    [/total offense|total yards/,team.opponentTotalYards],
+    [/first downs/,team.firstDowns],
+    [/first downs/,team.opponentFirstDowns],
+    [/turnovers/,team.turnovers],
+    [/turnovers/,team.opponentTurnovers],
+  ];
+  return Boolean(canonicalEntity && factValue && values.some(([pattern,value])=>(
+    present(value) && pattern.test(label) && norm(value)===factValue
+  )));
+};
+
+const validCollegeGame=(game={})=>(
+  game
+  && game.didPlay!==false
+  && !game.evaluation
+  && clean(game.stage).toLowerCase()!=='high-school'
+  && clean(game.opponent)
+  && num(game.week,-1)>=0
+);
+
+export const latestNotebookGameSelection=(state={})=>{
+  const latest=[...(state.gameLogs||[])].filter(validCollegeGame).sort(bySeasonWeek).at(-1);
+  if(!latest) return null;
+  return {
+    season:Math.max(1,num(latest.season,num(state.currentSeason,1))),
+    week:Math.max(0,num(latest.week,0)),
+    opponent:clean(latest.opponent),
+  };
+};
+
+const rawScores=(game={})=>{
+  if(present(game.teamScore)&&present(game.opponentScore)) return {team:num(game.teamScore),opponent:num(game.opponentScore)};
+  if(present(game.scoreFor)&&present(game.scoreAgainst)) return {team:num(game.scoreFor),opponent:num(game.scoreAgainst)};
+  if(!present(game.homeScore)||!present(game.awayScore)) return {team:null,opponent:null};
+  return clean(game.homeAway).toLowerCase()==='away'
+    ? {team:num(game.awayScore),opponent:num(game.homeScore)}
+    : {team:num(game.homeScore),opponent:num(game.awayScore)};
+};
+
+const previousGameFor=(data={})=>{
+  const season=num(data.season,1);
+  const week=num(data?.game?.week,0);
+  return [...(data?.state?.gameLogs||[])]
+    .filter((game)=>validCollegeGame(game)&&num(game.season,season)===season&&num(game.week,-1)<week)
+    .sort(bySeasonWeek)
+    .at(-1)||null;
+};
+const recentGamesFor=(data={},limit=4)=>{
+  const season=num(data.season,1);
+  const week=num(data?.game?.week,0);
+  return [...(data?.state?.gameLogs||[])]
+    .filter((game)=>validCollegeGame(game)&&num(game.season,season)===season&&num(game.week,-1)<=week)
+    .sort(bySeasonWeek)
+    .slice(-limit);
+};
+const seasonRecord=(data={})=>{
+  const games=recentGamesFor(data,99);
+  const wins=games.filter((game)=>clean(game.result).toUpperCase()==='W').length;
+  const losses=games.filter((game)=>clean(game.result).toUpperCase()==='L').length;
+  return games.length?wins+'-'+losses:'';
+};
+const rawPlayerLine=(game={})=>[
+  present(game.passYds)?game.passYds+' passing yards':'',
+  present(game.passTD)?game.passTD+' passing TD'+(num(game.passTD)===1?'':'s'):'',
+  present(game.rushYds)?game.rushYds+' rushing yards':'',
+  present(game.rushTD)?game.rushTD+' rushing TD'+(num(game.rushTD)===1?'':'s'):'',
+  present(game.int)?game.int+' interception'+(num(game.int)===1?'':'s'):'',
+].filter(Boolean).join(' · ');
+
+const factParts=(fact={},index=0)=>{
+  let team=clean(fact.team);
+  let subject=clean(fact.subject||fact.player);
+  let label=clean(fact.label||fact.key||('Context '+(index+1)));
+  const value=clean(fact.value ?? fact.displayValue ?? fact.text ?? fact.evidence ?? '');
+  if((!team||!subject)&&label.includes('·')){
+    const pieces=label.split('·').map((piece)=>piece.trim()).filter(Boolean);
+    if(pieces.length>=3){
+      if(!team) team=pieces[0];
+      if(!subject) subject=pieces[1];
+      label=pieces.slice(2).join(' · ');
+    }else if(pieces.length===2&&!subject){
+      subject=pieces[0];
+      label=pieces[1];
+    }
+  }
+  return {entity:[team,subject].filter(Boolean).join(' · '),label,value};
+};
+
+const groupedFactLines=(facts=[])=>{
+  const groups=new Map();
+  const loose=[];
+  facts.forEach((fact,index)=>{
+    const parts=factParts(fact,index);
+    const detail=parts.label+': '+(parts.value||'verified');
+    if(!parts.entity){
+      loose.push('- '+detail);
+      return;
+    }
+    const key=norm(parts.entity);
+    if(!groups.has(key)) groups.set(key,{entity:parts.entity,details:[]});
+    const group=groups.get(key);
+    if(!group.details.some((entry)=>norm(entry)===norm(detail))) group.details.push(detail);
+  });
+  const lines=[];
+  groups.forEach(({entity,details})=>{
+    for(let index=0;index<details.length;index+=6){
+      lines.push('- '+entity+' — '+details.slice(index,index+6).join(' · '));
+    }
+  });
+  return [...lines,...loose];
+};
+
+const scoringOrder=(fact={},index=0)=>{
+  const text=clean(fact.label)+' '+clean(fact.value)+' '+clean(fact.evidence);
+  const q=text.match(/\b([1-4])(?:st|nd|rd|th)?\s+quarter\b/i)||text.match(/\bq([1-4])\b/i);
+  const time=text.match(/\b(\d{1,2}):(\d{2})\b/);
+  return {
+    quarter:q?num(q[1],9):9,
+    clock:time?(num(time[1])*60+num(time[2])):-1,
+    index,
+  };
+};
+const scoringLinesFor=(facts=[])=>{
+  const accepted=[];
+  const seen=[];
+  uniqueFacts(facts).forEach((fact)=>{
+    const parts=factParts(fact,accepted.length);
+    const combined=norm(parts.entity+' '+parts.label+' '+parts.value);
+    if(!combined) return;
+    const duplicate=seen.some((old)=>old===combined||(old.length>28&&combined.length>28&&(old.includes(combined)||combined.includes(old))));
+    if(duplicate) return;
+    seen.push(combined);
+    accepted.push(fact);
+  });
+  return accepted
+    .map((fact,index)=>({fact,order:scoringOrder(fact,index)}))
+    .sort((a,b)=>a.order.quarter-b.order.quarter||b.order.clock-a.order.clock||a.order.index-b.order.index)
+    .map(({fact},index)=>{
+      const parts=factParts(fact,index);
+      return '- '+(parts.entity?(parts.entity+' · '):'')+parts.label+(parts.value?(': '+parts.value):'');
+    });
+};
+
+const addStory=(list,label,detail)=>{
+  const text=clean(detail);
+  if(!text||RTG_PATTERN.test(text)) return;
+  const signature=norm(label+' '+text);
+  if(list.some((entry)=>entry.signature===signature)) return;
+  list.push({label,detail:text,signature});
+};
+const storylinesFor=(data={},episode={},previousGame=null)=>{
+  const list=[];
+  const game=data.game||{};
+  const team=game.team||{};
+  const school=clean(data?.player?.school,'Team');
+  const opponent=clean(game.opponent,'Opponent');
+  addStory(list,'FINAL RESULT',school+' '+game.us+' — '+game.them+' '+opponent+(clean(game.result)?' ('+clean(game.result).toUpperCase()+')':'')+'.');
+  if(present(team.totalYards)&&present(team.opponentTotalYards)){
+    const diff=num(team.totalYards)-num(team.opponentTotalYards);
+    if(diff!==0) addStory(list,'TOTAL OFFENSE',school+' finished with '+team.totalYards+' total yards to '+opponent+"'s "+team.opponentTotalYards+', a '+Math.abs(diff)+'-yard '+(diff>0?'advantage':'deficit')+'.');
+  }
+  if(present(team.turnovers)&&present(team.opponentTurnovers)){
+    const diff=num(team.turnovers)-num(team.opponentTurnovers);
+    let tail='; the turnover count was even';
+    if(diff>0) tail='; '+school+' gave it away '+diff+' more time'+(diff===1?'':'s');
+    if(diff<0) tail='; '+school+' forced '+Math.abs(diff)+' more turnover'+(Math.abs(diff)===1?'':'s');
+    addStory(list,'TURNOVER MARGIN',school+' committed '+team.turnovers+' turnover'+(num(team.turnovers)===1?'':'s')+' while '+opponent+' committed '+team.opponentTurnovers+tail+'.');
+  }
+  const playerBits=[
+    present(game.pass)?game.pass+' passing yards':'',
+    present(game.rush)?game.rush+' rushing yards':'',
+    present(game.td)?game.td+' total TD'+(num(game.td)===1?'':'s'):'',
+    present(game.interceptions)?game.interceptions+' interception'+(num(game.interceptions)===1?'':'s'):'',
+  ].filter(Boolean);
+  if(playerBits.length) addStory(list,'TRACKED PLAYER',clean(data?.player?.name,'Tracked player')+': '+playerBits.join(' · ')+'.');
+  if(present(team.rushYards)&&present(team.opponentRushYards)){
+    const diff=num(team.rushYards)-num(team.opponentRushYards);
+    if(Math.abs(diff)>=40) addStory(list,'RUSHING GAME',school+' rushed for '+team.rushYards+' yards while '+opponent+' rushed for '+team.opponentRushYards+'; the difference was '+Math.abs(diff)+' yards.');
+  }
+  const rawEpisode=episode?.episode||episode||{};
+  (Array.isArray(rawEpisode.storylineThreads)?rawEpisode.storylineThreads:[]).slice(0,6).forEach((thread)=>{
+    const detail=clean(thread?.label||thread?.title||thread?.summary||thread?.detail||thread?.reason);
+    addStory(list,'CONTINUING STORYLINE',detail);
+  });
+  if(previousGame){
+    const priorLine=rawPlayerLine(previousGame);
+    if(priorLine) addStory(list,'PREVIOUS-GAME COMPARISON','Previous game: Week '+num(previousGame.week)+' vs '+clean(previousGame.opponent,'opponent')+' — '+clean(previousGame.result,'result not saved')+'; '+priorLine+'.');
+  }
+  return list.slice(0,8);
+};
+
+const gameParagraph=(data={})=>{
+  const game=data.game||{};
+  const team=game.team||{};
+  const school=clean(data?.player?.school,'Team');
+  const opponent=clean(game.opponent,'Opponent');
+  const sentences=[school+' '+game.us+' — '+game.them+' '+opponent+(clean(game.result)?' ('+clean(game.result).toUpperCase()+')':'')+'.'];
+  const player=[
+    present(game.pass)?game.pass+' passing yards':'',
+    present(game.passTD)?game.passTD+' passing TD'+(num(game.passTD)===1?'':'s'):'',
+    present(game.rush)?game.rush+' rushing yards':'',
+    present(game.rushTD)?game.rushTD+' rushing TD'+(num(game.rushTD)===1?'':'s'):'',
+    present(game.interceptions)?game.interceptions+' interception'+(num(game.interceptions)===1?'':'s'):'',
+  ].filter(Boolean);
+  if(player.length) sentences.push(clean(data?.player?.name,'Tracked player')+' recorded '+player.join(', ')+'.');
+  const comparison=[
+    present(team.totalYards)&&present(team.opponentTotalYards)?'total offense '+school+' '+team.totalYards+', '+opponent+' '+team.opponentTotalYards:'',
+    present(team.turnovers)&&present(team.opponentTurnovers)?'turnovers '+school+' '+team.turnovers+', '+opponent+' '+team.opponentTurnovers:'',
+    present(team.rushYards)&&present(team.opponentRushYards)?'rushing yards '+school+' '+team.rushYards+', '+opponent+' '+team.opponentRushYards:'',
+  ].filter(Boolean);
+  if(comparison.length) sentences.push('Saved team comparison: '+comparison.join('; ')+'.');
+  return sentences.join(' ');
+};
+
+const teamLines=(data={})=>{
+  const game=data.game||{};
+  const team=game.team||{};
+  const school=clean(data?.player?.school,'Team');
+  const opponent=clean(game.opponent,'Opponent');
+  const row=(label,a,b)=>present(a)||present(b)?'- '+label+': '+school+' '+(present(a)?a:'—')+' · '+opponent+' '+(present(b)?b:'—'):null;
+  return [
+    row('Total offense',team.totalYards,team.opponentTotalYards),
+    row('First downs',team.firstDowns,team.opponentFirstDowns),
+    row('Turnovers',team.turnovers,team.opponentTurnovers),
+    row('Rushing yards',team.rushYards,team.opponentRushYards),
+    row('Passing yards',team.passYards,team.opponentPassYards),
+    row('Possession',team.possession,team.opponentPossession),
+  ].filter(Boolean);
+};
+
+const playerLines=(data={})=>{
+  const game=data.game||{};
+  const pairs=[
+    ['Player',data?.player?.name],
+    ['Position',data?.player?.pos],
+    ['Passing yards',game.pass],
+    ['Passing touchdowns',game.passTD],
+    ['Rushing yards',game.rush],
+    ['Rushing touchdowns',game.rushTD],
+    ['Total offense',present(game.total)?game.total+' yards':null],
+    ['Total touchdowns',game.td],
+    ['Interceptions',game.interceptions],
+  ];
+  return pairs.filter(([,value])=>present(value)).map(([label,value])=>'- '+label+': '+value);
+};
+
+const previousLines=(game)=>{
+  if(!game) return ['- No earlier completed game was saved in this season.'];
+  const scores=rawScores(game);
+  const lines=[
+    '- Previous opponent: '+clean(game.opponent,'—'),
+    '- Previous result: '+clean(game.result,'—')+(present(scores.team)&&present(scores.opponent)?' · '+scores.team+'-'+scores.opponent:''),
+  ];
+  [
+    ['Passing yards',game.passYds],
+    ['Passing touchdowns',game.passTD],
+    ['Rushing yards',game.rushYds],
+    ['Rushing touchdowns',game.rushTD],
+    ['Interceptions',game.int],
+  ].forEach(([label,value])=>{if(present(value)) lines.push('- '+label+': '+value);});
+  return lines;
+};
+const recentLines=(data={})=>recentGamesFor(data,4).map((game)=>{
+  const scores=rawScores(game);
+  const score=present(scores.team)&&present(scores.opponent)?' · '+scores.team+'-'+scores.opponent:'';
+  const stats=rawPlayerLine(game);
+  return '- Week '+num(game.week)+' vs '+clean(game.opponent,'Opponent')+' · '+clean(game.result,'—')+score+(stats?' · '+stats:'');
+});
+const chapterLines=(episode={})=>{
+  const chapters=Array.isArray(episode.chapters)?episode.chapters:[];
+  return chapters.length?chapters.map((chapter,index)=>{
+    const summary=clean(chapter?.summary);
+    return (index+1)+'. '+clean(chapter?.title,'Chapter '+(index+1))+(summary?' — '+summary:'');
+  }):['No saved chapter list.'];
+};
+
+const customizePromptFor=(data={},storylines=[])=>{
+  const game=data.game||{};
+  const school=clean(data?.player?.school,'the current team');
+  const focus=storylines.slice(0,4).map((entry)=>entry.label.toLowerCase()).join(', ');
+  return [
+    'Create a Longer Deep Dive episode of The Huddle Podcast about '+school+"'s Season "+num(data.season,1)+', Week '+num(game.week,0)+' game against '+clean(game.opponent,'the opponent')+'.',
+    'Prioritize the Producer Brief and Key Storylines, then use the full research packet as supporting evidence.',
+    'Mark Thompson and Sarah Chen should sound like knowledgeable local college-football hosts who cover this program every week: conversational, analytical, willing to react to each other, and never like they are reading a box score.',
+    focus?'Spend most of the discussion explaining the football meaning behind: '+focus+'.':'Spend most of the discussion explaining the biggest verified football takeaways from the game.',
+    'Use exact statistics selectively when they support a point. Connect the current game to prior verified games only when the comparison is useful.',
+    'Do not discuss Road to Glory game mechanics, ratings, coach trust, skill points, GPA, wear, followers, NIL systems, or progression menus.',
+    'Do not invent injuries, quotes, locker-room reactions, coaching decisions, play calls, strategy, motives, emotions, or facts that are not in the source pack.',
+    'Use full player names when supplied; never guess a missing first name.',
+  ].join(' ');
+};
+
+export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
+  const game=data.game||{};
+  const rawEpisode=episode?.episode||episode||{};
+  const transcript=clean(episode.transcript||rawEpisode.transcript);
+  const usable=uniqueFacts((facts||[]).filter((fact)=>!isRtgFact(fact)));
+  const scoringFacts=uniqueFacts(usable.filter((fact)=>isScoringFact(fact)&&!isCanonicalDuplicate(fact,data)));
+  const supportingFacts=uniqueFacts(usable.filter((fact)=>!isScoringFact(fact)&&!isCanonicalDuplicate(fact,data)));
+  const scoringLines=scoringLinesFor(scoringFacts);
+  const supportingLines=groupedFactLines(supportingFacts);
+  const previousGame=previousGameFor(data);
+  const storylines=storylinesFor(data,episode,previousGame);
+  const recent=recentLines(data);
+  const school=clean(data?.player?.school,'Team');
+  const opponent=clean(game.opponent,'Opponent');
+  const title=clean(episode.title||rawEpisode.title,school+' Week '+num(game.week,0)+': the game and what it means');
+  const summary=clean(episode.summary||rawEpisode.summary);
+  const prompt=customizePromptFor(data,storylines);
+  const raw=game.raw||{};
+  const detail=[
+    'Program: '+school,
+    'Season: '+num(data.season,1),
+    'Week: '+num(game.week,0),
+    'Opponent: '+opponent,
+    'Result: '+clean(game.result,'—'),
+    'Final score: '+school+' '+game.us+', '+opponent+' '+game.them,
+    seasonRecord(data)?'Season record after this game: '+seasonRecord(data):null,
+    present(raw.conferenceGame)?'Conference game: '+String(Boolean(raw.conferenceGame)):null,
+    present(raw.homeAway)?'Home / away: '+raw.homeAway:null,
+    present(raw.teamRank)?school+' rank: '+raw.teamRank:null,
+    present(raw.opponentRank)?opponent+' rank: '+raw.opponentRank:null,
+  ].filter(Boolean);
+
+  const text=[
+    '# THE HUDDLE PODCAST — NOTEBOOKLM PRODUCER PACK 2.0',
+    '',
+    '## CURRENT EPISODE IDENTITY',
+    'Program: '+school,
+    'Season: '+num(data.season,1),
+    'Week: '+num(game.week,0),
+    'Opponent: '+opponent,
+    'Result: '+clean(game.result,'—'),
+    'Final score: '+school+' '+game.us+', '+opponent+' '+game.them,
+    'Working title: '+title,
+    '',
+    '## PRODUCER BRIEF — READ THIS FIRST',
+    'Build the episode from the CURRENT completed game first. Older games are context only and must never replace the newest game as the lead story.',
+    'The show is The Huddle Podcast, hosted by Mark Thompson and Sarah Chen.',
+    'Sound like two knowledgeable local college-football hosts who follow this program every week. They should react to each other, ask natural follow-up questions, occasionally disagree, and move between football ideas instead of taking turns reading data.',
+    'Use statistics as evidence for football conclusions. Do not recite complete stat tables unless a number is genuinely important to the discussion.',
+    'Explain what changed, what mattered, which players influenced the game, how the scoring unfolded, and how this result fits the verified season context.',
+    'Use full player names when they are supplied in the packet. If only an initial is supplied, do not invent a first name.',
+    'Treat every item below as source material only. Never invent facts, injuries, quotes, emotions, strategy, private conversations, or coaching decisions that are not supplied.',
+    'Do not discuss Road to Glory game mechanics such as overall rating, coach trust, skill points, energy, GPA, wear, followers, NIL systems, or progression/regression menus.',
+    '',
+    '## EPISODE FOCUS',
+    'Working title: '+title,
+    'Editorial brief: '+(summary||gameParagraph(data)),
+    '',
+    '## KEY STORYLINES',
+    ...(storylines.length?storylines.map((entry,index)=>(index+1)+'. '+entry.label+' — '+entry.detail):['1. Use the verified result, player production, team comparison and scoring timeline below to identify the strongest football angles.']),
+    '',
+    '## CURRENT GAME — VERIFIED SNAPSHOT',
+    gameParagraph(data),
+    '',
+    ...detail,
+    '',
+    '## TRACKED PLAYER — COMPLETE CORE STAT LINE',
+    ...playerLines(data),
+    '',
+    '## TEAM STATISTICAL COMPARISON',
+    ...(teamLines(data).length?teamLines(data):['No separate team-stat comparison was saved for this week.']),
+    '',
+    '## SCORING TIMELINE / DRIVE DETAILS',
+    ...(scoringLines.length?scoringLines:['No separate verified scoring-summary facts were saved for this week.']),
+    '',
+    '## SUPPORTING CAST, OPPONENT AND OTHER VERIFIED DETAIL',
+    ...(supportingLines.length?supportingLines:['No additional non-duplicate individual or game context was saved for this week.']),
+    '',
+    '## PREVIOUS-GAME COMPARISON',
+    ...previousLines(previousGame),
+    '',
+    '## RECENT SEASON CONTEXT',
+    ...(recent.length?recent:['No recent completed-game sequence was available.']),
+    '',
+    '## EPISODE CHAPTERS',
+    ...chapterLines(episode),
+    '',
+    '## DYNASTYHQ GENERATED TRANSCRIPT — COMPLETE',
+    'Use this transcript as an additional editorial and conversational reference. It is not more authoritative than the verified research above, and NotebookLM does not need to repeat it verbatim.',
+    '',
+    transcript||'No generated transcript is saved for this selected week.',
+    '',
+    '## NOTEBOOKLM AUDIO OVERVIEW GUARDRAILS',
+    '- Lead with the current game and the Key Storylines.',
+    '- Use supporting stats selectively to explain football meaning; do not turn the episode into a box-score recital.',
+    '- Use previous games only for verified comparison or continuity.',
+    '- Keep team and game context as the frame; the tracked player can be central when his verified production makes him central to the football story.',
+    '- Do not invent missing player names, quotes, injuries, strategy, motives, or off-field information.',
+    '- Road to Glory mechanics and progression-menu facts are intentionally excluded.',
+    '- Structured game/team/player statistics are kept canonical, while supporting individual and scoring detail is de-duplicated.',
+    '',
+    '## RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT',
+    prompt,
+    '',
+    'END PRODUCER PACK',
+  ].join('\n');
+
+  const safeOpponent=opponent.replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'')||'Opponent';
+  return {
+    text,
+    customizePrompt:prompt,
+    meta:{
+      season:num(data.season,1),
+      week:num(game.week,0),
+      opponent,
+      title,
+      storylineCount:storylines.length,
+      scoringCount:scoringLines.length,
+      supportingFactCount:supportingFacts.length,
+      groupedSupportingLineCount:supportingLines.length,
+      recentGameCount:recent.length,
+      hasTranscript:Boolean(transcript),
+      suggestedFileName:'DynastyHQ-S'+num(data.season,1)+'-W'+num(game.week,0)+'-'+safeOpponent+'-NotebookLM-Producer-Pack.txt',
+    },
+  };
+};

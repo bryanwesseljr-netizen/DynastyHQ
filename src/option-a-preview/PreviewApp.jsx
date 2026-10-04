@@ -10,6 +10,7 @@ import {
 import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
+import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import { analyzeScreenshot } from '../services/screenshotClient.js';
 import { analyzeRtgStatusScreenshot } from '../services/rtgStatusScannerClient.js';
@@ -229,79 +230,7 @@ const notebookFactLine=(fact,index)=>{
   return '- '+(subject ? subject+' · ' : '')+label+': '+String(value);
 };
 
-const notebookSourcePackText = ({data,episode,facts=[]}) => {
-  const game=data.game || {};
-  const team=game.team || {};
-  const transcript=episode.transcript || '';
-  const usableFacts=notebookUniqueFacts(
-    facts.filter((fact)=>!notebookIsRtgFact(fact)),
-  );
-  const scoringFacts=notebookUniqueFacts(usableFacts.filter((fact)=>(
-    notebookIsScoringFact(fact)
-    && !notebookIsCanonicalStatDuplicate(fact,data)
-  )));
-  const additionalFacts=notebookUniqueFacts(usableFacts.filter((fact)=>(
-    !notebookIsCanonicalStatDuplicate(fact,data)
-    && !notebookIsScoringFact(fact)
-  )));
-  const additionalLines=additionalFacts.map(notebookFactLine);
-  const scoringLines=scoringFacts.map(notebookFactLine);
-  const chapterLines=(episode.chapters || []).map((chapter,index)=>String(index+1)+'. '+String(chapter?.title || ('Chapter '+(index+1))));
-
-  const lineIf=(label,value,suffix='')=>(
-    value===null || value===undefined || value==='' ? null : label+': '+String(value)+suffix
-  );
-  const teamLines=[
-    lineIf(data.player.school+' total offense',team.totalYards,' yards'),
-    lineIf(game.opponent+' total offense',team.opponentTotalYards,' yards'),
-    lineIf(data.player.school+' passing',team.passYards,' yards'),
-    lineIf(game.opponent+' passing',team.opponentPassYards,' yards'),
-    lineIf(data.player.school+' rushing',team.rushYards,' yards'),
-    lineIf(game.opponent+' rushing',team.opponentRushYards,' yards'),
-    lineIf(data.player.school+' first downs',team.firstDowns),
-    lineIf(game.opponent+' first downs',team.opponentFirstDowns),
-    lineIf(data.player.school+' turnovers',team.turnovers),
-    lineIf(game.opponent+' turnovers',team.opponentTurnovers),
-    lineIf(data.player.school+' possession',team.possession),
-    lineIf(game.opponent+' possession',team.opponentPossession),
-  ].filter(Boolean);
-
-  return [
-    'DYNASTYHQ · THE HUDDLE · NOTEBOOKLM SOURCE PACK',
-    'Season '+data.season+' · Week '+game.week+' · '+data.player.school+' vs. '+game.opponent,
-    '',
-    'GAME RESULT',
-    data.player.school+' '+game.us+' — '+game.them+' '+game.opponent,
-    '',
-    'MY PLAYER STAT LINE',
-    'Passing: '+String(game.pass ?? '—')+' yards · '+String(game.passTD ?? '—')+' TD',
-    'Rushing: '+String(game.rush ?? '—')+' yards · '+String(game.rushTD ?? '—')+' TD',
-    'Total offense: '+String(game.total ?? '—')+' yards',
-    'Total touchdowns: '+String(game.td ?? '—'),
-    'Interceptions: '+String(game.interceptions ?? '—'),
-    '',
-    'TEAM STATS',
-    ...(teamLines.length ? teamLines : ['No separate team-stat totals were saved for this week.']),
-    '',
-    'OTHER VERIFIED INDIVIDUAL / GAME CONTEXT',
-    ...(additionalLines.length ? additionalLines : ['No additional non-duplicate context facts were saved.']),
-    '',
-    'SCORING SUMMARY',
-    ...(scoringLines.length ? scoringLines : ['No separate scoring-summary facts were saved.']),
-    '',
-    'EPISODE CHAPTERS',
-    ...(chapterLines.length ? chapterLines : ['No saved chapter list.']),
-    '',
-    'FULL PODCAST TRANSCRIPT',
-    transcript || 'No generated transcript is saved for this selected week.',
-    '',
-    'SOURCE PACK RULES',
-    '- RTG status and development facts are intentionally excluded.',
-    '- Structured game, team, and player statistics appear only once outside the full transcript.',
-    '',
-    'END SOURCE PACK',
-  ].join('\n');
-};
+const notebookSourcePackText = ({data,episode,facts=[]}) => buildNotebookLmProducerPack({data,episode,facts}).text;
 
 const PREVIEW_NUMERIC_GAME_FIELDS = new Set([
   'homeScore','awayScore','teamRank','opponentRank','passYds','passTD','rushYds','rushTD','int',
@@ -3916,8 +3845,55 @@ function PodcastPage({
     !notebookIsCanonicalStatDuplicate(fact,data)
     && !notebookIsScoringFact(fact)
   )));
-  const notebookPack=notebookSourcePackText({data,episode,facts});
-  const downloadNotebookPack=()=>downloadPreviewText(notebookPack,'DynastyHQ-S'+data.season+'-W'+game.week+'-NotebookLM-Source-Pack.txt');
+  const latestNotebookSelection=latestNotebookGameSelection(data.state || {});
+  const latestNotebookData=latestNotebookSelection
+    ? derivePreviewData(data.state,{
+      season:latestNotebookSelection.season,
+      week:latestNotebookSelection.week,
+    })
+    : null;
+  const selectedHasCompletedGame=Boolean(game.raw && game.opponent && game.opponent!=='NO GAME');
+  const notebookTargetData=selectedHasCompletedGame ? data : (latestNotebookData || data);
+  const notebookTargetEpisode=notebookTargetData.podcast || episode;
+  const notebookTargetFacts=notebookTargetEpisode.sourceFacts || [];
+  const notebookTargetGame=notebookTargetData.game || {};
+  const notebookProducerPack=buildNotebookLmProducerPack({
+    data:notebookTargetData,
+    episode:notebookTargetEpisode,
+    facts:notebookTargetFacts,
+  });
+  const notebookPack=notebookProducerPack.text;
+  const latestNotebookPack=latestNotebookData
+    ? buildNotebookLmProducerPack({
+      data:latestNotebookData,
+      episode:latestNotebookData.podcast || {},
+      facts:latestNotebookData.podcast?.sourceFacts || [],
+    })
+    : null;
+  const notebookUsesLatestFallback=(
+    Number(notebookTargetData.season)!==Number(data.season)
+    || Number(notebookTargetGame.week)!==Number(game.week)
+  );
+  const latestNotebookIsDifferent=Boolean(latestNotebookPack && (
+    Number(latestNotebookPack.meta.season)!==Number(notebookProducerPack.meta.season)
+    || Number(latestNotebookPack.meta.week)!==Number(notebookProducerPack.meta.week)
+  ));
+  const downloadNotebookPack=()=>downloadPreviewText(
+    notebookPack,
+    notebookProducerPack.meta.suggestedFileName,
+  );
+  const downloadLatestNotebookPack=()=>{
+    if(!latestNotebookPack) return notify('No completed uploaded game is available for a NotebookLM Producer Pack yet.');
+    downloadPreviewText(latestNotebookPack.text,latestNotebookPack.meta.suggestedFileName);
+  };
+  const copyNotebookCustomizePrompt=async()=>{
+    try{
+      await navigator.clipboard.writeText(notebookProducerPack.customizePrompt);
+      notify('NotebookLM Customize prompt copied.');
+    }catch{
+      notify('Your browser could not copy the NotebookLM prompt. The same prompt is included at the bottom of the downloaded Producer Pack.');
+    }
+  };
   const downloadTranscript=()=>downloadPreviewText(episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt');
   const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
   const hasTranscript=Boolean(episode.segments?.length);
@@ -4260,7 +4236,7 @@ function PodcastPage({
           </span>
         </div>
         <div className="pod-studio-actions">
-          <button onClick={downloadNotebookPack}><FileText/>DOWNLOAD SOURCE PACK</button>
+          <button onClick={downloadNotebookPack}><FileText/>DOWNLOAD PRODUCER PACK</button>
           <button
             className={isNotebookMaster?'replace-master':'attach-master'}
             disabled={masterBusy}
@@ -4435,24 +4411,47 @@ function PodcastPage({
       {podcastTab==='notebook' && <div className="notebook-layout">
         <article className="notebook-card">
           <div className="notebook-icon"><Zap/></div>
-          <span className="section-kicker">NOTEBOOKLM SOURCE PACK</span>
-          <h2>Week {game.week} • {game.opponent}</h2>
-          <p>This view is grounded in the same saved facts and transcript attached to the real DynastyHQ week.</p>
-          <div className="source-list">
-            <div><Check/><span><b>Game result</b><small>{data.player.school} {game.us}–{game.them} {game.opponent} · one canonical result line.</small></span></div>
-            <div><Check/><span><b>My player stat line</b><small>Passing, rushing, total offense, touchdowns and interceptions appear once.</small></span></div>
-            <div><Check/><span><b>Team stats</b><small>Saved team/opponent totals appear once with duplicate source facts removed.</small></span></div>
-            <div><Check/><span><b>Other individual + scoring context</b><small>{notebookContextFacts.length} unique supporting facts · {scoringFacts.length} unique scoring references.</small></span></div>
-            <div><Check/><span><b>RTG facts excluded</b><small>No overall, coach trust, skill points, wear, GPA, brand or other RTG status is exported.</small></span></div>
-            <div><Check/><span><b>Podcast transcript</b><small>{episode.segments?.length || 0} saved transcript segments remain complete and unchanged.</small></span></div>
+          <span className="section-kicker">NOTEBOOKLM PRODUCER PACK 2.0</span>
+          <h2>Week {notebookProducerPack.meta.week} • {notebookProducerPack.meta.opponent}</h2>
+          <p>A producer-first research packet built for NotebookLM Deep Dive audio: story hierarchy first, then verified football detail, recent context and the full DynastyHQ transcript.</p>
+
+          <div className="notebook-target-banner">
+            <span>EXPORT TARGET</span>
+            <b>Season {notebookProducerPack.meta.season} · Week {notebookProducerPack.meta.week} · {notebookProducerPack.meta.opponent}</b>
+            <small>{notebookUsesLatestFallback
+              ? 'You are viewing a week without a completed saved game, so DynastyHQ automatically targets the latest uploaded game.'
+              : latestNotebookIsDifferent
+                ? 'This export follows the selected archive week. The latest uploaded-game pack is also available below.'
+                : 'Latest completed uploaded game.'}</small>
           </div>
-          <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD NOTEBOOKLM SOURCE PACK<ChevronRight/></button>
+
+          <div className="source-list">
+            <div><Check/><span><b>Producer brief + story hierarchy</b><small>{notebookProducerPack.meta.storylineCount} verified/current-week angles tell NotebookLM what deserves the most discussion.</small></span></div>
+            <div><Check/><span><b>Canonical game + team comparison</b><small>Result, tracked-player core line and team/opponent stats are presented once instead of repeated in several forms.</small></span></div>
+            <div><Check/><span><b>Scoring timeline / drives</b><small>{notebookProducerPack.meta.scoringCount} de-duplicated scoring references are kept as football chronology.</small></span></div>
+            <div><Check/><span><b>Supporting cast + opponent detail</b><small>{notebookProducerPack.meta.supportingFactCount} unique supporting facts are grouped by player/team for easier NotebookLM interpretation.</small></span></div>
+            <div><Check/><span><b>Previous-game + recent trend context</b><small>{notebookProducerPack.meta.recentGameCount} recent completed games can provide continuity without replacing the current game.</small></span></div>
+            <div><Check/><span><b>RTG mechanics excluded</b><small>No overall, coach trust, skill points, wear, GPA, followers, NIL systems or progression-menu data is exported.</small></span></div>
+            <div><Check/><span><b>Full DynastyHQ transcript</b><small>{notebookProducerPack.meta.hasTranscript?'Complete saved transcript included as a secondary editorial reference.':'No saved transcript exists for this game yet; the verified research packet still downloads.'}</small></span></div>
+          </div>
+
+          <div className="notebook-actions">
+            <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD WEEK {notebookProducerPack.meta.week} PRODUCER PACK<ChevronRight/></button>
+            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY NOTEBOOKLM CUSTOMIZE PROMPT</button>
+            {latestNotebookIsDifferent && latestNotebookPack && <button className="ghost latest-pack" onClick={downloadLatestNotebookPack}><Archive/>DOWNLOAD LATEST GAME · W{latestNotebookPack.meta.week} {latestNotebookPack.meta.opponent}</button>}
+          </div>
         </article>
+
         <aside className="notebook-tip">
           <BookOpen/>
-          <span>SOURCE PACK READY</span>
-          <h3>Same saved week. Exportable source material.</h3>
-          <p>The download keeps one canonical copy of the result, your stat line and team stats, then adds only de-duplicated supporting individual/scoring context, chapter titles and the complete transcript. RTG facts are excluded.</p>
+          <span>BUILT FOR NOTEBOOKLM AUDIO OVERVIEW</span>
+          <h3>Producer brief first. Deep research underneath.</h3>
+          <p>The pack now tells NotebookLM what the episode is actually about before giving it the full verified research reservoir. Use the copied Customize prompt with a Longer Deep Dive Audio Overview for the most immersive result.</p>
+          <div className="notebook-tip-stats">
+            <span><b>{notebookProducerPack.meta.storylineCount}</b> storylines</span>
+            <span><b>{notebookProducerPack.meta.scoringCount}</b> scoring references</span>
+            <span><b>{notebookProducerPack.meta.supportingFactCount}</b> supporting facts</span>
+          </div>
         </aside>
       </div>}
     </section>

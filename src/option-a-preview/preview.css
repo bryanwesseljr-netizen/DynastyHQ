@@ -14469,3 +14469,84 @@ select optgroup{
 @media(max-width:390px){
   .game-photo-grid{grid-template-columns:1fr}
 }
+
+
+/* Precision match pass v52 — NotebookLM Producer Pack 2.0 */
+.notebook-target-banner{
+  display:grid;
+  gap:4px;
+  margin:16px 0 4px;
+  padding:11px 12px;
+  border-left:3px solid var(--yellow);
+  background:#eef1ea;
+}
+.notebook-target-banner>span{
+  color:#075c43;
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:1.2px;
+}
+.notebook-target-banner>b{
+  font-size:10px;
+}
+.notebook-target-banner>small{
+  color:#68736d;
+  font-size:7px;
+  line-height:1.45;
+}
+.notebook-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+.notebook-actions button{
+  min-height:39px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:0 13px;
+  border-radius:4px;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.25px;
+}
+.notebook-actions button svg{width:14px}
+.notebook-actions .yellow{
+  border:1px solid #c6ab00;
+  background:var(--yellow);
+  color:#07140f;
+}
+.notebook-actions .ghost{
+  border:1px solid #8ea098;
+  background:transparent;
+  color:#173028;
+}
+.notebook-actions .latest-pack{
+  flex-basis:100%;
+  justify-content:flex-start;
+  border-color:#0b5a46;
+  background:#edf3ef;
+  color:#075c43;
+}
+.notebook-tip-stats{
+  display:grid;
+  gap:6px;
+  margin-top:16px;
+  padding-top:13px;
+  border-top:1px solid rgba(255,255,255,.14);
+}
+.notebook-tip-stats span{
+  color:#c2cec9;
+  font-size:7px;
+}
+.notebook-tip-stats b{
+  color:var(--yellow);
+  font-size:11px;
+  margin-right:4px;
+}
+@media(max-width:700px){
+  .notebook-actions{display:grid}
+  .notebook-actions button{width:100%}
+}

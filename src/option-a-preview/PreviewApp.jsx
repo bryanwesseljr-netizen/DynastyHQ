@@ -2653,8 +2653,13 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
       setPublishError('Reconnect the same DynastyHQ account before publishing this verified week.');
       return;
     }
-    if(!selectedGameFacts.length){
-      setPublishError('At least one verified game-data fact is required before DynastyHQ can publish the week.');
+    const mediaOnlyUpdate=hasSavedGame && !selectedGameFacts.length;
+    if(!selectedGameFacts.length && !hasSavedGame){
+      setPublishError('At least one verified game-data fact is required before DynastyHQ can publish a new week.');
+      return;
+    }
+    if(mediaOnlyUpdate && !officialArticles.length && !coverageApproved.length && !gamePhotos.length){
+      setPublishError('Nothing new is attached yet. Add EA SPORTS Network pages, Coverage Data, or Game Photos before updating this saved week.');
       return;
     }
 
@@ -2730,25 +2735,33 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             throw error;
           }
 
-          const correctedGame=previewGameFromFacts({
-            baseGame:remote.gameLogs[gameIndex] || {},
-            facts:approvedGameFacts,
-            fallbackOpponent:data.game?.opponent || '',
-          });
+          if(mediaOnlyUpdate){
+            // Optional-media pass-through: preserve the already verified game and RTG
+            // exactly as they exist in cloud storage. Only the optional sections below
+            // are allowed to change.
+            nextState=remote;
+            action='updated';
+          }else{
+            const correctedGame=previewGameFromFacts({
+              baseGame:remote.gameLogs[gameIndex] || {},
+              facts:approvedGameFacts,
+              fallbackOpponent:data.game?.opponent || '',
+            });
 
-          nextState=correctPublishedWeek({
-            state:remote,
-            gameIndex,
-            game:correctedGame,
-          });
-          nextState=mergeVerifiedPublicationFacts(nextState,targetPublicationId,approvedGameFacts);
-          nextState=applyCorrectedRtgSnapshot(nextState,{
-            publicationId:targetPublicationId,
-            season:targetSeason,
-            week:targetWeek,
-            facts:approvedRtgFacts,
-          });
-          action='updated';
+            nextState=correctPublishedWeek({
+              state:remote,
+              gameIndex,
+              game:correctedGame,
+            });
+            nextState=mergeVerifiedPublicationFacts(nextState,targetPublicationId,approvedGameFacts);
+            nextState=applyCorrectedRtgSnapshot(nextState,{
+              publicationId:targetPublicationId,
+              season:targetSeason,
+              week:targetWeek,
+              facts:approvedRtgFacts,
+            });
+            action='updated';
+          }
         }else{
           const currentPublicationId=createWeekKey(
             Number(remote.currentSeason)||1,
@@ -2961,6 +2974,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           coverageFactCount:approvedCoverageFacts.length,
           officialArticleCount:publishedOfficialArticles.length,
           gamePhotoCount:uploadedGamePhotoAssets.length,
+          mediaOnlyUpdate,
           checkpointId,
         };
       });
@@ -2972,16 +2986,23 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
       setGamePhotos([]);
       setGamePhotosSkipped(false);
       setPublishing(false);
+      const optionalMediaOnly=result.mediaOnlyUpdate && !approvedCoverageFacts.length;
       notify(
-        result.action==='updated'
-          ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Refreshing Newsroom and Podcast coverage now.`
-          : `Season ${targetSeason}, Week ${targetWeek} was safely published. Building Newsroom and Podcast coverage now.`,
+        optionalMediaOnly
+          ? `Season ${targetSeason}, Week ${targetWeek} optional media was safely updated. Existing verified game data was preserved.`
+          : result.action==='updated'
+            ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Refreshing Newsroom and Podcast coverage now.`
+            : `Season ${targetSeason}, Week ${targetWeek} was safely published. Building Newsroom and Podcast coverage now.`,
       );
-      await refreshPublishedCoverage({
-        targetPublicationId,
-        targetSeason,
-        targetWeek,
-      });
+      if(optionalMediaOnly){
+        setCoverageRefreshResult({newsroom:'skipped',podcast:'skipped',errors:[]});
+      }else{
+        await refreshPublishedCoverage({
+          targetPublicationId,
+          targetSeason,
+          targetWeek,
+        });
+      }
     }catch(error){
       if(!careerWriteCompleted && uploadedGamePhotoAssets.length){
         await Promise.allSettled(uploadedGamePhotoAssets.map((asset)=>deleteNewsroomMedia({firebaseApp,storagePath:asset.storagePath})));
@@ -3079,6 +3100,11 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               </aside>
             </div>
 
+            {hasSavedGame && <div className="processing-saved-shortcut">
+              <ShieldCheck/>
+              <span><b>THIS WEEK IS ALREADY SAVED.</b><small>You can leave the verified game and RTG data untouched and jump straight to optional Coverage, EA SPORTS Network, or Game Photos.</small></span>
+              <button className="secondary" disabled={scanning} onClick={()=>{setRtgSkipped(true);setCoverageSkipped(false);setPhase('coverage')}}>SKIP TO OPTIONAL COVERAGE<ChevronRight/></button>
+            </div>}
             <div className="processing-actions">
               <button className="secondary" onClick={closeSafe}>CANCEL</button>
               <button className="primary" disabled={!files.length||scanning} onClick={scanGameData}>{scanning?'RUNNING REAL SCANNER…':'SCAN GAME DATA'}<ChevronRight/></button>
@@ -3276,10 +3302,12 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="ready-check"><Check/></div>
             <span className="ready-kicker">STEP 6 · PROCESS WEEK</span>
             <h1>WEEK {game.week} IS READY.</h1>
-            <p>Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.</p>
+            <p>{hasSavedGame && !selectedGameFacts.length
+              ? 'The existing verified game and RTG data will stay untouched. Only the optional coverage or media you added will be attached when you confirm below.'
+              : 'Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.'}</p>
 
             <div className="ready-status-grid">
-              <div className="done"><Upload/><span><small>GAME DATA</small><strong>{selectedGameFacts.length} FACTS REVIEWED</strong></span></div>
+              <div className="done"><Upload/><span><small>GAME DATA</small><strong>{hasSavedGame && !selectedGameFacts.length?'SAVED GAME PRESERVED':selectedGameFacts.length+' FACTS REVIEWED'}</strong></span></div>
               <div className={rtgApproved.length?'done':'skipped'}><Sparkles/><span><small>RTG STATUS</small><strong>{rtgApproved.length?`${rtgApproved.length} FACTS READY`:(rtgSkipped?'NO CHANGES':'NOT SCANNED')}</strong></span></div>
               <div className={coverageAdded?'done':'skipped'}><Newspaper/><span><small>COVERAGE DATA</small><strong>{coverageAdded?`${coverageApproved.length} FACTS READY`:'OPTIONAL · SKIPPED'}</strong></span></div>
               <div className={officialSaved?'official':'skipped'}><Shield/><span><small>EA SPORTS NETWORK</small><strong>{officialSaved?'DETECTED':'NOT INCLUDED'}</strong></span></div>
@@ -3322,14 +3350,16 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               <ShieldCheck/>
               <div>
                 <span>FINAL OWNER CONFIRMATION</span>
-                <h3>{hasSavedGame?'Update this published week?':'Publish this verified week?'}</h3>
-                <p>{hasSavedGame
-                  ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. After the protected save, the Newsroom edition and Podcast transcript/NotebookLM material will regenerate automatically from the corrected verified facts. Existing audio is never regenerated automatically.'
-                  : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle, save optional Coverage Data, then automatically write the Newsroom edition and Podcast transcript/NotebookLM material. Audio remains an explicit owner step.'}</p>
+                <h3>{hasSavedGame && !selectedGameFacts.length?'Attach optional media to this saved week?':hasSavedGame?'Update this published week?':'Publish this verified week?'}</h3>
+                <p>{hasSavedGame && !selectedGameFacts.length
+                  ? 'DynastyHQ will preserve the existing verified game and RTG data for Season '+data.season+', Week '+game.week+' and attach only the optional EA SPORTS Network, Coverage, or Game Photo material you added.'
+                  : hasSavedGame
+                    ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. After the protected save, the Newsroom edition and Podcast transcript/NotebookLM material will regenerate automatically from the corrected verified facts. Existing audio is never regenerated automatically.'
+                    : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle, save optional Coverage Data, then automatically write the Newsroom edition and Podcast transcript/NotebookLM material. Audio remains an explicit owner step.'}</p>
               </div>
               <div>
                 <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('')}}>CANCEL</button>
-                <button className="primary danger-confirm" disabled={publishing} onClick={publishVerifiedPacket}>{publishing?'SAVING VERIFIED WEEK…':hasSavedGame?'YES · UPDATE WEEK':'YES · PUBLISH WEEK'}</button>
+                <button className="primary danger-confirm" disabled={publishing} onClick={publishVerifiedPacket}>{publishing?'SAVING VERIFIED WEEK…':hasSavedGame && !selectedGameFacts.length?'YES · ATTACH OPTIONAL MEDIA':hasSavedGame?'YES · UPDATE WEEK':'YES · PUBLISH WEEK'}</button>
               </div>
             </section>}
 
@@ -3337,7 +3367,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               {!publishResult && <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('');setPhase('coverage')}}><ChevronLeft/>BACK</button>}
               {publishResult
                 ? <button className="primary ready-button" disabled={coverageRefreshBusy} onClick={closeSafe}>{coverageRefreshBusy?'BUILDING COVERAGE…':'CLOSE & VIEW SAVED WEEK'}<ChevronRight/></button>
-                : <button className="primary ready-button" disabled={publishing} onClick={()=>{setPublishError('');setPublishConfirm(true)}}>{hasSavedGame?'UPDATE VERIFIED WEEK':'PUBLISH VERIFIED WEEK'}<ChevronRight/></button>}
+                : <button className="primary ready-button" disabled={publishing} onClick={()=>{setPublishError('');setPublishConfirm(true)}}>{hasSavedGame && !selectedGameFacts.length?'ATTACH OPTIONAL MEDIA':hasSavedGame?'UPDATE VERIFIED WEEK':'PUBLISH VERIFIED WEEK'}<ChevronRight/></button>}
             </div>
           </section>}
         </main>

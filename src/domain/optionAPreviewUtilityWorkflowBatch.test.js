@@ -176,3 +176,18 @@ test('Chronicle memory stack and media vault cards navigate to preserved content
   assert.match(css, /\.chronicle-memory-card:not\(:disabled\):hover/);
   assert.match(css, /\.museum-media-grid>button/);
 });
+
+
+test('saved weeks can bypass fresh uploads and attach only optional media',async ()=>{
+  const [source,css] = await Promise.all([readFile(sourceUrl,'utf8'),readFile(cssUrl,'utf8')]);
+  assert.match(source, /THIS WEEK IS ALREADY SAVED/);
+  assert.match(source, /SKIP TO OPTIONAL COVERAGE/);
+  assert.match(source, /setRtgSkipped\(true\);setCoverageSkipped\(false\);setPhase\('coverage'\)/);
+  assert.match(source, /const mediaOnlyUpdate=hasSavedGame && !selectedGameFacts\.length/);
+  assert.match(source, /if\(mediaOnlyUpdate\)\{[\s\S]*nextState=remote;[\s\S]*action='updated'/);
+  assert.match(source, /SAVED GAME PRESERVED/);
+  assert.match(source, /YES · ATTACH OPTIONAL MEDIA/);
+  assert.match(source, /optional media was safely updated\. Existing verified game data was preserved/);
+  assert.match(css, /saved-week optional media shortcut/);
+  assert.match(css, /\.processing-saved-shortcut/);
+});

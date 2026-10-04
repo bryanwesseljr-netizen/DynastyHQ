@@ -14764,3 +14764,21 @@ select optgroup{
   .ea-original-gallery>nav{grid-template-columns:1fr auto 1fr}
   .ea-original-gallery>nav>button{padding:0 6px}
 }
+
+
+/* Precision match pass v58 — saved-week optional media shortcut */
+.processing-saved-shortcut{
+  margin:0 0 12px;padding:12px 14px;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:12px;
+  border:1px solid rgba(255,228,0,.42);border-radius:8px;background:linear-gradient(100deg,rgba(255,228,0,.11),rgba(8,57,43,.72));
+  color:#eef7f3
+}
+.processing-saved-shortcut>svg{width:24px;height:24px;color:#ffe400}
+.processing-saved-shortcut>span{display:flex;flex-direction:column;gap:3px}
+.processing-saved-shortcut b{font-size:7px;letter-spacing:.65px;color:#fff}
+.processing-saved-shortcut small{font-size:6.3px;line-height:1.45;color:#aec3bb}
+.processing-saved-shortcut>button{white-space:nowrap;display:flex;align-items:center;gap:5px}
+.processing-saved-shortcut>button svg{width:13px}
+@media(max-width:700px){
+  .processing-saved-shortcut{grid-template-columns:28px minmax(0,1fr);padding:10px}
+  .processing-saved-shortcut>button{grid-column:1/-1;width:100%;justify-content:center}
+}

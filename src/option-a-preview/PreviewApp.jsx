@@ -5532,42 +5532,49 @@ function OfficialCoverageReader({story,season,week,opponent,onBack}){
     originalPages.push({pageNumber:1,src:story.screenshotUrl || story.imageDataUrl});
   }
   const currentOriginal=originalPages[Math.min(originalPage,Math.max(0,originalPages.length-1))] || null;
-  return <section className="ea-official-reader">
-    <div className="ea-official-reader-tools">
-      <button onClick={onBack}><ChevronLeft/>BACK TO NEWSROOM</button>
-      <span>SEASON {season} · WEEK {week}{opponent?' · VS '+opponent:''}</span>
+
+  return <article className="newsroom-article digital-feature article-skin-official ea-official-reader ea-fullscreen-reader">
+    <div className="newsroom-article-tools">
+      <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
+      <span>EA SPORTS NETWORK • WEEK {week}</span>
+      <div className="ea-official-tool-badge"><RadioIcon/>OFFICIAL</div>
     </div>
-    <header>
-      <RadioIcon/>
-      <div><span>OFFICIAL NATIONAL COVERAGE</span><b>EA SPORTS NETWORK</b></div>
-    </header>
-    {currentOriginal ? <article className="ea-screenshot-article">
-      <div className="ea-screenshot-story-head">
-        <span>ORIGINAL IN-GAME PUBLICATION</span>
-        <h1>{story?.headline || 'Official EA SPORTS Network coverage'}</h1>
-        {story?.dek && <p>{story.dek}</p>}
-        {story?.byline && <small>{story.byline}</small>}
+
+    <section className="ea-full-article-head">
+      <div className="ea-full-publication">
+        <RadioIcon/>
+        <div><span>OFFICIAL NATIONAL COVERAGE</span><b>EA SPORTS NETWORK</b></div>
       </div>
-      {originalPages.length>1 && <nav className="ea-page-nav">
+      <span className="ea-full-kicker">SEASON {season} · WEEK {week}{opponent?' · '+opponent:''}</span>
+      <h1>{story?.headline || 'Official EA SPORTS Network coverage'}</h1>
+      {(story?.dek || story?.summary) && <p>{story?.dek || story?.summary}</p>}
+      {story?.byline && <small>{story.byline}</small>}
+    </section>
+
+    {currentOriginal ? <>
+      {originalPages.length>1 && <nav className="ea-page-nav ea-full-page-nav">
         <button disabled={originalPage<=0} onClick={()=>setOriginalPage((page)=>Math.max(0,page-1))}><ChevronLeft/>PREVIOUS PAGE</button>
         <span>PAGE {originalPage+1} OF {originalPages.length}</span>
         <button disabled={originalPage>=originalPages.length-1} onClick={()=>setOriginalPage((page)=>Math.min(originalPages.length-1,page+1))}>NEXT PAGE<ChevronRight/></button>
       </nav>}
-      <figure className="ea-original-artifact ea-article-page">
+
+      <figure className="ea-full-article-page">
         <img src={currentOriginal.src} alt={'EA SPORTS Network original article page '+(originalPage+1)+' of '+originalPages.length}/>
-        <figcaption>EA SPORTS Network · Original article page {originalPage+1} of {originalPages.length}</figcaption>
+        <figcaption>EA SPORTS Network · Original in-game article · Page {originalPage+1} of {originalPages.length}</figcaption>
       </figure>
-      {originalPages.length>1 && <div className="ea-page-dots" aria-label="Article pages">
+
+      {originalPages.length>1 && <div className="ea-page-dots ea-full-page-dots" aria-label="Article pages">
         {originalPages.map((page,index)=><button key={page.pageNumber || index} className={index===originalPage?'active':''} onClick={()=>setOriginalPage(index)} aria-label={'Open page '+(index+1)}/>)}
       </div>}
-    </article> : <article className="ea-formatted-article ea-no-original">
-      <span>{story?.pageLabel || 'EA SPORTS NETWORK'}</span>
-      <h1>{story?.headline || 'Official in-game article'}</h1>
-      {story?.byline && <small>{story.byline}</small>}
-      <div>{paragraphs.length ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <p>No article body was saved for this older capture.</p>}</div>
-      <aside><ImageIcon/><span><b>The original screenshot pages are not attached to this older article.</b><small>The extracted article text is preserved. Re-upload the original EA SPORTS Network screenshots through Week Processing to restore the publication view.</small></span></aside>
-    </article>}
-  </section>;
+    </> : <section className="ea-full-missing-original">
+      <ImageIcon/>
+      <div>
+        <b>Original EA SPORTS Network screenshots are not attached to this older article.</b>
+        <p>The extracted article text is still preserved. Re-upload the original pages through Week Processing to restore the full publication view.</p>
+      </div>
+      {paragraphs.length>0 && <div className="ea-full-fallback-copy">{paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>)}</div>}
+    </section>}
+  </article>;
 }
 
 function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,onChangeArticlePhoto,articlePhotoBusy,go,openPodcast}){

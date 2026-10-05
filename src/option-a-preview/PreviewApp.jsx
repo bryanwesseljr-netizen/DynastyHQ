@@ -5,7 +5,7 @@ import {
   Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, Copy, FileText, Headphones, Home, Image as ImageIcon, Link2, LockKeyhole, Menu,
   Mic2, MoreHorizontal, Newspaper, Pause, Pencil, Play, Search, Share2, Shield, ShieldCheck, Sparkles, Target,
-  TrendingUp, Trophy, Trash2, Upload, UserRound, X, Zap
+  TrendingUp, Trophy, Trash2, Upload, UserRound, X, Zap, RadioTower
 } from 'lucide-react';
 import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
@@ -3379,7 +3379,7 @@ function PlusIcon(){
 }
 
 function RadioIcon(){
-  return <span className="processing-radio" aria-hidden="true"><span className="processing-radio-bar"/><span className="processing-radio-bar"/><span className="processing-radio-bar"/></span>;
+  return <RadioTower className="ea-broadcast-icon" aria-hidden="true"/>;
 }
 
 function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,onReset,onMode,onPosition,onApplyAll}){

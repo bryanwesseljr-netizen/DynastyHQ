@@ -14815,3 +14815,75 @@ select optgroup{
     line-height:1;
   }
 }
+
+
+/* Final pregame matchup lockup: center each team label under its logo on every viewport. */
+.home-page .pregame-score{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr)!important;
+  align-items:center!important;
+}
+.home-page .pregame-score .hero-score-team,
+.home-page .pregame-score .home-team,
+.home-page .pregame-score .away-team{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  gap:4px!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+}
+.home-page .pregame-score .hero-score-team .team-logo{
+  flex:0 0 auto!important;
+  grid-column:auto!important;
+  grid-row:auto!important;
+  align-self:center!important;
+  margin:0 auto!important;
+}
+.home-page .pregame-score .hero-score-team small,
+.home-page .pregame-score .home-team small,
+.home-page .pregame-score .away-team small{
+  display:block!important;
+  grid-column:auto!important;
+  grid-row:auto!important;
+  align-self:center!important;
+  width:100%!important;
+  margin:0!important;
+  color:#fff!important;
+  text-align:center!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.home-page .pregame-score .hero-final{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:stretch!important;
+  height:auto!important;
+  margin:0!important;
+}
+
+@media(max-width:700px){
+  .home-page .pregame-score{
+    height:78px!important;
+    min-height:78px!important;
+    grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr)!important;
+    padding:7px 10px!important;
+  }
+  .home-page .pregame-score .hero-score-team{
+    gap:5px!important;
+  }
+  .home-page .pregame-score .hero-score-team small{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    font-size:6.5px!important;
+    letter-spacing:.9px!important;
+  }
+}

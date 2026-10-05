@@ -14887,3 +14887,38 @@ select optgroup{
     letter-spacing:.9px!important;
   }
 }
+
+
+/* EA SPORTS Network icon: use a real SVG mark, isolated from card span/i styling. */
+.ea-broadcast-icon{
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  display:block!important;
+  flex:0 0 28px!important;
+  align-self:center!important;
+  color:#176b52!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  fill:none!important;
+}
+.home-official-coverage>.ea-broadcast-icon{
+  width:28px!important;
+  height:28px!important;
+}
+.ea-network-newsroom>header>.ea-broadcast-icon,
+.ea-official-reader>header>.ea-broadcast-icon{
+  width:31px!important;
+  height:31px!important;
+  min-width:31px!important;
+  min-height:31px!important;
+}
+@media(max-width:700px){
+  .home-official-coverage>.ea-broadcast-icon{
+    width:26px!important;
+    height:26px!important;
+    min-width:26px!important;
+    min-height:26px!important;
+  }
+}

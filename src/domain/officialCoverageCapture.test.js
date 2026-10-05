@@ -148,3 +148,33 @@ test('week resolver merges separately saved official pages before returning Chro
   assert.match(resolved.entry.body,/Page one body/);
   assert.match(resolved.entry.body,/Page two body/);
 });
+
+
+test('preserves the automatically stitched EA article asset when official pages are merged', () => {
+  const merged=mergeOfficialCoveragePages([
+    {
+      fileName:'page-1.jpg',
+      headline:'Five Alive!',
+      body:'Page one body.',
+      screenshotUrl:'https://example.test/page-1.jpg',
+      stitchedScreenshotUrl:'https://example.test/stitched.jpg',
+      stitchedStoragePath:'users/test/ea/stitched.jpg',
+      stitchedMimeType:'image/jpeg',
+      stitchedSizeBytes:456789,
+      stitchMeta:{width:1800,height:2400,pageCount:2,overlaps:[214]},
+    },
+    {
+      fileName:'page-2.jpg',
+      headline:'',
+      body:'Page two body.',
+      screenshotUrl:'https://example.test/page-2.jpg',
+    },
+  ]);
+
+  assert.equal(merged.stitchedScreenshotUrl,'https://example.test/stitched.jpg');
+  assert.equal(merged.stitchedStoragePath,'users/test/ea/stitched.jpg');
+  assert.equal(merged.stitchedMimeType,'image/jpeg');
+  assert.equal(merged.stitchedSizeBytes,456789);
+  assert.equal(merged.stitchMeta?.pageCount,2);
+  assert.deepEqual(merged.stitchMeta?.overlaps,[214]);
+});

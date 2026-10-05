@@ -775,6 +775,7 @@ function App(){
   const [week,setWeek] = useState(hasRestoredWeek?restoredWeek:10);
   const [articleOpen,setArticleOpen] = useState(Boolean(restoredView.articleOpen && validPage==='newsroom'));
   const [selectedArticleId,setSelectedArticleId] = useState(restoredView.selectedArticleId || '');
+  const [officialArticleRequest,setOfficialArticleRequest] = useState(0);
   const [statsTab,setStatsTab] = useState(restoredView.statsTab || 'player');
   const [toast,setToast] = useState('');
   const [playing,setPlaying] = useState(false);
@@ -966,6 +967,15 @@ function App(){
     setSelectedArticleId(articleId || data.news?.article?.id || '');
     setPage('newsroom');
     setArticleOpen(true);
+    setMobileMenu(false);
+    setMobileMoreOpen(false);
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  const openOfficialArticle = () => {
+    setSelectedArticleId('');
+    setArticleOpen(false);
+    setPage('newsroom');
+    setOfficialArticleRequest((value)=>value+1);
     setMobileMenu(false);
     setMobileMoreOpen(false);
     window.scrollTo({top:0,behavior:'smooth'});
@@ -1552,9 +1562,9 @@ function App(){
 
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
-      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
-      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} officialArticleRequest={officialArticleRequest} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage data={data} visual={visualFor('career')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openArchiveMoment={openArchiveMoment}/>} 
@@ -3795,7 +3805,7 @@ const liveCareerNextGame=(data)=>{
   };
 };
 
-function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,openArchiveMoment,notify}){
+function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialArticle,openPodcast,openArchiveMoment,notify}){
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
   const liveNextGame=liveCareerNextGame(data);
@@ -3882,8 +3892,15 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,op
           <div><h3>{pregame?`WEEK ${data.game.week} COVERAGE AWAITS`:data.news.headline}</h3><p>{pregame?'The Newsroom story and Huddle episode will populate after this game is completed and archived.':data.news.dek}</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/>
         </div>
-        {!pregame && latestOfficial && <button className="home-official-coverage" onClick={()=>go('newsroom')}>
-          <RadioIcon/><span><b>EA SPORTS NETWORK</b><small>{latestOfficial.headline || 'Official in-game coverage'}</small></span><em>OFFICIAL<ChevronRight/></em>
+        {!pregame && latestOfficial && <button className="home-official-coverage home-official-feature" onClick={openOfficialArticle}>
+          <div className="home-official-feature-head">
+            <RadioIcon/>
+            <div><b>EA SPORTS NETWORK</b><small>OFFICIAL NATIONAL COVERAGE</small></div>
+            <em>OFFICIAL</em>
+          </div>
+          <strong className="home-official-headline">{latestOfficial.headline || 'Official in-game coverage'}</strong>
+          <p className="home-official-dek">{latestOfficial.dek || latestOfficial.summary || 'Open the original EA SPORTS Network coverage captured from this week.'}</p>
+          <div className="home-official-cta">OPEN ORIGINAL STORY<ChevronRight/></div>
         </button>}
         <button className={'pod-mini '+(pregame?'pending-media':'')} onClick={()=>pregame?notify('The Huddle will unlock after this week is completed.'):openPodcast('episode')}>
           <img src={podcastEpisodeCover || podcastCover} alt="The Huddle"/>
@@ -3907,7 +3924,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,op
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
+function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArticle,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
   const [detailOpen,setDetailOpen]=useState('');
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
@@ -4007,7 +4024,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
           <CoverageRow icon={Newspaper} title="Newsroom edition" sub={pregame?'Generates after the completed week.':'Game recap and analysis.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Newsroom coverage will unlock after the game.'):go('newsroom')}/>
           <CoverageRow icon={Mic2} title="Podcast transcript" sub={pregame?'Generates after the completed week.':'Full episode transcript.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Podcast coverage will unlock after the game.'):openPodcast('transcript')}/>
           <CoverageRow icon={BookOpen} title="NotebookLM pack" sub={pregame?'Generates after the completed week.':'Game files and key moments.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('NotebookLM material will unlock after the game.'):openPodcast('notebook')}/>
-          {!pregame && latestOfficial && <CoverageRow icon={RadioIcon} title="EA SPORTS Network" sub={latestOfficial.headline || 'Official in-game coverage attached.'} status="READY" onClick={()=>go('newsroom')}/>}
+          {!pregame && latestOfficial && <CoverageRow icon={RadioIcon} title="EA SPORTS Network" sub={latestOfficial.headline || 'Official in-game coverage attached.'} status="READY" onClick={openOfficialArticle}/>}
           <button className="yellow full" onClick={()=>pregame?notify('Coverage opens after the final is processed.'):go('newsroom')}><Zap/>{pregame?'COVERAGE AFTER GAME':'OPEN COVERAGE'}<ChevronRight/></button>
         </article>
 
@@ -5192,7 +5209,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,officialArticleRequest,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const [archiveOpen,setArchiveOpen]=useState(false);
   const [officialOpen,setOfficialOpen]=useState(null);
@@ -5209,6 +5226,16 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
   const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
   const officialStories=Array.isArray(news.officialArticles)?news.officialArticles:[];
+
+  useEffect(()=>{
+    if(!officialArticleRequest || !officialStories.length) return;
+    setArchiveOpen(false);
+    setArticleOpen(false);
+    setSelectedArticleId('');
+    setOfficialOpen(officialStories[0]);
+    window.requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'smooth'}));
+  },[officialArticleRequest,officialStories[0]?.id]);
+
   const newsroomArchive=(Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[])
     .filter((entry)=>entry?.media?.newsroom)
     .slice()
@@ -5447,20 +5474,21 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           </section>
 
           {officialStories.length>0 && <section className="ea-network-newsroom">
-            <header><RadioIcon/><div><span>OFFICIAL IN-GAME COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} SAVED</b></header>
+            <header><RadioIcon/><div><span>OFFICIAL NATIONAL COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} STORY{officialStories.length===1?'':'IES'}</b></header>
             <div>
               {officialStories.map((entry,index)=>{
-                const cardScreenshot=entry.screenshotUrl || entry.sourcePages?.find((page)=>page?.screenshotUrl)?.screenshotUrl || '';
-                return <article key={entry.id || entry.headline || index} className={cardScreenshot?'has-original':''}>
-                {cardScreenshot && <button className="ea-network-thumb" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}} aria-label={'Open original EA SPORTS Network article: '+entry.headline}><img src={cardScreenshot} alt="Original EA SPORTS Network in-game article screenshot"/></button>}
-                <div className="ea-network-card-copy">
-                  <span>{entry.pageLabel || 'EA SPORTS NETWORK'}</span>
-                  <h3>{entry.headline || 'Official in-game article'}</h3>
-                  {entry.byline && <small>{entry.byline}</small>}
-                  {entry.body && <p>{entry.body}</p>}
-                  <button className="ea-network-read" onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}}>READ OFFICIAL ARTICLE<ChevronRight/></button>
-                </div>
-              </article>})}
+                const cardPage=entry.sourcePages?.find((page)=>page?.screenshotUrl || page?.imageDataUrl);
+                const cardScreenshot=entry.screenshotUrl || entry.imageDataUrl || cardPage?.screenshotUrl || cardPage?.imageDataUrl || '';
+                return <button key={entry.id || entry.headline || index} className={'ea-network-feature-card '+(cardScreenshot?'has-original':'')} onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}}>
+                  {cardScreenshot && <div className="ea-network-thumb"><img src={cardScreenshot} alt="Original EA SPORTS Network article preview"/><span>ORIGINAL ARTICLE</span></div>}
+                  <div className="ea-network-card-copy">
+                    <span>OFFICIAL EA SPORTS NETWORK STORY</span>
+                    <h3>{entry.headline || 'Official in-game article'}</h3>
+                    {(entry.dek || entry.summary) && <p>{entry.dek || entry.summary}</p>}
+                    <em className="ea-network-read">OPEN ORIGINAL STORY<ChevronRight/></em>
+                  </div>
+                </button>
+              })}
             </div>
           </section>}
 
@@ -5493,42 +5521,51 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
 }
 
 function OfficialCoverageReader({story,season,week,opponent,onBack}){
-  const [showOriginal,setShowOriginal]=useState(false);
   const [originalPage,setOriginalPage]=useState(0);
   const body=String(story?.body || '').trim();
   const paragraphs=body ? body.split(/\n\s*\n/).map((item)=>item.trim()).filter(Boolean) : [];
   const sourcePages=Array.isArray(story?.sourcePages)?story.sourcePages:[];
-  const originalPages=sourcePages.filter((page)=>page?.screenshotUrl);
-  if(!originalPages.length && story?.screenshotUrl){
-    originalPages.push({pageNumber:1,screenshotUrl:story.screenshotUrl});
+  const originalPages=sourcePages
+    .filter((page)=>page?.screenshotUrl || page?.imageDataUrl)
+    .map((page)=>({...page,src:page.screenshotUrl || page.imageDataUrl}));
+  if(!originalPages.length && (story?.screenshotUrl || story?.imageDataUrl)){
+    originalPages.push({pageNumber:1,src:story.screenshotUrl || story.imageDataUrl});
   }
   const currentOriginal=originalPages[Math.min(originalPage,Math.max(0,originalPages.length-1))] || null;
   return <section className="ea-official-reader">
     <div className="ea-official-reader-tools">
-      <button onClick={onBack}><ChevronLeft/>BACK TO FRONT PAGE</button>
-      <span>SEASON {season} · WEEK {week}{opponent?' · VS '+opponent:''}{story?.pageCount>1?' · '+story.pageCount+' SOURCE PAGES':''}</span>
-      {originalPages.length>0 && <button className="ea-original-toggle" onClick={()=>setShowOriginal((value)=>!value)}>{showOriginal?<FileText/>:<ImageIcon/>}{showOriginal?'READ FORMATTED ARTICLE':'VIEW ORIGINAL SCREENSHOTS'}</button>}
+      <button onClick={onBack}><ChevronLeft/>BACK TO NEWSROOM</button>
+      <span>SEASON {season} · WEEK {week}{opponent?' · VS '+opponent:''}</span>
     </div>
     <header>
       <RadioIcon/>
-      <div><span>OFFICIAL IN-GAME COVERAGE</span><b>EA SPORTS NETWORK</b></div>
+      <div><span>OFFICIAL NATIONAL COVERAGE</span><b>EA SPORTS NETWORK</b></div>
     </header>
-    {showOriginal && currentOriginal ? <div className="ea-original-gallery">
-      {originalPages.length>1 && <nav>
-        <button disabled={originalPage<=0} onClick={()=>setOriginalPage((page)=>Math.max(0,page-1))}><ChevronLeft/>PREVIOUS</button>
+    {currentOriginal ? <article className="ea-screenshot-article">
+      <div className="ea-screenshot-story-head">
+        <span>ORIGINAL IN-GAME PUBLICATION</span>
+        <h1>{story?.headline || 'Official EA SPORTS Network coverage'}</h1>
+        {story?.dek && <p>{story.dek}</p>}
+        {story?.byline && <small>{story.byline}</small>}
+      </div>
+      {originalPages.length>1 && <nav className="ea-page-nav">
+        <button disabled={originalPage<=0} onClick={()=>setOriginalPage((page)=>Math.max(0,page-1))}><ChevronLeft/>PREVIOUS PAGE</button>
         <span>PAGE {originalPage+1} OF {originalPages.length}</span>
-        <button disabled={originalPage>=originalPages.length-1} onClick={()=>setOriginalPage((page)=>Math.min(originalPages.length-1,page+1))}>NEXT<ChevronRight/></button>
+        <button disabled={originalPage>=originalPages.length-1} onClick={()=>setOriginalPage((page)=>Math.min(originalPages.length-1,page+1))}>NEXT PAGE<ChevronRight/></button>
       </nav>}
-      <figure className="ea-original-artifact">
-        <img src={currentOriginal.screenshotUrl} alt={'Original EA SPORTS Network article page '+(originalPage+1)+' of '+originalPages.length}/>
-        <figcaption>Original in-game screenshot · Page {originalPage+1} of {originalPages.length}</figcaption>
+      <figure className="ea-original-artifact ea-article-page">
+        <img src={currentOriginal.src} alt={'EA SPORTS Network original article page '+(originalPage+1)+' of '+originalPages.length}/>
+        <figcaption>EA SPORTS Network · Original article page {originalPage+1} of {originalPages.length}</figcaption>
       </figure>
-    </div> : <article className="ea-formatted-article">
+      {originalPages.length>1 && <div className="ea-page-dots" aria-label="Article pages">
+        {originalPages.map((page,index)=><button key={page.pageNumber || index} className={index===originalPage?'active':''} onClick={()=>setOriginalPage(index)} aria-label={'Open page '+(index+1)}/>)}
+      </div>}
+    </article> : <article className="ea-formatted-article ea-no-original">
       <span>{story?.pageLabel || 'EA SPORTS NETWORK'}</span>
       <h1>{story?.headline || 'Official in-game article'}</h1>
       {story?.byline && <small>{story.byline}</small>}
-      <div>{paragraphs.length ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <p>No extracted article body was saved for this older capture.</p>}</div>
-      {!originalPages.length && <aside><ImageIcon/><span><b>Original screenshot pages were not stored with this older import.</b><small>The complete verified article text is preserved. Re-upload the original EA SPORTS Network screenshots through Week Processing if you want the source-page gallery attached too.</small></span></aside>}
+      <div>{paragraphs.length ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <p>No article body was saved for this older capture.</p>}</div>
+      <aside><ImageIcon/><span><b>The original screenshot pages are not attached to this older article.</b><small>The extracted article text is preserved. Re-upload the original EA SPORTS Network screenshots through Week Processing to restore the publication view.</small></span></aside>
     </article>}
   </section>;
 }

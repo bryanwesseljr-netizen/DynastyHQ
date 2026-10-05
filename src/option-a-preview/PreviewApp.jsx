@@ -3379,7 +3379,7 @@ function PlusIcon(){
 }
 
 function RadioIcon(){
-  return <span className="processing-radio"><i/><i/><i/></span>;
+  return <span className="processing-radio" aria-hidden="true"><span className="processing-radio-bar"/><span className="processing-radio-bar"/><span className="processing-radio-bar"/></span>;
 }
 
 function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,onReset,onMode,onPosition,onApplyAll}){

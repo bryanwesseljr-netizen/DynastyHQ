@@ -10984,14 +10984,14 @@ button:active{transform:translateY(1px)}
   border-radius:50%;
   color:#7fc7ad;
 }
-.processing-radio i{
+.processing-radio .processing-radio-bar{
   width:3px;
   border-radius:2px;
   background:currentColor;
 }
-.processing-radio i:nth-child(1){height:9px}
-.processing-radio i:nth-child(2){height:17px}
-.processing-radio i:nth-child(3){height:12px}
+.processing-radio .processing-radio-bar:nth-child(1){height:9px}
+.processing-radio .processing-radio-bar:nth-child(2){height:17px}
+.processing-radio .processing-radio-bar:nth-child(3){height:12px}
 .official-feed-card>div{
   display:grid;
   gap:3px;
@@ -14226,9 +14226,9 @@ select optgroup{
   color:#176b52;
   border-color:#789b8f;
 }
-.ea-network-newsroom>header>.processing-radio i:nth-child(1){height:6px}
-.ea-network-newsroom>header>.processing-radio i:nth-child(2){height:12px}
-.ea-network-newsroom>header>.processing-radio i:nth-child(3){height:8px}
+.ea-network-newsroom>header>.processing-radio .processing-radio-bar:nth-child(1){height:6px}
+.ea-network-newsroom>header>.processing-radio .processing-radio-bar:nth-child(2){height:12px}
+.ea-network-newsroom>header>.processing-radio .processing-radio-bar:nth-child(3){height:8px}
 .ea-network-newsroom>header>div{
   display:grid;
   gap:2px;

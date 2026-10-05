@@ -14922,3 +14922,430 @@ select optgroup{
     min-height:26px!important;
   }
 }
+
+
+/* EA SPORTS Network editorial integration — treat official screenshots as real Newsroom stories. */
+.home-official-coverage.home-official-feature{
+  width:100%!important;
+  display:block!important;
+  margin:10px 0 12px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #285f50!important;
+  border-left:4px solid var(--yellow)!important;
+  border-radius:7px!important;
+  background:linear-gradient(135deg,#07382c 0%,#0a2b24 58%,#14251f 100%)!important;
+  color:#fff!important;
+  text-align:left!important;
+  box-shadow:0 9px 24px rgba(5,34,27,.12)!important;
+}
+.home-official-feature-head{
+  min-height:46px;
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr) auto;
+  align-items:center;
+  gap:9px;
+  padding:8px 11px;
+  border-bottom:1px solid rgba(255,255,255,.12);
+}
+.home-official-feature-head .ea-broadcast-icon{
+  width:27px!important;
+  height:27px!important;
+  min-width:27px!important;
+  min-height:27px!important;
+  color:var(--yellow)!important;
+}
+.home-official-feature-head>div{
+  display:grid;
+  gap:2px;
+}
+.home-official-feature-head b{
+  color:#fff;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:1px;
+}
+.home-official-feature-head small{
+  color:#a9c8bc;
+  font-size:5.2px;
+  font-weight:900;
+  letter-spacing:.65px;
+}
+.home-official-feature-head em{
+  padding:4px 6px;
+  border:1px solid rgba(255,228,0,.55);
+  border-radius:999px;
+  color:var(--yellow);
+  font-size:5.2px;
+  font-style:normal;
+  font-weight:950;
+  letter-spacing:.55px;
+}
+.home-official-headline{
+  display:block;
+  padding:10px 11px 0;
+  color:#fff;
+  font:700 16px/1.08 Georgia,"Times New Roman",serif;
+}
+.home-official-dek{
+  margin:5px 11px 0!important;
+  color:#c8d8d2!important;
+  font:400 7px/1.45 Georgia,"Times New Roman",serif!important;
+}
+.home-official-cta{
+  min-height:33px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  margin-top:8px;
+  padding:0 11px;
+  border-top:1px solid rgba(255,255,255,.1);
+  color:var(--yellow);
+  font-size:5.8px;
+  font-weight:950;
+  letter-spacing:.55px;
+}
+.home-official-cta svg{width:11px}
+
+/* Newsroom front-page official story feature. */
+.ea-network-newsroom{
+  margin-top:14px!important;
+  border-color:#7e9f93!important;
+  background:#e8eee9!important;
+}
+.ea-network-newsroom>header{
+  min-height:62px!important;
+  grid-template-columns:38px minmax(0,1fr) auto!important;
+  padding:10px 13px!important;
+  background:linear-gradient(90deg,#dbe6e1,#edf1ef)!important;
+  border-bottom-color:#aebfb8!important;
+}
+.ea-network-newsroom>header>.ea-broadcast-icon{
+  width:32px!important;
+  height:32px!important;
+  color:#0e6b50!important;
+}
+.ea-network-newsroom>header span{
+  color:#3c6e60!important;
+  font-size:5.5px!important;
+  letter-spacing:1px!important;
+}
+.ea-network-newsroom>header h2{
+  font-size:18px!important;
+  letter-spacing:.3px;
+}
+.ea-network-newsroom>div{
+  display:block!important;
+  padding:10px!important;
+}
+.ea-network-feature-card{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(180px,34%) minmax(0,1fr);
+  gap:0;
+  padding:0;
+  overflow:hidden;
+  border:1px solid #b9c7c1;
+  border-radius:6px;
+  background:#fffdfa;
+  color:#16251f;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 7px 18px rgba(22,55,45,.07);
+}
+.ea-network-feature-card:hover{
+  border-color:#5f8e7d;
+  box-shadow:0 10px 24px rgba(22,55,45,.12);
+}
+.ea-network-feature-card .ea-network-thumb{
+  position:relative;
+  min-height:190px;
+  border:0!important;
+  border-right:1px solid #cad5d0!important;
+  background:#0d1713!important;
+}
+.ea-network-feature-card .ea-network-thumb img{
+  width:100%;
+  height:100%;
+  min-height:190px;
+  display:block;
+  object-fit:cover;
+  object-position:top center;
+}
+.ea-network-feature-card .ea-network-thumb span{
+  position:absolute;
+  left:8px;
+  bottom:8px;
+  padding:4px 6px;
+  border-radius:3px;
+  background:rgba(3,30,23,.9);
+  color:#fff;
+  font-size:5px;
+  font-weight:950;
+  letter-spacing:.65px;
+}
+.ea-network-feature-card .ea-network-card-copy{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:15px 16px;
+}
+.ea-network-feature-card .ea-network-card-copy>span{
+  color:#1a6b51;
+  font-size:5.8px;
+  font-weight:950;
+  letter-spacing:.8px;
+}
+.ea-network-feature-card .ea-network-card-copy h3{
+  margin:6px 0 5px;
+  color:#14231d;
+  font:700 24px/1.03 Georgia,"Times New Roman",serif;
+}
+.ea-network-feature-card .ea-network-card-copy p{
+  display:-webkit-box;
+  margin:0!important;
+  overflow:hidden;
+  color:#5c6a64;
+  font:400 8px/1.5 Georgia,"Times New Roman",serif;
+  -webkit-line-clamp:4;
+  -webkit-box-orient:vertical;
+}
+.ea-network-feature-card .ea-network-read{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  margin-top:12px;
+  color:#0d654c;
+  font-size:6.2px;
+  font-style:normal;
+  font-weight:950;
+  letter-spacing:.55px;
+}
+.ea-network-feature-card .ea-network-read svg{width:12px}
+
+/* EA official reader: the original screenshots ARE the article. */
+.ea-official-reader{
+  background:#f1eee5!important;
+}
+.ea-official-reader-tools{
+  min-height:46px!important;
+  padding:7px 12px!important;
+}
+.ea-official-reader>header{
+  min-height:66px;
+  grid-template-columns:42px minmax(0,1fr)!important;
+  padding:11px 18px!important;
+  background:linear-gradient(90deg,#dbe6e1,#edf1ef)!important;
+}
+.ea-official-reader>header>.ea-broadcast-icon{
+  width:35px!important;
+  height:35px!important;
+  min-width:35px!important;
+  min-height:35px!important;
+  color:#0e6b50!important;
+}
+.ea-official-reader>header span{
+  font-size:5.6px!important;
+  letter-spacing:1px!important;
+}
+.ea-official-reader>header b{
+  font-size:18px!important;
+}
+.ea-screenshot-article{
+  width:min(980px,calc(100% - 28px));
+  margin:16px auto 28px;
+}
+.ea-screenshot-story-head{
+  padding:19px 22px 16px;
+  border:1px solid #d3cec2;
+  border-bottom:0;
+  border-radius:6px 6px 0 0;
+  background:#fffefa;
+}
+.ea-screenshot-story-head>span{
+  color:#1a6b51;
+  font-size:5.6px;
+  font-weight:950;
+  letter-spacing:.9px;
+}
+.ea-screenshot-story-head h1{
+  margin:6px 0 7px;
+  color:#172c25;
+  font:700 30px/1.05 Georgia,"Times New Roman",serif;
+}
+.ea-screenshot-story-head p{
+  max-width:760px;
+  margin:0;
+  color:#596862;
+  font:400 10px/1.5 Georgia,"Times New Roman",serif;
+}
+.ea-screenshot-story-head small{
+  display:block;
+  margin-top:8px;
+  color:#7b8580;
+  font-size:6px;
+}
+.ea-page-nav{
+  min-height:42px;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-left:1px solid #d3cec2;
+  border-right:1px solid #d3cec2;
+  background:#ebe7dd;
+}
+.ea-page-nav button{
+  min-height:28px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:0 8px;
+  border:1px solid #aeb8b3;
+  border-radius:4px;
+  background:#fbfaf6;
+  color:#174c3c;
+  font-size:5.4px;
+  font-weight:950;
+}
+.ea-page-nav button:last-child{justify-self:end}
+.ea-page-nav button:disabled{opacity:.4}
+.ea-page-nav button svg{width:11px}
+.ea-page-nav>span{
+  color:#64746d;
+  font-size:5.5px;
+  font-weight:950;
+  letter-spacing:.6px;
+}
+.ea-original-artifact.ea-article-page{
+  width:100%!important;
+  margin:0!important;
+  padding:12px!important;
+  border:1px solid #d3cec2!important;
+  border-radius:0 0 6px 6px!important;
+  background:#18251f!important;
+}
+.ea-original-artifact.ea-article-page img{
+  width:100%;
+  height:auto;
+  display:block;
+  border-radius:3px;
+  object-fit:contain;
+  background:#000;
+}
+.ea-original-artifact.ea-article-page figcaption{
+  padding:8px 3px 0!important;
+  color:#becbc5!important;
+  font-size:5.5px!important;
+}
+.ea-page-dots{
+  display:flex;
+  justify-content:center;
+  gap:7px;
+  padding-top:10px;
+}
+.ea-page-dots button{
+  width:8px;
+  height:8px;
+  padding:0;
+  border:1px solid #6b877d;
+  border-radius:50%;
+  background:transparent;
+}
+.ea-page-dots button.active{
+  border-color:#0e6b50;
+  background:#0e6b50;
+}
+.ea-formatted-article.ea-no-original{
+  border-top:3px solid #b5a734;
+}
+
+@media(max-width:700px){
+  .home-official-coverage.home-official-feature{
+    padding:0!important;
+  }
+  .home-official-feature-head{
+    grid-template-columns:30px minmax(0,1fr) auto;
+    padding:8px 9px;
+  }
+  .home-official-headline{
+    padding:9px 9px 0;
+    font-size:15px;
+  }
+  .home-official-dek{
+    margin:5px 9px 0!important;
+    font-size:7.2px!important;
+  }
+  .home-official-cta{
+    padding:0 9px;
+  }
+  .ea-network-newsroom{
+    margin:10px 0 0!important;
+  }
+  .ea-network-newsroom>header{
+    grid-template-columns:34px minmax(0,1fr) auto!important;
+    padding:9px 10px!important;
+  }
+  .ea-network-feature-card{
+    grid-template-columns:1fr;
+  }
+  .ea-network-feature-card .ea-network-thumb{
+    min-height:0;
+    border-right:0!important;
+    border-bottom:1px solid #cad5d0!important;
+  }
+  .ea-network-feature-card .ea-network-thumb img{
+    height:auto;
+    min-height:0;
+    max-height:230px;
+    object-fit:cover;
+    object-position:top center;
+  }
+  .ea-network-feature-card .ea-network-card-copy{
+    padding:12px;
+  }
+  .ea-network-feature-card .ea-network-card-copy h3{
+    font-size:21px;
+  }
+  .ea-network-feature-card .ea-network-card-copy p{
+    font-size:8px;
+  }
+  .ea-official-reader-tools{
+    align-items:center!important;
+    flex-wrap:wrap;
+  }
+  .ea-official-reader-tools>span{
+    order:2!important;
+    width:100%!important;
+    text-align:center;
+  }
+  .ea-screenshot-article{
+    width:calc(100% - 12px);
+    margin:7px auto 16px;
+  }
+  .ea-screenshot-story-head{
+    padding:14px 12px 12px;
+  }
+  .ea-screenshot-story-head h1{
+    font-size:25px;
+  }
+  .ea-screenshot-story-head p{
+    font-size:9px;
+  }
+  .ea-page-nav{
+    grid-template-columns:1fr auto 1fr;
+    padding:5px 6px;
+  }
+  .ea-page-nav button{
+    padding:0 5px;
+    font-size:5px;
+  }
+  .ea-page-nav>span{
+    font-size:5px;
+  }
+  .ea-original-artifact.ea-article-page{
+    padding:5px!important;
+  }
+}

@@ -18,6 +18,7 @@ import { analyzeCoverageReference } from '../services/coverageReferenceClient.js
 import { compressImage } from '../services/imageCompression.js';
 import { createFailedScreenshotResult, normalizeScreenshotAnalysis as normalizeGameScreenshotAnalysis } from '../domain/screenshotAnalysis.js';
 import { mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
+import { stitchOfficialArticlePages } from '../domain/officialArticleStitcher.js';
 import {
   correctPublishedWeek,
   createEmptyScanDraft,
@@ -2121,6 +2122,22 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           }
         }
 
+        let stitchedSaved=null;
+        if(article.stitchedImageDataUrl){
+          setOfficialProgress('Saving the seamless EA SPORTS Network article…');
+          const stitchedAssetId=globalThis.crypto?.randomUUID?.() || `ea-network-stitched-${targetSeason}-${targetWeek}-${Date.now()}-${articleIndex}`;
+          stitchedSaved=await uploadNewsroomMedia({
+            firebaseApp,
+            appId:productionAppId,
+            userId:signedInUser.uid,
+            assetId:stitchedAssetId,
+            imageDataUrl:article.stitchedImageDataUrl,
+            fileName:`EA-Sports-Network-S${targetSeason}-W${targetWeek}-STITCHED.jpg`,
+            origin:'ea-sports-network-stitched',
+          });
+          uploaded.push(stitchedSaved);
+        }
+
         const merged=mergeOfficialCoveragePages([{
           ...article,
           sourcePages:savedPages,
@@ -2134,6 +2151,11 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           screenshotStoragePath:firstImage.screenshotStoragePath || merged.screenshotStoragePath || '',
           screenshotMimeType:firstImage.screenshotMimeType || merged.screenshotMimeType || '',
           screenshotSizeBytes:Number(firstImage.screenshotSizeBytes || merged.screenshotSizeBytes)||0,
+          stitchedScreenshotUrl:stitchedSaved?.downloadUrl || article.stitchedScreenshotUrl || '',
+          stitchedStoragePath:stitchedSaved?.storagePath || article.stitchedStoragePath || '',
+          stitchedMimeType:stitchedSaved?.mimeType || article.stitchedMimeType || '',
+          stitchedSizeBytes:Number(stitchedSaved?.sizeBytes || article.stitchedSizeBytes)||0,
+          stitchMeta:article.stitchMeta || null,
         });
       }
       return {articles:prepared,uploaded};
@@ -2370,12 +2392,32 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         setOfficialError('No EA Sports Network article was recognized. Use a clear screenshot of the full in-game article page.');
         return;
       }
-      setOfficialArticles((current)=>{
-        const merged=mergeOfficialCoveragePages([...current,...found]);
-        return merged?[merged]:[];
-      });
+      const merged=mergeOfficialCoveragePages([...officialArticles,...found]);
+      if(!merged){
+        setOfficialError('The EA Sports Network pages could not be merged.');
+        return;
+      }
+      let stitchedImageDataUrl='';
+      let stitchMeta=null;
+      try{
+        setOfficialProgress('Cropping borders and stitching the EA article into one continuous page…');
+        const stitched=await stitchOfficialArticlePages(
+          (merged.sourcePages || []).map((page)=>page.imageDataUrl || page.screenshotUrl).filter(Boolean),
+        );
+        stitchedImageDataUrl=stitched.dataUrl;
+        stitchMeta={
+          width:stitched.width,
+          height:stitched.height,
+          pageCount:stitched.pageCount,
+          overlaps:stitched.overlaps,
+          generatedAt:new Date().toISOString(),
+        };
+      }catch(stitchError){
+        console.warn('EA article auto-stitch preview failed',stitchError);
+      }
+      setOfficialArticles([{...merged,stitchedImageDataUrl,stitchMeta}]);
       setCoverageSkipped(false);
-      notify(found.length===1 ? 'EA Sports Network article page added.' : found.length+' EA Sports Network pages stitched into one article.');
+      notify(found.length===1 ? 'EA Sports Network article page added.' : found.length+' EA Sports Network pages auto-cropped and stitched.');
     }catch(error){
       setOfficialError(error?.message || 'The EA Sports Network article could not be scanned.');
     }finally{
@@ -5529,6 +5571,38 @@ function OfficialCoverageReader({story,season,week,opponent,onBack}){
     originalPages.push({pageNumber:1,src:story.screenshotUrl || story.imageDataUrl});
   }
 
+  const savedStitch=story?.stitchedScreenshotUrl || story?.stitchedImageDataUrl || '';
+  const [autoStitch,setAutoStitch]=useState('');
+  const [stitching,setStitching]=useState(false);
+  const [stitchFailed,setStitchFailed]=useState(false);
+  const stitchKey=originalPages.map((page)=>page.src).join('|');
+
+  useEffect(()=>{
+    let active=true;
+    if(savedStitch || !originalPages.length){
+      setAutoStitch('');
+      setStitching(false);
+      setStitchFailed(false);
+      return ()=>{active=false};
+    }
+    setStitching(true);
+    setStitchFailed(false);
+    stitchOfficialArticlePages(originalPages.map((page)=>page.src))
+      .then((result)=>{
+        if(!active) return;
+        setAutoStitch(result.dataUrl);
+        setStitchFailed(false);
+      })
+      .catch((error)=>{
+        console.warn('EA article live auto-stitch failed',error);
+        if(active) setStitchFailed(true);
+      })
+      .finally(()=>{if(active)setStitching(false)});
+    return ()=>{active=false};
+  },[savedStitch,stitchKey]);
+
+  const stitchedSrc=savedStitch || autoStitch;
+
   return <article className="newsroom-article digital-feature article-skin-local article-skin-ea-official">
     <div className="newsroom-article-tools">
       <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
@@ -5548,10 +5622,12 @@ function OfficialCoverageReader({story,season,week,opponent,onBack}){
       </div>
     </header>
 
-    {originalPages.length ? <section className="ea-stitched-document" aria-label="Original EA SPORTS Network article">
-      {originalPages.map((page,index)=><div key={page.pageNumber || index} className={'ea-stitched-page '+(index===0?'first ':'')+(index===originalPages.length-1?'last':'')}>
-        <img src={page.src} alt={'EA SPORTS Network original article page '+(index+1)+' of '+originalPages.length}/>
-      </div>)}
+    {stitchedSrc ? <section className="ea-stitched-document ea-auto-stitched" aria-label="Original EA SPORTS Network article">
+      <img src={stitchedSrc} alt="Seamlessly stitched original EA SPORTS Network article"/>
+    </section> : stitching ? <section className="ea-stitching-status">
+      <Sparkles/><div><b>Building the original article view…</b><span>DynastyHQ is cropping the game UI and aligning the saved EA SPORTS Network pages.</span></div>
+    </section> : originalPages.length && stitchFailed ? <section className="ea-stitched-document ea-stitch-fallback" aria-label="Original EA SPORTS Network article pages">
+      {originalPages.map((page,index)=><div key={page.pageNumber || index} className="ea-stitched-page"><img src={page.src} alt={'EA SPORTS Network original article page '+(index+1)}/></div>)}
     </section> : <section className="ea-original-unavailable">
       <ImageIcon/>
       <div>

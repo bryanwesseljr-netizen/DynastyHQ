@@ -15775,3 +15775,94 @@ select optgroup{
     padding:7px 14px 0!important;
   }
 }
+
+
+/* EA original-only reader — stitch source screenshots into one continuous publication. */
+.article-skin-ea-official .article-outlet-switcher,
+.article-skin-ea-official .ea-official-article-head,
+.article-skin-ea-official .ea-official-page-stack,
+.article-skin-ea-official .ea-official-no-original{
+  display:none!important;
+}
+
+.ea-stitched-document{
+  width:min(1180px,calc(100% - 68px));
+  margin:28px auto 38px;
+  overflow:hidden;
+  border:1px solid #bdb5a5;
+  background:#f4efe3;
+  box-shadow:0 10px 28px rgba(39,48,43,.08);
+}
+.ea-stitched-page{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  margin:0;
+  padding:0;
+  line-height:0;
+  background:#f4efe3;
+}
+.ea-stitched-page + .ea-stitched-page{
+  margin-top:-1px;
+}
+.ea-stitched-page img{
+  width:100%;
+  height:auto;
+  display:block;
+  transform:scale(1.085);
+  transform-origin:center center;
+  background:#f4efe3;
+}
+.ea-stitched-page:not(.first) img{
+  transform:translateY(-.35%) scale(1.085);
+}
+.ea-original-unavailable{
+  min-height:300px;
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+  width:min(900px,calc(100% - 68px));
+  margin:34px auto 44px;
+  padding:24px;
+  border:1px dashed #9dafaa;
+  border-radius:7px;
+  background:#edf2ef;
+  color:#33473f;
+}
+.ea-original-unavailable>svg{
+  width:32px;
+  color:#173e30;
+}
+.ea-original-unavailable b{
+  display:block;
+  font-size:12px;
+}
+.ea-original-unavailable p{
+  margin:6px 0 0;
+  color:#68756f;
+  font-size:9px;
+  line-height:1.5;
+}
+
+@media(max-width:700px){
+  .ea-stitched-document{
+    width:100%;
+    margin:0;
+    border-left:0;
+    border-right:0;
+    box-shadow:none;
+  }
+  .ea-stitched-page img{
+    transform:scale(1.095);
+  }
+  .ea-stitched-page:not(.first) img{
+    transform:translateY(-.45%) scale(1.095);
+  }
+  .ea-original-unavailable{
+    grid-template-columns:34px minmax(0,1fr);
+    width:calc(100% - 24px);
+    margin:18px auto 28px;
+    padding:16px;
+  }
+}

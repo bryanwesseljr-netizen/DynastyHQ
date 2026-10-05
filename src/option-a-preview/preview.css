@@ -14782,3 +14782,36 @@ select optgroup{
   .processing-saved-shortcut{grid-template-columns:28px minmax(0,1fr);padding:10px}
   .processing-saved-shortcut>button{grid-column:1/-1;width:100%;justify-content:center}
 }
+
+
+/* Final score-ribbon alignment pass: keep matchup labels centered with the logos. */
+@media (min-width:701px){
+  .score-ribbon .score-team{
+    min-height:34px;
+    align-items:center;
+  }
+  .score-ribbon .score-team > span:not(.team-logo){
+    display:inline-flex;
+    align-items:center;
+    align-self:stretch;
+    line-height:1;
+  }
+  .score-ribbon .matchup-vs{
+    display:inline-flex;
+    align-items:center;
+    height:34px;
+    line-height:1;
+  }
+  .score-ribbon .upnext{
+    min-height:34px;
+    align-items:center;
+  }
+  .score-ribbon .upnext > b,
+  .score-ribbon .upnext > span,
+  .score-ribbon .upnext > strong{
+    display:inline-flex;
+    align-items:center;
+    min-height:34px;
+    line-height:1;
+  }
+}

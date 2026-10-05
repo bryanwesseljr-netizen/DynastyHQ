@@ -5521,8 +5521,6 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
 }
 
 function OfficialCoverageReader({story,season,week,opponent,onBack}){
-  const body=String(story?.body || '').trim();
-  const paragraphs=body ? body.split(/\n\s*\n/).map((item)=>item.trim()).filter(Boolean) : [];
   const sourcePages=Array.isArray(story?.sourcePages)?story.sourcePages:[];
   const originalPages=sourcePages
     .filter((page)=>page?.screenshotUrl || page?.imageDataUrl)
@@ -5538,17 +5536,10 @@ function OfficialCoverageReader({story,season,week,opponent,onBack}){
       <div className="ea-official-tool-badge"><RadioIcon/>EA SPORTS NETWORK</div>
     </div>
 
-    <nav className="article-outlet-switcher ea-official-switcher" aria-label="Official Newsroom publication">
-      <button className="active">
-        <span>OFFICIAL</span>
-        <b>EA SPORTS NETWORK</b>
-      </button>
-    </nav>
-
     <header className="article-publication-banner ea-official-publication-banner">
       <div className="article-publication-mark"><RadioIcon/></div>
       <div className="article-publication-copy">
-        <small>OFFICIAL NATIONAL COLLEGE FOOTBALL COVERAGE</small>
+        <small>ORIGINAL IN-GAME PUBLICATION</small>
         <strong>EA SPORTS NETWORK</strong>
       </div>
       <div className="article-publication-meta">
@@ -5557,40 +5548,17 @@ function OfficialCoverageReader({story,season,week,opponent,onBack}){
       </div>
     </header>
 
-    <section className="local-article-head ea-official-article-head">
-      <span className="local-article-slug">EA SPORTS NETWORK · OFFICIAL COVERAGE</span>
-      <h1>{story?.headline || 'Official EA SPORTS Network coverage'}</h1>
-      {(story?.dek || story?.summary) && <p>{story?.dek || story?.summary}</p>}
-      <div className="local-article-meta">
-        <span>{story?.byline ? <>By <b>{story.byline}</b></> : <b>Official in-game publication</b>}</span>
-        <time>Season {season} · Week {week}{opponent?' · '+opponent:''}</time>
+    {originalPages.length ? <section className="ea-stitched-document" aria-label="Original EA SPORTS Network article">
+      {originalPages.map((page,index)=><div key={page.pageNumber || index} className={'ea-stitched-page '+(index===0?'first ':'')+(index===originalPages.length-1?'last':'')}>
+        <img src={page.src} alt={'EA SPORTS Network original article page '+(index+1)+' of '+originalPages.length}/>
+      </div>)}
+    </section> : <section className="ea-original-unavailable">
+      <ImageIcon/>
+      <div>
+        <b>Original EA SPORTS Network screenshot pages are not attached to this older article.</b>
+        <p>Re-upload the original EA SPORTS Network screenshots through Week Processing to restore the publication exactly as it appeared in-game.</p>
       </div>
-    </section>
-
-    {originalPages.length ? <section className="ea-official-page-stack">
-      {originalPages.map((page,index)=><figure key={page.pageNumber || index} className="local-article-photo ea-official-page">
-        <div className="ea-official-page-frame">
-          <img src={page.src} alt={'EA SPORTS Network original article page '+(index+1)+' of '+originalPages.length}/>
-        </div>
-        <figcaption>
-          <span>Original EA SPORTS Network in-game article</span>
-          <em>Page {index+1} of {originalPages.length}</em>
-        </figcaption>
-      </figure>)}
-    </section> : <div className="local-article-body ea-official-no-original">
-      <main className="local-copy">
-        <div className="article-section-label"><span>OFFICIAL COVERAGE</span><b>EA SPORTS NETWORK</b></div>
-        {paragraphs.length
-          ? paragraphs.map((paragraph,index)=><p key={index} className={index===0?'digital-lede':''}>{paragraph}</p>)
-          : <p>No original screenshot pages were saved with this older capture.</p>}
-      </main>
-      <aside className="local-paper-rail">
-        <section className="related-card">
-          <span>ORIGINAL PUBLICATION</span>
-          <div className="ea-missing-source-note"><ImageIcon/><b>Screenshot pages unavailable</b><small>Re-upload the original EA SPORTS Network screenshots through Week Processing to restore the publication view.</small></div>
-        </section>
-      </aside>
-    </div>}
+    </section>}
   </article>;
 }
 

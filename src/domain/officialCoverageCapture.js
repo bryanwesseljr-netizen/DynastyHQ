@@ -154,6 +154,7 @@ export const mergeOfficialCoveragePages=(entries=[])=>{
   const body=pages.reduce((combined,page)=>mergeTextWithOverlap(combined,page.body),'');
   const sourcePages=pages.map(({_order,...page})=>page);
   const firstImagePage=sourcePages.find((page)=>page.screenshotUrl || page.imageDataUrl) || sourcePages[0] || {};
+  const stitchedEntry=(entries || []).find((entry)=>entry?.stitchedScreenshotUrl || entry?.stitchedImageDataUrl || entry?.stitchedStoragePath) || {};
 
   return {
     outlet:'EA SPORTS Network',
@@ -170,6 +171,12 @@ export const mergeOfficialCoveragePages=(entries=[])=>{
     screenshotStoragePath:firstImagePage.screenshotStoragePath || '',
     screenshotMimeType:firstImagePage.screenshotMimeType || '',
     screenshotSizeBytes:Number(firstImagePage.screenshotSizeBytes)||0,
+    stitchedScreenshotUrl:stitchedEntry.stitchedScreenshotUrl || '',
+    stitchedImageDataUrl:stitchedEntry.stitchedImageDataUrl || '',
+    stitchedStoragePath:stitchedEntry.stitchedStoragePath || '',
+    stitchedMimeType:stitchedEntry.stitchedMimeType || '',
+    stitchedSizeBytes:Number(stitchedEntry.stitchedSizeBytes)||0,
+    stitchMeta:stitchedEntry.stitchMeta || null,
     capturedAt:new Date().toISOString(),
   };
 };

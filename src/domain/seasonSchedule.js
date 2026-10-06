@@ -16,6 +16,20 @@ const resultForScores = (teamScore, opponentScore) => {
   return teamScore > opponentScore ? 'W' : 'L';
 };
 
+const POSTSEASON_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|conference championship|championship game|quarterfinal|semi[- ]?final|first round|national championship)\b/i;
+
+export const schedulePhaseForEntry = (entry = {}) => {
+  const explicit = clean(entry.phase, 40).toLowerCase();
+  if (explicit === 'postseason' || explicit === 'postseason-playoff') return 'postseason';
+  if (explicit === 'regular-season') return 'regular-season';
+  const visibleContext = [
+    entry.label,
+    entry.conference,
+    entry.evidence,
+  ].map((value) => clean(value, 300)).filter(Boolean).join(' ');
+  return POSTSEASON_LABEL_PATTERN.test(visibleContext) ? 'postseason' : 'regular-season';
+};
+
 const recordDetails = (entries = []) => {
   const decided = entries.filter((entry) => ['W', 'L'].includes(clean(entry?.result, 10).toUpperCase()));
   const wins = decided.filter((entry) => clean(entry.result, 10).toUpperCase() === 'W').length;
@@ -63,6 +77,7 @@ export const normalizeScheduleEntry = (entry = {}, index = 0) => {
     date: clean(entry.date, 80),
     conference: clean(entry.conference, 80),
     label: clean(entry.label, 120),
+    phase: schedulePhaseForEntry(entry),
     confidence: Number.isFinite(Number(entry.confidence)) ? Number(entry.confidence) : null,
     evidence: clean(entry.evidence, 300),
   };
@@ -109,6 +124,13 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
       date: entry.date || prior.date || '',
       conference: entry.conference || prior.conference || '',
       label: entry.label || prior.label || '',
+      phase: schedulePhaseForEntry({
+        ...prior,
+        ...entry,
+        label: entry.label || prior.label || '',
+        conference: entry.conference || prior.conference || '',
+        evidence: entry.evidence || prior.evidence || '',
+      }),
       completed: entry.completed || prior.completed || false,
       status: entry.isBye ? 'bye' : (entry.completed || prior.completed) ? 'completed' : 'upcoming',
     });
@@ -203,7 +225,7 @@ export const scheduleWeekSetup = (state = {}) => {
     return {
       week: row.week,
       type: 'bye',
-      phase: 'regular-season',
+      phase: schedulePhaseForEntry(row),
       label: row.label || `Week ${row.week} Bye`,
       customLabel: '',
       opponent: '',
@@ -217,7 +239,7 @@ export const scheduleWeekSetup = (state = {}) => {
   return {
     week: row.week,
     type: 'game',
-    phase: 'regular-season',
+    phase: schedulePhaseForEntry(row),
     label: row.label || `Week ${row.week}`,
     customLabel: '',
     opponent: row.opponent,

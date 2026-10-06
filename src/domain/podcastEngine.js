@@ -6,6 +6,10 @@ import {
 import { buildProgramCoverageContext } from './programCoverage.js';
 import { buildStorylineEngine } from './storylineEngine.js';
 import { resolveCurrentProgramSchool, resolveIssueTeamMediaProfile } from './teamMediaProfile.js';
+import {
+  elevatePostseasonCoverageDecision,
+  postseasonContextForWeek,
+} from './postseasonContext.js';
 
 const WORDS_PER_MINUTE = 145;
 const MIN_SCRIPT_WORDS = 400;
@@ -107,7 +111,7 @@ const factsForIssue = (state, issue, coverageStage, coverageContext = null) => {
   return [...factsByKey.values()];
 };
 
-const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) => {
+const editorialBriefFor = (state, issue, coverageStage, coverageContext = null, postseason = null) => {
   const playerName = text(state.player?.name, 120) || 'the quarterback';
   // A saved issue is authoritative for historical episodes. Otherwise use the
   // same current-program resolver that drives Newsroom, Podcast branding and accents.
@@ -123,6 +127,13 @@ const editorialBriefFor = (state, issue, coverageStage, coverageContext = null) 
   const relevance = coverageContext?.relevance;
   const decision = coverageContext?.coverageDecision;
   const program = coverageContext?.program;
+
+  if (coverageStage === 'college-player' && postseason?.active && postseason?.playoffGame) {
+    return {
+      title: `${school} ${postseason.displayLabel}: PLAYOFF EDITION`,
+      summary: `Treat ${postseason.displayLabel} against ${postseason.opponent || 'the opponent'} as a materially higher-stakes postseason game. Lead with the actual result and game story, then the tracked player's verified performance, turning points supported by the packet, and what the result changes. Do not invent a bracket round, advancement destination, ranking, title claim, elimination detail, or outside reaction that is not supplied.`,
+    };
+  }
 
   if (coverageStage === 'college-player' && (weekType.includes('bye') || !program?.currentGame)) {
     const activeThreads = (decision?.storylineThreads || [])
@@ -450,7 +461,18 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
   if (!issue) throw new Error('A verified weekly update is required before generating an episode.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
-  if (coverageStage === 'college-player' && !coverageContext?.coverageDecision?.podcastEligible) {
+  const postseason = postseasonContextForWeek(state, {
+    season: issue.season,
+    week: issue.week,
+    label: issue.label || issue.weekLabel,
+    phase: issue.weekPhase,
+    game: issue.game,
+  });
+  const elevatedCoverageDecision = elevatePostseasonCoverageDecision(
+    coverageContext?.coverageDecision || issue.coverageDecision || {},
+    postseason,
+  );
+  if (coverageStage === 'college-player' && !postseason.active && !elevatedCoverageDecision.podcastEligible) {
     const error = new Error('No new episode this week. There was not enough meaningful football movement to justify a full Gridiron Grind show.');
     error.code = 'NO_NEWSWORTHY_PODCAST';
     throw error;
@@ -477,7 +499,7 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
   const facts = [...factsByKey.values()];
   const usableFacts = facts.filter((fact) => fact.editorialUse !== 'background-only');
   if (!usableFacts.length) throw new Error('The selected issue has no football facts available for a podcast.');
-  const brief = editorialBriefFor(state, issue, coverageStage, coverageContext);
+  const brief = editorialBriefFor(state, issue, coverageStage, coverageContext, postseason);
   const mediaProfile = resolveIssueTeamMediaProfile(issue, state);
   const currentGame = coverageContext?.program?.currentGame || currentGameForIssue(state, issue);
   const weekType = text(issue.weekType, 60).toLowerCase();
@@ -500,10 +522,10 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     coverageContext?.storylineThreads || [],
     continuity?.editorialThreads || [],
   );
-  const coverageDecision = coverageContext?.coverageDecision ? {
-    ...coverageContext.coverageDecision,
+  const coverageDecision = (coverageContext?.coverageDecision || postseason.active) ? {
+    ...elevatedCoverageDecision,
     storylineKeys: [...new Set([
-      ...(coverageContext.coverageDecision.storylineKeys || []),
+      ...(elevatedCoverageDecision.storylineKeys || []),
       ...(continuity?.storylineKeys || []),
     ])].slice(0, 16),
   } : null;
@@ -516,6 +538,7 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     weekType,
     weekPhase: text(issue.weekPhase, 80).toLowerCase(),
     careerPhase: text(issue.careerPhase, 40),
+    postseason,
     coverageStage,
     coverageDecision,
     storylineThreads,
@@ -526,7 +549,9 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
       },
       playerRelevance: coverageContext.relevance,
       playerMentionPolicy: coverageContext.coverageDecision.playerMentionPolicy,
-      editorialPrinciple: 'The team/game is the default subject. Use the shared coverage tier and active storyline threads. Do not repeat an established storyline unless something changed.',
+      editorialPrinciple: postseason.active
+        ? 'This is postseason/playoff football. The stage label, actual game, verified performance, and supported consequences are the center of the show. Give the episode more weight than a routine week without inventing bracket details or hype.'
+        : 'The team/game is the default subject. Use the shared coverage tier and active storyline threads. Do not repeat an established storyline unless something changed.',
     } : null,
     show: {
       name: mediaProfile.podcastName,
@@ -614,6 +639,10 @@ export const normalizeGeneratedPodcast = ({ generated, payload, model = '' }) =>
     publicationId: payload.publicationId,
     season: payload.season,
     week: payload.week,
+    label: payload.label,
+    weekType: payload.weekType,
+    weekPhase: payload.weekPhase,
+    postseason: payload.postseason || null,
     careerPhase: payload.careerPhase,
     coverageStage: payload.coverageStage,
     coverageDecision: payload.coverageDecision || null,

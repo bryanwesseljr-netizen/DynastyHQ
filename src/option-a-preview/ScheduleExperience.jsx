@@ -325,7 +325,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       ? `${record.wins}-${record.losses} · NEXT W${nextGame.week} ${clean(nextGame.opponent).toUpperCase()}`
       : hasPostseason
         ? `${record.wins}-${record.losses} · POSTSEASON SCHEDULE COMPLETE`
-        : `${record.wins}-${record.losses} · REGULAR SCHEDULE COMPLETE`
+        : `${record.wins}-${record.losses} · AWAITING POSTSEASON`
     : `${record.wins}-${record.losses} · IMPORT SCHEDULE`;
 
   const disconnected = !career;

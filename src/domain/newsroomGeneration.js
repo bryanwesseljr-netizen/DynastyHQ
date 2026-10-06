@@ -282,9 +282,18 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const currentContext = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse === 'context');
   const fallback = currentPrimary.length ? currentPrimary : currentContext;
 
-  const plannedEntries = coverageStage === 'college-player' && (coverageContext?.storyPlans || []).length
+  let plannedEntries = coverageStage === 'college-player' && (coverageContext?.storyPlans || []).length
     ? choosePlannedEntries(issue, coverageContext.storyPlans || [])
     : issue.articles.slice(0, 5).map((entry) => ({ plan: null, entry, coverageOutletId: entry.outletId || entry.id }));
+
+  if (postseason.active && coverageStage === 'college-player') {
+    const needed = Math.max(0, Number(coverageDecision?.articleCount) || 0);
+    const used = new Set(plannedEntries.map(({ coverageOutletId, entry }) => coverageOutletId || entry?.outletId || entry?.id));
+    const extras = issue.articles
+      .filter((entry) => !used.has(entry.outletId || entry.id))
+      .map((entry) => ({ plan: null, entry, coverageOutletId: entry.outletId || entry.id }));
+    plannedEntries = [...plannedEntries, ...extras].slice(0, Math.max(needed, plannedEntries.length));
+  }
 
   const articleBriefs = plannedEntries.map(({ plan, entry, coverageOutletId }) => {
     const profile = plan ? profileFor({ ...entry, outletId: coverageOutletId }) : profileFor(entry);

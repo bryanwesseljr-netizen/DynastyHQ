@@ -212,6 +212,23 @@ export const teamRecordForSeason = (state = {}, season = state.currentSeason || 
   return { wins: record.wins, losses: record.losses, games: record.games, source: record.source === 'schedule' ? 'schedule' : 'game-log' };
 };
 
+export const scheduleHighlightWeek = (entries = [], currentWeek = 0) => {
+  const targetWeek = Math.max(0, Number(currentWeek) || 0);
+  const sorted = arrayOf(entries).slice().sort((left, right) => Number(left?.week ?? 0) - Number(right?.week ?? 0));
+  const current = sorted.find((entry) => Number(entry?.week) === targetWeek);
+
+  if (current && !current.completed && !current.isBye) return Number(current.week);
+
+  const nextPlayable = sorted.find((entry) => (
+    Number(entry?.week) >= targetWeek
+    && !entry?.completed
+    && !entry?.isBye
+    && clean(entry?.opponent, 160)
+  ));
+
+  return nextPlayable ? Number(nextPlayable.week) : targetWeek;
+};
+
 export const nextScheduledGame = (state = {}, season = state.currentSeason || 1) => {
   const schedule = seasonScheduleFor(state, season);
   if (!schedule?.entries?.length) return null;

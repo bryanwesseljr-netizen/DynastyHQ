@@ -4,6 +4,7 @@ import {
   mergeSeasonSchedule,
   nextScheduledGame,
   normalizeScheduleEntry,
+  scheduleDisplayLabel,
   schedulePhaseForEntry,
   scheduleWeekSetup,
   syncScheduleWithCareer,
@@ -159,4 +160,46 @@ test('postseason schedule updates append new rows without erasing the regular se
   assert.equal(merged.entries[0].opponent, 'Washington');
   assert.equal(merged.entries[2].opponent, 'Ohio State');
   assert.equal(merged.entries[2].phase, 'postseason');
+});
+
+
+test('CFB 27 postseason slot labels stay user-facing while internal week numbers remain sortable', () => {
+  const confChamp = normalizeScheduleEntry({
+    week: 16,
+    opponent: 'BYE',
+    isBye: true,
+    status: 'bye',
+    label: 'Conf Champ',
+  });
+  const bowlOne = normalizeScheduleEntry({
+    week: 17,
+    opponent: 'LSU',
+    status: 'upcoming',
+    label: 'Bowl 1',
+    date: 'Sat, Dec 21',
+  });
+
+  assert.equal(schedulePhaseForEntry(confChamp), 'postseason');
+  assert.equal(scheduleDisplayLabel(confChamp), 'CONF CHAMP');
+  assert.equal(schedulePhaseForEntry(bowlOne), 'postseason');
+  assert.equal(scheduleDisplayLabel(bowlOne), 'BOWL 1');
+});
+
+test('Bowl 1 can be the first playable postseason game after conference championship bye', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 16,
+    seasonSchedules: [{
+      season: 4,
+      entries: [
+        { week: 15, opponent: 'BYE', isBye: true, status: 'bye' },
+        { week: 16, opponent: 'BYE', isBye: true, status: 'bye', label: 'Conf Champ' },
+        { week: 17, opponent: 'LSU', status: 'upcoming', label: 'Bowl 1', date: 'Sat, Dec 21' },
+      ],
+    }],
+  };
+
+  assert.equal(nextScheduledGame(state)?.opponent, 'LSU');
+  assert.equal(scheduleDisplayLabel(nextScheduledGame(state)), 'BOWL 1');
+  assert.equal(scheduleWeekSetup(state)?.label, 'Conf Champ');
 });

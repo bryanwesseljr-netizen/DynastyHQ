@@ -184,7 +184,7 @@ const choosePlannedEntries = (issue, storyPlans = []) => {
 
 const targetWordRangeFor = (coverageDecision, plan = {}) => {
   const base = coverageDecision?.newsroomWordRange || { min: 260, max: 460 };
-  const audience = clean(plan.audience, 40);
+  const audience = clean(plan?.audience, 40);
   if (audience === 'national-lead') return { min: Math.max(520, base.min), max: Math.max(720, base.max) };
   if (audience === 'national') return { min: Math.max(460, base.min), max: Math.max(650, base.max) };
   if (audience === 'regional') return { min: Math.max(320, Math.min(base.min, 420)), max: Math.max(500, base.max) };

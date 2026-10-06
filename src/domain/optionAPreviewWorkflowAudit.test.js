@@ -86,9 +86,9 @@ test('EA Sports Network coverage has a dedicated optional upload lane and appear
   assert.match(source, /ea_sports_network_article/);
   assert.match(source, /appendOfficialNetworkArticles/);
   assert.match(source, /officialStories=Array\.isArray\(news\.officialArticles\)/);
-  assert.match(source, /OFFICIAL IN-GAME COVERAGE/);
+  assert.match(source, /ORIGINAL IN-GAME PUBLICATION/);
   assert.match(source, /EA SPORTS NETWORK/);
-  assert.match(source, /stitches the visible text into one recap/);
+  assert.match(source, /auto-cropped and stitched/);
 });
 
 test('Podcast Studio expands into document flow, keeps the page scrollable, and returns to its anchor when closed', async () => {
@@ -116,8 +116,8 @@ test('official in-game coverage preserves its screenshot and is surfaced across 
     readFile(new URL('../../api/newsroom-media.js', import.meta.url), 'utf8'),
   ]);
   assert.match(source, /screenshotUrl/);
-  assert.match(source, /OFFICIAL IN-GAME COVERAGE/);
-  assert.match(source, /VIEW ORIGINAL SCREENSHOT/);
+  assert.match(source, /ORIGINAL IN-GAME PUBLICATION/);
+  assert.match(source, /stitchedScreenshotUrl/);
   assert.match(source, /EA SPORTS NETWORK/);
   assert.match(hook, /sourcePages/);
   assert.match(producer, /OFFICIAL IN-GAME MEDIA — EA SPORTS NETWORK/);
@@ -126,7 +126,7 @@ test('official in-game coverage preserves its screenshot and is surfaced across 
 });
 
 
-test('EA SPORTS official coverage supports multi-page stitching and original screenshot browsing', async () => {
+test('EA SPORTS official coverage supports multi-page auto-crop and seamless original article rendering', async () => {
   const [source,css,domain,scanner] = await Promise.all([
     readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../option-a-preview/preview.css', import.meta.url), 'utf8'),
@@ -135,10 +135,10 @@ test('EA SPORTS official coverage supports multi-page stitching and original scr
   ]);
   assert.match(source,/mergeOfficialCoveragePages/);
   assert.match(source,/sourcePages/);
-  assert.match(source,/pages stitched into one article/);
-  assert.match(source,/VIEW ORIGINAL SCREENSHOTS/);
-  assert.match(source,/PAGE \{originalPage\+1\} OF \{originalPages\.length\}/);
-  assert.match(css,/multi-page official EA article gallery/);
+  assert.match(source,/pages auto-cropped and stitched/);
+  assert.match(source,/stitchedScreenshotUrl/);
+  assert.match(source,/stitchOfficialArticlePages/);
+  assert.match(css,/Automatic EA article stitch/);
   assert.match(domain,/mergeTextWithOverlap/);
   assert.match(domain,/s4-w12-wisconsin-ea-network/);
   assert.match(scanner,/DynastyHQ stitches multiple uploaded pages after extraction/);

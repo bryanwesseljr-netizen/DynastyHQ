@@ -16,7 +16,7 @@ const resultForScores = (teamScore, opponentScore) => {
   return teamScore > opponentScore ? 'W' : 'L';
 };
 
-const POSTSEASON_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|championship|quarterfinal|semi[- ]?final|first round)\b/i;
+const POSTSEASON_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|championship|conf\s+champ|quarterfinal|semi[- ]?final|first round)\b/i;
 
 export const schedulePhaseForEntry = (entry = {}) => {
   const explicit = clean(entry.phase, 40).toLowerCase();
@@ -28,6 +28,12 @@ export const schedulePhaseForEntry = (entry = {}) => {
     entry.evidence,
   ].map((value) => clean(value, 300)).filter(Boolean).join(' ');
   return POSTSEASON_LABEL_PATTERN.test(visibleContext) ? 'postseason' : 'regular-season';
+};
+
+export const scheduleDisplayLabel = (entry = {}) => {
+  const label = clean(entry.label, 120);
+  if (label && schedulePhaseForEntry(entry) === 'postseason') return label.toUpperCase();
+  return `W${weekNumber(entry.week, 0)}`;
 };
 
 const recordDetails = (entries = []) => {

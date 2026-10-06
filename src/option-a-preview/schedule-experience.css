@@ -511,3 +511,37 @@
     padding-top:0;
   }
 }
+
+.oa-postseason-ready{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 18px;
+  border-top:1px solid rgba(239,213,58,.18);
+  border-bottom:1px solid rgba(239,213,58,.18);
+  background:linear-gradient(90deg,rgba(239,213,58,.12),rgba(41,112,176,.08));
+}
+.oa-postseason-ready>div{display:flex;align-items:center;gap:9px;min-width:0;color:#f0d832}
+.oa-postseason-ready>div span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.oa-postseason-ready b{font-size:10px;letter-spacing:.08em}
+.oa-postseason-ready small{font-size:10px;color:rgba(255,255,255,.63)}
+.oa-postseason-ready button{
+  min-height:34px;
+  padding:0 12px;
+  border:1px solid #eed52d;
+  border-radius:8px;
+  background:#eed52d;
+  color:#07100d;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.07em;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.oa-postseason-ready button:disabled{opacity:.55;cursor:not-allowed}
+.oa-postseason-ready-full{border-top:0}
+@media (max-width:620px){
+  .oa-postseason-ready{align-items:flex-start;flex-direction:column;padding:11px 14px}
+  .oa-postseason-ready button{width:100%}
+}

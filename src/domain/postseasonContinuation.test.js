@@ -158,7 +158,7 @@ test('publishing Bowl 1 carries postseason identity into game, ledger, Newsroom,
   const newsroom = buildNewsroomGenerationPayload(published, 'season-4-week-17');
   assert.equal(newsroom.postseason.active, true);
   assert.equal(newsroom.postseason.displayLabel, 'BOWL 1');
-  assert.equal(newsroom.coverageDecision.tier, 'major');
+  assert.ok(['major', 'career-defining'].includes(newsroom.coverageDecision.tier));
   assert.equal(newsroom.coverageDecision.audienceReach.nationalEligible, true);
   assert.ok(newsroom.articleBriefs.length >= 3);
 

@@ -66,7 +66,8 @@ test('vision router tries multiple free Gemini models before paid fallback', () 
   assert.match(router, /GEMINI_VISION_MODELS/);
   assert.match(router, /gemini-3\.5-flash-lite/);
   assert.match(router, /requestGeminiFreeChain/);
-  assert.match(router, /for \(const model of GEMINI_VISION_MODELS\)/);
+  assert.match(router, /GEMINI_VISION_MODELS\.slice/);
+  assert.match(router, /for \(const model of models\)/);
   assert.match(router, /GEMINI_FREE_MODELS_UNAVAILABLE/);
   assert.match(router, /FREE_MODELS_LOW_CONFIDENCE/);
 });

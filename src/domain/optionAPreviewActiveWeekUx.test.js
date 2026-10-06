@@ -8,7 +8,7 @@ test('Game Hub keeps historical review context separate from the live playable w
   const source = await readFile(sourceUrl, 'utf8');
 
   assert.match(source, /REVIEW \/ UPDATE \\${data\.weekLabel/);
-  assert.match(source, /PROCESS WEEK \$\{data\.game\.week\}/);
+  assert.match(source, /PROCESS \\${data\.weekLabel/);
   assert.match(source, /const activeOpponent=liveCareerTarget\(data\)/);
   assert.match(source, /<b>THIS WEEK<\/b>/);
   assert.match(source, /PREPARE · \$\{activeOpponent\.displayLabel/);

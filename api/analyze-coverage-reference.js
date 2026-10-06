@@ -331,6 +331,7 @@ const SCHEDULE_INSTRUCTIONS = `You extract a college football season schedule fr
 - If a final score is visible but W/L is not printed, you may derive W/L strictly from those two visible scores after correctly identifying the tracked team.
 - For future games, status=upcoming, result="", teamScore="", opponentScore="".
 - date, conference and label are optional visible text. Use empty strings when absent.
+- IMPORTANT FOR POSTSEASON: when the row visibly names a stage such as a conference championship, CFP First Round, CFP Quarterfinal, CFP Semifinal, National Championship, or a named bowl, copy that exact visible stage text into label. Do not invent a stage when it is not shown.
 - Do not infer kickoff time, rankings, opponent records, conference membership, rivalry status, postseason stakes, or player participation.
 - Confidence above 0.90 only for plainly legible rows. Evidence should briefly name the visible row/result used.`;
 

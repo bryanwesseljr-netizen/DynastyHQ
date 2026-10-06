@@ -37,6 +37,18 @@ const MAX_FILES = 4;
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || `schedule-option-a-${Date.now()}`;
 const clean = (value) => String(value ?? '').trim();
 
+const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const readScheduleWithRetry = async (args) => {
+  try {
+    return await analyzeSeasonScheduleScreenshot(args);
+  } catch (error) {
+    if (!error?.retryable) throw error;
+    await wait(900);
+    return analyzeSeasonScheduleScreenshot(args);
+  }
+};
+
 const scheduleTeamBrandCache = new Map();
 
 const ScheduleTeamLogo = ({ team = '', bye = false }) => {
@@ -218,7 +230,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
 
       for (const file of files) {
         const imageDataUrl = await compressImage(file, 2200, 0.88);
-        const response = await analyzeSeasonScheduleScreenshot({
+        const response = await readScheduleWithRetry({
           idToken,
           imageDataUrl,
           fileName: file.name,

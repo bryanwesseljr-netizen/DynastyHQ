@@ -17,6 +17,7 @@ import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import {
   mergeSeasonSchedule,
   nextScheduledGame,
+  scheduleDisplayLabel,
   schedulePhaseForEntry,
   scheduleWeekSetup,
   seasonScheduleFor,
@@ -116,7 +117,7 @@ const ScheduleRow = ({ entry, currentWeek, compact = false }) => {
   const active = Number(entry.week) === Number(currentWeek) && !entry.completed;
   return <div className={`oa-schedule-row ${entry.completed ? 'is-complete' : ''} ${active ? 'is-active' : ''} ${entry.isBye ? 'is-bye' : ''}`}>
     <div className="oa-schedule-week">
-      <span>W{entry.week}</span>
+      <span>{scheduleDisplayLabel(entry)}</span>
       {phase === 'postseason' ? <em>POST</em> : null}
     </div>
     <div className="oa-schedule-opponent">
@@ -322,7 +323,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
 
   const statusText = entries.length
     ? nextGame
-      ? `${record.wins}-${record.losses} · NEXT W${nextGame.week} ${clean(nextGame.opponent).toUpperCase()}`
+      ? `${record.wins}-${record.losses} · NEXT ${scheduleDisplayLabel(nextGame)} · ${clean(nextGame.opponent).toUpperCase()}`
       : hasPostseason
         ? `${record.wins}-${record.losses} · POSTSEASON SCHEDULE COMPLETE`
         : `${record.wins}-${record.losses} · AWAITING POSTSEASON`

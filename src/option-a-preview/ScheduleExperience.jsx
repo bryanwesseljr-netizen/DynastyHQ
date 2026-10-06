@@ -271,8 +271,6 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) =
     }
   };
 
-  if (!career) return null;
-
   const statusText = entries.length
     ? nextGame
       ? `${record.wins}-${record.losses} · NEXT W${nextGame.week} ${clean(nextGame.opponent).toUpperCase()}`
@@ -280,6 +278,8 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) =
         ? `${record.wins}-${record.losses} · POSTSEASON SCHEDULE COMPLETE`
         : `${record.wins}-${record.losses} · REGULAR SCHEDULE COMPLETE`
     : `${record.wins}-${record.losses} · IMPORT SCHEDULE`;
+
+  const disconnected = !career;
 
   return <>
     {mode === 'home' ? (
@@ -289,11 +289,16 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) =
             <span><CalendarDays size={14}/> THE ROAD AHEAD</span>
             <h2>{statusText}</h2>
           </div>
-          <button type="button" onClick={openImporter}>
+          <button type="button" onClick={openImporter} disabled={!canUpdate} title={!canUpdate ? 'Connect Live Career first' : ''}>
             {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
           </button>
         </header>
-        {rows.length ? (
+        {disconnected ? (
+          <div className="oa-schedule-empty oa-schedule-disconnected">
+            <strong>Connect your live career to load the real schedule.</strong>
+            <span>This Vercel preview uses a separate browser sign-in from the live DynastyHQ domain. Once connected here, the Road Ahead will use your current production career instead of the sample Week 10 data.</span>
+          </div>
+        ) : rows.length ? (
           <div className="oa-road-ahead-rows">
             {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} compact />)}
           </div>
@@ -325,7 +330,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) =
             </button>
           ) : null}
         </header>
-        {entries.length ? (
+        {disconnected ? (
+          <div className="oa-schedule-empty oa-schedule-disconnected">
+            <strong>Connect your live career to open the real Season {displaySeason} schedule.</strong>
+            <span>The preview is currently showing sample data because this Vercel address has not been signed into your DynastyHQ account yet.</span>
+          </div>
+        ) : entries.length ? (
           <div className="oa-full-schedule-rows">
             {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} />)}
           </div>

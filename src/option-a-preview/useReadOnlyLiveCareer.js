@@ -145,6 +145,9 @@ const careerOverview = (state = {}) => {
   )).sort(bySeasonWeek);
   const wins = college.filter((game) => clean(game.result).toUpperCase() === 'W').length;
   const losses = college.filter((game) => clean(game.result).toUpperCase() === 'L').length;
+  const postseasonGames = college.filter((game) => game?.weekPhase === 'postseason' || game?.postseason?.active);
+  const postseasonWins = postseasonGames.filter((game) => clean(game.result).toUpperCase() === 'W').length;
+  const postseasonLosses = postseasonGames.filter((game) => clean(game.result).toUpperCase() === 'L').length;
   const totals = college.reduce((acc, game) => ({
     passYds: acc.passYds + valueOr(game.passYds),
     rushYds: acc.rushYds + valueOr(game.rushYds),
@@ -187,6 +190,15 @@ const careerOverview = (state = {}) => {
     record:{wins,losses},
     appearances:college.length,
     totals,
+    postseason:{
+      appearances:postseasonGames.length,
+      wins:postseasonWins,
+      losses:postseasonLosses,
+      passYds:postseasonGames.reduce((sum,game)=>sum+valueOr(game.passYds),0),
+      rushYds:postseasonGames.reduce((sum,game)=>sum+valueOr(game.rushYds),0),
+      passTD:postseasonGames.reduce((sum,game)=>sum+valueOr(game.passTD),0),
+      rushTD:postseasonGames.reduce((sum,game)=>sum+valueOr(game.rushTD),0),
+    },
     timeline,
     rivalries:[...rivalryMap.values()]
       .sort((a,b)=>((b.wins+b.losses)-(a.wins+a.losses))||(b.lastSeason-a.lastSeason))

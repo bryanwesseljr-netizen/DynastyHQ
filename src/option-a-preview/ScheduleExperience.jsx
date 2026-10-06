@@ -19,6 +19,7 @@ import {
   mergeSeasonSchedule,
   nextScheduledGame,
   scheduleDisplayLabel,
+  scheduleHighlightWeek,
   schedulePhaseForEntry,
   scheduleWeekSetup,
   seasonScheduleFor,
@@ -179,9 +180,6 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
     return saved ? syncScheduleWithCareer(career, saved) : null;
   }, [career, displaySeason]);
   const entries = schedule?.entries || [];
-  const rows = mode === 'home' ? compactRows({ entries, currentWeek }) : entries;
-  const splitIndex = Math.ceil(rows.length / 2);
-  const scheduleColumns = mode === 'home' ? [] : [rows.slice(0, splitIndex), rows.slice(splitIndex)];
   const record = useMemo(
     () => teamRecordForSeason(career || {}, displaySeason),
     [career, displaySeason],
@@ -189,6 +187,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   const nextGame = displaySeason === activeSeason
     ? nextScheduledGame(career || {}, activeSeason)
     : entries.find((entry) => !entry.completed && !entry.isBye) || null;
+  const highlightedWeek = displaySeason === activeSeason
+    ? scheduleHighlightWeek(entries, currentWeek)
+    : currentWeek;
+  const rows = mode === 'home' ? compactRows({ entries, currentWeek: highlightedWeek }) : entries;
+  const splitIndex = Math.ceil(rows.length / 2);
+  const scheduleColumns = mode === 'home' ? [] : [rows.slice(0, splitIndex), rows.slice(splitIndex)];
   const hasPostseason = entries.some((entry) => schedulePhaseForEntry(entry) === 'postseason');
   const canUpdate = Boolean(user && career && displaySeason === activeSeason);
   const postseasonCandidate = useMemo(
@@ -431,7 +435,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           </div>
         ) : rows.length ? (
           <div className="oa-road-ahead-rows">
-            {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} compact />)}
+            {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={highlightedWeek} compact />)}
           </div>
         ) : (
           <div className="oa-schedule-empty">
@@ -476,7 +480,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           <div className="oa-full-schedule-board">
             {scheduleColumns.map((column, columnIndex) => (
               <div className="oa-full-schedule-column" key={columnIndex}>
-                {column.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} />)}
+                {column.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={highlightedWeek} />)}
               </div>
             ))}
           </div>

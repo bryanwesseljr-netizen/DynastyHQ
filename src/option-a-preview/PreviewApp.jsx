@@ -5013,7 +5013,7 @@ function CareerPage({data,visual,profileVisual,openProfilePhoto,go,openArchiveMo
         <h1>{data.player.name.split(' ')[0] || 'PLAYER'}<br/><em>{lastName}</em></h1>
         <p>#{data.player.number} · {data.player.pos} · {data.player.school}</p>
         <div className="career-chapter">
-          <div><small>CURRENT CHAPTER</small><strong>{c.stage || 'Road to Glory Player'}</strong><span>Season {data.season} · Week {data.week}</span></div>
+          <div><small>CURRENT CHAPTER</small><strong>{c.stage || 'Road to Glory Player'}</strong><span>Season {data.season} · {data.weekLabel || `W${data.week}`}</span></div>
           <div><small>COLLEGE RECORD</small><strong>{record.wins||0}–{record.losses||0}</strong><span>{c.appearances||0} verified appearance{c.appearances===1?'':'s'}</span></div>
         </div>
       </div>
@@ -5213,14 +5213,14 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
           const g=entry.game||{};
           const id=String(entry.id||entry.publicationId||'');
           const td=(Number(g.passTD)||0)+(Number(g.rushTD)||0);
-          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>WEEK {entry.week} · {entry.signatureLabel || 'SIGNATURE GAME'}</span><strong>{g.result || ''} vs {g.opponent || 'Opponent'}</strong><p>{Number(g.passYds)||0} pass yds · {td} TD</p><small>{entry.signatureReasons?.join(' · ') || 'Verified signature game'}</small><ChevronRight/></button>;
+          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>{entry.weekLabel || entry.game?.weekLabel || `W${entry.week}`} · {entry.signatureLabel || 'SIGNATURE GAME'}</span><strong>{g.result || ''} vs {g.opponent || 'Opponent'}</strong><p>{Number(g.passYds)||0} pass yds · {td} TD</p><small>{entry.signatureReasons?.join(' · ') || 'Verified signature game'}</small><ChevronRight/></button>;
         }) : <div className="chronicle-empty-state">No signature games have been detected in this season yet. Chronicle will promote them automatically as the verified history grows.</div>}
       </div>
     </section>
 
     <section className="chronicle-moment">
       <div className="chronicle-moment-main">
-        <span>{active?.signatureLabel || (game?'VERIFIED GAME':'CAREER MOMENT')} · SEASON {activeSeason.season}{active?.week!==undefined?` · W${active.week}`:''}</span>
+        <span>{active?.signatureLabel || (game?'VERIFIED GAME':'CAREER MOMENT')} · SEASON {activeSeason.season}{active?.week!==undefined?` · ${active?.weekLabel || active?.game?.weekLabel || `W${active.week}`}`:''}</span>
         <h2>{entryTitle(active)}</h2>
         <p>{entrySummary(active)}</p>
         <div className="chronicle-moment-stats">
@@ -5259,7 +5259,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
       <div>
         {entries.length ? entries.map((entry,index)=>{
           const id=String(entry.id||entry.publicationId||`entry-${index}`);
-          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>W{entry.week ?? 0}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}{entry.media?.official?<RadioIcon/>:<i/>}<ChevronRight/></button>;
+          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>{entry.weekLabel || entry.game?.weekLabel || `W${entry.week ?? 0}`}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}{entry.media?.official?<RadioIcon/>:<i/>}<ChevronRight/></button>;
         }) : <div className="chronicle-empty-state">No Chronicle entries are saved for this season yet.</div>}
       </div>
     </section>
@@ -5271,7 +5271,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
       </nav>
       <div className="museum-content">
         {museumTab==='signatures' && <div className="museum-signature-grid">
-          {(chron.signatureGames||[]).slice(0,6).map((entry,index)=><article key={entry.id||index}><span>S{entry.season} · W{entry.week}</span><strong>{entry.signatureLabel || entryTitle(entry)}</strong><p>{entry.game?.opponent || 'Career moment'} · {entry.signatureReasons?.[0] || 'Verified signature'}</p></article>)}
+          {(chron.signatureGames||[]).slice(0,6).map((entry,index)=><article key={entry.id||index}><span>S{entry.season} · {entry.weekLabel || entry.game?.weekLabel || `W${entry.week}`}</span><strong>{entry.signatureLabel || entryTitle(entry)}</strong><p>{entry.game?.opponent || 'Career moment'} · {entry.signatureReasons?.[0] || 'Verified signature'}</p></article>)}
           {!(chron.signatureGames||[]).length && <div className="chronicle-empty-state">Signature games will appear here automatically.</div>}
         </div>}
         {museumTab==='records' && <div className="museum-record-grid">

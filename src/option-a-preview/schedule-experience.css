@@ -545,3 +545,30 @@
   .oa-postseason-ready{align-items:flex-start;flex-direction:column;padding:11px 14px}
   .oa-postseason-ready button{width:100%}
 }
+
+.career-postseason-resume{
+  margin:18px 0 24px;
+  padding:18px 20px;
+  border:1px solid rgba(239,213,58,.28);
+  border-radius:16px;
+  background:linear-gradient(105deg,rgba(239,213,58,.10),rgba(12,65,50,.16) 45%,rgba(8,18,15,.78));
+  color:#fff;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(420px,1.25fr);
+  gap:22px;
+  align-items:center;
+}
+.career-postseason-resume>div:first-child>span{display:flex;align-items:center;gap:7px;color:#f0d832;font-size:10px;font-weight:950;letter-spacing:.12em}
+.career-postseason-resume h2{margin:6px 0 5px;font-size:20px}
+.career-postseason-resume p{margin:0;color:rgba(255,255,255,.58);font-size:11px;line-height:1.5}
+.career-postseason-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden}
+.career-postseason-metrics article{padding:13px 10px;text-align:center;border-right:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.12)}
+.career-postseason-metrics article:last-child{border-right:0}
+.career-postseason-metrics strong{display:block;font-size:20px;color:#f4df55}
+.career-postseason-metrics span{display:block;margin-top:3px;font-size:8px;font-weight:900;letter-spacing:.06em;color:rgba(255,255,255,.52)}
+@media(max-width:760px){
+  .career-postseason-resume{grid-template-columns:1fr;padding:15px}
+  .career-postseason-metrics{grid-template-columns:repeat(2,1fr)}
+  .career-postseason-metrics article:nth-child(2){border-right:0}
+  .career-postseason-metrics article:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.08)}
+}

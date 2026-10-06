@@ -9,6 +9,7 @@ import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
 import { buildCareerChronicle2 } from '../domain/careerChronicle2.js';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation.js';
+import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
 import { applyOfficialCoverageLegacyBackfill, mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
@@ -501,6 +502,8 @@ export const derivePreviewData = (state, selection = {}) => {
   const player = state.player || {};
   const school = clean(player.college || player.school, 'PROGRAM');
   const scheduleEntry = scheduleEntries(state, season).find((entry)=>numeric(entry?.week,-1)===week) || null;
+  const currentSetup = season === currentSeason && week === currentWeek ? (state.currentWeekSetup || {}) : {};
+  const weekLabel = clean(scheduleEntry ? scheduleDisplayLabel(scheduleEntry) : (game?.weekLabel || issue?.weekLabel || issue?.label || episode?.label || currentSetup.label || currentSetup.customLabel), `W${week}`);
   const opponent = clean(game?.opponent || scheduleEntry?.opponent, 'NO GAME');
   const pass = game ? valueOr(game?.passYds) : null;
   const rush = game ? valueOr(game?.rushYds) : null;
@@ -529,9 +532,13 @@ export const derivePreviewData = (state, selection = {}) => {
     },
     season,
     week,
+    weekLabel,
     game: {
       raw: game,
       week,
+      weekLabel,
+      weekPhase: clean(game?.weekPhase || currentSetup.phase || scheduleEntry?.phase),
+      postseason: game?.postseason || null,
       opponent: opponent.toUpperCase(),
       result: clean(game?.result, game ? 'FINAL' : 'NO GAME').toUpperCase(),
       us: game ? scores.us : 0,
@@ -569,6 +576,7 @@ export const derivePreviewData = (state, selection = {}) => {
     next: {
       raw: next,
       week: numeric(next?.week, Math.max(week + 1, contextWeek + 1)),
+      displayLabel: next ? scheduleDisplayLabel(next) : '',
       opponent: clean(next?.opponent, 'NEXT OPPONENT').toUpperCase(),
     },
     rtg: state.rtg || {},

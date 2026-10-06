@@ -4,6 +4,10 @@ import { normalizeCareerTransitions } from './careerTransitions.js';
 import { normalizeCollegeNewsroom } from './collegeNewsroom.js';
 import { markPostgameFrontPageStale, normalizePostgameFrontPage } from './postgameFrontPage.js';
 import {
+  advancePostseasonCareer,
+  postseasonContextForWeek,
+} from './postseasonContext.js';
+import {
   highSchoolEvaluationFacts,
   normalizeHighSchoolEvaluation,
   summarizeHighSchoolMoments,
@@ -1272,6 +1276,18 @@ export const createPublishedWeek = ({
   const targetSeason = Number(season) || 1;
   const targetWeek = Number(week) || 1;
   const targetWeekKey = weekKey || createWeekKey(targetSeason, targetWeek);
+  const setup = state.currentWeekSetup || {};
+  const postseason = postseasonContextForWeek(state, {
+    season: targetSeason,
+    week: targetWeek,
+    label: setup.label || setup.customLabel,
+    phase: setup.phase,
+    game,
+  });
+  const weekPhase = postseason.active ? 'postseason' : (setup.phase || 'regular-season');
+  const weekLabel = postseason.active
+    ? postseason.displayLabel
+    : (String(setup.label || setup.customLabel || '').trim() || `Week ${targetWeek}`);
   const currentWeekKey = createWeekKey(state.currentSeason || 1, state.currentWeek);
   if (findPublishedWeekConflict(state, { season: targetSeason, week: targetWeek, weekKey: targetWeekKey })) {
     throw new DuplicateWeekPublicationError(targetWeekKey);
@@ -1320,6 +1336,9 @@ export const createPublishedWeek = ({
         }),
     week: targetWeek,
     season: targetSeason,
+    weekPhase,
+    weekLabel,
+    postseason,
   } : null;
 
   const publicationId = targetWeekKey;
@@ -1339,6 +1358,15 @@ export const createPublishedWeek = ({
   publicationFact('profile.player.name', 'Player', stateWithRecruitingProfile.player?.name);
   publicationFact('profile.player.school', 'School', stateWithRecruitingProfile.player?.school);
   publicationFact('profile.player.college', 'Committed college', stateWithRecruitingProfile.player?.college);
+  publicationFact('weekly.phase', 'Season phase', weekPhase);
+  publicationFact('weekly.label', 'Week label', weekLabel);
+  if (postseason.active) {
+    publicationFact('postseason.stage', 'Postseason stage', postseason.displayLabel);
+    publicationFact('postseason.playoffGame', 'Postseason playoff game', postseason.playoffGame);
+    if (postseason.enteringRecord) {
+      publicationFact('postseason.enteringRecord', 'Record entering postseason game', `${postseason.enteringRecord.wins}-${postseason.enteringRecord.losses}`);
+    }
+  }
   if (hasGame) {
     if (isHighSchoolEvaluation) {
       highSchoolEvaluationFacts(evaluation, publicationId).forEach((entry) => verifiedFactsByKey.set(entry.key, entry));
@@ -1378,13 +1406,18 @@ export const createPublishedWeek = ({
     type: isHighSchoolEvaluation ? 'high-school-evaluation' : (hasGame ? 'game' : (weekType === WEEK_TYPES.BYE ? 'bye' : 'weekly-update')),
     season: targetSeason,
     week: targetWeek,
+    weekPhase,
+    weekLabel,
+    postseason,
     careerPhase: state.careerPhase,
     occurredAt: publishedAt,
     title: isHighSchoolEvaluation
       ? `High-school Game ${evaluation.gameNumber} tape evaluation`
       : hasGame
-      ? `${gameRecord.result} vs. ${gameRecord.opponent}${scoreLine}`
-      : (weekType === WEEK_TYPES.BYE ? `Week ${targetWeek} bye` : `Week ${targetWeek} update`),
+      ? (postseason.active
+        ? `${weekLabel}: ${gameRecord.result} vs. ${gameRecord.opponent}${scoreLine}`
+        : `${gameRecord.result} vs. ${gameRecord.opponent}${scoreLine}`)
+      : (weekType === WEEK_TYPES.BYE ? `${weekLabel} bye` : `${weekLabel} update`),
     summary: isHighSchoolEvaluation
       ? (() => {
           const momentSummary = summarizeHighSchoolMoments(evaluation);
@@ -1411,6 +1444,9 @@ export const createPublishedWeek = ({
     week: targetWeek,
     careerPhase: state.careerPhase,
     weekType,
+    weekPhase,
+    weekLabel,
+    postseason,
     publishedAt,
     sourceCount: sources.length,
     factCount: finalLedgerFacts.length,
@@ -1430,6 +1466,9 @@ export const createPublishedWeek = ({
     publicationId,
     season: targetSeason,
     week: targetWeek,
+    weekLabel,
+    weekPhase,
+    postseason,
     careerPhase: state.careerPhase,
     player: stateWithRecruitingProfile.player,
     game: gameRecord,
@@ -1446,7 +1485,7 @@ export const createPublishedWeek = ({
     publishedAt,
   }) : null;
 
-  return {
+  const publishedState = {
     ...stateWithRecruitingProfile,
     schemaVersion: CAREER_SCHEMA_VERSION,
     currentWeek: advancesWeek ? state.currentWeek + 1 : state.currentWeek,
@@ -1463,6 +1502,7 @@ export const createPublishedWeek = ({
       ? [...(state.newsroomIssues || []), newsroomIssue]
       : (state.newsroomIssues || []),
   };
+  return advancePostseasonCareer(publishedState);
 };
 
 export const migrateCareerState = (state, defaults) => ({

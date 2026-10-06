@@ -145,7 +145,7 @@ test('EA SPORTS Network coverage is promoted as a first-class official artifact'
   assert.match(source, /home-official-coverage/);
   assert.match(source, /EA SPORTS NETWORK/);
   assert.match(source, /OfficialCoverageReader/);
-  assert.match(source, /VIEW ORIGINAL SCREENSHOT/);
+  assert.match(source, /stitchedScreenshotUrl/);
   assert.match(source, /OFFICIAL COVERAGE/);
   assert.match(source, /OFFICIAL ARTICLES/);
   assert.match(css, /official EA coverage as a first-class career artifact/);

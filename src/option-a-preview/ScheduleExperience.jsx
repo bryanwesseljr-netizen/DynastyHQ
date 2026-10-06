@@ -92,7 +92,7 @@ const compactRows = ({ entries, currentWeek }) => {
   return entries.slice(-4);
 };
 
-const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) => {
+const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, connectLive }) => {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]);
   const [draftSchedule, setDraftSchedule] = useState(null);
@@ -297,6 +297,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) =
           <div className="oa-schedule-empty oa-schedule-disconnected">
             <strong>Connect your live career to load the real schedule.</strong>
             <span>This Vercel preview uses a separate browser sign-in from the live DynastyHQ domain. Once connected here, the Road Ahead will use your current production career instead of the sample Week 10 data.</span>
+            <button type="button" className="oa-connect-live" onClick={connectLive}>CONNECT LIVE CAREER</button>
           </div>
         ) : rows.length ? (
           <div className="oa-road-ahead-rows">
@@ -334,6 +335,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) =
           <div className="oa-schedule-empty oa-schedule-disconnected">
             <strong>Connect your live career to open the real Season {displaySeason} schedule.</strong>
             <span>The preview is currently showing sample data because this Vercel address has not been signed into your DynastyHQ account yet.</span>
+            <button type="button" className="oa-connect-live" onClick={connectLive}>CONNECT LIVE CAREER</button>
           </div>
         ) : entries.length ? (
           <div className="oa-full-schedule-rows">

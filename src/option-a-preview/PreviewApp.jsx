@@ -10,6 +10,7 @@ import {
 import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
+import ScheduleExperience from './ScheduleExperience.jsx';
 import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import { analyzeScreenshot } from '../services/screenshotClient.js';
@@ -1563,8 +1564,8 @@ function App(){
 
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
-      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
-      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify} schedulePanel={<ScheduleExperience career={live.career} user={live.user} data={data} mode="home" go={go} notify={notify}/>}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify} schedulePanel={<ScheduleExperience career={live.career} user={live.user} data={data} mode="full" go={go} notify={notify}/>}/>} 
       {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} officialArticleRequest={officialArticleRequest} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
@@ -3847,7 +3848,7 @@ const liveCareerNextGame=(data)=>{
   };
 };
 
-function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialArticle,openPodcast,openArchiveMoment,notify}){
+function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialArticle,openPodcast,openArchiveMoment,notify,schedulePanel}){
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
   const liveNextGame=liveCareerNextGame(data);
@@ -3953,6 +3954,8 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
       </article>
     </section>
 
+    {schedulePanel}
+
     <section className="journey-strip">
       <div><b>YOUR JOURNEY</b><small>One career. Every chapter.</small></div>
       <div className="stage active"><span className="journey-helmet" aria-hidden="true"></span><b>Player</b><small>Build your legacy<br/>as a college star</small></div>
@@ -3966,7 +3969,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArticle,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
+function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArticle,openPodcast,openProcessing,statsTab,setStatsTab,notify,schedulePanel}){
   const [detailOpen,setDetailOpen]=useState('');
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
@@ -4023,6 +4026,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
       <div><h2>{pregame?`WEEK ${data.game.week} AWAITS`:`WEEK ${data.game.week} COMPLETE`}</h2><p>{pregame?`No final game data is saved yet for ${data.player.school} vs. ${data.game.opponent}.`:`All items belong to Season ${data.season} • Week ${data.game.week}`}</p></div>
       <div className="flow">{['Import','Review','Coverage','Archive'].map((x,index)=><React.Fragment key={x}><span className={'flow-step '+(pregame?'pending':'')}><i>{pregame?(index===0?<Upload/>:<span>{index+1}</span>):<Check/>}</i>{x}</span>{x!=='Archive'&&<b/>}</React.Fragment>)}</div>
     </section>
+
+    {schedulePanel}
 
     <section className="hub-grid">
       <div className="left-stack">

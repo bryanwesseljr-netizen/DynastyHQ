@@ -118,7 +118,7 @@ export const visionAnalysisNeedsFallback = (analysis) => {
   return average < 0.76 || lowCount > Math.ceil(confidenceValues.length / 2);
 };
 
-const requestGemini = async ({ schema, instructions, userText, imageDataUrl, maxOutputTokens, model = GEMINI_VISION_MODEL }) => {
+const requestGemini = async ({ schema, instructions, userText, imageDataUrl, maxOutputTokens, model = GEMINI_VISION_MODEL, timeoutMs = 10000 }) => {
   if (!process.env.GEMINI_API_KEY) {
     const error = new Error('Gemini vision is not configured.');
     error.code = 'GEMINI_NOT_CONFIGURED';
@@ -129,6 +129,7 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
   const schemaGuide = JSON.stringify(schema);
   const response = await fetch(GEMINI_GENERATE_URL(model), {
     method: 'POST',
+    signal: AbortSignal.timeout(Math.max(1000, Number(timeoutMs) || 10000)),
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': process.env.GEMINI_API_KEY,
@@ -196,7 +197,7 @@ const requestGemini = async ({ schema, instructions, userText, imageDataUrl, max
 const retryableGeminiVisionError = (error = {}) => {
   const status = Number(error?.status) || 0;
   if (status === 404 || status === 408 || status === 425 || status === 429 || status >= 500) return true;
-  return ['GEMINI_EMPTY_OUTPUT', 'GEMINI_INVALID_JSON', 'GEMINI_SCHEMA_MISMATCH'].includes(String(error?.code || ''));
+  return ['GEMINI_EMPTY_OUTPUT', 'GEMINI_INVALID_JSON', 'GEMINI_SCHEMA_MISMATCH', 'GEMINI_TIMEOUT'].includes(String(error?.code || ''));
 };
 
 const confidenceAverage = (analysis = {}) => {
@@ -206,11 +207,20 @@ const confidenceAverage = (analysis = {}) => {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 };
 
-const requestGeminiFreeChain = async ({ schema, instructions, userText, imageDataUrl, maxOutputTokens }) => {
+const requestGeminiFreeChain = async ({
+  schema,
+  instructions,
+  userText,
+  imageDataUrl,
+  maxOutputTokens,
+  maxFreeModelAttempts = GEMINI_VISION_MODELS.length,
+  geminiTimeoutMs = 10000,
+}) => {
   const attempts = [];
   let bestCandidate = null;
 
-  for (const model of GEMINI_VISION_MODELS) {
+  const models = GEMINI_VISION_MODELS.slice(0, Math.max(1, Number(maxFreeModelAttempts) || 1));
+  for (const model of models) {
     try {
       const result = await requestGemini({
         schema,
@@ -219,6 +229,7 @@ const requestGeminiFreeChain = async ({ schema, instructions, userText, imageDat
         imageDataUrl,
         maxOutputTokens,
         model,
+        timeoutMs: geminiTimeoutMs,
       });
 
       if (!visionAnalysisNeedsFallback(result.analysis)) {
@@ -250,6 +261,11 @@ const requestGeminiFreeChain = async ({ schema, instructions, userText, imageDat
         message: 'Gemini extraction was too uncertain for automatic acceptance.',
       });
     } catch (error) {
+      if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+        error.status = 503;
+        error.code = 'GEMINI_TIMEOUT';
+        error.message = `Gemini vision model ${model} did not respond within ${geminiTimeoutMs}ms.`;
+      }
       const attempt = {
         model,
         status: Number(error?.status) || 0,
@@ -343,12 +359,22 @@ export const analyzeVisionFreeFirst = async ({
   imageDataUrl,
   maxOutputTokens = 3000,
   allowPaidFallback = false,
+  maxFreeModelAttempts = GEMINI_VISION_MODELS.length,
+  geminiTimeoutMs = 10000,
 }) => {
   let geminiError = null;
   let geminiCandidate = null;
   if (process.env.GEMINI_API_KEY) {
     try {
-      const gemini = await requestGeminiFreeChain({ schema, instructions, userText, imageDataUrl, maxOutputTokens });
+      const gemini = await requestGeminiFreeChain({
+        schema,
+        instructions,
+        userText,
+        imageDataUrl,
+        maxOutputTokens,
+        maxFreeModelAttempts,
+        geminiTimeoutMs,
+      });
       if (!visionAnalysisNeedsFallback(gemini.analysis)) return gemini;
       geminiCandidate = {
         ...gemini,

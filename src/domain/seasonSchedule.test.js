@@ -4,6 +4,7 @@ import {
   mergeSeasonSchedule,
   nextScheduledGame,
   normalizeScheduleEntry,
+  schedulePhaseForEntry,
   scheduleWeekSetup,
   syncScheduleWithCareer,
   teamRecordForSeason,
@@ -104,4 +105,58 @@ test('upsert keeps schedules separated by season', () => {
   assert.equal(next.seasonSchedules.length, 2);
   assert.equal(next.seasonSchedules.find((entry) => entry.season === 1).entries[0].opponent, 'Old');
   assert.equal(next.seasonSchedules.find((entry) => entry.season === 2).entries[0].opponent, 'New');
+});
+
+
+test('visible bowl and CFP labels are treated as postseason without guessing from week number', () => {
+  const regular = normalizeScheduleEntry({ week: 14, opponent: 'Michigan', label: 'Week 14', status: 'upcoming' });
+  const bowl = normalizeScheduleEntry({ week: 16, opponent: 'Georgia', label: 'Rose Bowl', status: 'upcoming' });
+  const cfp = normalizeScheduleEntry({ week: 17, opponent: 'Texas', label: 'CFP Quarterfinal', status: 'upcoming' });
+
+  assert.equal(schedulePhaseForEntry(regular), 'regular-season');
+  assert.equal(schedulePhaseForEntry(bowl), 'postseason');
+  assert.equal(schedulePhaseForEntry(cfp), 'postseason');
+});
+
+test('schedule Week Setup carries visible postseason stage into the active week', () => {
+  const state = {
+    currentSeason: 4,
+    currentWeek: 15,
+    seasonSchedules: [{
+      season: 4,
+      entries: [
+        { week: 14, opponent: 'Michigan State', status: 'completed', result: 'W', teamScore: 35, opponentScore: 21 },
+        { week: 15, opponent: 'Ohio State', label: 'Big Ten Championship', homeAway: 'neutral', status: 'upcoming' },
+      ],
+    }],
+  };
+
+  const setup = scheduleWeekSetup(state);
+  assert.equal(setup.week, 15);
+  assert.equal(setup.phase, 'postseason');
+  assert.equal(setup.label, 'Big Ten Championship');
+  assert.equal(setup.opponent, 'Ohio State');
+  assert.equal(setup.venue, 'Neutral site');
+});
+
+test('postseason schedule updates append new rows without erasing the regular season', () => {
+  const regular = {
+    season: 4,
+    entries: [
+      { week: 13, opponent: 'Washington', status: 'completed', result: 'W', teamScore: 42, opponentScore: 35 },
+      { week: 14, opponent: 'Michigan State', status: 'upcoming' },
+    ],
+  };
+  const postseasonUpdate = {
+    season: 4,
+    entries: [
+      { week: 15, opponent: 'Ohio State', label: 'Big Ten Championship', status: 'upcoming', homeAway: 'neutral' },
+    ],
+  };
+
+  const merged = mergeSeasonSchedule(regular, postseasonUpdate, 4);
+  assert.equal(merged.entries.length, 3);
+  assert.equal(merged.entries[0].opponent, 'Washington');
+  assert.equal(merged.entries[2].opponent, 'Ohio State');
+  assert.equal(merged.entries[2].phase, 'postseason');
 });

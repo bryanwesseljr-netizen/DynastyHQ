@@ -404,9 +404,13 @@ const navigationFor = (state = {}, selectedSeason = null) => {
   (state.newsroomIssues || []).forEach(addWeek);
   (state.podcastEpisodes || []).forEach(addWeek);
   (state.careerChronicle || []).forEach(addWeek);
+  // The archive selector is also the season calendar selector. Include every
+  // saved schedule slot, not only completed non-bye games, so upcoming
+  // postseason rows such as CONF CHAMP and BOWL 1 remain reachable before
+  // they have a published Game Log.
   scheduleEntries(state, season).forEach((entry)=>{
     const week = numeric(entry?.week, -1);
-    if (week >= 0 && !entry?.isBye && entry?.completed) weekSet.add(week);
+    if (week >= 0) weekSet.add(week);
   });
   if (season === numeric(state.currentSeason, season)) weekSet.add(numeric(state.currentWeek, 0));
 

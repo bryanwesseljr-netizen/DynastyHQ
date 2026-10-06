@@ -11,9 +11,9 @@ test('persistent live-career context does not rewind when browsing historical we
   assert.match(source, /state\.currentWeekSetup/);
   assert.match(source, /state\.currentWeek/);
   assert.match(source, /<b>LIVE CAREER<\/b>/);
-  assert.match(source, /const activeOpponent=liveCareerTarget\(data\)/);
-  assert.match(source, /<b>THIS WEEK<\/b>/);
-  assert.match(source, /PREPARE · \$\{activeOpponent\.displayLabel/);
-  assert.match(source, /LIVE CAREER MATCHUP/);
+  assert.match(source, /const viewedWeek=selectedWeekTarget\(data\)/);
+  assert.match(source, /viewedIsCurrent\?'THIS WEEK':'VIEWING'/);
+  assert.match(source, /PREPARE · \$\{viewedWeek\.displayLabel/);
+  assert.match(source, /SELECTED MATCHUP/);
   assert.match(source, /scheduleDisplayLabel/);
 });

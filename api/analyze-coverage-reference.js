@@ -668,6 +668,8 @@ export default async function handler(req, res) {
       imageDataUrl: body.imageDataUrl,
       maxOutputTokens: task.maxOutputTokens,
       allowPaidFallback: body.allowPaidFallback === true,
+      maxFreeModelAttempts: task.kind === 'schedule' ? 3 : undefined,
+      geminiTimeoutMs: task.kind === 'schedule' ? 7000 : undefined,
     });
     let analysis = result.analysis;
     if (task.kind === 'game') {

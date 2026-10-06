@@ -3793,6 +3793,26 @@ function homeHeroStory(data){
   return {state:'postgame',status:'FINAL',line1,line2};
 }
 
+const selectedWeekTarget=(data)=>{
+  const state=data?.state || {};
+  const season=Number(data?.season || state.currentSeason || 1) || 1;
+  const week=Number(data?.week ?? data?.game?.week ?? state.currentWeek ?? 0) || 0;
+  const seasonSchedule=(state.seasonSchedules || []).find((entry)=>Number(entry?.season || 1)===season) || {};
+  const entries=Array.isArray(seasonSchedule.entries)
+    ? seasonSchedule.entries
+    : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
+  const scheduled=entries.find((entry)=>Number(entry?.week)===week) || null;
+  const opponent=String(scheduled?.opponent || data?.game?.opponent || '').trim();
+  const isBye=scheduled ? Boolean(scheduled.isBye) : /^bye(?:\s+week)?$/i.test(opponent);
+  return {
+    season,
+    week,
+    isBye,
+    displayLabel:String(data?.weekLabel || scheduleDisplayLabel(scheduled || {week}) || `W${week}`).trim(),
+    opponent:String(opponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
+  };
+};
+
 const liveCareerTarget=(data)=>{
   const state=data?.state || {};
   const season=Number(state.currentSeason || data?.season || 1) || 1;
@@ -3999,8 +4019,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
   const pregame=!data.selection?.hasGame;
   const team=data.game.team || {};
   const scoring=data.game.scoring || {};
-  const activeOpponent=liveCareerTarget(data);
-  const prepIsCurrent=true;
+  const viewedWeek=selectedWeekTarget(data);
+  const viewedIsCurrent=Boolean(data.selection?.isCurrent);
   const verifiedFacts=data.podcast?.sourceFacts || [];
   const officialStories=Array.isArray(data.news?.officialArticles)?data.news.officialArticles:[];
   const latestOfficial=officialStories[0] || null;
@@ -4008,7 +4028,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
   const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
   const copyPrepChecklist=async()=>{
     const checklist=[
-      'DynastyHQ Week '+activeOpponent.week+' vs '+activeOpponent.opponent,
+      'DynastyHQ Week '+viewedWeek.week+' vs '+viewedWeek.opponent,
       'CORE POSTGAME: Final score',
       'CORE POSTGAME: Player stats',
       'CORE POSTGAME: Team stats',
@@ -4018,7 +4038,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
     ].join('\n');
     try{
       await navigator.clipboard.writeText(checklist);
-      notify('Week '+activeOpponent.week+' capture checklist copied.');
+      notify('Week '+viewedWeek.week+' capture checklist copied.');
     }catch{
       notify('Your browser could not copy the prep checklist.');
     }
@@ -4108,8 +4128,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
     </section>
 
     <section className="hub-bottom">
-      <div><b>THIS WEEK</b><span>• {activeOpponent.displayLabel || `W${activeOpponent.week}`}</span>{!activeOpponent.isBye&&<Logo team={activeOpponent.opponent}/>}<strong>{activeOpponent.isBye?'BYE':activeOpponent.opponent}</strong></div>
-      <button className="yellow" onClick={()=>activeOpponent.isBye?notify(`${activeOpponent.displayLabel || `W${activeOpponent.week}`} is a bye in the live career.`):setDetailOpen('prep')}><CalendarDays/>{activeOpponent.isBye?`CURRENT · ${activeOpponent.displayLabel || `W${activeOpponent.week}`} BYE`:`PREPARE · ${activeOpponent.displayLabel || `W${activeOpponent.week}`}`}<ChevronRight/></button>
+      <div><b>{viewedIsCurrent?'THIS WEEK':'VIEWING'}</b><span>• {viewedWeek.displayLabel || `W${viewedWeek.week}`}</span>{!viewedWeek.isBye&&<Logo team={viewedWeek.opponent}/>}<strong>{viewedWeek.isBye?'BYE':viewedWeek.opponent}</strong></div>
+      <button className="yellow" onClick={()=>viewedWeek.isBye?notify(`${viewedWeek.displayLabel || `W${viewedWeek.week}`} is a bye in the selected schedule week.`):setDetailOpen('prep')}><CalendarDays/>{viewedWeek.isBye?`${viewedIsCurrent?'CURRENT':'VIEWING'} · ${viewedWeek.displayLabel || `W${viewedWeek.week}`} BYE`:`PREPARE · ${viewedWeek.displayLabel || `W${viewedWeek.week}`}`}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
 
@@ -4118,18 +4138,18 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
     {detailOpen && <div className="game-detail-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setDetailOpen('')}}>
       <section className="game-detail-modal" role="dialog" aria-modal="true" aria-label="Game Hub details">
         <header>
-          <div><span>SEASON {data.season} · WEEK {detailOpen==='prep'?activeOpponent.week:data.game.week}</span><h2>{detailOpen==='prep'?'Week Prep':detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
+          <div><span>SEASON {data.season} · WEEK {detailOpen==='prep'?viewedWeek.week:data.game.week}</span><h2>{detailOpen==='prep'?'Week Prep':detailOpen==='sources'?'Verified Sources':detailOpen==='box'?'Box Score':detailOpen==='ratings'?'Player Status':detailOpen==='training'?'Training Status':'Player Development'}</h2></div>
           <button onClick={()=>setDetailOpen('')} aria-label="Close details"><X/></button>
         </header>
 
         {detailOpen==='prep' && <div className="game-detail-body week-prep-detail">
           <section className="week-prep-matchup">
-            <div><small>LIVE CAREER MATCHUP</small><b>{activeOpponent.displayLabel || `W${activeOpponent.week}`}</b></div>
+            <div><small>{viewedIsCurrent?'LIVE CAREER MATCHUP':'SELECTED MATCHUP'}</small><b>{viewedWeek.displayLabel || `W${viewedWeek.week}`}</b></div>
             <Logo team={data.player.school}/>
             <strong>{data.player.school}</strong>
             <em>VS</em>
-            <Logo team={activeOpponent.opponent}/>
-            <strong>{activeOpponent.opponent}</strong>
+            <Logo team={viewedWeek.opponent}/>
+            <strong>{viewedWeek.opponent}</strong>
           </section>
           <section><h3>CURRENT PLAYER CHECK</h3><div className="game-detail-grid">
             {[

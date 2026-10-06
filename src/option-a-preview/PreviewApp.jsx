@@ -11,6 +11,7 @@ import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
 import ScheduleExperience from './ScheduleExperience.jsx';
+import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
 import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import { analyzeScreenshot } from '../services/screenshotClient.js';
@@ -3794,6 +3795,7 @@ const liveCareerTarget=(data)=>{
     season,
     week,
     isBye,
+    displayLabel:scheduleDisplayLabel(scheduled || {week,label:setup.label || setup.customLabel || ''}),
     opponent:String(scheduled?.opponent || setup.opponent || fallbackOpponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
   };
 };
@@ -3814,7 +3816,7 @@ function ScoreRibbon({data}){
       <div className="score-team away"><strong>{game.them}</strong><Logo team={game.opponent}/><span>{game.opponent}</span></div>
     </>}
     <div className="score-sep"/>
-    <div className="upnext"><b>LIVE CAREER</b><span>W{liveTarget.week}</span>{!liveTarget.isBye&&<Logo team={liveTarget.opponent}/>}<strong>{liveTarget.isBye?'BYE':liveTarget.opponent}</strong></div>
+    <div className="upnext"><b>LIVE CAREER</b><span>{liveTarget.displayLabel}</span>{!liveTarget.isBye&&<Logo team={liveTarget.opponent}/>}<strong>{liveTarget.isBye?'BYE':liveTarget.opponent}</strong></div>
   </div>;
 }
 
@@ -3837,6 +3839,7 @@ const liveCareerNextGame=(data)=>{
     return {
       season,
       week:Number(nextPlayable.week)||currentWeek,
+      displayLabel:scheduleDisplayLabel(nextPlayable),
       opponent:String(nextPlayable.opponent || 'NEXT OPPONENT').toUpperCase(),
     };
   }
@@ -3844,6 +3847,7 @@ const liveCareerNextGame=(data)=>{
   return {
     season:liveTarget.season || season,
     week:liveTarget.week || currentWeek,
+    displayLabel:liveTarget.displayLabel || `W${liveTarget.week || currentWeek}`,
     opponent:liveTarget.isBye ? 'NEXT OPPONENT' : liveTarget.opponent,
   };
 };
@@ -3909,7 +3913,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
         <CardHeader title="YOUR NEXT GAME"/>
         <div className="next-body">
           <Logo team={matchup.opponent} type="big"/>
-          <div><small>WEEK {matchup.week}</small><h3>{matchup.opponent}</h3></div>
+          <div><small>{matchup.displayLabel || `W${matchup.week}`}</small><h3>{matchup.opponent}</h3></div>
         </div>
         <p>{selectedIsLive && pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'This is the next unplayed game in your live career, even while you browse older weeks.'}</p>
         <button className="yellow" onClick={()=>openArchiveMoment(liveNextGame.season,liveNextGame.week,'gamehub')}><CalendarDays/>{selectedIsLive && pregame?'OPEN THIS GAME':'PREPARE NEXT GAME'}<ChevronRight/></button>
@@ -4084,8 +4088,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
     </section>
 
     <section className="hub-bottom">
-      <div><b>THIS WEEK</b><span>• WEEK {activeOpponent.week}</span>{!activeOpponent.isBye&&<Logo team={activeOpponent.opponent}/>}<strong>{activeOpponent.isBye?'BYE':activeOpponent.opponent}</strong></div>
-      <button className="yellow" onClick={()=>activeOpponent.isBye?notify(`Week ${activeOpponent.week} is a bye week in the live career.`):setDetailOpen('prep')}><CalendarDays/>{activeOpponent.isBye?`CURRENT WEEK · W${activeOpponent.week} BYE`:`PREPARE THIS WEEK · W${activeOpponent.week}`}<ChevronRight/></button>
+      <div><b>THIS WEEK</b><span>• {activeOpponent.displayLabel || `W${activeOpponent.week}`}</span>{!activeOpponent.isBye&&<Logo team={activeOpponent.opponent}/>}<strong>{activeOpponent.isBye?'BYE':activeOpponent.opponent}</strong></div>
+      <button className="yellow" onClick={()=>activeOpponent.isBye?notify(`${activeOpponent.displayLabel || `W${activeOpponent.week}`} is a bye in the live career.`):setDetailOpen('prep')}><CalendarDays/>{activeOpponent.isBye?`CURRENT · ${activeOpponent.displayLabel || `W${activeOpponent.week}`} BYE`:`PREPARE · ${activeOpponent.displayLabel || `W${activeOpponent.week}`}`}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
 
@@ -4100,7 +4104,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
 
         {detailOpen==='prep' && <div className="game-detail-body week-prep-detail">
           <section className="week-prep-matchup">
-            <div><small>LIVE CAREER MATCHUP</small><b>WEEK {activeOpponent.week}</b></div>
+            <div><small>LIVE CAREER MATCHUP</small><b>{activeOpponent.displayLabel || `W${activeOpponent.week}`}</b></div>
             <Logo team={data.player.school}/>
             <strong>{data.player.school}</strong>
             <em>VS</em>

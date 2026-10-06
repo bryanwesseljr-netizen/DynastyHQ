@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CalendarDays,
   Check,
@@ -13,6 +13,7 @@ import { runTransaction } from 'firebase/firestore';
 import { db, productionAppId } from '../firebase.js';
 import { compressImage } from '../services/imageCompression.js';
 import { analyzeSeasonScheduleScreenshot } from '../services/seasonScheduleClient.js';
+import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import {
   mergeSeasonSchedule,
   nextScheduledGame,
@@ -34,6 +35,49 @@ import './schedule-experience.css';
 const MAX_FILES = 4;
 const DEVICE_ID = globalThis.crypto?.randomUUID?.() || `schedule-option-a-${Date.now()}`;
 const clean = (value) => String(value ?? '').trim();
+
+const scheduleTeamBrandCache = new Map();
+
+const ScheduleTeamLogo = ({ team = '', bye = false }) => {
+  const teamName = clean(team);
+  const [brand, setBrand] = useState(() => scheduleTeamBrandCache.get(teamName) || null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (bye || !teamName) return undefined;
+    let active = true;
+    const cached = scheduleTeamBrandCache.get(teamName);
+    if (cached) {
+      setBrand(cached);
+      setFailed(false);
+      return () => { active = false; };
+    }
+    resolveTeamBrand(teamName).then((next) => {
+      if (!active) return;
+      scheduleTeamBrandCache.set(teamName, next);
+      setBrand(next);
+      setFailed(false);
+    }).catch(() => {
+      if (active) setFailed(true);
+    });
+    return () => { active = false; };
+  }, [teamName, bye]);
+
+  if (bye) return <span className="oa-schedule-logo is-bye"><CalendarDays size={16}/></span>;
+
+  const src = !failed ? (brand?.logo || brand?.directLogo || '') : '';
+  const fallback = (brand?.abbreviation || teamName.split(/\s+/).map((word) => word[0]).join('').slice(0, 3) || '?').toUpperCase();
+  return <span
+    className={'oa-schedule-logo ' + (src ? 'has-logo' : 'fallback-logo')}
+    style={{
+      '--schedule-team-primary': brand?.primaryColor || '#0c5f46',
+      '--schedule-team-secondary': brand?.secondaryColor || '#f0d832',
+    }}
+    aria-label={brand?.displayName || teamName || 'Opponent'}
+  >
+    {src ? <img src={src} alt="" onError={() => setFailed(true)}/> : <b>{fallback}</b>}
+  </span>;
+};
 
 const statusLabel = (entry = {}) => {
   if (entry.isBye) return 'BYE';
@@ -76,8 +120,11 @@ const ScheduleRow = ({ entry, currentWeek, compact = false }) => {
       {phase === 'postseason' ? <em>POST</em> : null}
     </div>
     <div className="oa-schedule-opponent">
-      <strong>{entry.isBye ? 'BYE WEEK' : clean(entry.opponent).toUpperCase() || 'OPPONENT TBD'}</strong>
-      {!compact && (entry.label || entry.date) ? <small>{entry.label || entry.date}</small> : null}
+      {!compact ? <ScheduleTeamLogo team={entry.opponent} bye={entry.isBye}/> : null}
+      <span>
+        <strong>{entry.isBye ? 'BYE WEEK' : clean(entry.opponent).toUpperCase() || 'OPPONENT TBD'}</strong>
+        {!compact && (entry.label || entry.date) ? <small>{entry.label || entry.date}</small> : null}
+      </span>
     </div>
     <b className={entry.result === 'W' ? 'is-win' : entry.result === 'L' ? 'is-loss' : ''}>{statusLabel(entry)}</b>
   </div>;
@@ -115,6 +162,8 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   }, [career, displaySeason]);
   const entries = schedule?.entries || [];
   const rows = mode === 'home' ? compactRows({ entries, currentWeek }) : entries;
+  const splitIndex = Math.ceil(rows.length / 2);
+  const scheduleColumns = mode === 'home' ? [] : [rows.slice(0, splitIndex), rows.slice(splitIndex)];
   const record = useMemo(
     () => teamRecordForSeason(career || {}, displaySeason),
     [career, displaySeason],
@@ -338,8 +387,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             <button type="button" className="oa-connect-live" onClick={connectLive}>CONNECT LIVE CAREER</button>
           </div>
         ) : entries.length ? (
-          <div className="oa-full-schedule-rows">
-            {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} />)}
+          <div className="oa-full-schedule-board">
+            {scheduleColumns.map((column, columnIndex) => (
+              <div className="oa-full-schedule-column" key={columnIndex}>
+                {column.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} />)}
+              </div>
+            ))}
           </div>
         ) : (
           <div className="oa-schedule-empty">

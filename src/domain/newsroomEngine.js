@@ -393,7 +393,7 @@ export const createNewsroomIssue = ({
     ? (game?.result === 'W'
       ? `${school} advances its postseason story with ${displayWeekLabel} win over ${opponent}`
       : game?.result === 'L'
-        ? `${school}'s ${displayWeekLabel} run ends against ${opponent}`
+        ? `${school} falls to ${opponent} in ${displayWeekLabel}`
         : `${school} closes ${displayWeekLabel} against ${opponent}`)
     : game?.result === 'W'
       ? `${playerName} helps ${school} turn back ${opponent}`

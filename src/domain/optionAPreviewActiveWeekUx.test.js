@@ -10,11 +10,11 @@ test('Game Hub keeps historical review context separate from the live playable w
   assert.match(source, /REVIEW \/ UPDATE/);
   assert.match(source, /PROCESS/);
   assert.match(source, /data\.weekLabel/);
-  assert.match(source, /const activeOpponent=liveCareerTarget\(data\)/);
-  assert.match(source, /<b>THIS WEEK<\/b>/);
-  assert.match(source, /PREPARE · \$\{activeOpponent\.displayLabel/);
-  assert.match(source, /detailOpen==='prep'\?activeOpponent\.week:data\.game\.week/);
-  assert.match(source, /LIVE CAREER MATCHUP/);
+  assert.match(source, /const viewedWeek=selectedWeekTarget\(data\)/);
+  assert.match(source, /viewedIsCurrent\?'THIS WEEK':'VIEWING'/);
+  assert.match(source, /PREPARE · \$\{viewedWeek\.displayLabel/);
+  assert.match(source, /detailOpen==='prep'\?viewedWeek\.week:data\.game\.week/);
+  assert.match(source, /SELECTED MATCHUP/);
   assert.match(source, /scheduleDisplayLabel/);
   assert.doesNotMatch(source, /PREPARE NEXT WEEK/);
 });

@@ -1,6 +1,10 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
 import { buildStorylineEngine } from './storylineEngine.js';
 import { createCollegeOutletSet } from './collegeNewsroom.js';
+import {
+  elevatePostseasonCoverageDecision,
+  postseasonContextForWeek,
+} from './postseasonContext.js';
 
 const clean = (value, max = 1200) => String(value ?? '').trim().slice(0, max);
 const wordCount = (value) => clean(value, 20000).split(/\s+/).filter(Boolean).length;
@@ -204,7 +208,18 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   if (!issue?.articles?.length) throw new Error('Choose a published newsroom edition first.');
   const coverageStage = coverageStageFor(state, issue);
   const coverageContext = coverageStage === 'college-player' ? buildProgramCoverageContext(state, issue) : null;
-  if (coverageStage === 'college-player' && coverageContext?.coverageDecision?.articleCount < 1) {
+  const postseason = postseasonContextForWeek(state, {
+    season: issue.season,
+    week: issue.week,
+    label: issue.label || issue.weekLabel,
+    phase: issue.weekPhase,
+    game: issue.game,
+  });
+  const elevatedCoverageDecision = elevatePostseasonCoverageDecision(
+    coverageContext?.coverageDecision || issue.coverageDecision || {},
+    postseason,
+  );
+  if (coverageStage === 'college-player' && !postseason.active && elevatedCoverageDecision.articleCount < 1) {
     const error = new Error('No new newsroom story this week. There was not enough meaningful football movement to justify publishing an article.');
     error.code = 'NO_NEWSWORTHY_NEWSROOM';
     throw error;
@@ -220,10 +235,10 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     coverageContext?.storylineThreads || [],
     continuity?.editorialThreads || [],
   );
-  const coverageDecision = coverageContext?.coverageDecision ? {
-    ...coverageContext.coverageDecision,
+  const coverageDecision = (coverageContext?.coverageDecision || postseason.active) ? {
+    ...elevatedCoverageDecision,
     storylineKeys: [...new Set([
-      ...(coverageContext.coverageDecision.storylineKeys || []),
+      ...(elevatedCoverageDecision.storylineKeys || []),
       ...(continuity?.storylineKeys || []),
     ])].slice(0, 16),
   } : null;
@@ -267,7 +282,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   const currentContext = facts.filter((fact) => fact.period === 'current edition' && fact.editorialUse === 'context');
   const fallback = currentPrimary.length ? currentPrimary : currentContext;
 
-  const plannedEntries = coverageStage === 'college-player'
+  const plannedEntries = coverageStage === 'college-player' && (coverageContext?.storyPlans || []).length
     ? choosePlannedEntries(issue, coverageContext.storyPlans || [])
     : issue.articles.slice(0, 5).map((entry) => ({ plan: null, entry, coverageOutletId: entry.outletId || entry.id }));
 
@@ -298,7 +313,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       coverageTier: coverageDecision?.tier || '',
       audienceReach: coverageDecision?.audienceReach?.level || '',
       nationalAttentionReasons: coverageDecision?.audienceReach?.nationalReasons || [],
-      targetWordRange: coverageContext ? targetWordRangeFor(coverageDecision, plan) : null,
+      targetWordRange: coverageContext || postseason.active ? targetWordRangeFor(coverageDecision, plan) : null,
       activeStorylineKeys: coverageDecision?.storylineKeys || [],
       focusFactIds: [...new Set(focusFacts.map((fact) => fact.id))],
     };
@@ -318,6 +333,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     weekType: clean(issue.weekType, 60),
     weekPhase: clean(issue.weekPhase, 80),
     careerPhase: clean(issue.careerPhase, 60),
+    postseason,
     coverageStage,
     coverageDecision,
     storylineThreads,
@@ -329,7 +345,9 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
       targetWordRange: coverageDecision.newsroomWordRange,
       activeStorylineKeys: coverageDecision.storylineKeys,
       playerMentionPolicy: coverageDecision.playerMentionPolicy,
-      editorialPrinciple: 'The team/game is the default story. Audience reach is earned separately from story importance. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
+      editorialPrinciple: postseason.active
+        ? 'This is postseason/playoff football. Lead with the game, the supplied stage label, the actual result and the consequence supported by verified facts. Give it materially more editorial weight than a routine week, but never invent a bracket round, ranking, championship claim, advancement destination, elimination detail, or outside reaction.'
+        : 'The team/game is the default story. Audience reach is earned separately from story importance. Use the shared coverage tier and active storyline threads; do not repeat an established storyline merely because it remains true.',
     } : null,
     player: {
       name: clean(state.player?.name, 120),
@@ -449,6 +467,7 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     generatedAt,
     model: clean(model, 100),
     coverageDecision: payload.coverageDecision || null,
+    postseason: payload.postseason || null,
     storylineThreads: payload.storylineThreads || [],
   };
 };
@@ -476,6 +495,7 @@ export const applyGeneratedNewsroomEdition = (state, publicationId, edition) => 
       editorialGeneratedAt: edition.generatedAt,
       editorialModel: edition.model,
       coverageDecision: edition.coverageDecision || issue.coverageDecision || null,
+      postseason: edition.postseason || issue.postseason || null,
       storylineKeys: edition.coverageDecision?.storylineKeys || [],
       storylineThreads: edition.storylineThreads || [],
       articles,

@@ -132,6 +132,9 @@ export const createHighSchoolEvaluationIssue = ({
   publicationId,
   season,
   week,
+  weekLabel = '',
+  weekPhase = '',
+  postseason = null,
   careerPhase,
   player,
   game,
@@ -336,6 +339,8 @@ export const createNewsroomIssue = ({
   const filmRoomOutlet = isCollegePlayer ? collegeOutlets[2] : OUTLETS[3];
   const nationalOutlet = isCollegePlayer ? collegeOutlets[3] : OUTLETS[4];
   const opponent = game?.opponent || 'the opponent';
+  const displayWeekLabel = String(weekLabel || postseason?.displayLabel || `Week ${week}`).trim();
+  const isPostseason = weekPhase === 'postseason' || Boolean(postseason?.active);
   const score = scoreText(game);
   const outcome = resultWord(game?.result);
   const totalYards = combinedValue(game?.passYds, game?.rushYds);
@@ -384,11 +389,17 @@ export const createNewsroomIssue = ({
 
   const totalYardsPhrase = totalYards == null ? 'a newly recorded statistical line' : `${totalYards} total yards`;
   const totalTouchdownPhrase = totalTD == null ? 'no complete touchdown total recorded' : `${totalTD} total ${totalTD === 1 ? 'touchdown' : 'touchdowns'}`;
-  const resultHeadline = game?.result === 'W'
-    ? `${playerName} helps ${school} turn back ${opponent}`
-    : game?.result === 'L'
-      ? `${school}'s Week ${week} rally ends against ${opponent}`
-      : `${school} closes its Week ${week} matchup with ${opponent}`;
+  const resultHeadline = isPostseason
+    ? (game?.result === 'W'
+      ? `${school} advances its postseason story with ${displayWeekLabel} win over ${opponent}`
+      : game?.result === 'L'
+        ? `${school}'s ${displayWeekLabel} run ends against ${opponent}`
+        : `${school} closes ${displayWeekLabel} against ${opponent}`)
+    : game?.result === 'W'
+      ? `${playerName} helps ${school} turn back ${opponent}`
+      : game?.result === 'L'
+        ? `${school}'s Week ${week} rally ends against ${opponent}`
+        : `${school} closes its Week ${week} matchup with ${opponent}`;
   const resultPerspective = game?.result === 'W'
     ? `The win gives ${school} a verified result to build on while the season record begins to take shape.`
     : game?.result === 'L'
@@ -522,6 +533,11 @@ export const createNewsroomIssue = ({
     publicationId,
     season,
     week,
+    label: displayWeekLabel,
+    weekLabel: displayWeekLabel,
+    weekPhase: isPostseason ? 'postseason' : (weekPhase || 'regular-season'),
+    weekType: 'game',
+    postseason: isPostseason ? postseason : null,
     careerPhase,
     publishedAt,
     status: 'published',
@@ -534,8 +550,12 @@ export const createNewsroomIssue = ({
     } : null,
     articles: groundedArticles,
     podcastBrief: {
-      title: `${school} vs. ${opponent}: the verified Week ${week} briefing`,
-      summary: `${playerName}: ${statLine(game)}. ${rtgContext ? 'The weekly RTG and NIL snapshot is preserved with the performance.' : ''} ${isCollegePlayer ? 'No transfer decision is active.' : (topChoice ? `${topChoice.name} is first in the saved personal preference order.` : 'No Top Schools order is recorded.')}`.replace(/\s+/g, ' ').trim(),
+      title: isPostseason
+        ? `${school} ${displayWeekLabel}: postseason edition`
+        : `${school} vs. ${opponent}: the verified Week ${week} briefing`,
+      summary: isPostseason
+        ? `${displayWeekLabel} against ${opponent} is a postseason/playoff game. Lead with the game result, stakes, player performance, and what the result changes without inventing an unsupported bracket round or destination.`
+        : `${playerName}: ${statLine(game)}. ${rtgContext ? 'The weekly RTG and NIL snapshot is preserved with the performance.' : ''} ${isCollegePlayer ? 'No transfer decision is active.' : (topChoice ? `${topChoice.name} is first in the saved personal preference order.` : 'No Top Schools order is recorded.')}`.replace(/\s+/g, ' ').trim(),
       citedFactKeys: [...new Set([...gameKeys, ...(rtgContext?.keys || []), ...recruitingKeys])].filter((key) => allowedKeys.has(key)),
     },
   };

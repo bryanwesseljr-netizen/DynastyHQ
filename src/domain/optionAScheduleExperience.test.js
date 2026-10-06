@@ -26,6 +26,7 @@ test('Option A mounts Road Ahead schedule on Home and full schedule on Game Hub'
   assert.match(schedule, /POSTSEASON: Awaiting the next CFB 27 matchup/);
   assert.match(schedule, /Connect your live career to load the real schedule/);
   assert.match(schedule, /separate browser sign-in from the live DynastyHQ domain/);
+  assert.match(schedule, /CONNECT LIVE CAREER/);
 });
 
 test('schedule importer explains merge safety and postseason flow', async () => {

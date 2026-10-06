@@ -13,6 +13,6 @@ test('persistent live-career context does not rewind when browsing historical we
   assert.match(source, /<b>LIVE CAREER<\/b>/);
   assert.match(source, /const activeOpponent=liveCareerTarget\(data\)/);
   assert.match(source, /<b>THIS WEEK<\/b>/);
-  assert.match(source, /PREPARE THIS WEEK · W/);
-  assert.match(source, /LIVE CAREER MATCHUP/);
+  assert.match(source, /PREPARE · \$\{activeOpponent\.displayLabel/);
+  assert.match(source, /LIVE CAREER MATCHUP/);\n  assert.match(source, /scheduleDisplayLabel/);
 });

@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ShieldCheck,
   X,
+  Trophy,
 } from 'lucide-react';
 import { runTransaction } from 'firebase/firestore';
 import { db, productionAppId } from '../firebase.js';
@@ -26,6 +27,10 @@ import {
   upsertSeasonSchedule,
 } from '../domain/seasonSchedule.js';
 import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
+import {
+  advancePostseasonCareer,
+  postseasonAdvanceCandidate,
+} from '../domain/postseasonContext.js';
 import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
 import {
   readHydratedCareerInTransaction,
@@ -186,6 +191,10 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
     : entries.find((entry) => !entry.completed && !entry.isBye) || null;
   const hasPostseason = entries.some((entry) => schedulePhaseForEntry(entry) === 'postseason');
   const canUpdate = Boolean(user && career && displaySeason === activeSeason);
+  const postseasonCandidate = useMemo(
+    () => (career && displaySeason === activeSeason ? postseasonAdvanceCandidate(career) : null),
+    [career, displaySeason, activeSeason],
+  );
 
   const resetImporter = () => {
     setFiles([]);
@@ -201,6 +210,58 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
     }
     resetImporter();
     setOpen(true);
+  };
+
+  const activatePostseason = async () => {
+    if (!postseasonCandidate || !user || !career || !db || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      let activatedLabel = postseasonCandidate.displayLabel;
+      await runTransaction(db, async (transaction) => {
+        const loaded = await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId: productionAppId,
+          userId: user.uid,
+        });
+        if (!loaded) throw new Error('Your live DynastyHQ career could not be loaded. Nothing was changed.');
+
+        const remote = loaded.state;
+        const next = advancePostseasonCareer(remote);
+        if (Number(next.currentWeek) === Number(remote.currentWeek)) {
+          throw new Error('The next postseason game is not ready to activate yet.');
+        }
+        activatedLabel = next.currentWeekSetup?.label || activatedLabel;
+
+        const regression = detectDestructiveCareerRegression(remote, next);
+        if (regression.blocked) {
+          throw new Error('DynastyHQ blocked postseason activation because it would regress saved career history. ' + regression.reason);
+        }
+
+        const savedAt = new Date().toISOString();
+        const withSync = {
+          ...next,
+          _sync: {
+            revision: (Number(loaded.rawMain?._sync?.revision) || 0) + 1,
+            deviceId: DEVICE_ID,
+            updatedAt: savedAt,
+          },
+        };
+        writeHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId: productionAppId,
+          userId: user.uid,
+          state: withSync,
+        });
+      });
+      notify?.(`${activatedLabel} is now the active DynastyHQ game.`);
+    } catch (activationError) {
+      setError(activationError?.message || 'The postseason game could not be activated.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const addFiles = (list) => {
@@ -279,6 +340,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
 
         const remote = loaded.state;
         let next = upsertSeasonSchedule(remote, draftSchedule);
+        next = advancePostseasonCareer(next);
         const suggested = scheduleWeekSetup(next);
         if (suggested && Number(suggested.week) === Number(next.currentWeek)) {
           next = {
@@ -355,6 +417,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
           </button>
         </header>
+        {postseasonCandidate ? (
+          <div className="oa-postseason-ready oa-postseason-ready-full">
+            <div><Trophy size={15}/><span><b>{postseasonCandidate.displayLabel} · {clean(postseasonCandidate.opponent).toUpperCase()}</b><small>Ready to become the active Week Processing game.</small></span></div>
+            <button type="button" onClick={activatePostseason} disabled={busy}>{busy ? 'ACTIVATING…' : `START ${postseasonCandidate.displayLabel}`}</button>
+          </div>
+        ) : null}
         {disconnected ? (
           <div className="oa-schedule-empty oa-schedule-disconnected">
             <strong>Connect your live career to load the real schedule.</strong>
@@ -371,7 +439,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             <span>Upload the CFB 27 schedule once, then update it when conference championship, bowl, or CFP matchups are revealed.</span>
           </div>
         )}
-        {entries.length && !nextGame && !hasPostseason ? (
+        {postseasonCandidate ? (
+          <div className="oa-postseason-ready">
+            <div><Trophy size={15}/><span><b>{postseasonCandidate.displayLabel} IS READY</b><small>{clean(postseasonCandidate.opponent).toUpperCase()} · Postseason / Playoff</small></span></div>
+            <button type="button" onClick={activatePostseason} disabled={busy}>{busy ? 'ACTIVATING…' : `START ${postseasonCandidate.displayLabel}`}</button>
+          </div>
+        ) : entries.length && !nextGame && !hasPostseason ? (
           <div className="oa-postseason-wait"><ShieldCheck size={14}/><span>POSTSEASON: Awaiting the next CFB 27 matchup. Use Update Schedule when it appears.</span></div>
         ) : null}
         <footer>

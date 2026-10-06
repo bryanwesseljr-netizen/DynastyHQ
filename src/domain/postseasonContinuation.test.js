@@ -16,6 +16,8 @@ const postseasonSchedule = [{
   season: 4,
   school: 'Oregon',
   entries: [
+    { week: 13, opponent: 'Washington', isBye: false, status: 'completed', result: 'W', teamScore: 42, opponentScore: 35 },
+    { week: 14, opponent: 'Michigan State', isBye: false, status: 'completed', result: 'W', teamScore: 38, opponentScore: 30 },
     { week: 15, opponent: 'BYE', isBye: true, status: 'bye' },
     { week: 16, opponent: 'BYE', isBye: true, status: 'bye', label: 'Conf Champ' },
     { week: 17, opponent: 'LSU', isBye: false, status: 'upcoming', label: 'Bowl 1', date: 'Sat, Dec 21', homeAway: 'neutral' },

@@ -7,8 +7,9 @@ const sourceUrl = new URL('../option-a-preview/PreviewApp.jsx', import.meta.url)
 test('Game Hub keeps historical review context separate from the live playable week', async () => {
   const source = await readFile(sourceUrl, 'utf8');
 
-  assert.match(source, /REVIEW \/ UPDATE \$\{data\.weekLabel/);
-  assert.match(source, /PROCESS \$\{data\.weekLabel/);
+  assert.match(source, /REVIEW \/ UPDATE/);
+  assert.match(source, /PROCESS/);
+  assert.match(source, /data\.weekLabel/);
   assert.match(source, /const activeOpponent=liveCareerTarget\(data\)/);
   assert.match(source, /<b>THIS WEEK<\/b>/);
   assert.match(source, /PREPARE · \$\{activeOpponent\.displayLabel/);

@@ -328,7 +328,7 @@ const SCHEDULE_INSTRUCTIONS = `You extract a college football season schedule fr
 - CFB 27 can show non-numeric postseason calendar rows such as "Conf Champ", "Bowl 1", "Bowl 2", and later playoff/bowl stages. Preserve the exact visible row name in label.
 - For those non-numeric rows, use a deterministic INTERNAL week sequence only so DynastyHQ can store/order them: Conf Champ=16, Bowl 1=17, Bowl 2=18, Bowl 3=19, Bowl 4=20. If a later visible postseason row uses another named stage, continue sequentially after the prior slot. This internal number is never the user-facing label.
 - A row labeled Bowl 1 or later Bowl/CFP stage is postseason/playoff context. Keep the exact visible label; never rename it to Week 17, Week 18, etc.
-- opponent is the visible opponent name. A bye row must use opponent="BYE", isBye=true, status="bye".
+- opponent is the visible opponent name without a separate ranking number. For example, a row visually showing "10 LSU" should return opponent="LSU", not "10 LSU". A bye row must use opponent="BYE", isBye=true, status="bye".
 - homeAway is home, away, neutral, or unknown only when the row visibly establishes it. Do not guess from team ordering.
 - For completed games, status=completed and result=W or L only when the result is visibly established. teamScore is the tracked PROGRAM's score and opponentScore is the opponent score regardless of home/away ordering.
 - If a final score is visible but W/L is not printed, you may derive W/L strictly from those two visible scores after correctly identifying the tracked team.

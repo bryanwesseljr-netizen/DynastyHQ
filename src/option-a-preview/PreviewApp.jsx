@@ -4027,8 +4027,6 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
       <div className="flow">{['Import','Review','Coverage','Archive'].map((x,index)=><React.Fragment key={x}><span className={'flow-step '+(pregame?'pending':'')}><i>{pregame?(index===0?<Upload/>:<span>{index+1}</span>):<Check/>}</i>{x}</span>{x!=='Archive'&&<b/>}</React.Fragment>)}</div>
     </section>
 
-    {schedulePanel}
-
     <section className="hub-grid">
       <div className="left-stack">
         <article className="paper-panel verified reference-verified">
@@ -4090,6 +4088,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
       <button className="yellow" onClick={()=>activeOpponent.isBye?notify(`Week ${activeOpponent.week} is a bye week in the live career.`):setDetailOpen('prep')}><CalendarDays/>{activeOpponent.isBye?`CURRENT WEEK · W${activeOpponent.week} BYE`:`PREPARE THIS WEEK · W${activeOpponent.week}`}<ChevronRight/></button>
       <div className="future"><Archive/><span><b>DYNASTY WORKSPACE</b><small>Recruiting · Depth chart · Staff</small></span><em>COMING SOON</em></div>
     </section>
+
+    {schedulePanel}
 
     {detailOpen && <div className="game-detail-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setDetailOpen('')}}>
       <section className="game-detail-modal" role="dialog" aria-modal="true" aria-label="Game Hub details">

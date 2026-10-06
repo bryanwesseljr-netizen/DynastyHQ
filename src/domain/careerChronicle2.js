@@ -55,7 +55,10 @@ const signatureReasons = ({ entry, firstAppearance = false, milestones = [] } = 
     ? Math.abs(Number(game.homeScore) - Number(game.awayScore))
     : null;
   const roleEvent = roleEventForWeek(entry);
+  const postseason = entry?.postseason || game?.postseason || null;
+  const isPostseason = entry?.weekPhase === 'postseason' || game?.weekPhase === 'postseason' || Boolean(postseason?.active);
 
+  if (isPostseason) reasons.push(`${clean(entry?.weekLabel || game?.weekLabel || postseason?.displayLabel || 'Postseason')} postseason game`);
   if (firstAppearance && game.didPlay !== false) reasons.push('First recorded college appearance');
   if (roleEvent && /qb1|starter/i.test(clean(roleEvent.current))) reasons.push('Starting-role chapter began');
   if (milestones.length) reasons.push(clean(milestones[0]?.title || milestones[0]?.achievement || 'Career milestone'));
@@ -75,6 +78,10 @@ const signatureReasons = ({ entry, firstAppearance = false, milestones = [] } = 
 
 const signatureLabel = (reasons = [], game = {}) => {
   const joined = reasons.join(' ').toLowerCase();
+  if (joined.includes('postseason game')) {
+    if (/national championship|title game/.test(joined)) return game.result === 'W' ? 'CHAMPIONSHIP NIGHT' : 'THE TITLE GAME';
+    return game.result === 'W' ? 'SURVIVE AND ADVANCE' : 'POSTSEASON SPOTLIGHT';
+  }
   if (joined.includes('starting-role')) return 'THE FIRST START';
   if (joined.includes('first recorded college appearance')) return 'THE DEBUT';
   if (joined.includes('major season or career stakes')) return 'A DEFINING NIGHT';
@@ -160,6 +167,14 @@ export const buildCareerChronicle2 = (state = {}) => {
     const passTD = appearances.reduce((sum, entry) => sum + numberOf(entry.game.passTD), 0);
     const rushYds = appearances.reduce((sum, entry) => sum + numberOf(entry.game.rushYds), 0);
     const rushTD = appearances.reduce((sum, entry) => sum + numberOf(entry.game.rushTD), 0);
+    const postseasonGames = appearances.filter((entry) => (
+      entry.weekPhase === 'postseason'
+      || entry.postseason?.active
+      || entry.game?.weekPhase === 'postseason'
+      || entry.game?.postseason?.active
+    ));
+    const postseasonWins = postseasonGames.filter((entry) => clean(entry.game?.result).toUpperCase() === 'W').length;
+    const postseasonLosses = postseasonGames.filter((entry) => clean(entry.game?.result).toUpperCase() === 'L').length;
     const school = seasonSchool(state, entries, season);
     const role = [...entries].reverse().map((entry) => clean(entry.rtgSnapshot?.rank || entry.rtgSnapshot?.depthChartRole)).find(Boolean)
       || (season === Number(state.currentSeason || 1) ? clean(state.rtg?.rank || state.player?.depthChartRole) : '');
@@ -177,6 +192,15 @@ export const buildCareerChronicle2 = (state = {}) => {
       rushYds,
       rushTD,
       totalTD: passTD + rushTD,
+      postseason: {
+        appearances: postseasonGames.length,
+        wins: postseasonWins,
+        losses: postseasonLosses,
+        passYds: postseasonGames.reduce((sum, entry) => sum + numberOf(entry.game?.passYds), 0),
+        rushYds: postseasonGames.reduce((sum, entry) => sum + numberOf(entry.game?.rushYds), 0),
+        passTD: postseasonGames.reduce((sum, entry) => sum + numberOf(entry.game?.passTD), 0),
+        rushTD: postseasonGames.reduce((sum, entry) => sum + numberOf(entry.game?.rushTD), 0),
+      },
       signatureGames,
       moments,
       entries: [...entries].sort((a, b) => Number(b.week) - Number(a.week)),

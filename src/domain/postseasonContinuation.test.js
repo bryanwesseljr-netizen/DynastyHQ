@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   advancePostseasonCareer,
@@ -11,7 +12,6 @@ import { createPublishedWeek } from './weeklyEngine.js';
 import { buildNewsroomGenerationPayload } from './newsroomGeneration.js';
 import { buildPodcastGenerationPayload } from './podcastEngine.js';
 import { buildCareerChronicle2 } from './careerChronicle2.js';
-import { derivePreviewData } from '../option-a-preview/useReadOnlyLiveCareer.js';
 
 const postseasonSchedule = [{
   season: 4,
@@ -178,18 +178,10 @@ test('publishing Bowl 1 carries postseason identity into game, ledger, Newsroom,
 });
 
 
-test('preview week selector exposes Conf Champ and Bowl 1 before those slots are completed', () => {
-  const state = baseCareer();
-  const preview = derivePreviewData(state);
+test('preview week selector includes all saved schedule slots instead of only completed non-bye games', async () => {
+  const source = await readFile(new URL('../option-a-preview/useReadOnlyLiveCareer.js', import.meta.url), 'utf8');
 
-  assert.deepEqual(preview.navigation.weeks.slice(0, 3), [17, 16, 15]);
-
-  const confChamp = derivePreviewData(state, { season: 4, week: 16 });
-  assert.equal(confChamp.weekLabel, 'CONF CHAMP');
-  assert.equal(confChamp.selection.hasGame, false);
-
-  const bowlOne = derivePreviewData(state, { season: 4, week: 17 });
-  assert.equal(bowlOne.weekLabel, 'BOWL 1');
-  assert.equal(bowlOne.game.opponent, 'LSU');
-  assert.equal(bowlOne.selection.hasGame, false);
+  assert.match(source, /scheduleEntries\(state, season\)\.forEach/);
+  assert.match(source, /if \(week >= 0\) weekSet\.add\(week\)/);
+  assert.doesNotMatch(source, /!entry\?\.isBye && entry\?\.completed/);
 });

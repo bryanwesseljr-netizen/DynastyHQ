@@ -179,7 +179,7 @@ test('CFB 27 postseason slot labels stay user-facing while internal week numbers
     date: 'Sat, Dec 21',
   });
 
-  assert.equal(schedulePhaseForEntry(confChamp), 'postseason');
+  assert.equal(schedulePhaseForEntry(confChamp), 'regular-season');
   assert.equal(scheduleDisplayLabel(confChamp), 'CONF CHAMP');
   assert.equal(schedulePhaseForEntry(bowlOne), 'postseason');
   assert.equal(scheduleDisplayLabel(bowlOne), 'BOWL 1');

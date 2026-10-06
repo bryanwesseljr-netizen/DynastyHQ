@@ -9,6 +9,7 @@ import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
 import { buildCareerChronicle2 } from '../domain/careerChronicle2.js';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation.js';
+import { applyOfficialCoverageLegacyBackfill, mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
   hydrateCareerStateFromArchives,
@@ -213,6 +214,11 @@ const careerOverview = (state = {}) => {
 };
 
 const durationLabel = (episode = {}) => {
+  const masterSeconds = Number(episode.masterAudioDurationSeconds || episode.audioDurationSeconds);
+  if (Number.isFinite(masterSeconds) && masterSeconds > 0) {
+    const rounded = Math.round(masterSeconds);
+    return `${Math.floor(rounded/60)}:${String(rounded%60).padStart(2, '0')}`;
+  }
   const explicit = clean(episode.duration || episode.runtime);
   if (explicit) return explicit;
   const minutes = Number(episode.estimatedMinutes);
@@ -269,14 +275,35 @@ const newsroomArticleViews = (state = {}, issue = null) => {
   });
 };
 
-const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
+const weeklyNewsroomPhoto = (state = {}, issue = null, article = null, fallbackPublicationId = '') => {
   const library = Array.isArray(state.newsroomMediaLibrary) ? state.newsroomMediaLibrary : [];
-  if (!library.length || !issue) return null;
-  const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
+  if (!library.length) return null;
 
+  const publicationId = publicationIdFor(issue) || clean(fallbackPublicationId);
+  const scoped = library
+    .filter((asset) => (
+      asset
+      && !asset.isReference
+      && clean(asset.downloadUrl)
+      && publicationId
+      && clean(asset.weekPublicationId) === publicationId
+    ))
+    .sort((a,b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))[0];
+
+  if (scoped) {
+    return {
+      id: clean(scoped.id),
+      url: clean(scoped.downloadUrl),
+      fileName: clean(scoped.fileName, 'Weekly game photo'),
+      photoType: clean(scoped.photoType, 'general'),
+      source: 'week-game-photo',
+    };
+  }
+
+  const byId = new Map(library.filter(Boolean).map((asset) => [String(asset.id || ''), asset]));
   const directIds = [
     article?.mediaAssetId,
-    ...(issue.articles || []).map((entry) => entry?.mediaAssetId),
+    ...(issue?.articles || []).map((entry) => entry?.mediaAssetId),
   ].map((value) => String(value || '').trim()).filter(Boolean);
 
   for (const assetId of directIds) {
@@ -292,7 +319,6 @@ const weeklyNewsroomPhoto = (state = {}, issue = null, article = null) => {
     }
   }
 
-  const publicationId = publicationIdFor(issue);
   const generated = library
     .filter((asset) => (
       asset
@@ -335,6 +361,7 @@ const previousEpisodes = (state, currentEpisode) => [...(state.podcastEpisodes |
     title: clean(entry.title, 'Archived episode'),
     summary: clean(entry.summary),
     duration: durationLabel(entry),
+    masterAudioDurationSeconds: numeric(entry.masterAudioDurationSeconds || entry.audioDurationSeconds, 0),
     audioReady: entry.audioStatus === 'ready',
     coverUrl: clean(entry.coverImageUrl || entry.coverUrl || entry.artworkUrl || entry.imageUrl),
   }));
@@ -429,24 +456,25 @@ export const derivePreviewData = (state, selection = {}) => {
     ? exactEpisodeFor(state, issue, season, week)
     : episodeForIssue(state, issue, game, season, week);
   const publicationId = publicationIdFor(issue) || publicationIdFor(episode) || `season-${season}-week-${week}`;
-  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle);
-  const officialArticles = (state.eaSportsNetworkArticles || [])
+  const weeklyPhoto = weeklyNewsroomPhoto(state, issue, rawArticle, publicationId);
+  const officialEntries = (state.eaSportsNetworkArticles || [])
     .filter((entry)=>(
       (publicationId && publicationIdFor(entry)===publicationId)
       || matchesSeasonWeek(entry,season,week)
-    ))
-    .map((entry,index)=>({
-      id:clean(entry?.id, `ea-network-${season}-${week}-${index+1}`),
-      publicationId:clean(entry?.publicationId, publicationId),
-      season:numeric(entry?.season,season),
-      week:numeric(entry?.week,week),
-      headline:clean(entry?.headline,'EA SPORTS Network article'),
-      body:clean(entry?.body),
-      byline:clean(entry?.byline),
-      pageLabel:clean(entry?.pageLabel,'EA SPORTS NETWORK'),
-      sourceFileName:clean(entry?.sourceFileName),
-      capturedAt:clean(entry?.capturedAt),
-    }));
+    ));
+  const mergedOfficialArticle=mergeOfficialCoveragePages(officialEntries);
+  const officialArticles = mergedOfficialArticle ? [{
+    ...applyOfficialCoverageLegacyBackfill(mergedOfficialArticle,{
+      season,
+      week,
+      opponent:game?.opponent || '',
+    }),
+    id:clean(officialEntries[0]?.id, `ea-network-${season}-${week}-1`),
+    publicationId:clean(officialEntries[0]?.publicationId, publicationId),
+    season,
+    week,
+    sourcePages:Array.isArray(mergedOfficialArticle.sourcePages)?mergedOfficialArticle.sourcePages:[],
+  }] : [];
   const facts = factsForPublication(state, publicationId, season, week);
   const coverageFacts = facts.filter((fact) => fact?.sourceType === 'coverage-reference' || fact?.editorialOnly === true);
   const scoringFacts = coverageFacts.filter((fact) => (
@@ -560,6 +588,7 @@ export const derivePreviewData = (state, selection = {}) => {
       title: clean(episode?.title || issue?.podcastBrief?.title, episode ? `Week ${week} episode` : `No Huddle episode saved for Week ${week}`),
       summary: clean(episode?.summary || issue?.podcastBrief?.summary, episode ? 'The saved DynastyHQ episode is tied to this career week.' : 'Choose another saved week to open its podcast episode.'),
       duration: durationLabel(episode || {}),
+      masterAudioDurationSeconds: numeric(episode?.masterAudioDurationSeconds || episode?.audioDurationSeconds, 0),
       estimatedMinutes: numeric(episode?.estimatedMinutes, 0),
       status: clean(episode?.status, episode ? 'scripted' : 'not-generated'),
       audioStatus: clean(episode?.audioStatus, 'not-generated'),

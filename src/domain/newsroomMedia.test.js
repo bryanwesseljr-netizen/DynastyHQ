@@ -262,3 +262,47 @@ test('public media projection includes photos used only by a postgame front page
   assert.equal(publicLibrary.length, 1);
   assert.equal(publicLibrary[0].id, asset.id);
 });
+
+
+test('week-scoped game photos stay inside their exact publication and outrank generic library photos', () => {
+  const week1 = createNewsroomMediaAsset({
+    id: 'week-1-photo',
+    downloadUrl: 'https://example.com/week-1.jpg',
+    storagePath: 'week-1.jpg',
+    fileName: 'week-1-action.jpg',
+    careerFolder: NEWSROOM_MEDIA_FOLDERS.COLLEGE,
+    allowAutoAssign: true,
+    weekPublicationId: 'season-1-week-1',
+    weekSeason: 1,
+    week: 1,
+    opponent: 'Team A',
+  });
+  const week2 = createNewsroomMediaAsset({
+    id: 'week-2-photo',
+    downloadUrl: 'https://example.com/week-2.jpg',
+    storagePath: 'week-2.jpg',
+    fileName: 'week-2-action.jpg',
+    careerFolder: NEWSROOM_MEDIA_FOLDERS.COLLEGE,
+    allowAutoAssign: true,
+    weekPublicationId: 'season-1-week-2',
+    weekSeason: 1,
+    week: 2,
+    opponent: 'Team B',
+  });
+  const generic = { ...asset, id: 'generic-photo', downloadUrl: 'https://example.com/generic.jpg', allowAutoAssign: true };
+
+  const assigned = assignLibraryPhotosToEdition({
+    issues: [issue],
+    publicationId: issue.id,
+    mediaLibrary: [week2, generic, week1],
+  });
+
+  assert.equal(assigned[0].articles[0].mediaAssetId, week1.id);
+  assert.equal(scoreNewsroomMediaForArticle({ asset: week2, article: issue.articles[0], issue }), -Infinity);
+
+  const publicLibrary = buildPublicNewsroomMediaLibrary({
+    issues: [issue],
+    mediaLibrary: [week1, week2],
+  });
+  assert.deepEqual(publicLibrary.map((entry) => entry.id), [week1.id]);
+});

@@ -5,17 +5,20 @@ import {
   Archive, Award, BarChart3, Bell, BookOpen, CalendarDays, Camera, Check, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, Copy, FileText, Headphones, Home, Image as ImageIcon, Link2, LockKeyhole, Menu,
   Mic2, MoreHorizontal, Newspaper, Pause, Pencil, Play, Search, Share2, Shield, ShieldCheck, Sparkles, Target,
-  TrendingUp, Trophy, Upload, UserRound, X, Zap
+  TrendingUp, Trophy, Trash2, Upload, UserRound, X, Zap, RadioTower
 } from 'lucide-react';
 import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
+import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import { analyzeScreenshot } from '../services/screenshotClient.js';
 import { analyzeRtgStatusScreenshot } from '../services/rtgStatusScannerClient.js';
 import { analyzeCoverageReference } from '../services/coverageReferenceClient.js';
 import { compressImage } from '../services/imageCompression.js';
 import { createFailedScreenshotResult, normalizeScreenshotAnalysis as normalizeGameScreenshotAnalysis } from '../domain/screenshotAnalysis.js';
+import { mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
+import { stitchOfficialArticlePages } from '../domain/officialArticleStitcher.js';
 import {
   correctPublishedWeek,
   createEmptyScanDraft,
@@ -41,8 +44,8 @@ import { createRtgSnapshot, diffRtgSnapshots, hasRtgSnapshot } from '../domain/r
 import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
 import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
 import { auth, db, firebaseApp, productionAppId } from '../firebase.js';
-import { uploadNewsroomMedia } from '../services/newsroomMediaStorage.js';
-import { assignNewsroomMedia, createNewsroomMediaAsset, NEWSROOM_MEDIA_ORIGINS } from '../domain/newsroomMedia.js';
+import { deleteNewsroomMedia, uploadNewsroomMedia } from '../services/newsroomMediaStorage.js';
+import { assignLibraryPhotosToEdition, assignNewsroomMedia, createNewsroomMediaAsset, NEWSROOM_MEDIA_ORIGINS } from '../domain/newsroomMedia.js';
 import {
   loadPodcastAudioCloud,
   loadPodcastAudioLocal,
@@ -110,6 +113,27 @@ const previewFileToBase64 = (file) => new Promise((resolve,reject)=>{
     else resolve(value.slice(commaIndex+1));
   };
   reader.readAsDataURL(file);
+});
+
+const previewAudioDurationForFile = (file) => new Promise((resolve)=>{
+  if(!file || typeof document==='undefined') return resolve(0);
+  const audio=document.createElement('audio');
+  const objectUrl=URL.createObjectURL(file);
+  let settled=false;
+  const finish=(value)=>{
+    if(settled) return;
+    settled=true;
+    window.clearTimeout(timer);
+    audio.removeAttribute('src');
+    audio.load();
+    URL.revokeObjectURL(objectUrl);
+    resolve(Number.isFinite(Number(value))?Number(value):0);
+  };
+  const timer=window.setTimeout(()=>finish(0),12000);
+  audio.preload='metadata';
+  audio.onloadedmetadata=()=>finish(audio.duration);
+  audio.onerror=()=>finish(0);
+  audio.src=objectUrl;
 });
 
 const formatPreviewClock = (seconds) => {
@@ -229,79 +253,7 @@ const notebookFactLine=(fact,index)=>{
   return '- '+(subject ? subject+' · ' : '')+label+': '+String(value);
 };
 
-const notebookSourcePackText = ({data,episode,facts=[]}) => {
-  const game=data.game || {};
-  const team=game.team || {};
-  const transcript=episode.transcript || '';
-  const usableFacts=notebookUniqueFacts(
-    facts.filter((fact)=>!notebookIsRtgFact(fact)),
-  );
-  const scoringFacts=notebookUniqueFacts(usableFacts.filter((fact)=>(
-    notebookIsScoringFact(fact)
-    && !notebookIsCanonicalStatDuplicate(fact,data)
-  )));
-  const additionalFacts=notebookUniqueFacts(usableFacts.filter((fact)=>(
-    !notebookIsCanonicalStatDuplicate(fact,data)
-    && !notebookIsScoringFact(fact)
-  )));
-  const additionalLines=additionalFacts.map(notebookFactLine);
-  const scoringLines=scoringFacts.map(notebookFactLine);
-  const chapterLines=(episode.chapters || []).map((chapter,index)=>String(index+1)+'. '+String(chapter?.title || ('Chapter '+(index+1))));
-
-  const lineIf=(label,value,suffix='')=>(
-    value===null || value===undefined || value==='' ? null : label+': '+String(value)+suffix
-  );
-  const teamLines=[
-    lineIf(data.player.school+' total offense',team.totalYards,' yards'),
-    lineIf(game.opponent+' total offense',team.opponentTotalYards,' yards'),
-    lineIf(data.player.school+' passing',team.passYards,' yards'),
-    lineIf(game.opponent+' passing',team.opponentPassYards,' yards'),
-    lineIf(data.player.school+' rushing',team.rushYards,' yards'),
-    lineIf(game.opponent+' rushing',team.opponentRushYards,' yards'),
-    lineIf(data.player.school+' first downs',team.firstDowns),
-    lineIf(game.opponent+' first downs',team.opponentFirstDowns),
-    lineIf(data.player.school+' turnovers',team.turnovers),
-    lineIf(game.opponent+' turnovers',team.opponentTurnovers),
-    lineIf(data.player.school+' possession',team.possession),
-    lineIf(game.opponent+' possession',team.opponentPossession),
-  ].filter(Boolean);
-
-  return [
-    'DYNASTYHQ · THE HUDDLE · NOTEBOOKLM SOURCE PACK',
-    'Season '+data.season+' · Week '+game.week+' · '+data.player.school+' vs. '+game.opponent,
-    '',
-    'GAME RESULT',
-    data.player.school+' '+game.us+' — '+game.them+' '+game.opponent,
-    '',
-    'MY PLAYER STAT LINE',
-    'Passing: '+String(game.pass ?? '—')+' yards · '+String(game.passTD ?? '—')+' TD',
-    'Rushing: '+String(game.rush ?? '—')+' yards · '+String(game.rushTD ?? '—')+' TD',
-    'Total offense: '+String(game.total ?? '—')+' yards',
-    'Total touchdowns: '+String(game.td ?? '—'),
-    'Interceptions: '+String(game.interceptions ?? '—'),
-    '',
-    'TEAM STATS',
-    ...(teamLines.length ? teamLines : ['No separate team-stat totals were saved for this week.']),
-    '',
-    'OTHER VERIFIED INDIVIDUAL / GAME CONTEXT',
-    ...(additionalLines.length ? additionalLines : ['No additional non-duplicate context facts were saved.']),
-    '',
-    'SCORING SUMMARY',
-    ...(scoringLines.length ? scoringLines : ['No separate scoring-summary facts were saved.']),
-    '',
-    'EPISODE CHAPTERS',
-    ...(chapterLines.length ? chapterLines : ['No saved chapter list.']),
-    '',
-    'FULL PODCAST TRANSCRIPT',
-    transcript || 'No generated transcript is saved for this selected week.',
-    '',
-    'SOURCE PACK RULES',
-    '- RTG status and development facts are intentionally excluded.',
-    '- Structured game, team, and player statistics appear only once outside the full transcript.',
-    '',
-    'END SOURCE PACK',
-  ].join('\n');
-};
+const notebookSourcePackText = ({data,episode,facts=[]}) => buildNotebookLmProducerPack({data,episode,facts}).text;
 
 const PREVIEW_NUMERIC_GAME_FIELDS = new Set([
   'homeScore','awayScore','teamRank','opponentRank','passYds','passTD','rushYds','rushTD','int',
@@ -427,21 +379,16 @@ const applyCorrectedRtgSnapshot = (state,{publicationId,season,week,facts=[]}) =
 const appendOfficialNetworkArticles = (state,{publicationId,season,week,articles=[]}) => {
   if(!articles.length) return state;
   const current=[...(state.eaSportsNetworkArticles || [])];
-  const signatures=new Set(current.map((entry)=>[
-    entry?.publicationId || '',
-    String(entry?.headline || '').trim().toLowerCase(),
-    String(entry?.body || '').trim().slice(0,160).toLowerCase(),
-  ].join('|')));
-  const additions=articles.flatMap((article,index)=>{
-    const signature=[
-      publicationId,
-      String(article?.headline || '').trim().toLowerCase(),
-      String(article?.body || '').trim().slice(0,160).toLowerCase(),
-    ].join('|');
-    if(signatures.has(signature)) return [];
-    signatures.add(signature);
-    return [{
-      id:`${publicationId}-ea-network-${Date.now()}-${index}`,
+  const signatureFor=(article)=>[
+    article?.publicationId || publicationId || '',
+    String(article?.headline || '').trim().toLowerCase(),
+    String(article?.body || '').trim().slice(0,160).toLowerCase(),
+  ].join('|');
+  const indexBySignature=new Map(current.map((entry,index)=>[signatureFor(entry),index]));
+  let changed=false;
+
+  articles.forEach((article,index)=>{
+    const normalized={
       publicationId,
       season:Number(season)||1,
       week:Number(week)||0,
@@ -449,11 +396,40 @@ const appendOfficialNetworkArticles = (state,{publicationId,season,week,articles
       body:String(article?.body || '').trim(),
       byline:String(article?.byline || '').trim(),
       pageLabel:String(article?.pageLabel || '').trim(),
-      sourceFileName:String(article?.fileName || '').trim(),
-      capturedAt:new Date().toISOString(),
-    }];
+      sourceFileName:String(article?.fileName || article?.sourceFileName || '').trim(),
+      screenshotUrl:String(article?.screenshotUrl || '').trim(),
+      screenshotStoragePath:String(article?.screenshotStoragePath || '').trim(),
+      screenshotMimeType:String(article?.screenshotMimeType || '').trim(),
+      screenshotSizeBytes:Number(article?.screenshotSizeBytes)||0,
+      pageCount:Number(article?.pageCount)||0,
+      sourcePages:Array.isArray(article?.sourcePages)?article.sourcePages:[],
+      capturedAt:String(article?.capturedAt || new Date().toISOString()).trim(),
+    };
+    const signature=signatureFor(normalized);
+    const existingIndex=indexBySignature.get(signature);
+    if(existingIndex!==undefined){
+      const existing=current[existingIndex] || {};
+      const merged={
+        ...existing,
+        ...Object.fromEntries(Object.entries(normalized).filter(([,value])=>value!=='' && value!==0)),
+        capturedAt:existing.capturedAt || normalized.capturedAt,
+      };
+      if(JSON.stringify(merged)!==JSON.stringify(existing)){
+        current[existingIndex]=merged;
+        changed=true;
+      }
+      return;
+    }
+    const entry={
+      id:`${publicationId}-ea-network-${Date.now()}-${index}`,
+      ...normalized,
+    };
+    indexBySignature.set(signature,current.length);
+    current.push(entry);
+    changed=true;
   });
-  return additions.length ? {...state,eaSportsNetworkArticles:[...current,...additions]} : state;
+
+  return changed ? {...state,eaSportsNetworkArticles:current} : state;
 };
 
 const loadPreviewViewState = () => {
@@ -481,6 +457,33 @@ const savePreviewViewState = (state) => {
     window.sessionStorage.setItem(PREVIEW_VIEW_STORAGE_KEY,serialized);
   } catch {
     // View persistence is convenience-only; never interrupt the site if storage is unavailable.
+  }
+};
+
+const NOTIFICATION_STATE_STORAGE_PREFIX='dynastyhq-redesign-notifications-v1:';
+
+const loadNotificationState=(scope='guest')=>{
+  if(typeof window==='undefined') return {readIds:{},dismissedIds:{}};
+  try{
+    const saved=JSON.parse(window.localStorage.getItem(NOTIFICATION_STATE_STORAGE_PREFIX+scope) || '{}');
+    return {
+      readIds:saved?.readIds && typeof saved.readIds==='object' ? saved.readIds : {},
+      dismissedIds:saved?.dismissedIds && typeof saved.dismissedIds==='object' ? saved.dismissedIds : {},
+    };
+  }catch{
+    return {readIds:{},dismissedIds:{}};
+  }
+};
+
+const saveNotificationState=(scope='guest',state={})=>{
+  if(typeof window==='undefined') return;
+  try{
+    window.localStorage.setItem(NOTIFICATION_STATE_STORAGE_PREFIX+scope,JSON.stringify({
+      readIds:state?.readIds || {},
+      dismissedIds:state?.dismissedIds || {},
+    }));
+  }catch{
+    // Notification persistence is convenience-only; never interrupt DynastyHQ if browser storage is unavailable.
   }
 };
 
@@ -610,7 +613,7 @@ const defaultPageVisual = (pageId) => ({
   image:playerPhoto,
   position:PAGE_VISUAL_POSITIONS[pageId] || '50%',
   custom:false,
-  mode:pageId==='home'?'auto':'manual',
+  mode:['home','gamehub','newsroom','podcast','chronicle'].includes(pageId)?'auto':'manual',
   autoAvailable:false,
   sourceLabel:'Default player photo',
 });
@@ -773,6 +776,7 @@ function App(){
   const [week,setWeek] = useState(hasRestoredWeek?restoredWeek:10);
   const [articleOpen,setArticleOpen] = useState(Boolean(restoredView.articleOpen && validPage==='newsroom'));
   const [selectedArticleId,setSelectedArticleId] = useState(restoredView.selectedArticleId || '');
+  const [officialArticleRequest,setOfficialArticleRequest] = useState(0);
   const [statsTab,setStatsTab] = useState(restoredView.statsTab || 'player');
   const [toast,setToast] = useState('');
   const [playing,setPlaying] = useState(false);
@@ -794,6 +798,7 @@ function App(){
   const [searchOpen,setSearchOpen] = useState(false);
   const [searchQuery,setSearchQuery] = useState('');
   const [notificationsOpen,setNotificationsOpen] = useState(false);
+  const [notificationState,setNotificationState] = useState(()=>loadNotificationState('guest'));
   const [shareUrl,setShareUrl] = useState('');
   const [shareEnabled,setShareEnabled] = useState(false);
   const [shareLastSynced,setShareLastSynced] = useState('');
@@ -802,6 +807,12 @@ function App(){
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
   const scrollRestoredRef=useRef(false);
   const live = useReadOnlyLiveCareer();
+  const notificationScope=live.user?.uid || 'guest';
+
+  useEffect(()=>{
+    setNotificationState(loadNotificationState(notificationScope));
+  },[notificationScope]);
+
   const data = useMemo(
     () => live.career
       ? (derivePreviewData(live.career,{season,week}) || live.data || fallbackData)
@@ -961,6 +972,15 @@ function App(){
     setMobileMoreOpen(false);
     window.scrollTo({top:0,behavior:'smooth'});
   };
+  const openOfficialArticle = () => {
+    setSelectedArticleId('');
+    setArticleOpen(false);
+    setPage('newsroom');
+    setOfficialArticleRequest((value)=>value+1);
+    setMobileMenu(false);
+    setMobileMoreOpen(false);
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
   const openPodcast = (tab='episode') => { setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'}); };
   const openArchiveMoment = (targetSeason,targetWeek,target='gamehub',tab='episode') => {
     const nextSeason=Number(targetSeason);
@@ -1057,16 +1077,19 @@ function App(){
       .map(({item})=>item);
   },[searchItems,searchQuery]);
 
-  const notificationItems=useMemo(()=>{
+  const notificationCandidates=useMemo(()=>{
     const latest=currentCareerData || {};
     const items=[];
     if(live.status!=='connected'){
       items.push({id:'connect',kind:'account',title:'Connect your real DynastyHQ career',detail:'Search, alerts and archive actions become fully career-aware after sign-in.',action:'connect'});
       return items;
     }
+    const seasonId=Number(latest.season)||0;
+    const weekId=Number(latest.week)||0;
+    const weekScope='s'+seasonId+'-w'+weekId;
     if(latest.selection?.isUpcoming){
       items.push({
-        id:'upcoming-week',
+        id:'upcoming-week:'+weekScope,
         kind:'week',
         title:'Week '+latest.week+' vs '+latest.game?.opponent+' is waiting',
         detail:'Play the matchup normally. After the final, Week Processing will capture the verified game packet.',
@@ -1075,7 +1098,7 @@ function App(){
     }
     if(latest.selection?.hasGame && !latest.selection?.hasNewsroom){
       items.push({
-        id:'newsroom-missing',
+        id:'newsroom-missing:'+weekScope,
         kind:'news',
         title:'Newsroom coverage is not attached to the latest saved week',
         detail:'Open the saved week to review its coverage state.',
@@ -1084,7 +1107,7 @@ function App(){
     }
     if(latest.selection?.hasGame && latest.podcast?.segments?.length && !latest.podcast?.audioReady){
       items.push({
-        id:'podcast-audio',
+        id:'podcast-audio:'+weekScope,
         kind:'podcast',
         title:'The Huddle transcript is ready for final audio',
         detail:'Download the NotebookLM source pack or attach the finished master audio in Podcast Studio.',
@@ -1092,7 +1115,7 @@ function App(){
       });
     }else if(latest.selection?.hasGame && !latest.podcast?.segments?.length){
       items.push({
-        id:'podcast-missing',
+        id:'podcast-missing:'+weekScope,
         kind:'podcast',
         title:'The latest saved week has no Podcast transcript',
         detail:'Open The Huddle to review the saved episode state.',
@@ -1100,10 +1123,68 @@ function App(){
       });
     }
     if(latest.offseason?.seasonComplete){
-      items.push({id:'offseason-ready',kind:'offseason',title:'Season review is ready',detail:'The verified season is complete. Review the Off-Season workspace and career decision state.',target:'offseason'});
+      items.push({
+        id:'offseason-ready:s'+seasonId,
+        kind:'offseason',
+        title:'Season review is ready',
+        detail:'The verified season is complete. Review the Off-Season workspace and career decision state.',
+        target:'offseason',
+      });
     }
     return items.slice(0,8);
   },[currentCareerData,live.status]);
+
+  const notificationItems=useMemo(()=>notificationCandidates
+    .filter((item)=>!notificationState.dismissedIds?.[item.id])
+    .map((item)=>({...item,read:Boolean(notificationState.readIds?.[item.id])})),
+  [notificationCandidates,notificationState]);
+
+  const unreadNotificationCount=useMemo(
+    ()=>notificationItems.filter((item)=>!item.read).length,
+    [notificationItems],
+  );
+
+  const updateNotificationState=(updater)=>{
+    setNotificationState((current)=>{
+      const next={
+        readIds:{...(current?.readIds || {})},
+        dismissedIds:{...(current?.dismissedIds || {})},
+      };
+      updater(next);
+      saveNotificationState(notificationScope,next);
+      return next;
+    });
+  };
+
+  const markNotificationRead=(id)=>{
+    if(!id) return;
+    updateNotificationState((next)=>{next.readIds[id]=true;});
+  };
+
+  const markAllNotificationsRead=()=>{
+    if(!notificationItems.length) return;
+    updateNotificationState((next)=>{
+      notificationItems.forEach((item)=>{next.readIds[item.id]=true;});
+    });
+  };
+
+  const deleteNotification=(id)=>{
+    if(!id) return;
+    updateNotificationState((next)=>{
+      next.dismissedIds[id]=true;
+      delete next.readIds[id];
+    });
+  };
+
+  const clearAllNotifications=()=>{
+    if(!notificationItems.length) return;
+    updateNotificationState((next)=>{
+      notificationItems.forEach((item)=>{
+        next.dismissedIds[item.id]=true;
+        delete next.readIds[item.id];
+      });
+    });
+  };
 
   const openUtilityItem=(item)=>{
     setSearchOpen(false);
@@ -1120,6 +1201,11 @@ function App(){
     }
     if(item?.target==='podcast') openPodcast(item.tab || 'episode');
     else go(item?.target || 'home');
+  };
+
+  const openNotificationItem=(item)=>{
+    markNotificationRead(item?.id);
+    openUtilityItem(item);
   };
 
   useEffect(()=>{
@@ -1416,7 +1502,12 @@ function App(){
 
         <div className="header-actions">
           <button className="icon-btn" aria-label="Search DynastyHQ" title="Search DynastyHQ · Ctrl/⌘ K" onClick={()=>{setNotificationsOpen(false);setSearchOpen(true)}}><Search size={19}/></button>
-          <button className={'icon-btn notification-trigger '+(notificationItems.length?'has-alerts':'')} aria-label="Career notifications" onClick={()=>{setSearchOpen(false);setNotificationsOpen(v=>!v)}}><Bell size={19}/>{notificationItems.length>0 && <span>{notificationItems.length}</span>}</button>
+          <button
+            className={'icon-btn notification-trigger '+(unreadNotificationCount?'has-unread':'')}
+            aria-label={'Career notifications, '+unreadNotificationCount+' unread'}
+            title={unreadNotificationCount ? unreadNotificationCount+' unread notification'+(unreadNotificationCount===1?'':'s') : 'No unread notifications'}
+            onClick={()=>{setSearchOpen(false);setNotificationsOpen(v=>!v)}}
+          ><Bell size={19}/>{unreadNotificationCount>0 && <span aria-hidden="true">{unreadNotificationCount>99?'99+':unreadNotificationCount}</span>}</button>
           <button className="icon-btn share-career-trigger" aria-label="Share career" title="Share read-only career follow link" onClick={()=>setShareOpen(true)}><Share2 size={18}/></button>
           <Logo team={data.player.school}/>
           <button className="menu-btn" onClick={()=>setMobileMenu(v=>!v)} aria-label="Menu">{mobileMenu?<X/>:<Menu/>}</button>
@@ -1426,7 +1517,7 @@ function App(){
       <div className={'mobile-drawer '+(mobileMenu?'open':'')}>
         {pages.map(([id,label,Icon])=><button key={id} onClick={()=>go(id)}><Icon size={17}/>{label}</button>)}
         <button onClick={()=>{setMobileMenu(false);setNotificationsOpen(false);setSearchOpen(true)}}><Search size={17}/>Search</button>
-        <button onClick={()=>{setMobileMenu(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell size={17}/>Notifications{notificationItems.length>0?' ('+notificationItems.length+')':''}</button>
+        <button onClick={()=>{setMobileMenu(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell size={17}/>Notifications{unreadNotificationCount>0?' ('+unreadNotificationCount+' unread)':''}</button>
         <button onClick={()=>{setShareOpen(true);setMobileMenu(false)}}><Share2 size={17}/>Share career</button>
         <button className="mobile-visual-entry" onClick={()=>openVisualEditor(page)}><Camera size={17}/>Page photo</button>
       </div>
@@ -1434,13 +1525,15 @@ function App(){
       <div className="career-row">
         <div className="career-copy"><b>ROAD TO GLORY</b><i/>{data.player.name} #{data.player.number}<i/>{data.player.school}</div>
         <div className="selectors">
-          <label>SEASON
-            <select value={season} onChange={e=>chooseSeason(e.target.value)}>
+          <label className="archive-select">SEASON
+            <b>{season}</b>
+            <select aria-label="Season" value={season} onChange={e=>chooseSeason(e.target.value)}>
               {seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}
             </select><ChevronDown size={13}/>
           </label>
-          <label>WEEK
-            <select value={week} onChange={e=>chooseWeek(e.target.value)}>
+          <label className="archive-select">WEEK
+            <b>{week}</b>
+            <select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>
               {weekOptions.map(value=><option key={value} value={value}>{value}</option>)}
             </select><ChevronDown size={13}/>
           </label>
@@ -1449,8 +1542,8 @@ function App(){
       </div>
 
       <div className="mobile-context-row" aria-label="Career archive controls">
-        <label><span>SEASON</span><select value={season} onChange={e=>chooseSeason(e.target.value)}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
-        <label><span>WEEK</span><select value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label className="archive-select"><span>SEASON</span><b>{season}</b><select aria-label="Season" value={season} onChange={e=>chooseSeason(e.target.value)}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label className="archive-select"><span>WEEK</span><b>{week}</b><select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
         <button onClick={()=>setMobileMoreOpen(true)}><Menu/><span>MORE</span></button>
       </div>
 
@@ -1470,9 +1563,9 @@ function App(){
 
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
-      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openPodcast={openPodcast} notify={notify}/>} 
-      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
-      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} officialArticleRequest={officialArticleRequest} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
       {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage data={data} visual={visualFor('career')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openArchiveMoment={openArchiveMoment}/>} 
@@ -1488,7 +1581,7 @@ function App(){
           <button onClick={()=>go('chronicle')}><BookOpen/><span><b>Chronicle</b><small>Full career archive and museum</small></span></button>
           <button onClick={()=>openVisualEditor(page)}><Camera/><span><b>Page photo</b><small>Customize this page’s visual</small></span></button>
           <button onClick={()=>{setMobileMoreOpen(false);setNotificationsOpen(false);setSearchOpen(true)}}><Search/><span><b>Search</b><small>Find games, stories, episodes and milestones</small></span></button>
-          <button onClick={()=>{setMobileMoreOpen(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell/><span><b>Notifications{notificationItems.length?' · '+notificationItems.length:''}</b><small>Current career attention items</small></span></button>
+          <button onClick={()=>{setMobileMoreOpen(false);setSearchOpen(false);setNotificationsOpen(true)}}><Bell/><span><b>Notifications{unreadNotificationCount?' · '+unreadNotificationCount+' unread':''}</b><small>{unreadNotificationCount?'Current career attention items':'No unread career alerts'}</small></span></button>
         </div>
         <div className="mobile-more-status"><LockKeyhole/><span><b>Dynasty mode</b><small>Locked during this Road to Glory career</small></span></div>
       </section>
@@ -1514,8 +1607,12 @@ function App(){
     <NotificationPanel
       open={notificationsOpen}
       items={notificationItems}
+      unreadCount={unreadNotificationCount}
       onClose={()=>setNotificationsOpen(false)}
-      onOpen={openUtilityItem}
+      onOpen={openNotificationItem}
+      onDelete={deleteNotification}
+      onMarkAllRead={markAllNotificationsRead}
+      onClearAll={clearAllNotifications}
     />
 
     <WeekProcessingCenter
@@ -1596,7 +1693,7 @@ function GlobalSearchModal({open,query,setQuery,results,onClose,onOpen}){
   </div>;
 }
 
-function NotificationPanel({open,items,onClose,onOpen}){
+function NotificationPanel({open,items,unreadCount,onClose,onOpen,onDelete,onMarkAllRead,onClearAll}){
   if(!open) return null;
   const iconFor=(kind)=>{
     if(kind==='week') return <CalendarDays/>;
@@ -1606,16 +1703,29 @@ function NotificationPanel({open,items,onClose,onOpen}){
     if(kind==='account') return <ShieldCheck/>;
     return <Bell/>;
   };
+  const statusLabel=items.length
+    ? (unreadCount ? unreadCount+' unread · '+items.length+' total' : 'All read · '+items.length+' total')
+    : 'All caught up';
   return <div className="notification-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)onClose()}}>
     <section className="notification-panel" role="dialog" aria-modal="true" aria-label="Career notifications">
       <header><div><span>DYNASTYHQ</span><h2>Career alerts</h2></div><button onClick={onClose} aria-label="Close notifications"><X/></button></header>
-      <p>These are live attention items from the connected career—not fake unread messages.</p>
+      <div className="notification-toolbar">
+        <span>{statusLabel}</span>
+        <div>
+          <button onClick={onMarkAllRead} disabled={!unreadCount} title="Mark every visible notification as read"><Check/>MARK ALL READ</button>
+          <button onClick={onClearAll} disabled={!items.length} title="Delete every visible notification"><Trash2/>CLEAR ALL</button>
+        </div>
+      </div>
+      <p>Live career attention items. Reading or deleting alerts is remembered on this device. Deleting an alert only clears the notification—it does not change your career data.</p>
       <div className="notification-list">
-        {items.length ? items.map((item)=><button key={item.id} onClick={()=>onOpen(item)}>
-          <i>{iconFor(item.kind)}</i>
-          <span><b>{item.title}</b><small>{item.detail}</small></span>
-          <ChevronRight/>
-        </button>) : <div className="notification-empty"><Check/><span><b>Nothing needs your attention.</b><small>Your connected career is caught up.</small></span></div>}
+        {items.length ? items.map((item)=><div key={item.id} className={'notification-item '+(item.read?'is-read':'is-unread')}>
+          <button className="notification-open" onClick={()=>onOpen(item)}>
+            <i>{iconFor(item.kind)}</i>
+            <span><b>{item.title}<em>{item.read?'READ':'NEW'}</em></b><small>{item.detail}</small></span>
+            <ChevronRight/>
+          </button>
+          <button className="notification-delete" onClick={()=>onDelete(item.id)} aria-label={'Delete notification: '+item.title} title="Delete notification"><Trash2/></button>
+        </div>) : <div className="notification-empty"><Check/><span><b>All caught up.</b><small>No unread or saved career alerts.</small></span></div>}
       </div>
     </section>
   </div>;
@@ -1744,6 +1854,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const rtgInputRef=useRef(null);
   const coverageInputRef=useRef(null);
   const officialInputRef=useRef(null);
+  const gamePhotoInputRef=useRef(null);
   const [phase,setPhase]=useState('game');
   const [files,setFiles]=useState([]);
   const [dragging,setDragging]=useState(false);
@@ -1772,6 +1883,13 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [coverageScreens,setCoverageScreens]=useState([]);
   const [coverageError,setCoverageError]=useState('');
   const [coverageSkipped,setCoverageSkipped]=useState(false);
+
+  const [gamePhotos,setGamePhotos]=useState([]);
+  const [gamePhotoError,setGamePhotoError]=useState('');
+  const [gamePhotoUploading,setGamePhotoUploading]=useState(false);
+  const [gamePhotoProgress,setGamePhotoProgress]=useState('');
+  const [gamePhotosSkipped,setGamePhotosSkipped]=useState(false);
+
   const [publishConfirm,setPublishConfirm]=useState(false);
   const [publishing,setPublishing]=useState(false);
   const [publishError,setPublishError]=useState('');
@@ -1795,6 +1913,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     ['review','Review',ShieldCheck],
     ['rtg','RTG Status',Sparkles],
     ['coverage','Coverage',Newspaper],
+    ['photos','Game Photos',Camera],
     ['ready','Process Week',Zap],
   ];
   const phaseIndex=Math.max(0,steps.findIndex(([id])=>id===phase));
@@ -1829,6 +1948,12 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setCoverageScreens([]);
     setCoverageError('');
     setCoverageSkipped(false);
+    revokeFiles(gamePhotos);
+    setGamePhotos([]);
+    setGamePhotoError('');
+    setGamePhotoUploading(false);
+    setGamePhotoProgress('');
+    setGamePhotosSkipped(false);
     setPublishConfirm(false);
     setPublishing(false);
     setPublishError('');
@@ -1868,6 +1993,178 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
       if(target?.url) URL.revokeObjectURL(target.url);
       return current.filter((entry)=>entry.id!==id);
     });
+  };
+
+  const addGamePhotos=(fileList)=>{
+    const selected=[...(fileList||[])].filter((file)=>file?.type?.match(/^image\/(png|jpe?g|webp)$/i)).slice(0,12);
+    if(!selected.length){
+      setGamePhotoError('Choose PNG, JPEG, or WebP game photos.');
+      return;
+    }
+    const mapped=selected.map((file,index)=>({
+      id:`game-photo-${file.name}-${file.size}-${file.lastModified}-${index}`,
+      name:file.name,
+      size:file.size,
+      url:URL.createObjectURL(file),
+      file,
+    }));
+    setGamePhotoError('');
+    setGamePhotosSkipped(false);
+    setGamePhotos((current)=>{
+      const keyed=new Map(current.map((entry)=>[`${entry.name}:${entry.size}:${entry.file?.lastModified||entry.id}`,entry]));
+      mapped.forEach((entry)=>keyed.set(`${entry.name}:${entry.size}:${entry.file?.lastModified||entry.id}`,entry));
+      return [...keyed.values()].slice(0,12);
+    });
+  };
+
+  const removeGamePhoto=(id)=>{
+    setGamePhotos((current)=>{
+      const target=current.find((entry)=>entry.id===id);
+      if(target?.url) URL.revokeObjectURL(target.url);
+      return current.filter((entry)=>entry.id!==id);
+    });
+  };
+
+  const uploadGamePhotoAssets=async({signedInUser,targetPublicationId,targetSeason,targetWeek})=>{
+    if(!gamePhotos.length) return [];
+    const assets=[];
+    setGamePhotoUploading(true);
+    setGamePhotoError('');
+    try{
+      for(let index=0;index<gamePhotos.length;index+=1){
+        const entry=gamePhotos[index];
+        setGamePhotoProgress(`Uploading game photo ${index+1} of ${gamePhotos.length}: ${entry.name}`);
+        const assetId=globalThis.crypto?.randomUUID?.() || `week-game-photo-${targetSeason}-${targetWeek}-${Date.now()}-${index}`;
+        const imageDataUrl=await compressImage(entry.file,2400,0.88);
+        const uploaded=await uploadNewsroomMedia({
+          firebaseApp,
+          appId:productionAppId,
+          userId:signedInUser.uid,
+          assetId,
+          imageDataUrl,
+          fileName:entry.name,
+          origin:NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+        });
+        assets.push(createNewsroomMediaAsset({
+          id:assetId,
+          ...uploaded,
+          fileName:entry.name,
+          origin:NEWSROOM_MEDIA_ORIGINS.UPLOAD,
+          referenceLabel:`Season ${targetSeason} Week ${targetWeek} vs ${data.game?.opponent || 'opponent'} game photo`,
+          careerFolder:String(career.careerPhase || '').toLowerCase().includes('coach')
+            ? 'coaching'
+            : (String(data.game?.stage || '').toLowerCase().includes('high-school') ? 'high-school' : 'college'),
+          allowAutoAssign:true,
+          teamTag:data.player?.school || '',
+          weekPublicationId:targetPublicationId,
+          weekSeason:targetSeason,
+          week:targetWeek,
+          opponent:data.game?.opponent || '',
+        }));
+      }
+      return assets;
+    }catch(error){
+      await Promise.allSettled(assets.map((asset)=>deleteNewsroomMedia({firebaseApp,storagePath:asset.storagePath})));
+      throw error;
+    }finally{
+      setGamePhotoUploading(false);
+      setGamePhotoProgress('');
+    }
+  };
+
+  const uploadOfficialArticleScreenshots=async({signedInUser,targetPublicationId,targetSeason,targetWeek})=>{
+    if(!officialArticles.length) return {articles:[],uploaded:[]};
+    const uploaded=[];
+    const prepared=[];
+    try{
+      for(let articleIndex=0;articleIndex<officialArticles.length;articleIndex+=1){
+        const article=officialArticles[articleIndex] || {};
+        const sourcePages=Array.isArray(article.sourcePages) && article.sourcePages.length
+          ? article.sourcePages
+          : [{
+            pageNumber:1,
+            fileName:article.fileName || article.sourceFileName || '',
+            body:article.body || '',
+            imageDataUrl:article.imageDataUrl || '',
+            screenshotUrl:article.screenshotUrl || '',
+            screenshotStoragePath:article.screenshotStoragePath || '',
+            screenshotMimeType:article.screenshotMimeType || '',
+            screenshotSizeBytes:Number(article.screenshotSizeBytes)||0,
+          }];
+        const savedPages=[];
+
+        for(let pageIndex=0;pageIndex<sourcePages.length;pageIndex+=1){
+          const page=sourcePages[pageIndex] || {};
+          const {imageDataUrl:pageImageDataUrl,...pageWithoutImageData}=page;
+          if(pageImageDataUrl){
+            setOfficialProgress(`Preserving EA SPORTS Network page ${pageIndex+1} of ${sourcePages.length}…`);
+            const assetId=globalThis.crypto?.randomUUID?.() || `ea-network-${targetSeason}-${targetWeek}-${Date.now()}-${articleIndex}-${pageIndex}`;
+            const saved=await uploadNewsroomMedia({
+              firebaseApp,
+              appId:productionAppId,
+              userId:signedInUser.uid,
+              assetId,
+              imageDataUrl:pageImageDataUrl,
+              fileName:page.fileName || `EA-Sports-Network-S${targetSeason}-W${targetWeek}-P${pageIndex+1}.jpg`,
+              origin:'ea-sports-network',
+            });
+            uploaded.push(saved);
+            savedPages.push({
+              ...pageWithoutImageData,
+              pageNumber:pageIndex+1,
+              screenshotUrl:saved.downloadUrl,
+              screenshotStoragePath:saved.storagePath,
+              screenshotMimeType:saved.mimeType,
+              screenshotSizeBytes:saved.sizeBytes,
+            });
+          }else{
+            savedPages.push({...pageWithoutImageData,pageNumber:pageIndex+1});
+          }
+        }
+
+        let stitchedSaved=null;
+        if(article.stitchedImageDataUrl){
+          setOfficialProgress('Saving the seamless EA SPORTS Network article…');
+          const stitchedAssetId=globalThis.crypto?.randomUUID?.() || `ea-network-stitched-${targetSeason}-${targetWeek}-${Date.now()}-${articleIndex}`;
+          stitchedSaved=await uploadNewsroomMedia({
+            firebaseApp,
+            appId:productionAppId,
+            userId:signedInUser.uid,
+            assetId:stitchedAssetId,
+            imageDataUrl:article.stitchedImageDataUrl,
+            fileName:`EA-Sports-Network-S${targetSeason}-W${targetWeek}-STITCHED.jpg`,
+            origin:'ea-sports-network-stitched',
+          });
+          uploaded.push(stitchedSaved);
+        }
+
+        const merged=mergeOfficialCoveragePages([{
+          ...article,
+          sourcePages:savedPages,
+        }]) || article;
+        const firstImage=savedPages.find((page)=>page.screenshotUrl) || {};
+        prepared.push({
+          ...merged,
+          pageCount:savedPages.length,
+          sourcePages:savedPages,
+          screenshotUrl:firstImage.screenshotUrl || merged.screenshotUrl || '',
+          screenshotStoragePath:firstImage.screenshotStoragePath || merged.screenshotStoragePath || '',
+          screenshotMimeType:firstImage.screenshotMimeType || merged.screenshotMimeType || '',
+          screenshotSizeBytes:Number(firstImage.screenshotSizeBytes || merged.screenshotSizeBytes)||0,
+          stitchedScreenshotUrl:stitchedSaved?.downloadUrl || article.stitchedScreenshotUrl || '',
+          stitchedStoragePath:stitchedSaved?.storagePath || article.stitchedStoragePath || '',
+          stitchedMimeType:stitchedSaved?.mimeType || article.stitchedMimeType || '',
+          stitchedSizeBytes:Number(stitchedSaved?.sizeBytes || article.stitchedSizeBytes)||0,
+          stitchMeta:article.stitchMeta || null,
+        });
+      }
+      return {articles:prepared,uploaded};
+    }catch(error){
+      await Promise.allSettled(uploaded.map((entry)=>deleteNewsroomMedia({firebaseApp,storagePath:entry.storagePath})));
+      throw error;
+    }finally{
+      setOfficialProgress('');
+    }
   };
 
   const loadSavedDemo=()=>{
@@ -1920,7 +2217,6 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setScanStatus('Preparing scanner…');
     setScanError('');
     setReviewRows([]);
-    setOfficialArticles([]);
     try{
       const idToken=await user.getIdToken();
       let draft=createEmptyScanDraft({
@@ -1929,7 +2225,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         careerPhase:career.careerPhase || 'Player',
         isCommitted:Boolean(career.player?.isCommitted),
       });
-      const official=[];
+      let officialDetected=0;
 
       for(let index=0;index<actual.length;index+=1){
         const entry=actual[index];
@@ -1951,13 +2247,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           });
           const analysis=result?.analysis || {};
           if((analysis.screenTypes || []).includes('ea_sports_network_article')){
-            official.push({
-              fileName:entry.name,
-              headline:analysis.officialArticle?.headline || analysis.screenTitle || 'EA SPORTS Network article',
-              body:analysis.officialArticle?.body || '',
-              byline:analysis.officialArticle?.byline || '',
-              pageLabel:analysis.officialArticle?.pageLabel || '',
-            });
+            officialDetected+=1;
+            setScanProgress(Math.round(((index+1)/actual.length)*100));
+            continue;
           }
           const normalized=normalizeGameScreenshotAnalysis({
             analysis,
@@ -1987,10 +2279,16 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         .map((fact)=>({...fact,selected:true}));
       setScanDraft(draft);
       setReviewRows(rows);
-      setOfficialArticles(official);
       const failed=(draft.sources || []).filter((source)=>source.error).length;
-      if(!rows.length && !official.length){
-        setScanError(failed ? `No reliable game facts were found; ${failed} screen${failed===1?'':'s'} failed.` : 'No reliable game facts were found. Try tighter screenshots.');
+      if(officialDetected){
+        notify(officialDetected===1
+          ? 'EA SPORTS Network page detected in Game Data. It was not attached here—use the single optional EA upload in Coverage.'
+          : officialDetected+' EA SPORTS Network pages were detected in Game Data. They were not attached here—use the single optional EA upload in Coverage.');
+      }
+      if(!rows.length){
+        setScanError(officialDetected
+          ? 'Only EA SPORTS Network coverage was detected. Continue to Coverage and use the dedicated optional EA SPORTS Network uploader.'
+          : failed ? `No reliable game facts were found; ${failed} screen${failed===1?'':'s'} failed.` : 'No reliable game facts were found. Try tighter screenshots.');
       }else{
         setPhase('review');
       }
@@ -2087,25 +2385,39 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           body:official?.body || '',
           byline:official?.byline || '',
           pageLabel:official?.pageLabel || '',
+          imageDataUrl,
         });
       }
       if(!found.length){
         setOfficialError('No EA Sports Network article was recognized. Use a clear screenshot of the full in-game article page.');
         return;
       }
-      setOfficialArticles((current)=>{
-        const bySignature=new Map();
-        [...current,...found].forEach((entry)=>{
-          const signature=[
-            String(entry?.headline || '').trim().toLowerCase(),
-            String(entry?.body || '').trim().slice(0,160).toLowerCase(),
-          ].join('|');
-          bySignature.set(signature,entry);
-        });
-        return [...bySignature.values()];
-      });
+      const merged=mergeOfficialCoveragePages([...officialArticles,...found]);
+      if(!merged){
+        setOfficialError('The EA Sports Network pages could not be merged.');
+        return;
+      }
+      let stitchedImageDataUrl='';
+      let stitchMeta=null;
+      try{
+        setOfficialProgress('Cropping borders and stitching the EA article into one continuous page…');
+        const stitched=await stitchOfficialArticlePages(
+          (merged.sourcePages || []).map((page)=>page.imageDataUrl || page.screenshotUrl).filter(Boolean),
+        );
+        stitchedImageDataUrl=stitched.dataUrl;
+        stitchMeta={
+          width:stitched.width,
+          height:stitched.height,
+          pageCount:stitched.pageCount,
+          overlaps:stitched.overlaps,
+          generatedAt:new Date().toISOString(),
+        };
+      }catch(stitchError){
+        console.warn('EA article auto-stitch preview failed',stitchError);
+      }
+      setOfficialArticles([{...merged,stitchedImageDataUrl,stitchMeta}]);
       setCoverageSkipped(false);
-      notify(found.length===1 ? 'EA Sports Network article added to this week’s packet.' : found.length+' EA Sports Network article pages added.');
+      notify(found.length===1 ? 'EA Sports Network article page added.' : found.length+' EA Sports Network pages auto-cropped and stitched.');
     }catch(error){
       setOfficialError(error?.message || 'The EA Sports Network article could not be scanned.');
     }finally{
@@ -2162,6 +2474,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const coverageApproved=coverageFacts.filter((fact)=>fact.selected && String(fact.value??'').trim()!=='');
   const coverageAdded=coverageApproved.length>0;
   const officialSaved=currentOfficialSaved || officialArticles.length>0;
+  const readyGamePhotoCount=Number(publishResult?.gamePhotoCount ?? gamePhotos.length)||0;
 
   const rtg=data.rtg || {};
   const rtgCards=[
@@ -2283,6 +2596,14 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           let nextState=remote;
           if(newsroomEdition){
             nextState=applyGeneratedNewsroomEdition(nextState,targetPublicationId,newsroomEdition);
+            nextState={
+              ...nextState,
+              newsroomIssues:assignLibraryPhotosToEdition({
+                issues:nextState.newsroomIssues || [],
+                publicationId:targetPublicationId,
+                mediaLibrary:nextState.newsroomMediaLibrary || [],
+              }),
+            };
             const savedIssue=(nextState.newsroomIssues || []).find((issue)=>previewMatchesPublication(
               issue,
               targetPublicationId,
@@ -2383,8 +2704,13 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
       setPublishError('Reconnect the same DynastyHQ account before publishing this verified week.');
       return;
     }
-    if(!selectedGameFacts.length){
-      setPublishError('At least one verified game-data fact is required before DynastyHQ can publish the week.');
+    const mediaOnlyUpdate=hasSavedGame && !selectedGameFacts.length;
+    if(!selectedGameFacts.length && !hasSavedGame){
+      setPublishError('At least one verified game-data fact is required before DynastyHQ can publish a new week.');
+      return;
+    }
+    if(mediaOnlyUpdate && !officialArticles.length && !coverageApproved.length && !gamePhotos.length){
+      setPublishError('Nothing new is attached yet. Add EA SPORTS Network pages, Coverage Data, or Game Photos before updating this saved week.');
       return;
     }
 
@@ -2395,12 +2721,31 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     const approvedRtgFacts=rtgApproved.map(previewCleanFact);
     const approvedCoverageFacts=coverageApproved.map(previewCleanFact);
     const checkpointId=`before-redesign-${targetPublicationId}-${Date.now()}`;
+    let uploadedGamePhotoAssets=[];
+    let uploadedOfficialArticleMedia=[];
+    let publishedOfficialArticles=officialArticles;
+    let careerWriteCompleted=false;
 
     setPublishing(true);
     setPublishError('');
     setPublishResult(null);
 
     try{
+      uploadedGamePhotoAssets=await uploadGamePhotoAssets({
+        signedInUser,
+        targetPublicationId,
+        targetSeason,
+        targetWeek,
+      });
+      const officialUpload=await uploadOfficialArticleScreenshots({
+        signedInUser,
+        targetPublicationId,
+        targetSeason,
+        targetWeek,
+      });
+      publishedOfficialArticles=officialUpload.articles;
+      uploadedOfficialArticleMedia=officialUpload.uploaded;
+
       const result=await runTransaction(db,async(transaction)=>{
         const loaded=await readHydratedCareerInTransaction({
           transaction,
@@ -2441,25 +2786,33 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             throw error;
           }
 
-          const correctedGame=previewGameFromFacts({
-            baseGame:remote.gameLogs[gameIndex] || {},
-            facts:approvedGameFacts,
-            fallbackOpponent:data.game?.opponent || '',
-          });
+          if(mediaOnlyUpdate){
+            // Optional-media pass-through: preserve the already verified game and RTG
+            // exactly as they exist in cloud storage. Only the optional sections below
+            // are allowed to change.
+            nextState=remote;
+            action='updated';
+          }else{
+            const correctedGame=previewGameFromFacts({
+              baseGame:remote.gameLogs[gameIndex] || {},
+              facts:approvedGameFacts,
+              fallbackOpponent:data.game?.opponent || '',
+            });
 
-          nextState=correctPublishedWeek({
-            state:remote,
-            gameIndex,
-            game:correctedGame,
-          });
-          nextState=mergeVerifiedPublicationFacts(nextState,targetPublicationId,approvedGameFacts);
-          nextState=applyCorrectedRtgSnapshot(nextState,{
-            publicationId:targetPublicationId,
-            season:targetSeason,
-            week:targetWeek,
-            facts:approvedRtgFacts,
-          });
-          action='updated';
+            nextState=correctPublishedWeek({
+              state:remote,
+              gameIndex,
+              game:correctedGame,
+            });
+            nextState=mergeVerifiedPublicationFacts(nextState,targetPublicationId,approvedGameFacts);
+            nextState=applyCorrectedRtgSnapshot(nextState,{
+              publicationId:targetPublicationId,
+              season:targetSeason,
+              week:targetWeek,
+              facts:approvedRtgFacts,
+            });
+            action='updated';
+          }
         }else{
           const currentPublicationId=createWeekKey(
             Number(remote.currentSeason)||1,
@@ -2552,8 +2905,19 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           publicationId:targetPublicationId,
           season:targetSeason,
           week:targetWeek,
-          articles:officialArticles,
+          articles:publishedOfficialArticles,
         });
+
+        if(uploadedGamePhotoAssets.length){
+          const existingIds=new Set((nextState.newsroomMediaLibrary || []).map((asset)=>asset?.id).filter(Boolean));
+          nextState={
+            ...nextState,
+            newsroomMediaLibrary:[
+              ...(nextState.newsroomMediaLibrary || []),
+              ...uploadedGamePhotoAssets.filter((asset)=>!existingIds.has(asset.id)),
+            ],
+          };
+        }
 
         const regression=detectDestructiveCareerRegression(remote,nextState);
         if(regression.blocked){
@@ -2659,25 +3023,45 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           gameFactCount:approvedGameFacts.length,
           rtgFactCount:approvedRtgFacts.length,
           coverageFactCount:approvedCoverageFacts.length,
-          officialArticleCount:officialArticles.length,
+          officialArticleCount:publishedOfficialArticles.length,
+          gamePhotoCount:uploadedGamePhotoAssets.length,
+          mediaOnlyUpdate,
           checkpointId,
         };
       });
 
+      careerWriteCompleted=true;
       setPublishResult(result);
       setPublishConfirm(false);
+      revokeFiles(gamePhotos);
+      setGamePhotos([]);
+      setGamePhotosSkipped(false);
       setPublishing(false);
+      const optionalMediaOnly=result.mediaOnlyUpdate && !approvedCoverageFacts.length;
       notify(
-        result.action==='updated'
-          ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Refreshing Newsroom and Podcast coverage now.`
-          : `Season ${targetSeason}, Week ${targetWeek} was safely published. Building Newsroom and Podcast coverage now.`,
+        optionalMediaOnly
+          ? `Season ${targetSeason}, Week ${targetWeek} optional media was safely updated. Existing verified game data was preserved.`
+          : result.action==='updated'
+            ? `Season ${targetSeason}, Week ${targetWeek} was safely updated. Refreshing Newsroom and Podcast coverage now.`
+            : `Season ${targetSeason}, Week ${targetWeek} was safely published. Building Newsroom and Podcast coverage now.`,
       );
-      await refreshPublishedCoverage({
-        targetPublicationId,
-        targetSeason,
-        targetWeek,
-      });
+      if(optionalMediaOnly){
+        setCoverageRefreshResult({newsroom:'skipped',podcast:'skipped',errors:[]});
+      }else{
+        await refreshPublishedCoverage({
+          targetPublicationId,
+          targetSeason,
+          targetWeek,
+        });
+      }
     }catch(error){
+      if(!careerWriteCompleted && uploadedGamePhotoAssets.length){
+        await Promise.allSettled(uploadedGamePhotoAssets.map((asset)=>deleteNewsroomMedia({firebaseApp,storagePath:asset.storagePath})));
+      }
+      if(!careerWriteCompleted && uploadedOfficialArticleMedia.length){
+        await Promise.allSettled(uploadedOfficialArticleMedia.map((entry)=>deleteNewsroomMedia({firebaseApp,storagePath:entry.storagePath})));
+      }
+      setGamePhotoError(error?.message || '');
       setPublishError(error?.message || 'DynastyHQ could not publish this verified week. Nothing was intentionally changed.');
     }finally{
       setPublishing(false);
@@ -2685,8 +3069,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   };
 
   const closeSafe=()=>{
-    if(scanning || rtgScanning || coverageScanning || publishing || coverageRefreshBusy) return;
+    if(scanning || rtgScanning || coverageScanning || gamePhotoUploading || publishing || coverageRefreshBusy) return;
     revokeFiles(files);
+    revokeFiles(gamePhotos);
     onClose();
   };
 
@@ -2728,7 +3113,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
                 <button className={'processing-drop '+(dragging?'dragging':'')} onClick={()=>inputRef.current?.click()} onDragEnter={(event)=>{event.preventDefault();setDragging(true)}} onDragOver={(event)=>event.preventDefault()} onDragLeave={(event)=>{event.preventDefault();setDragging(false)}} onDrop={(event)=>{event.preventDefault();setDragging(false);addFiles(event.dataTransfer.files)}}>
                   <span><Upload/></span>
                   <strong>{files.length?'ADD MORE GAME SCREENS':'DROP GAME SCREENSHOTS HERE'}</strong>
-                  <small>Final score · Player stats · Team stats · EA SPORTS Network pages</small>
+                  <small>Final score · Player stats · Team stats · Scoring summary</small>
                   <em>Choose Screens</em>
                 </button>
                 <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(event)=>{addFiles(event.target.files);event.target.value=''}}/>
@@ -2760,12 +3145,16 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
                   ['Your player line','Pass YDS/TD, rush YDS/TD and interceptions.',true],
                   ['Team comparison','Total Offense, first downs, turnovers, rush/pass yards.',false],
                   ['Rankings','Only when visibly attached to the correct team.',false],
-                  ['EA SPORTS Network','Recognizes article pages without treating them as stats.',false],
                 ].map(([title,sub,required])=><div key={title}><i className={required?'required':''}>{required?<Check/>:<PlusIcon/>}</i><span><b>{title}</b><small>{sub}</small></span><em>{required?'CORE':'SUPPORTED'}</em></div>)}
                 <p><ShieldCheck/>Visible zeroes remain valid. Cropped or ambiguous values are omitted instead of guessed.</p>
               </aside>
             </div>
 
+            {hasSavedGame && <div className="processing-saved-shortcut">
+              <ShieldCheck/>
+              <span><b>THIS WEEK IS ALREADY SAVED.</b><small>You can leave the verified game and RTG data untouched and jump straight to optional Coverage, EA SPORTS Network, or Game Photos.</small></span>
+              <button className="secondary" disabled={scanning} onClick={()=>{setRtgSkipped(true);setCoverageSkipped(false);setPhase('coverage')}}>SKIP TO OPTIONAL COVERAGE<ChevronRight/></button>
+            </div>}
             <div className="processing-actions">
               <button className="secondary" onClick={closeSafe}>CANCEL</button>
               <button className="primary" disabled={!files.length||scanning} onClick={scanGameData}>{scanning?'RUNNING REAL SCANNER…':'SCAN GAME DATA'}<ChevronRight/></button>
@@ -2904,8 +3293,8 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               <div>
                 <span>EA SPORTS NETWORK · OPTIONAL</span>
                 <h3>{officialSaved?'Official in-game coverage is attached to this week.':'Add the in-game EA Sports Network article.'}</h3>
-                <p>Upload the article page here. DynastyHQ preserves it as official source coverage in the Newsroom without mixing it into generated journalism.</p>
-                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'}</small>)}</div>}
+                <p>Upload every screenshot page for the same EA SPORTS Network article at once, in reading order. DynastyHQ stitches the visible text into one recap, removes overlap, and preserves each original page.</p>
+                {officialArticles.length>0 && <div className="official-article-list">{officialArticles.map((entry,index)=><small key={entry.headline+'-'+index}><Check/>{entry.headline || 'EA SPORTS Network article'} · {entry.pageCount || entry.sourcePages?.length || 1} PAGE{(entry.pageCount || entry.sourcePages?.length || 1)===1?'':'S'}</small>)}</div>}
                 {officialProgress && <em className="official-upload-progress">{officialProgress}</em>}
                 {officialError && <em className="official-upload-error">{officialError}</em>}
               </div>
@@ -2921,21 +3310,58 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-actions">
               <button className="secondary" onClick={()=>setPhase('rtg')}><ChevronLeft/>RTG STATUS</button>
               {!coverageAdded && <button className="secondary" onClick={()=>{setCoverageSkipped(true);setPhase('ready')}}>SKIP OPTIONAL COVERAGE</button>}
-              <button className="primary" disabled={coverageScanning || officialScanning || (!coverageAdded && !coverageSkipped && !officialSaved)} onClick={()=>setPhase('ready')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':officialSaved?'CONTINUE WITH EA ARTICLE':'CONTINUE'}<ChevronRight/></button>
+              <button className="primary" disabled={coverageScanning || officialScanning || (!coverageAdded && !coverageSkipped && !officialSaved)} onClick={()=>setPhase('photos')}>{coverageAdded?'ACCEPT COVERAGE INTO PACKET':officialSaved?'CONTINUE WITH EA ARTICLE':'CONTINUE'}<ChevronRight/></button>
+            </div>
+          </section>}
+
+          {phase==='photos' && <section className="processing-stage processing-photos">
+            <div className="processing-stage-head">
+              <span>STEP 5 · GAME PHOTOS</span>
+              <h1>BUILD THIS WEEK'S PHOTO POOL.</h1>
+              <p>Add up to 12 screenshots or game photos from this exact matchup. They stay tied to Season {data.season}, Week {game.week} and {game.opponent}, and DynastyHQ will prefer them automatically anywhere this week's imagery is needed.</p>
+            </div>
+
+            <div className="game-photo-boundary"><ShieldCheck/><span><b>STRICT WEEK BOUNDARY</b><small>These photos can auto-fill this week only. They cannot appear in another season or week unless you manually choose one for a specific article.</small></span></div>
+
+            <div className="game-photo-upload-card">
+              <Camera/>
+              <div><span>WEEK {game.week} PHOTO POOL · OPTIONAL</span><h3>{gamePhotos.length ? `${gamePhotos.length} photo${gamePhotos.length===1?'':'s'} ready` : 'Add game photos for this matchup.'}</h3><p>Choose them now. Cloud upload happens only after your final Process Week confirmation.</p></div>
+              <button type="button" disabled={gamePhotoUploading} onClick={()=>gamePhotoInputRef.current?.click()}><Upload/>{gamePhotos.length?'ADD MORE PHOTOS':'CHOOSE GAME PHOTOS'}</button>
+              <input ref={gamePhotoInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{addGamePhotos(event.target.files);event.target.value=''}}/>
+            </div>
+
+            {gamePhotos.length>0 && <div className="game-photo-grid">
+              {gamePhotos.map((entry,index)=><article key={entry.id}>
+                <img src={entry.url} alt={`Week ${game.week} game photo ${index+1}`}/>
+                <span><b>{entry.name}</b><small>Season {data.season} · Week {game.week} · {game.opponent}</small></span>
+                <button type="button" onClick={()=>removeGamePhoto(entry.id)} aria-label={`Remove ${entry.name}`}><X/></button>
+              </article>)}
+            </div>}
+
+            {gamePhotoError && <div className="scanner-error scanner-inline"><Shield/><span>{gamePhotoError}</span></div>}
+            {gamePhotoProgress && <div className="scanner-inline-status"><Upload/><span>{gamePhotoProgress}</span></div>}
+
+            <div className="processing-actions">
+              <button className="secondary" onClick={()=>setPhase('coverage')}><ChevronLeft/>COVERAGE</button>
+              {!gamePhotos.length && <button className="secondary" onClick={()=>{setGamePhotosSkipped(true);setPhase('ready')}}>SKIP GAME PHOTOS</button>}
+              <button className="primary" disabled={gamePhotoUploading} onClick={()=>setPhase('ready')}>{gamePhotos.length?'ACCEPT PHOTO POOL':'CONTINUE WITHOUT PHOTOS'}<ChevronRight/></button>
             </div>
           </section>}
 
           {phase==='ready' && <section className="processing-stage processing-ready">
             <div className="ready-check"><Check/></div>
-            <span className="ready-kicker">STEP 5 · PROCESS WEEK</span>
+            <span className="ready-kicker">STEP 6 · PROCESS WEEK</span>
             <h1>WEEK {game.week} IS READY.</h1>
-            <p>Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.</p>
+            <p>{hasSavedGame && !selectedGameFacts.length
+              ? 'The existing verified game and RTG data will stay untouched. Only the optional coverage or media you added will be attached when you confirm below.'
+              : 'Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.'}</p>
 
             <div className="ready-status-grid">
-              <div className="done"><Upload/><span><small>GAME DATA</small><strong>{selectedGameFacts.length} FACTS REVIEWED</strong></span></div>
+              <div className="done"><Upload/><span><small>GAME DATA</small><strong>{hasSavedGame && !selectedGameFacts.length?'SAVED GAME PRESERVED':selectedGameFacts.length+' FACTS REVIEWED'}</strong></span></div>
               <div className={rtgApproved.length?'done':'skipped'}><Sparkles/><span><small>RTG STATUS</small><strong>{rtgApproved.length?`${rtgApproved.length} FACTS READY`:(rtgSkipped?'NO CHANGES':'NOT SCANNED')}</strong></span></div>
               <div className={coverageAdded?'done':'skipped'}><Newspaper/><span><small>COVERAGE DATA</small><strong>{coverageAdded?`${coverageApproved.length} FACTS READY`:'OPTIONAL · SKIPPED'}</strong></span></div>
               <div className={officialSaved?'official':'skipped'}><Shield/><span><small>EA SPORTS NETWORK</small><strong>{officialSaved?'DETECTED':'NOT INCLUDED'}</strong></span></div>
+              <div className={readyGamePhotoCount?'done':'skipped'}><Camera/><span><small>GAME PHOTOS</small><strong>{readyGamePhotoCount?`${readyGamePhotoCount} ${publishResult?'SAVED':'READY'}`:(gamePhotosSkipped?'OPTIONAL · SKIPPED':'NOT INCLUDED')}</strong></span></div>
             </div>
 
             <section className="ready-builds">
@@ -2952,7 +3378,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
             {publishError && <div className="publish-result-card error"><Shield/><span><b>WEEK NOT SAVED</b><small>{publishError}</small></span></div>}
 
-            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts. A safety checkpoint was created before the write.</small></span></div>}
+            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts · {publishResult.gamePhotoCount || 0} game photos. A safety checkpoint was created before the write.</small></span></div>}
 
             {publishResult && coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>BUILDING POSTGAME COVERAGE</b><small>Writing the Newsroom edition and full Podcast transcript from the verified saved week. NotebookLM material updates with the transcript. Audio is not generated here.</small></span></div>}
 
@@ -2974,14 +3400,16 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               <ShieldCheck/>
               <div>
                 <span>FINAL OWNER CONFIRMATION</span>
-                <h3>{hasSavedGame?'Update this published week?':'Publish this verified week?'}</h3>
-                <p>{hasSavedGame
-                  ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. After the protected save, the Newsroom edition and Podcast transcript/NotebookLM material will regenerate automatically from the corrected verified facts. Existing audio is never regenerated automatically.'
-                  : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle, save optional Coverage Data, then automatically write the Newsroom edition and Podcast transcript/NotebookLM material. Audio remains an explicit owner step.'}</p>
+                <h3>{hasSavedGame && !selectedGameFacts.length?'Attach optional media to this saved week?':hasSavedGame?'Update this published week?':'Publish this verified week?'}</h3>
+                <p>{hasSavedGame && !selectedGameFacts.length
+                  ? 'DynastyHQ will preserve the existing verified game and RTG data for Season '+data.season+', Week '+game.week+' and attach only the optional EA SPORTS Network, Coverage, or Game Photo material you added.'
+                  : hasSavedGame
+                    ? 'DynastyHQ will update only the selected Season '+data.season+', Week '+game.week+' archive. After the protected save, the Newsroom edition and Podcast transcript/NotebookLM material will regenerate automatically from the corrected verified facts. Existing audio is never regenerated automatically.'
+                    : 'DynastyHQ will publish Season '+data.season+', Week '+game.week+', advance the live career week, create the Game Log + Fact Ledger + Chronicle, save optional Coverage Data, then automatically write the Newsroom edition and Podcast transcript/NotebookLM material. Audio remains an explicit owner step.'}</p>
               </div>
               <div>
                 <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('')}}>CANCEL</button>
-                <button className="primary danger-confirm" disabled={publishing} onClick={publishVerifiedPacket}>{publishing?'SAVING VERIFIED WEEK…':hasSavedGame?'YES · UPDATE WEEK':'YES · PUBLISH WEEK'}</button>
+                <button className="primary danger-confirm" disabled={publishing} onClick={publishVerifiedPacket}>{publishing?'SAVING VERIFIED WEEK…':hasSavedGame && !selectedGameFacts.length?'YES · ATTACH OPTIONAL MEDIA':hasSavedGame?'YES · UPDATE WEEK':'YES · PUBLISH WEEK'}</button>
               </div>
             </section>}
 
@@ -2989,7 +3417,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
               {!publishResult && <button className="secondary" disabled={publishing} onClick={()=>{setPublishConfirm(false);setPublishError('');setPhase('coverage')}}><ChevronLeft/>BACK</button>}
               {publishResult
                 ? <button className="primary ready-button" disabled={coverageRefreshBusy} onClick={closeSafe}>{coverageRefreshBusy?'BUILDING COVERAGE…':'CLOSE & VIEW SAVED WEEK'}<ChevronRight/></button>
-                : <button className="primary ready-button" disabled={publishing} onClick={()=>{setPublishError('');setPublishConfirm(true)}}>{hasSavedGame?'UPDATE VERIFIED WEEK':'PUBLISH VERIFIED WEEK'}<ChevronRight/></button>}
+                : <button className="primary ready-button" disabled={publishing} onClick={()=>{setPublishError('');setPublishConfirm(true)}}>{hasSavedGame && !selectedGameFacts.length?'ATTACH OPTIONAL MEDIA':hasSavedGame?'UPDATE VERIFIED WEEK':'PUBLISH VERIFIED WEEK'}<ChevronRight/></button>}
             </div>
           </section>}
         </main>
@@ -3003,7 +3431,7 @@ function PlusIcon(){
 }
 
 function RadioIcon(){
-  return <span className="processing-radio"><i/><i/><i/></span>;
+  return <RadioTower className="ea-broadcast-icon" aria-hidden="true"/>;
 }
 
 function PageVisualEditor({open,target,setTarget,visual,busy,onClose,onUpload,onReset,onMode,onPosition,onApplyAll}){
@@ -3353,7 +3781,10 @@ const liveCareerTarget=(data)=>{
     ? seasonSchedule.entries
     : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
   const scheduled=entries.find((entry)=>Number(entry?.week)===week) || null;
-  const isBye=Boolean(setup.isBye || scheduled?.isBye);
+  // The season schedule is the authoritative source for the active week.
+  // currentWeekSetup can lag behind after schedule/week updates, so only
+  // fall back to it when no schedule row exists for the live week.
+  const isBye=scheduled ? Boolean(scheduled.isBye) : Boolean(setup.isBye);
   const selectedIsLive=Number(data?.season)===season && Number(data?.week)===week;
   const fallbackOpponent=selectedIsLive
     ? data?.game?.opponent
@@ -3362,7 +3793,7 @@ const liveCareerTarget=(data)=>{
     season,
     week,
     isBye,
-    opponent:String(setup.opponent || scheduled?.opponent || fallbackOpponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
+    opponent:String(scheduled?.opponent || setup.opponent || fallbackOpponent || (isBye?'BYE':'NEXT OPPONENT')).toUpperCase(),
   };
 };
 
@@ -3386,11 +3817,45 @@ function ScoreRibbon({data}){
   </div>;
 }
 
-function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,notify}){
+const liveCareerNextGame=(data)=>{
+  const state=data?.state || {};
+  const season=Number(state.currentSeason || data?.season || 1) || 1;
+  const currentWeek=Number(state.currentWeek ?? data?.week ?? 0) || 0;
+  const seasonSchedule=(state.seasonSchedules || []).find((entry)=>Number(entry?.season || 1)===season) || {};
+  const entries=Array.isArray(seasonSchedule.entries)
+    ? seasonSchedule.entries
+    : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
+  const nextPlayable=entries
+    .filter((entry)=>entry && !entry.isBye && String(entry.opponent || '').trim())
+    .sort((a,b)=>(Number(a.week)||0)-(Number(b.week)||0))
+    .find((entry)=>{
+      const status=String(entry.status || '').trim().toLowerCase();
+      return Number(entry.week)>=currentWeek && entry.completed!==true && status!=='completed';
+    });
+  if(nextPlayable){
+    return {
+      season,
+      week:Number(nextPlayable.week)||currentWeek,
+      opponent:String(nextPlayable.opponent || 'NEXT OPPONENT').toUpperCase(),
+    };
+  }
+  const liveTarget=liveCareerTarget(data);
+  return {
+    season:liveTarget.season || season,
+    week:liveTarget.week || currentWeek,
+    opponent:liveTarget.isBye ? 'NEXT OPPONENT' : liveTarget.opponent,
+  };
+};
+
+function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialArticle,openPodcast,openArchiveMoment,notify}){
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
-  const matchup=pregame ? {week:data.game.week,opponent:data.game.opponent} : data.next;
+  const liveNextGame=liveCareerNextGame(data);
+  const selectedIsLive=Number(data?.season)===Number(liveNextGame.season) && Number(data?.week)===Number(liveNextGame.week);
+  const matchup=liveNextGame;
   const seasonTD=(Number(data.totals?.passTD)||0)+(Number(data.totals?.rushTD)||0);
+  const officialStories=Array.isArray(data.news?.officialArticles)?data.news.officialArticles:[];
+  const latestOfficial=officialStories[0] || null;
   return <div className={'page home-page '+(pregame?'pregame-home':'postgame-home')}>
     <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="hero-overlay"/>
@@ -3422,10 +3887,10 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
 
         <div className="hero-actions">
           {pregame ? <>
-            <button className="yellow" onClick={()=>go('gamehub')}><CalendarDays/>Open Week {data.game.week} Hub<ChevronRight/></button>
+            <button className="yellow" onClick={()=>openArchiveMoment(data.season,data.game.week,'gamehub')}><CalendarDays/>Open Week {data.game.week} Hub<ChevronRight/></button>
             <button className="outline" onClick={()=>go('career')}><TrendingUp/>View season progress</button>
           </> : <>
-            <button className="yellow" onClick={openArticle}><CalendarDays/>Open game recap<ChevronRight/></button>
+            <button className="yellow" onClick={()=>openArticle(data.news?.article?.id || '')}><CalendarDays/>Open game recap<ChevronRight/></button>
             <button className="outline" onClick={()=>go('gamehub')}><BarChart3/>View verified stats</button>
           </>}
         </div>
@@ -3440,13 +3905,13 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
 
     <section className="home-cards">
       <article className="dark-card next-week reference-next-week">
-        <CardHeader title={pregame?'THIS WEEK':'YOUR NEXT WEEK'}/>
+        <CardHeader title="YOUR NEXT GAME"/>
         <div className="next-body">
           <Logo team={matchup.opponent} type="big"/>
           <div><small>WEEK {matchup.week}</small><h3>{matchup.opponent}</h3></div>
         </div>
-        <p>{pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'Keep building. Prepare for your next opponent in your career journey.'}</p>
-        <button className="yellow" onClick={()=>go('gamehub')}><CalendarDays/>{pregame?'Open this week':'Prepare next week'}<ChevronRight/></button>
+        <p>{selectedIsLive && pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'This is the next unplayed game in your live career, even while you browse older weeks.'}</p>
+        <button className="yellow" onClick={()=>openArchiveMoment(liveNextGame.season,liveNextGame.week,'gamehub')}><CalendarDays/>{selectedIsLive && pregame?'OPEN THIS GAME':'PREPARE NEXT GAME'}<ChevronRight/></button>
       </article>
 
       <article className="dark-card wrap-card reference-wrap">
@@ -3469,6 +3934,16 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
           <div><h3>{pregame?`WEEK ${data.game.week} COVERAGE AWAITS`:data.news.headline}</h3><p>{pregame?'The Newsroom story and Huddle episode will populate after this game is completed and archived.':data.news.dek}</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/>
         </div>
+        {!pregame && latestOfficial && <button className="home-official-coverage home-official-feature" onClick={openOfficialArticle}>
+          <div className="home-official-feature-head">
+            <RadioIcon/>
+            <div><b>EA SPORTS NETWORK</b><small>OFFICIAL NATIONAL COVERAGE</small></div>
+            <em>OFFICIAL</em>
+          </div>
+          <strong className="home-official-headline">{latestOfficial.headline || 'Official in-game coverage'}</strong>
+          <p className="home-official-dek">{latestOfficial.dek || latestOfficial.summary || 'Open the original EA SPORTS Network coverage captured from this week.'}</p>
+          <div className="home-official-cta">OPEN ORIGINAL STORY<ChevronRight/></div>
+        </button>}
         <button className={'pod-mini '+(pregame?'pending-media':'')} onClick={()=>pregame?notify('The Huddle will unlock after this week is completed.'):openPodcast('episode')}>
           <img src={podcastEpisodeCover || podcastCover} alt="The Huddle"/>
           <span className="pod-copy"><b>THE HUDDLE</b><small>{pregame?'Episode generates after the final':data.podcast.title}</small><em>{pregame?'WAITING':data.podcast.duration}</em></span>
@@ -3491,7 +3966,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openPodcast,no
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
+function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArticle,openPodcast,openProcessing,statsTab,setStatsTab,notify}){
   const [detailOpen,setDetailOpen]=useState('');
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
@@ -3500,6 +3975,8 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
   const activeOpponent=liveCareerTarget(data);
   const prepIsCurrent=true;
   const verifiedFacts=data.podcast?.sourceFacts || [];
+  const officialStories=Array.isArray(data.news?.officialArticles)?data.news.officialArticles:[];
+  const latestOfficial=officialStories[0] || null;
   const rtg=data.rtg || {};
   const developmentFacts=verifiedFacts.filter((fact)=>/rtg\.|overall|development|coach trust|skill point|energy|gpa|wear/i.test(`${fact?.key||''} ${fact?.label||''}`));
   const copyPrepChecklist=async()=>{
@@ -3589,6 +4066,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openPodcast,open
           <CoverageRow icon={Newspaper} title="Newsroom edition" sub={pregame?'Generates after the completed week.':'Game recap and analysis.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Newsroom coverage will unlock after the game.'):go('newsroom')}/>
           <CoverageRow icon={Mic2} title="Podcast transcript" sub={pregame?'Generates after the completed week.':'Full episode transcript.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('Podcast coverage will unlock after the game.'):openPodcast('transcript')}/>
           <CoverageRow icon={BookOpen} title="NotebookLM pack" sub={pregame?'Generates after the completed week.':'Game files and key moments.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('NotebookLM material will unlock after the game.'):openPodcast('notebook')}/>
+          {!pregame && latestOfficial && <CoverageRow icon={RadioIcon} title="EA SPORTS Network" sub={latestOfficial.headline || 'Official in-game coverage attached.'} status="READY" onClick={openOfficialArticle}/>}
           <button className="yellow full" onClick={()=>pregame?notify('Coverage opens after the final is processed.'):go('newsroom')}><Zap/>{pregame?'COVERAGE AFTER GAME':'OPEN COVERAGE'}<ChevronRight/></button>
         </article>
 
@@ -3748,10 +4226,59 @@ function PodcastPage({
     !notebookIsCanonicalStatDuplicate(fact,data)
     && !notebookIsScoringFact(fact)
   )));
-  const notebookPack=notebookSourcePackText({data,episode,facts});
-  const downloadNotebookPack=()=>downloadPreviewText(notebookPack,'DynastyHQ-S'+data.season+'-W'+game.week+'-NotebookLM-Source-Pack.txt');
+  const latestNotebookSelection=latestNotebookGameSelection(data.state || {});
+  const latestNotebookData=latestNotebookSelection
+    ? derivePreviewData(data.state,{
+      season:latestNotebookSelection.season,
+      week:latestNotebookSelection.week,
+    })
+    : null;
+  const selectedHasCompletedGame=Boolean(game.raw && game.opponent && game.opponent!=='NO GAME');
+  const notebookTargetData=selectedHasCompletedGame ? data : (latestNotebookData || data);
+  const notebookTargetEpisode=notebookTargetData.podcast || episode;
+  const notebookTargetFacts=notebookTargetEpisode.sourceFacts || [];
+  const notebookTargetGame=notebookTargetData.game || {};
+  const notebookProducerPack=buildNotebookLmProducerPack({
+    data:notebookTargetData,
+    episode:notebookTargetEpisode,
+    facts:notebookTargetFacts,
+  });
+  const notebookPack=notebookProducerPack.text;
+  const latestNotebookPack=latestNotebookData
+    ? buildNotebookLmProducerPack({
+      data:latestNotebookData,
+      episode:latestNotebookData.podcast || {},
+      facts:latestNotebookData.podcast?.sourceFacts || [],
+    })
+    : null;
+  const notebookUsesLatestFallback=(
+    Number(notebookTargetData.season)!==Number(data.season)
+    || Number(notebookTargetGame.week)!==Number(game.week)
+  );
+  const latestNotebookIsDifferent=Boolean(latestNotebookPack && (
+    Number(latestNotebookPack.meta.season)!==Number(notebookProducerPack.meta.season)
+    || Number(latestNotebookPack.meta.week)!==Number(notebookProducerPack.meta.week)
+  ));
+  const downloadNotebookPack=()=>downloadPreviewText(
+    notebookPack,
+    notebookProducerPack.meta.suggestedFileName,
+  );
+  const downloadLatestNotebookPack=()=>{
+    if(!latestNotebookPack) return notify('No completed uploaded game is available for a NotebookLM Producer Pack yet.');
+    downloadPreviewText(latestNotebookPack.text,latestNotebookPack.meta.suggestedFileName);
+  };
+  const copyNotebookCustomizePrompt=async()=>{
+    try{
+      await navigator.clipboard.writeText(notebookProducerPack.customizePrompt);
+      notify('NotebookLM Customize prompt copied.');
+    }catch{
+      notify('Your browser could not copy the NotebookLM prompt. The same prompt is included at the bottom of the downloaded Producer Pack.');
+    }
+  };
   const downloadTranscript=()=>downloadPreviewText(episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt');
   const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
+  const actualAudioDurationSeconds=Number(audioDuration || episode.masterAudioDurationSeconds)||0;
+  const featuredDuration=episode.audioReady && actualAudioDurationSeconds>0 ? formatPreviewClock(actualAudioDurationSeconds) : (episode.duration || '—');
   const hasTranscript=Boolean(episode.segments?.length);
   const masterFileName=episode.masterAudioFileName || '';
   const masterSize=episode.masterAudioSizeBytes ? `${(episode.masterAudioSizeBytes/1024/1024).toFixed(1)} MB` : '';
@@ -3950,6 +4477,7 @@ function PodcastPage({
 
     try{
       await patchMasterEpisode({audioStatus:'uploading-master'});
+      const masterAudioDurationSeconds=await previewAudioDurationForFile(file);
       const dataBase64=await previewFileToBase64(file);
       const mimeType=previewAudioMimeFor(file);
       const piece={
@@ -3985,6 +4513,7 @@ function PodcastPage({
         masterAudioFileName:file.name || 'NotebookLM Audio Overview',
         masterAudioMimeType:mimeType,
         masterAudioSizeBytes:file.size,
+        masterAudioDurationSeconds:masterAudioDurationSeconds>0?Math.round(masterAudioDurationSeconds):0,
         masterAudioUploadedAt:savedAt,
       });
 
@@ -4092,7 +4621,7 @@ function PodcastPage({
           </span>
         </div>
         <div className="pod-studio-actions">
-          <button onClick={downloadNotebookPack}><FileText/>DOWNLOAD SOURCE PACK</button>
+          <button onClick={downloadNotebookPack}><FileText/>DOWNLOAD PRODUCER PACK</button>
           <button
             className={isNotebookMaster?'replace-master':'attach-master'}
             disabled={masterBusy}
@@ -4147,7 +4676,7 @@ function PodcastPage({
           <h2>{episode.title || `Week ${game.week} Recap`}</h2>
           <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
           <div className="pod-embed-meta">
-            <b>{episode.duration || '—'}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
+            <b>{featuredDuration}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
           </div>
         </div>
         <button className="pod-embed-play" onClick={playEpisode} aria-label={playing?'Pause episode':'Play episode'}>
@@ -4168,7 +4697,7 @@ function PodcastPage({
           />}
           <div>
             <span>{episode.audioReady?(audioLoading?'LOADING':playing?'PLAYING':'AUDIO READY'):'SCRIPT ONLY'}</span>
-            <b>{episode.audioReady && audioDuration ? `${formatPreviewClock(audioCurrentTime)} / ${formatPreviewClock(audioDuration)}` : (episode.duration || '—')}</b>
+            <b>{episode.audioReady && actualAudioDurationSeconds ? `${formatPreviewClock(audioCurrentTime)} / ${formatPreviewClock(actualAudioDurationSeconds)}` : featuredDuration}</b>
           </div>
         </div>
         {audioUrl && <audio
@@ -4267,24 +4796,47 @@ function PodcastPage({
       {podcastTab==='notebook' && <div className="notebook-layout">
         <article className="notebook-card">
           <div className="notebook-icon"><Zap/></div>
-          <span className="section-kicker">NOTEBOOKLM SOURCE PACK</span>
-          <h2>Week {game.week} • {game.opponent}</h2>
-          <p>This view is grounded in the same saved facts and transcript attached to the real DynastyHQ week.</p>
-          <div className="source-list">
-            <div><Check/><span><b>Game result</b><small>{data.player.school} {game.us}–{game.them} {game.opponent} · one canonical result line.</small></span></div>
-            <div><Check/><span><b>My player stat line</b><small>Passing, rushing, total offense, touchdowns and interceptions appear once.</small></span></div>
-            <div><Check/><span><b>Team stats</b><small>Saved team/opponent totals appear once with duplicate source facts removed.</small></span></div>
-            <div><Check/><span><b>Other individual + scoring context</b><small>{notebookContextFacts.length} unique supporting facts · {scoringFacts.length} unique scoring references.</small></span></div>
-            <div><Check/><span><b>RTG facts excluded</b><small>No overall, coach trust, skill points, wear, GPA, brand or other RTG status is exported.</small></span></div>
-            <div><Check/><span><b>Podcast transcript</b><small>{episode.segments?.length || 0} saved transcript segments remain complete and unchanged.</small></span></div>
+          <span className="section-kicker">NOTEBOOKLM PRODUCER PACK 2.0</span>
+          <h2>Week {notebookProducerPack.meta.week} • {notebookProducerPack.meta.opponent}</h2>
+          <p>A producer-first research packet built for NotebookLM Deep Dive audio: story hierarchy first, then verified football detail, recent context and the full DynastyHQ transcript.</p>
+
+          <div className="notebook-target-banner">
+            <span>EXPORT TARGET</span>
+            <b>Season {notebookProducerPack.meta.season} · Week {notebookProducerPack.meta.week} · {notebookProducerPack.meta.opponent}</b>
+            <small>{notebookUsesLatestFallback
+              ? 'You are viewing a week without a completed saved game, so DynastyHQ automatically targets the latest uploaded game.'
+              : latestNotebookIsDifferent
+                ? 'This export follows the selected archive week. The latest uploaded-game pack is also available below.'
+                : 'Latest completed uploaded game.'}</small>
           </div>
-          <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD NOTEBOOKLM SOURCE PACK<ChevronRight/></button>
+
+          <div className="source-list">
+            <div><Check/><span><b>Producer brief + story hierarchy</b><small>{notebookProducerPack.meta.storylineCount} verified/current-week angles tell NotebookLM what deserves the most discussion.</small></span></div>
+            <div><Check/><span><b>Canonical game + team comparison</b><small>Result, tracked-player core line and team/opponent stats are presented once instead of repeated in several forms.</small></span></div>
+            <div><Check/><span><b>Scoring timeline / drives</b><small>{notebookProducerPack.meta.scoringCount} de-duplicated scoring references are kept as football chronology.</small></span></div>
+            <div><Check/><span><b>Complete uploaded screenshot stats</b><small>{notebookProducerPack.meta.screenshotStatCount || notebookProducerPack.meta.supportingFactCount} published screenshot stats are preserved and organized into passing, rushing, receiving, defense, kicking, punting, returns and other verified data.</small></span></div>
+            <div><Check/><span><b>Previous-game + recent trend context</b><small>{notebookProducerPack.meta.recentGameCount} recent completed games can provide continuity without replacing the current game.</small></span></div>
+            <div><Check/><span><b>RTG mechanics excluded</b><small>No overall, coach trust, skill points, wear, GPA, followers, NIL systems or progression-menu data is exported.</small></span></div>
+            <div><Check/><span><b>Full DynastyHQ transcript</b><small>{notebookProducerPack.meta.hasTranscript?'Complete saved transcript included as a secondary editorial reference.':'No saved transcript exists for this game yet; the verified research packet still downloads.'}</small></span></div>
+          </div>
+
+          <div className="notebook-actions">
+            <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD WEEK {notebookProducerPack.meta.week} PRODUCER PACK<ChevronRight/></button>
+            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY OPTIONAL DEEP DIVE FOCUS</button>
+            {latestNotebookIsDifferent && latestNotebookPack && <button className="ghost latest-pack" onClick={downloadLatestNotebookPack}><Archive/>DOWNLOAD LATEST GAME · W{latestNotebookPack.meta.week} {latestNotebookPack.meta.opponent}</button>}
+          </div>
         </article>
+
         <aside className="notebook-tip">
           <BookOpen/>
-          <span>SOURCE PACK READY</span>
-          <h3>Same saved week. Exportable source material.</h3>
-          <p>The download keeps one canonical copy of the result, your stat line and team stats, then adds only de-duplicated supporting individual/scoring context, chapter titles and the complete transcript. RTG facts are excluded.</p>
+          <span>BUILT FOR NOTEBOOKLM AUDIO OVERVIEW</span>
+          <h3>Producer brief first. Deep research underneath.</h3>
+          <p>The downloaded pack already contains the show, host-opening and research guidance. In NotebookLM, choose Deep Dive and set the length to Short. The copy button is optional extra reinforcement, not something that has to live inside every source pack.</p>
+          <div className="notebook-tip-stats">
+            <span><b>{notebookProducerPack.meta.storylineCount}</b> storylines</span>
+            <span><b>{notebookProducerPack.meta.scoringCount}</b> scoring references</span>
+            <span><b>{notebookProducerPack.meta.screenshotStatCount || notebookProducerPack.meta.supportingFactCount}</b> screenshot stats</span>
+          </div>
         </aside>
       </div>}
     </section>
@@ -4396,7 +4948,7 @@ function OffseasonPage({data,visual,go,openPodcast,openArticle,notify}){
     <section className="offseason-section offseason-coverage">
       <div className="offseason-section-head"><div><span>SEASON COVERAGE</span><h2>How the season was told</h2></div><Newspaper/></div>
       <div className="offseason-coverage-grid">
-        <article><Newspaper/><span>NEWSROOM · WEEK {data.news.week || data.game.week}</span><strong>{data.news.headline}</strong><p>{data.news.dek}</p><button onClick={openArticle}>READ COVERAGE<ChevronRight/></button></article>
+        <article><Newspaper/><span>NEWSROOM · WEEK {data.news.week || data.game.week}</span><strong>{data.news.headline}</strong><p>{data.news.dek}</p><button onClick={()=>openArticle(data.news?.article?.id || '')}>READ COVERAGE<ChevronRight/></button></article>
         <article><Headphones/><span>THE HUDDLE · WEEK {data.game.week}</span><strong>{data.podcast.title}</strong><p>{data.podcast.summary}</p><button onClick={()=>openPodcast('episode')}>OPEN THE HUDDLE<ChevronRight/></button></article>
         <article><BookOpen/><span>CAREER CHRONICLE</span><strong>Season {o.season || data.season} Archive</strong><p>{data.chronicle?.latestSeason?.entries?.length || 0} saved Chronicle entries are attached to the current season.</p><button onClick={()=>go('chronicle')}>OPEN CHRONICLE<ChevronRight/></button></article>
       </div>
@@ -4563,8 +5115,25 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   const highRush=careerHigh((g)=>Number(g.rushYds)||0);
   const programs=[...new Set(seasons.map((item)=>item.school).filter(Boolean))];
   const mediaCount=seasons.reduce((sum,item)=>sum+(Number(item.mediaCount)||0),0);
+  const officialMediaCount=allEntries.filter((entry)=>entry?.media?.official).length;
   const activeSeasonNumber=Number(active?.season || activeSeason.season || data.season);
   const activeWeekNumber=Number(active?.week ?? data.week);
+  const latestWith=(selector)=>allEntries
+    .slice()
+    .sort((a,b)=>(Number(b.season)||0)-(Number(a.season)||0) || (Number(b.week)||0)-(Number(a.week)||0))
+    .find(selector) || null;
+  const latestNewsroomEntry=latestWith((entry)=>entry?.media?.newsroom);
+  const latestPodcastEntry=latestWith((entry)=>entry?.media?.podcast);
+  const latestOfficialEntry=latestWith((entry)=>entry?.media?.official);
+  const latestLinkedMediaEntry=latestWith((entry)=>entry?.media?.newsroom || entry?.media?.podcast || entry?.media?.official || entry?.media?.photos?.length);
+
+  const openChronicleMedia=(entry,target,tab='')=>{
+    if(!entry){
+      notify('No saved media is available for that Chronicle category yet.');
+      return;
+    }
+    openArchiveMoment(Number(entry.season)||data.season,Number(entry.week)||0,target,tab);
+  };
 
   return <div className="page chronicle-page">
     <section className="chronicle-hero-redesign" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
@@ -4622,14 +5191,24 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
         <div className="chronicle-media-actions">
           <button onClick={()=>active?.media?.newsroom ? openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom') : notify('No Newsroom edition is attached to this career entry.')}><Newspaper/>READ NEWSROOM</button>
           <button onClick={()=>active?.media?.podcast ? openArchiveMoment(activeSeasonNumber,activeWeekNumber,'podcast','episode') : notify('No podcast episode is attached to this career entry.')}><Headphones/>PLAY THE HUDDLE</button>
+          {active?.media?.official && <button onClick={()=>openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom')}><RadioIcon/>OFFICIAL COVERAGE</button>}
           <button onClick={()=>openArchiveMoment(activeSeasonNumber,activeWeekNumber,'gamehub')}><BarChart3/>OPEN GAME DATA</button>
         </div>
       </div>
       <aside className="chronicle-memory-stack">
         <span>MEMORY STACK</span>
-        <article><Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>{active?.media?.newsroom?.headline || 'No article attached'}</strong><p>{active?.media?.newsroom?.dek || 'Newsroom coverage will appear when it exists for this entry.'}</p></div></article>
-        <article><Headphones/><div><small>THE HUDDLE</small><strong>{active?.media?.podcast?.title || 'No episode attached'}</strong><p>{active?.media?.podcast ? (active.media.podcast.finished?'Saved episode with audio ready.':'Saved episode/script attached to this week.') : 'Podcast coverage will appear when it exists for this entry.'}</p></div></article>
-        <article><ImageIcon/><div><small>PHOTO LIBRARY</small><strong>{active?.media?.photos?.length || 0} linked image{active?.media?.photos?.length===1?'':'s'}</strong><p>Career photos remain attached to the week where they were used.</p></div></article>
+        <button className="chronicle-memory-card" disabled={!active?.media?.newsroom} onClick={()=>active?.media?.newsroom && openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom')}>
+          <Newspaper/><div><small>DYNASTYHQ NEWSROOM</small><strong>{active?.media?.newsroom?.headline || 'No article attached'}</strong><p>{active?.media?.newsroom?.dek || 'Newsroom coverage will appear when it exists for this entry.'}</p></div><ChevronRight/>
+        </button>
+        <button className="chronicle-memory-card" disabled={!active?.media?.podcast} onClick={()=>active?.media?.podcast && openArchiveMoment(activeSeasonNumber,activeWeekNumber,'podcast','episode')}>
+          <Headphones/><div><small>THE HUDDLE</small><strong>{active?.media?.podcast?.title || 'No episode attached'}</strong><p>{active?.media?.podcast ? (active.media.podcast.finished?'Saved episode with audio ready.':'Saved episode/script attached to this week.') : 'Podcast coverage will appear when it exists for this entry.'}</p></div><ChevronRight/>
+        </button>
+        <button className={'chronicle-memory-card '+(active?.media?.official?'official-memory':'muted-memory')} disabled={!active?.media?.official} onClick={()=>active?.media?.official && openArchiveMoment(activeSeasonNumber,activeWeekNumber,'newsroom')}>
+          <RadioIcon/><div><small>EA SPORTS NETWORK</small><strong>{active?.media?.official?.headline || 'No official article attached'}</strong><p>{active?.media?.official?.summary || 'Official in-game coverage will appear here when it was preserved with the week.'}</p></div><ChevronRight/>
+        </button>
+        <button className="chronicle-memory-card" disabled={!(active?.media?.photos?.length)} onClick={()=>active?.media?.photos?.length && openArchiveMoment(activeSeasonNumber,activeWeekNumber,active?.media?.newsroom?'newsroom':'gamehub')}>
+          <ImageIcon/><div><small>PHOTO LIBRARY</small><strong>{active?.media?.photos?.length || 0} linked image{active?.media?.photos?.length===1?'':'s'}</strong><p>Open the preserved week where these career photos were used.</p></div><ChevronRight/>
+        </button>
       </aside>
     </section>
 
@@ -4638,7 +5217,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
       <div>
         {entries.length ? entries.map((entry,index)=>{
           const id=String(entry.id||entry.publicationId||`entry-${index}`);
-          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>W{entry.week ?? 0}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}<ChevronRight/></button>;
+          return <button key={id} className={String(moment)===id?'active':''} onClick={()=>setMoment(id)}><span>W{entry.week ?? 0}</span><strong>{entryTitle(entry)}</strong><small>{entrySummary(entry)}</small>{entry.media?.newsroom?<Newspaper/>:<i/>}{entry.media?.podcast?<Headphones/>:<i/>}{entry.media?.official?<RadioIcon/>:<i/>}<ChevronRight/></button>;
         }) : <div className="chronicle-empty-state">No Chronicle entries are saved for this season yet.</div>}
       </div>
     </section>
@@ -4658,10 +5237,11 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
           <article><strong>{highTD.value||0}</strong><span>TOTAL TD</span><small>{highTD.entry ? `Career high · S${highTD.entry.season} W${highTD.entry.week}` : 'No games yet'}</small></article>
           <article><strong>{highRush.value||0}</strong><span>RUSH YDS</span><small>{highRush.entry ? `Career high · S${highRush.entry.season} W${highRush.entry.week}` : 'No games yet'}</small></article>
         </div>}
-        {museumTab==='media' && <div className="museum-record-grid">
-          <article><Newspaper/><strong>{(data.state?.newsroomIssues||[]).length || data.news?.articles?.length || 0}</strong><span>NEWSROOM EDITIONS</span><small>Saved career coverage</small></article>
-          <article><Headphones/><strong>{(data.state?.podcastEpisodes||[]).length || 0}</strong><span>HUDDLE EPISODES</span><small>Saved scripts and shows</small></article>
-          <article><Camera/><strong>{mediaCount}</strong><span>LINKED MEDIA</span><small>Coverage + photos across Chronicle</small></article>
+        {museumTab==='media' && <div className="museum-record-grid museum-media-grid">
+          <button disabled={!latestNewsroomEntry} onClick={()=>openChronicleMedia(latestNewsroomEntry,'newsroom')}><Newspaper/><strong>{(data.state?.newsroomIssues||[]).length || data.news?.articles?.length || 0}</strong><span>NEWSROOM EDITIONS</span><small>{latestNewsroomEntry?'Open latest saved coverage':'No saved coverage yet'}</small><ChevronRight/></button>
+          <button disabled={!latestPodcastEntry} onClick={()=>openChronicleMedia(latestPodcastEntry,'podcast','episode')}><Headphones/><strong>{(data.state?.podcastEpisodes||[]).length || 0}</strong><span>HUDDLE EPISODES</span><small>{latestPodcastEntry?'Open latest saved episode':'No saved episode yet'}</small><ChevronRight/></button>
+          <button disabled={!latestOfficialEntry} onClick={()=>openChronicleMedia(latestOfficialEntry,'newsroom')}><RadioIcon/><strong>{officialMediaCount}</strong><span>OFFICIAL ARTICLES</span><small>{latestOfficialEntry?'Open latest EA SPORTS artifact':'No official article yet'}</small><ChevronRight/></button>
+          <button disabled={!latestLinkedMediaEntry} onClick={()=>openChronicleMedia(latestLinkedMediaEntry,latestLinkedMediaEntry?.media?.newsroom?'newsroom':'gamehub')}><Camera/><strong>{mediaCount}</strong><span>LINKED MEDIA</span><small>{latestLinkedMediaEntry?'Open latest preserved media week':'No linked media yet'}</small><ChevronRight/></button>
         </div>}
         {museumTab==='stops' && <div className="museum-signature-grid">
           {programs.length ? programs.map((school,index)=><article key={school}><span>CAREER STOP {index+1}</span><strong>{school}</strong><p>{seasons.filter((s)=>s.school===school).map((s)=>`Season ${s.season}`).join(' · ')}</p></article>) : <div className="chronicle-empty-state">Career programs will collect here as the journey grows.</div>}
@@ -4671,9 +5251,10 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,officialArticleRequest,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const [archiveOpen,setArchiveOpen]=useState(false);
+  const [officialOpen,setOfficialOpen]=useState(null);
   const articlePhotoInputRef=useRef(null);
   const articlePhotoTargetRef=useRef(null);
   const [articlePhotoBusy,setArticlePhotoBusy]=useState(false);
@@ -4687,6 +5268,16 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
   const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
   const officialStories=Array.isArray(news.officialArticles)?news.officialArticles:[];
+
+  useEffect(()=>{
+    if(!officialArticleRequest || !officialStories.length) return;
+    setArchiveOpen(false);
+    setArticleOpen(false);
+    setSelectedArticleId('');
+    setOfficialOpen(officialStories[0]);
+    window.requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'smooth'}));
+  },[officialArticleRequest,officialStories[0]?.id]);
+
   const newsroomArchive=(Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[])
     .filter((entry)=>entry?.media?.newsroom)
     .slice()
@@ -4703,6 +5294,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
 
   const openSavedStory=(story,label)=>{
     setArchiveOpen(false);
+    setOfficialOpen(null);
     if(!story){
       notify(`No saved ${label} article exists for this edition yet.`);
       return;
@@ -4845,10 +5437,10 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
       <header className="masthead">
         <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
         <div className="journal-tabs">
-          <button className={!articleOpen&&!archiveOpen?'active':''} onClick={()=>{setArchiveOpen(false);setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
+          <button className={!articleOpen&&!archiveOpen&&!officialOpen?'active':''} onClick={()=>{setArchiveOpen(false);setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
           <button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>
           <button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>
-          <button className={archiveOpen?'active':''} onClick={()=>{setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
+          <button className={archiveOpen?'active':''} onClick={()=>{setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
         </div>
       </header>
 
@@ -4868,6 +5460,14 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
             }) : <div className="newsroom-archive-empty"><Archive/><b>No saved Newsroom editions yet.</b><span>Published editions will collect here automatically.</span></div>}
           </div>
         </section>
+      ) : officialOpen ? (
+        <OfficialCoverageReader
+          story={officialOpen}
+          season={data.season}
+          week={news.week || game.week}
+          opponent={game.opponent}
+          onBack={()=>{setOfficialOpen(null);window.scrollTo({top:0,behavior:'smooth'})}}
+        />
       ) : articleOpen ? (
         <NewsroomArticle
           data={data}
@@ -4916,14 +5516,21 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           </section>
 
           {officialStories.length>0 && <section className="ea-network-newsroom">
-            <header><RadioIcon/><div><span>OFFICIAL IN-GAME COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} SAVED</b></header>
+            <header><RadioIcon/><div><span>OFFICIAL NATIONAL COVERAGE</span><h2>EA SPORTS NETWORK</h2></div><b>{officialStories.length} STORY{officialStories.length===1?'':'IES'}</b></header>
             <div>
-              {officialStories.map((entry,index)=><article key={entry.id || entry.headline || index}>
-                <span>{entry.pageLabel || 'EA SPORTS NETWORK'}</span>
-                <h3>{entry.headline || 'Official in-game article'}</h3>
-                {(entry.byline || entry.sourceFileName) && <small>{[entry.byline,entry.sourceFileName].filter(Boolean).join(' · ')}</small>}
-                {entry.body && <p>{entry.body}</p>}
-              </article>)}
+              {officialStories.map((entry,index)=>{
+                const cardPage=entry.sourcePages?.find((page)=>page?.screenshotUrl || page?.imageDataUrl);
+                const cardScreenshot=entry.screenshotUrl || entry.imageDataUrl || cardPage?.screenshotUrl || cardPage?.imageDataUrl || '';
+                return <button key={entry.id || entry.headline || index} className={'ea-network-feature-card '+(cardScreenshot?'has-original':'')} onClick={()=>{setOfficialOpen(entry);window.scrollTo({top:0,behavior:'smooth'})}}>
+                  {cardScreenshot && <div className="ea-network-thumb"><img src={cardScreenshot} alt="Original EA SPORTS Network article preview"/><span>ORIGINAL ARTICLE</span></div>}
+                  <div className="ea-network-card-copy">
+                    <span>OFFICIAL EA SPORTS NETWORK STORY</span>
+                    <h3>{entry.headline || 'Official in-game article'}</h3>
+                    {(entry.dek || entry.summary) && <p>{entry.dek || entry.summary}</p>}
+                    <em className="ea-network-read">OPEN ORIGINAL STORY<ChevronRight/></em>
+                  </div>
+                </button>
+              })}
             </div>
           </section>}
 
@@ -4953,6 +5560,82 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
       )}
     </section>
   </div>;
+}
+
+function OfficialCoverageReader({story,season,week,opponent,onBack}){
+  const sourcePages=Array.isArray(story?.sourcePages)?story.sourcePages:[];
+  const originalPages=sourcePages
+    .filter((page)=>page?.screenshotUrl || page?.imageDataUrl)
+    .map((page)=>({...page,src:page.screenshotUrl || page.imageDataUrl}));
+  if(!originalPages.length && (story?.screenshotUrl || story?.imageDataUrl)){
+    originalPages.push({pageNumber:1,src:story.screenshotUrl || story.imageDataUrl});
+  }
+
+  const savedStitch=story?.stitchedScreenshotUrl || story?.stitchedImageDataUrl || '';
+  const [autoStitch,setAutoStitch]=useState('');
+  const [stitching,setStitching]=useState(false);
+  const [stitchFailed,setStitchFailed]=useState(false);
+  const stitchKey=originalPages.map((page)=>page.src).join('|');
+
+  useEffect(()=>{
+    let active=true;
+    if(savedStitch || !originalPages.length){
+      setAutoStitch('');
+      setStitching(false);
+      setStitchFailed(false);
+      return ()=>{active=false};
+    }
+    setStitching(true);
+    setStitchFailed(false);
+    stitchOfficialArticlePages(originalPages.map((page)=>page.src))
+      .then((result)=>{
+        if(!active) return;
+        setAutoStitch(result.dataUrl);
+        setStitchFailed(false);
+      })
+      .catch((error)=>{
+        console.warn('EA article live auto-stitch failed',error);
+        if(active) setStitchFailed(true);
+      })
+      .finally(()=>{if(active)setStitching(false)});
+    return ()=>{active=false};
+  },[savedStitch,stitchKey]);
+
+  const stitchedSrc=savedStitch || autoStitch;
+
+  return <article className="newsroom-article digital-feature article-skin-local article-skin-ea-official">
+    <div className="newsroom-article-tools">
+      <button className="article-back" onClick={onBack}><ChevronRight className="back-chevron"/>Back to Front Page</button>
+      <span>OFFICIAL • WEEK {week}</span>
+      <div className="ea-official-tool-badge"><RadioIcon/>EA SPORTS NETWORK</div>
+    </div>
+
+    <header className="article-publication-banner ea-official-publication-banner">
+      <div className="article-publication-mark"><RadioIcon/></div>
+      <div className="article-publication-copy">
+        <small>ORIGINAL IN-GAME PUBLICATION</small>
+        <strong>EA SPORTS NETWORK</strong>
+      </div>
+      <div className="article-publication-meta">
+        <span>Season {season}</span>
+        <b>Week {week}</b>
+      </div>
+    </header>
+
+    {stitchedSrc ? <section className="ea-stitched-document ea-auto-stitched" aria-label="Original EA SPORTS Network article">
+      <img src={stitchedSrc} alt="Seamlessly stitched original EA SPORTS Network article"/>
+    </section> : stitching ? <section className="ea-stitching-status">
+      <Sparkles/><div><b>Building the original article view…</b><span>DynastyHQ is cropping the game UI and aligning the saved EA SPORTS Network pages.</span></div>
+    </section> : originalPages.length && stitchFailed ? <section className="ea-stitched-document ea-stitch-fallback" aria-label="Original EA SPORTS Network article pages">
+      {originalPages.map((page,index)=><div key={page.pageNumber || index} className="ea-stitched-page"><img src={page.src} alt={'EA SPORTS Network original article page '+(index+1)}/></div>)}
+    </section> : <section className="ea-original-unavailable">
+      <ImageIcon/>
+      <div>
+        <b>Original EA SPORTS Network screenshot pages are not attached to this older article.</b>
+        <p>Re-upload the original EA SPORTS Network screenshots through Week Processing to restore the publication exactly as it appeared in-game.</p>
+      </div>
+    </section>}
+  </article>;
 }
 
 function NewsroomArticle({data,visual,story,articles,onSelectStory,onBack,onChangeArticlePhoto,articlePhotoBusy,go,openPodcast}){

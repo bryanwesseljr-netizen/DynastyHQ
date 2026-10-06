@@ -17,6 +17,10 @@ const matchWeek = (entry = {}, season = 1, week = 0, publicationId = publication
 const gameMediaFor = (state = {}, issue = null, season = 1, week = 0) => {
   const assets = list(state.newsroomMediaLibrary);
   const wanted = new Set();
+  const weekPublicationId = publicationIdFor(season, week);
+  assets
+    .filter((asset) => clean(asset?.weekPublicationId, 120) === weekPublicationId)
+    .forEach((asset) => wanted.add(asset.id));
   const frontPage = list(state.postgameFrontPages).find((entry) => matchWeek(entry, season, week));
   if (frontPage?.gamePhotoAssetId) wanted.add(frontPage.gamePhotoAssetId);
   if (frontPage?.player?.headshotAssetId) wanted.add(frontPage.player.headshotAssetId);
@@ -99,7 +103,11 @@ const buildMedia = (state = {}, season = 1, week = 0, issue = null) => {
     official: ['official', 'source'].includes(official.kind) ? {
       publicationId,
       headline: clean(official.entry?.headline, 260),
-      summary: clean(official.entry?.summary, 900),
+      summary: clean(official.entry?.summary || official.entry?.dek || official.entry?.body, 900),
+      body: clean(official.entry?.body, 5000),
+      byline: clean(official.entry?.byline, 220),
+      pageLabel: clean(official.entry?.pageLabel, 220),
+      screenshotUrl: clean(official.entry?.screenshotUrl || official.entry?.imageUrl || official.entry?.sourceImageUrl, 1200),
       outlet: 'EA SPORTS Network',
       kind: official.kind,
     } : null,

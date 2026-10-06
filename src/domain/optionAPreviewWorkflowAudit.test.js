@@ -5,25 +5,44 @@ import { readFile } from 'node:fs/promises';
 const sourceUrl = new URL('../option-a-preview/PreviewApp.jsx', import.meta.url);
 const cssUrl = new URL('../option-a-preview/preview.css', import.meta.url);
 
-test('NotebookLM source pack keeps one canonical stat copy, removes RTG material, and preserves the full transcript', async () => {
-  const source = await readFile(sourceUrl, 'utf8');
+test('NotebookLM Producer Pack 2.0 is producer-first, rich, de-duplicated and latest-game aware', async () => {
+  const producerUrl = new URL('./notebookLmProducerPack.js', import.meta.url);
+  const [source, producer] = await Promise.all([
+    readFile(sourceUrl, 'utf8'),
+    readFile(producerUrl, 'utf8'),
+  ]);
 
-  assert.match(source, /NOTEBOOK_CANONICAL_GAME_KEYS/);
-  assert.match(source, /notebookUniqueFacts/);
-  assert.match(source, /notebookIsCanonicalStatDuplicate/);
-  assert.match(source, /MY PLAYER STAT LINE/);
-  assert.match(source, /TEAM STATS/);
-  assert.match(source, /OTHER VERIFIED INDIVIDUAL \/ GAME CONTEXT/);
-  assert.match(source, /SCORING SUMMARY/);
-  assert.match(source, /FULL PODCAST TRANSCRIPT/);
-  assert.match(source, /RTG status and development facts are intentionally excluded/);
-  assert.match(source, /Structured game, team, and player statistics appear only once outside the full transcript/);
-  assert.doesNotMatch(source, /'CURRENT RTG STATUS'/);
-  assert.doesNotMatch(source, /'PLAYER DEVELOPMENT REFERENCES'/);
-  assert.match(source, /DOWNLOAD NOTEBOOKLM SOURCE PACK/);
-  assert.match(source, /DOWNLOAD SOURCE PACK/);
+  assert.match(source, /buildNotebookLmProducerPack/);
+  assert.match(source, /latestNotebookGameSelection/);
+  assert.match(source, /notebookUsesLatestFallback/);
+  assert.match(source, /DOWNLOAD PRODUCER PACK/);
+  assert.match(source, /DOWNLOAD WEEK \{notebookProducerPack\.meta\.week\} PRODUCER PACK/);
+  assert.match(source, /COPY OPTIONAL DEEP DIVE FOCUS/);
+  assert.match(source, /DOWNLOAD LATEST GAME/);
+
+  assert.match(producer, /NOTEBOOKLM PRODUCER PACK 2\.0/);
+  assert.match(producer, /PRODUCER BRIEF — READ THIS FIRST/);
+  assert.match(producer, /KEY STORYLINES/);
+  assert.match(producer, /TEAM COMPARISON/);
+  assert.match(producer, /SCORING TIMELINE \/ DRIVE DETAILS/);
+  assert.match(producer, /COMPLETE VERIFIED SCREENSHOT STAT TABLES/);
+  assert.match(producer, /AUDIO PRIORITY MAP/);
+  assert.match(producer, /GAME AT A GLANCE/);
+  assert.match(producer, /SEASON CONTEXT/);
+  assert.match(producer, /PREVIOUS GAME/);
+  assert.match(producer, /RECENT COMPLETED GAMES/);
+  assert.match(producer, /STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT/);
+  assert.match(producer, /SOURCE RULES — READ BEFORE GENERATING/);
+  assert.doesNotMatch(producer, /RECOMMENDED NOTEBOOKLM CUSTOMIZE PROMPT/);
+  assert.match(producer, /OPENING REQUIREMENT:/);
+  assert.match(producer, /Deep Dive/);
+  assert.match(producer, /Short length setting/);
+  assert.match(producer, /Completion %/);
+  assert.match(producer, /Road to Glory game mechanics/);
+  assert.match(producer, /Every published screenshot statistic is available in the organized stat tables/);
+  assert.match(producer, /prefer the game’s displayed completion percentage/);
+  assert.match(producer, /Use passer rating only when it was actually uploaded/);
 });
-
 test('Transcript can be downloaded as well as printed', async () => {
   const source = await readFile(sourceUrl, 'utf8');
 
@@ -67,9 +86,9 @@ test('EA Sports Network coverage has a dedicated optional upload lane and appear
   assert.match(source, /ea_sports_network_article/);
   assert.match(source, /appendOfficialNetworkArticles/);
   assert.match(source, /officialStories=Array\.isArray\(news\.officialArticles\)/);
-  assert.match(source, /OFFICIAL IN-GAME COVERAGE/);
+  assert.match(source, /ORIGINAL IN-GAME PUBLICATION/);
   assert.match(source, /EA SPORTS NETWORK/);
-  assert.match(source, /without mixing it into generated journalism/);
+  assert.match(source, /auto-cropped and stitched/);
 });
 
 test('Podcast Studio expands into document flow, keeps the page scrollable, and returns to its anchor when closed', async () => {
@@ -85,4 +104,42 @@ test('Podcast Studio expands into document flow, keeps the page scrollable, and 
   assert.match(source, /const studioAnchorRef=useRef\(null\)/);
   assert.match(source, /const closeStudio=\(\)=>/);
   assert.match(source, /scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
+});
+
+
+test('official in-game coverage preserves its screenshot and is surfaced across DynastyHQ', async () => {
+  const [source, hook, producer, chronicle, api] = await Promise.all([
+    readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../option-a-preview/useReadOnlyLiveCareer.js', import.meta.url), 'utf8'),
+    readFile(new URL('./notebookLmProducerPack.js', import.meta.url), 'utf8'),
+    readFile(new URL('./careerChronicle2.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../api/newsroom-media.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /screenshotUrl/);
+  assert.match(source, /ORIGINAL IN-GAME PUBLICATION/);
+  assert.match(source, /stitchedScreenshotUrl/);
+  assert.match(source, /EA SPORTS NETWORK/);
+  assert.match(hook, /sourcePages/);
+  assert.match(producer, /OFFICIAL IN-GAME MEDIA — EA SPORTS NETWORK/);
+  assert.match(chronicle, /screenshotUrl/);
+  assert.match(api, /const mediaNamespace = \(\) => 'dynasty-hq'/);
+});
+
+
+test('EA SPORTS official coverage supports multi-page auto-crop and seamless original article rendering', async () => {
+  const [source,css,domain,scanner] = await Promise.all([
+    readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../option-a-preview/preview.css', import.meta.url), 'utf8'),
+    readFile(new URL('./officialCoverageCapture.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../api/analyze-coverage-reference.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source,/mergeOfficialCoveragePages/);
+  assert.match(source,/sourcePages/);
+  assert.match(source,/pages auto-cropped and stitched/);
+  assert.match(source,/stitchedScreenshotUrl/);
+  assert.match(source,/stitchOfficialArticlePages/);
+  assert.match(css,/Automatic EA article stitch/);
+  assert.match(domain,/mergeTextWithOverlap/);
+  assert.match(domain,/s4-w12-wisconsin-ea-network/);
+  assert.match(scanner,/DynastyHQ stitches multiple uploaded pages after extraction/);
 });

@@ -5,6 +5,7 @@ import {
   nextScheduledGame,
   normalizeScheduleEntry,
   scheduleDisplayLabel,
+  scheduleHighlightWeek,
   schedulePhaseForEntry,
   scheduleWeekSetup,
   syncScheduleWithCareer,
@@ -202,4 +203,17 @@ test('Bowl 1 can be the first playable postseason game after conference champion
   assert.equal(nextScheduledGame(state)?.opponent, 'LSU');
   assert.equal(scheduleDisplayLabel(nextScheduledGame(state)), 'BOWL 1');
   assert.equal(scheduleWeekSetup(state)?.label, 'Conf Champ');
+});
+
+test('schedule highlight skips byes and advances to the next playable postseason game', () => {
+  const entries = [
+    normalizeScheduleEntry({ week: 14, opponent: 'Michigan State', status: 'completed', result: 'W', teamScore: 38, opponentScore: 30 }),
+    normalizeScheduleEntry({ week: 15, opponent: 'BYE', isBye: true, status: 'bye' }),
+    normalizeScheduleEntry({ week: 16, opponent: 'BYE', isBye: true, status: 'bye', label: 'Conf Champ' }),
+    normalizeScheduleEntry({ week: 17, opponent: 'LSU', status: 'upcoming', label: 'Bowl 1' }),
+  ];
+
+  assert.equal(scheduleHighlightWeek(entries, 15), 17);
+  assert.equal(scheduleHighlightWeek(entries, 16), 17);
+  assert.equal(scheduleHighlightWeek(entries, 17), 17);
 });

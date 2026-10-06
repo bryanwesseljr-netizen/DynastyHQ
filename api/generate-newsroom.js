@@ -48,6 +48,24 @@ const sanitizeStorylineThreads = (body = {}) => (Array.isArray(body.storylineThr
   editorialUse: ['primary', 'context', 'background-only'].includes(thread?.editorialUse) ? thread.editorialUse : 'context',
 })).filter((thread) => thread.key && thread.label) : []);
 
+const sanitizePostseason = (body = {}) => {
+  const raw = body.postseason || {};
+  return {
+    active: Boolean(raw.active),
+    displayLabel: text(raw.displayLabel, 120),
+    stage: text(raw.stage, 80),
+    playoffGame: Boolean(raw.playoffGame),
+    importance: ['major', 'career-defining'].includes(raw.importance) ? raw.importance : '',
+    opponent: text(raw.opponent, 160),
+    enteringRecord: raw.enteringRecord ? {
+      wins: Math.max(0, Number(raw.enteringRecord.wins) || 0),
+      losses: Math.max(0, Number(raw.enteringRecord.losses) || 0),
+      games: Math.max(0, Number(raw.enteringRecord.games) || 0),
+    } : null,
+    stakes: text(raw.stakes, 700),
+  };
+};
+
 const validatePayload = (body = {}) => {
   const coverageStage = ['high-school', 'college-player', 'coach'].includes(body.coverageStage) ? body.coverageStage : 'high-school';
   const coverageDecision = sanitizeCoverageDecision(body);
@@ -148,6 +166,7 @@ const validatePayload = (body = {}) => {
     weekType: text(body.weekType, 60),
     weekPhase: text(body.weekPhase, 80),
     careerPhase: text(body.careerPhase, 60),
+    postseason: sanitizePostseason(body),
     coverageStage,
     coverageDecision,
     storylineThreads: sanitizeStorylineThreads(body),
@@ -243,6 +262,12 @@ SHARED COVERAGE DECISION:
 - Each article brief includes its own targetWordRange. Treat it as a target, never a quota. Do not pad.
 - storylineThreads marked changedThisWeek=true are fresh developments. Threads marked recentlyCovered or background-only are not new stories and should not be reintroduced as if they just happened.
 - A continuing role, record, streak, or status is not a new storyline merely because it remains true.
+
+POSTSEASON / PLAYOFF RULE:
+- When postseason.active=true and postseason.playoffGame=true, the game has materially higher stakes than a routine regular-season week. Let that change the prominence, framing, headline energy, and depth of coverage.
+- Use postseason.displayLabel exactly as the supplied stage identity (for example BOWL 1) instead of inventing a fake Week 17 label.
+- The result, actual opponent, verified player/team performance, entering record, and supplied stage are legitimate major-story material.
+- Never invent the bracket round, seed, ranking, championship path, advancement destination, elimination consequence, or outside reaction unless the packet explicitly supplies it. Bigger coverage must still be factual.
 
 AUDIENCE VOICES:
 - LOCAL: write like a veteran beat writer whose readers already know the program. Get to the football point quickly. Use specific verified detail, confident interpretation, natural section headings and a forward-looking close. Do not waste paragraphs explaining basic team identity or turning the copy into a fan blog.
@@ -461,7 +486,10 @@ export default async function handler(req, res) {
       : 'none';
     const reach = payload.coverageDecision?.audienceReach || {};
     const reachSummary = `${reach.level || 'local'}; national eligible=${Boolean(reach.nationalEligible)}${reach.nationalReasons?.length ? `; national reasons=${reach.nationalReasons.join(', ')}` : ''}`;
-    const input = `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}. Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`;
+    const postseasonSummary = payload.postseason?.active
+      ? ` Postseason stage: ${payload.postseason.displayLabel || 'POSTSEASON'}; playoff game=${Boolean(payload.postseason.playoffGame)}; importance=${payload.postseason.importance || 'major'}.`
+      : '';
+    const input = `Write this newsroom edition from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'stage-default'}. Audience reach: ${reachSummary}.${postseasonSummary} Assignments: ${assignmentSummary}. Storyline memory: ${storylineSummary}. Cover what changed and matters; leave stale storylines and bookkeeping alone.\n${JSON.stringify(payload)}`;
 
     let generated = await generateTextFreeFirst({
       instructions: INSTRUCTIONS,

@@ -391,3 +391,14 @@
   .oa-schedule-actions button{width:100%}
   .oa-postseason-wait{padding:10px 14px}
 }
+
+.oa-road-ahead>header button:disabled,
+.oa-full-schedule>header button:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  filter:saturate(.55);
+}
+.oa-schedule-disconnected{
+  background:linear-gradient(90deg,rgba(239,213,58,.055),rgba(255,255,255,.015));
+}
+.oa-schedule-disconnected strong{color:#f1da4d}

@@ -4981,6 +4981,9 @@ function CareerPage({data,visual,profileVisual,openProfilePhoto,go,openArchiveMo
   const honors=Array.isArray(c.honors)?c.honors:[];
   const lastName=data.player.name.split(' ').at(-1);
   const record=c.record || {wins:0,losses:0};
+  const postseason=c.postseason || {appearances:0,wins:0,losses:0,passYds:0,rushYds:0,passTD:0,rushTD:0};
+  const postseasonTD=(Number(postseason.passTD)||0)+(Number(postseason.rushTD)||0);
+  const postseasonYds=(Number(postseason.passYds)||0)+(Number(postseason.rushYds)||0);
 
   return <div className="page career-page">
     <section className="career-hero-redesign">
@@ -5001,6 +5004,16 @@ function CareerPage({data,visual,profileVisual,openProfilePhoto,go,openArchiveMo
       <article><Target/><span>CAREER RUSHING</span><strong>{(totals.rushYds||0).toLocaleString()}</strong><small>{totals.rushTD||0} rushing TD</small></article>
       <article><Shield/><span>DEVELOPMENT</span><strong>{profile.rank || (profile.overall && profile.overall!=='—'?`${profile.overall} OVR`:'Building')}</strong><small>{profile.coachTrust||0} coach trust · {profile.skillPoints||0} skill pts</small></article>
       <article><Trophy/><span>LEGACY</span><strong>{c.legacyCount||0}</strong><small>{honors.length} honor{honors.length===1?'':'s'} · {(c.milestones||[]).length} milestone{(c.milestones||[]).length===1?'':'s'}</small></article>
+    </section>
+
+    <section className="career-postseason-resume">
+      <div><span><Trophy/>POSTSEASON RÉSUMÉ</span><h2>Playoff performances get their own chapter.</h2><p>Postseason games still count toward the full career totals above, while this line keeps the playoff run separate.</p></div>
+      <div className="career-postseason-metrics">
+        <article><strong>{postseason.wins||0}–{postseason.losses||0}</strong><span>POSTSEASON RECORD</span></article>
+        <article><strong>{postseason.appearances||0}</strong><span>PLAYOFF APPEARANCES</span></article>
+        <article><strong>{postseasonYds.toLocaleString()}</strong><span>TOTAL YARDS</span></article>
+        <article><strong>{postseasonTD}</strong><span>TOTAL TD</span></article>
+      </div>
     </section>
 
     <section className="career-content-grid">

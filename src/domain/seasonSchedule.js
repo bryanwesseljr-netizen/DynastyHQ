@@ -16,7 +16,7 @@ const resultForScores = (teamScore, opponentScore) => {
   return teamScore > opponentScore ? 'W' : 'L';
 };
 
-const POSTSEASON_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|conference championship|championship game|quarterfinal|semi[- ]?final|first round|national championship)\b/i;
+const POSTSEASON_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|championship|quarterfinal|semi[- ]?final|first round)\b/i;
 
 export const schedulePhaseForEntry = (entry = {}) => {
   const explicit = clean(entry.phase, 40).toLowerCase();

@@ -402,3 +402,18 @@
   background:linear-gradient(90deg,rgba(239,213,58,.055),rgba(255,255,255,.015));
 }
 .oa-schedule-disconnected strong{color:#f1da4d}
+
+.oa-connect-live{
+  align-self:flex-start;
+  margin-top:6px;
+  min-height:34px;
+  padding:0 11px;
+  border:1px solid rgba(239,213,58,.55);
+  border-radius:8px;
+  background:#eed52d;
+  color:#07100d;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.07em;
+  cursor:pointer;
+}

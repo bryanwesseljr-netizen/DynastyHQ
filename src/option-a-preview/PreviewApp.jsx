@@ -12,6 +12,7 @@ import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
 import ScheduleExperience from './ScheduleExperience.jsx';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
+import { postseasonPendingLabel } from '../domain/postseasonContext.js';
 import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import { analyzeScreenshot } from '../services/screenshotClient.js';
@@ -81,6 +82,22 @@ const PODCAST_ARTWORK_STORAGE_KEY = 'dynastyhq-preview-podcast-artwork-v1';
 const PREVIEW_VIEW_STORAGE_KEY = 'dynastyhq-preview-view-v1';
 
 const previewPublicationIdFor = (entry) => String(entry?.publicationId || entry?.id || '').trim();
+
+const previewWeekLabelFor = (state = {}, season = 1, week = 0) => {
+  const schedule = (state.seasonSchedules || []).find((entry) => Number(entry?.season || 1) === Number(season)) || {};
+  const entries = Array.isArray(schedule.entries)
+    ? schedule.entries
+    : (Array.isArray(schedule.games) ? schedule.games : (Array.isArray(schedule.schedule) ? schedule.schedule : []));
+  const row = entries.find((entry) => Number(entry?.week) === Number(week)) || null;
+  if (row) return scheduleDisplayLabel(row);
+  if (Number(state.currentSeason || 1) === Number(season) && Number(state.currentWeek || 0) === Number(week)) {
+    const setupLabel = String(state.currentWeekSetup?.label || state.currentWeekSetup?.customLabel || '').trim();
+    if (setupLabel) return setupLabel.toUpperCase();
+    const pending = postseasonPendingLabel(state);
+    if (pending) return pending;
+  }
+  return `W${week}`;
+};
 
 const PREVIEW_MASTER_AUDIO_MAX_BYTES = 30_000_000;
 const PREVIEW_MASTER_AUDIO_EXTENSIONS = new Set(['mp3','m4a','wav','aac','ogg']);
@@ -934,6 +951,8 @@ function App(){
 
   const seasonOptions=data.navigation?.seasons?.length ? data.navigation.seasons : [season];
   const weekOptions=data.navigation?.weeks?.length ? data.navigation.weeks : [week];
+  const selectedWeekLabel=previewWeekLabelFor(live.career || data.state || {},season,week);
+  const weekOptionLabel=(value)=>previewWeekLabelFor(live.career || data.state || {},season,value);
 
   const persistSelection = (nextSeason,nextWeek) => {
     const current=loadPreviewViewState();
@@ -1534,9 +1553,9 @@ function App(){
             </select><ChevronDown size={13}/>
           </label>
           <label className="archive-select">WEEK
-            <b>{week}</b>
+            <b>{selectedWeekLabel}</b>
             <select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>
-              {weekOptions.map(value=><option key={value} value={value}>{value}</option>)}
+              {weekOptions.map(value=><option key={value} value={value}>{weekOptionLabel(value)}</option>)}
             </select><ChevronDown size={13}/>
           </label>
           <button className="dynasty-lock" onClick={()=>notify('Dynasty mode stays locked in this RTG preview.')}><LockKeyhole size={15}/>Dynasty</button>
@@ -1545,7 +1564,7 @@ function App(){
 
       <div className="mobile-context-row" aria-label="Career archive controls">
         <label className="archive-select"><span>SEASON</span><b>{season}</b><select aria-label="Season" value={season} onChange={e=>chooseSeason(e.target.value)}>{seasonOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
-        <label className="archive-select"><span>WEEK</span><b>{week}</b><select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{value}</option>)}</select><ChevronDown/></label>
+        <label className="archive-select"><span>WEEK</span><b>{selectedWeekLabel}</b><select aria-label="Week" value={week} onChange={e=>chooseWeek(e.target.value)}>{weekOptions.map(value=><option key={value} value={value}>{weekOptionLabel(value)}</option>)}</select><ChevronDown/></label>
         <button onClick={()=>setMobileMoreOpen(true)}><Menu/><span>MORE</span></button>
       </div>
 
@@ -3805,7 +3824,7 @@ function ScoreRibbon({data}){
   const liveTarget=liveCareerTarget(data);
   const pregame=!data.selection?.hasGame;
   return <div className={'score-ribbon '+(pregame?'pregame-ribbon':'')}>
-    <div><span>W{game.week}</span><b>{pregame?(data.selection?.isCurrent?'UPCOMING':'SCHEDULED'):'FINAL'}</b></div>
+    <div><span>{data.weekLabel || `W${game.week}`}</span><b>{pregame?(data.selection?.isCurrent?'UPCOMING':'SCHEDULED'):'FINAL'}</b></div>
     {pregame ? <>
       <div className="score-team pregame-team"><Logo team={data.player.school}/><span>{data.player.school}</span></div>
       <span className="matchup-vs">VS</span>
@@ -3865,7 +3884,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
     <section className="hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div className="hero-overlay"/>
       <div className="hero-copy">
-        <span className="eyebrow">WEEK {data.game.week} <i/> {story.status}</span>
+        <span className="eyebrow">{data.weekLabel || `WEEK ${data.game.week}`} <i/> {story.status}</span>
         <h1 className={pregame?'pregame-headline':''}><span>{story.line1}</span><em>{story.line2}</em></h1>
 
         {pregame ? <div className="hero-score pregame-score">
@@ -3892,7 +3911,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
 
         <div className="hero-actions">
           {pregame ? <>
-            <button className="yellow" onClick={()=>openArchiveMoment(data.season,data.game.week,'gamehub')}><CalendarDays/>Open Week {data.game.week} Hub<ChevronRight/></button>
+            <button className="yellow" onClick={()=>openArchiveMoment(data.season,data.game.week,'gamehub')}><CalendarDays/>Open {data.weekLabel || `Week ${data.game.week}`} Hub<ChevronRight/></button>
             <button className="outline" onClick={()=>go('career')}><TrendingUp/>View season progress</button>
           </> : <>
             <button className="yellow" onClick={()=>openArticle(data.news?.article?.id || '')}><CalendarDays/>Open game recap<ChevronRight/></button>
@@ -3920,7 +3939,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
       </article>
 
       <article className="dark-card wrap-card reference-wrap">
-        <CardHeader title={pregame?`WEEK ${data.game.week} GAME PLAN`:`WEEK ${data.game.week} WRAP-UP`}/>
+        <CardHeader title={pregame?`${data.weekLabel || `WEEK ${data.game.week}`} GAME PLAN`:`${data.weekLabel || `WEEK ${data.game.week}`} WRAP-UP`}/>
         {pregame ? <>
           <CheckRow title="Matchup ready" sub={`${data.player.school} vs. ${data.game.opponent}`}/>
           <CheckRow title="Game data waiting" sub="Stats unlock after the game is uploaded" pending/>
@@ -3936,7 +3955,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
       <article className="paper-card newsroom-card reference-newsroom-card">
         <CardHeader title={pregame?'POSTGAME COVERAGE':'FROM THE NEWSROOM'} light/>
         <div className="news-flex">
-          <div><h3>{pregame?`WEEK ${data.game.week} COVERAGE AWAITS`:data.news.headline}</h3><p>{pregame?'The Newsroom story and Huddle episode will populate after this game is completed and archived.':data.news.dek}</p></div>
+          <div><h3>{pregame?`${data.weekLabel || `WEEK ${data.game.week}`} COVERAGE AWAITS`:data.news.headline}</h3><p>{pregame?'The Newsroom story and Huddle episode will populate after this game is completed and archived.':data.news.dek}</p></div>
           <div className="thumb photo-tile" style={{backgroundImage:`url(${visual.image})`,backgroundPosition:`${visual.position} 29%`}}/>
         </div>
         {!pregame && latestOfficial && <button className="home-official-coverage home-official-feature" onClick={openOfficialArticle}>

@@ -88,9 +88,25 @@ const sanitizeToSchema = (value, schema = {}) => {
 export const visionAnalysisNeedsFallback = (analysis) => {
   if (!analysis || typeof analysis !== 'object') return true;
   const facts = Array.isArray(analysis.facts) ? analysis.facts : [];
+  const entries = Array.isArray(analysis.entries) ? analysis.entries : [];
   const screenTypes = Array.isArray(analysis.screenTypes) ? analysis.screenTypes : [];
   const screenType = String(analysis.screenType || '');
   const isUnknown = screenType === 'unknown' || screenTypes.includes('unknown');
+
+  // Season-schedule scans use entries[] instead of the generic facts[] ledger.
+  // Treat a clearly recognized schedule with confident visible rows as a valid
+  // first-pass result so the router does not burn through every fallback model.
+  if (screenType === 'season_schedule') {
+    if (!entries.length) return true;
+    const scheduleConfidence = entries
+      .map((entry) => Number(entry?.confidence))
+      .filter((value) => Number.isFinite(value));
+    if (!scheduleConfidence.length) return true;
+    const average = scheduleConfidence.reduce((sum, value) => sum + value, 0) / scheduleConfidence.length;
+    const lowCount = scheduleConfidence.filter((value) => value < 0.72).length;
+    return average < 0.76 || lowCount > Math.ceil(scheduleConfidence.length / 2);
+  }
+
   if (!facts.length) return !isUnknown;
 
   const confidenceValues = facts

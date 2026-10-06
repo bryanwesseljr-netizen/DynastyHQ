@@ -1920,6 +1920,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [coverageRefreshResult,setCoverageRefreshResult]=useState(null);
 
   const game=data.game || {};
+  const weekDisplayLabel=data.weekLabel || `W${game.week}`;
   const team=game.team || {};
   const career=data.state || {};
   const hasSavedGame=Boolean(data.selection?.hasGame);
@@ -3103,7 +3104,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           <button className="processing-brand" onClick={closeSafe}>DYNASTY<span>HQ</span></button>
           <div className="processing-context">
             <span>WEEK PROCESSING CENTER</span>
-            <b>SEASON {data.season} · WEEK {game.week} · {data.player.school} vs {game.opponent}</b>
+            <b>SEASON {data.season} · {weekDisplayLabel} · {data.player.school} vs {game.opponent}</b>
           </div>
           <div className="processing-safety"><ShieldCheck/><span>REAL SCANNERS · DRAFT UNTIL CONFIRMED</span></div>
           <button className="processing-close" onClick={closeSafe} aria-label="Close Processing Center"><X/></button>
@@ -3339,14 +3340,14 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             <div className="processing-stage-head">
               <span>STEP 5 · GAME PHOTOS</span>
               <h1>BUILD THIS WEEK'S PHOTO POOL.</h1>
-              <p>Add up to 12 screenshots or game photos from this exact matchup. They stay tied to Season {data.season}, Week {game.week} and {game.opponent}, and DynastyHQ will prefer them automatically anywhere this week's imagery is needed.</p>
+              <p>Add up to 12 screenshots or game photos from this exact matchup. They stay tied to Season {data.season}, {weekDisplayLabel} and {game.opponent}, and DynastyHQ will prefer them automatically anywhere this week's imagery is needed.</p>
             </div>
 
             <div className="game-photo-boundary"><ShieldCheck/><span><b>STRICT WEEK BOUNDARY</b><small>These photos can auto-fill this week only. They cannot appear in another season or week unless you manually choose one for a specific article.</small></span></div>
 
             <div className="game-photo-upload-card">
               <Camera/>
-              <div><span>WEEK {game.week} PHOTO POOL · OPTIONAL</span><h3>{gamePhotos.length ? `${gamePhotos.length} photo${gamePhotos.length===1?'':'s'} ready` : 'Add game photos for this matchup.'}</h3><p>Choose them now. Cloud upload happens only after your final Process Week confirmation.</p></div>
+              <div><span>{weekDisplayLabel} PHOTO POOL · OPTIONAL</span><h3>{gamePhotos.length ? `${gamePhotos.length} photo${gamePhotos.length===1?'':'s'} ready` : 'Add game photos for this matchup.'}</h3><p>Choose them now. Cloud upload happens only after your final Process Week confirmation.</p></div>
               <button type="button" disabled={gamePhotoUploading} onClick={()=>gamePhotoInputRef.current?.click()}><Upload/>{gamePhotos.length?'ADD MORE PHOTOS':'CHOOSE GAME PHOTOS'}</button>
               <input ref={gamePhotoInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event)=>{addGamePhotos(event.target.files);event.target.value=''}}/>
             </div>
@@ -3354,7 +3355,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             {gamePhotos.length>0 && <div className="game-photo-grid">
               {gamePhotos.map((entry,index)=><article key={entry.id}>
                 <img src={entry.url} alt={`Week ${game.week} game photo ${index+1}`}/>
-                <span><b>{entry.name}</b><small>Season {data.season} · Week {game.week} · {game.opponent}</small></span>
+                <span><b>{entry.name}</b><small>Season {data.season} · {weekDisplayLabel} · {game.opponent}</small></span>
                 <button type="button" onClick={()=>removeGamePhoto(entry.id)} aria-label={`Remove ${entry.name}`}><X/></button>
               </article>)}
             </div>}
@@ -3372,7 +3373,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           {phase==='ready' && <section className="processing-stage processing-ready">
             <div className="ready-check"><Check/></div>
             <span className="ready-kicker">STEP 6 · PROCESS WEEK</span>
-            <h1>WEEK {game.week} IS READY.</h1>
+            <h1>{weekDisplayLabel} IS READY.</h1>
             <p>{hasSavedGame && !selectedGameFacts.length
               ? 'The existing verified game and RTG data will stay untouched. Only the optional coverage or media you added will be attached when you confirm below.'
               : 'Your verified packet was built with the same Game Data, RTG Status and Coverage scanner services as the current site. Nothing is written until you confirm the save below.'}</p>
@@ -3391,7 +3392,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
                 <article><BarChart3/><span><b>Game Hub</b><small>Verified player + team game facts</small></span></article>
                 <article><Newspaper/><span><b>Newsroom</b><small>Local, Regional and National coverage</small></span></article>
                 <article><Headphones/><span><b>The Huddle</b><small>Transcript and NotebookLM source pack</small></span></article>
-                <article><Archive/><span><b>Chronicle</b><small>Permanent Week {game.week} career chapter</small></span></article>
+                <article><Archive/><span><b>Chronicle</b><small>Permanent {weekDisplayLabel} career chapter</small></span></article>
               </div>
             </section>
 
@@ -3399,7 +3400,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
             {publishError && <div className="publish-result-card error"><Shield/><span><b>WEEK NOT SAVED</b><small>{publishError}</small></span></div>}
 
-            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · Week {game.week} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts · {publishResult.gamePhotoCount || 0} game photos. A safety checkpoint was created before the write.</small></span></div>}
+            {publishResult && <div className="publish-result-card success"><Check/><span><b>{publishResult.action==='updated'?'VERIFIED WEEK UPDATED':'VERIFIED WEEK PUBLISHED'}</b><small>Season {data.season} · {weekDisplayLabel} · {publishResult.gameFactCount} game facts · {publishResult.rtgFactCount} RTG facts · {publishResult.coverageFactCount} coverage facts · {publishResult.gamePhotoCount || 0} game photos. A safety checkpoint was created before the write.</small></span></div>}
 
             {publishResult && coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>BUILDING POSTGAME COVERAGE</b><small>Writing the Newsroom edition and full Podcast transcript from the verified saved week. NotebookLM material updates with the transcript. Audio is not generated here.</small></span></div>}
 
@@ -3772,7 +3773,7 @@ function homeHeroStory(data){
       ['NEXT UP',opponent],
       ['THE NEXT','TEST'],
       ['EYES ON',opponent],
-      ['WEEK '+game.week,'ON DECK'],
+      [data.weekLabel || ('W'+game.week),'ON DECK'],
       ['GAME WEEK',opponent],
       ['THE ROAD','CONTINUES'],
       ['READY FOR',opponent],
@@ -3784,7 +3785,7 @@ function homeHeroStory(data){
       status:data.selection?.isCurrent?'UPCOMING':'SCHEDULED',
       line1:pick[0],
       line2:pick[1],
-      deck:`Week ${game.week} is still ahead. The page will flip to its postgame story after the result is uploaded and archived.`,
+      deck:`${data.weekLabel || `Week ${game.week}`} is still ahead. The page will flip to its postgame story after the result is uploaded and archived.`,
     };
   }
 
@@ -4041,12 +4042,12 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
       : [[showStat(scoring.playCount),'SCORING PLAYS'],[showStat(scoring.passTD),'PASS TD'],[showStat(scoring.rushTD),'RUSH TD'],[showStat(scoring.opponentPoints),'OPP PTS']];
   return <div className="page gamehub-page">
     <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
-      <div><h1>GAME <em>HUB</em></h1><p>WEEK {data.game.week} / {data.game.opponent} / {pregame?'PREGAME':'POSTGAME'}</p></div>
-      <button className="yellow import" onClick={openProcessing}>{pregame?<Upload/>:<Pencil/>}{pregame?`PROCESS WEEK ${data.game.week}`:`REVIEW / UPDATE WEEK ${data.game.week}`}</button>
+      <div><h1>GAME <em>HUB</em></h1><p>{data.weekLabel || `W${data.game.week}`} / {data.game.opponent} / {pregame?'PREGAME':'POSTGAME'}</p></div>
+      <button className="yellow import" onClick={openProcessing}>{pregame?<Upload/>:<Pencil/>}{pregame?`PROCESS ${data.weekLabel || `W${data.game.week}`}`:`REVIEW / UPDATE ${data.weekLabel || `W${data.game.week}`}`}</button>
     </section>
 
     <section className={'complete-strip '+(pregame?'pregame-strip':'')}>
-      <div><h2>{pregame?`WEEK ${data.game.week} AWAITS`:`WEEK ${data.game.week} COMPLETE`}</h2><p>{pregame?`No final game data is saved yet for ${data.player.school} vs. ${data.game.opponent}.`:`All items belong to Season ${data.season} • Week ${data.game.week}`}</p></div>
+      <div><h2>{pregame?`${data.weekLabel || `W${data.game.week}`} AWAITS`:`${data.weekLabel || `W${data.game.week}`} COMPLETE`}</h2><p>{pregame?`No final game data is saved yet for ${data.player.school} vs. ${data.game.opponent}.`:`All items belong to Season ${data.season} • ${data.weekLabel || `W${data.game.week}`}`}</p></div>
       <div className="flow">{['Import','Review','Coverage','Archive'].map((x,index)=><React.Fragment key={x}><span className={'flow-step '+(pregame?'pending':'')}><i>{pregame?(index===0?<Upload/>:<span>{index+1}</span>):<Check/>}</i>{x}</span>{x!=='Archive'&&<b/>}</React.Fragment>)}</div>
     </section>
 
@@ -4700,8 +4701,8 @@ function PodcastPage({
           <img src={episodeCover || showCover || podcastCover} alt=""/>
         </div>
         <div className="pod-embed-info">
-          <span>FEATURED EPISODE · WEEK {game.week}</span>
-          <h2>{episode.title || `Week ${game.week} Recap`}</h2>
+          <span>FEATURED EPISODE · {data.weekLabel || `W${game.week}`}</span>
+          <h2>{episode.title || `${data.weekLabel || `W${game.week}`} Recap`}</h2>
           <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
           <div className="pod-embed-meta">
             <b>{featuredDuration}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
@@ -4759,7 +4760,7 @@ function PodcastPage({
       {podcastTab==='episode' && <div className="pod-episode-layout-v2">
         <article className="pod-episode-main">
           <span className="section-kicker">EPISODE BREAKDOWN</span>
-          <h2>{episode.title || `Week ${game.week} postgame show`}</h2>
+          <h2>{episode.title || `${data.weekLabel || `W${game.week}`} postgame show`}</h2>
           <p className="pod-episode-summary">{episode.summary || 'The episode uses the saved verified game packet and career context for this week.'}</p>
 
           <div className="pod-chapter-list">
@@ -4803,7 +4804,7 @@ function PodcastPage({
       {podcastTab==='transcript' && <div className="transcript-layout">
         <article className="transcript-paper">
           <div className="transcript-head">
-            <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `Week ${game.week} Recap`}</h2><p>Season {data.season} • Week {game.week} • {data.player.school} {game.us}, {game.opponent} {game.them}</p></div>
+            <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `${data.weekLabel || `W${game.week}`} Recap`}</h2><p>Season {data.season} • {data.weekLabel || `W${game.week}`} • {data.player.school} {game.us}, {game.opponent} {game.them}</p></div>
             <div className="transcript-head-actions"><button className="ghost" onClick={downloadTranscript}><FileText/>DOWNLOAD TRANSCRIPT</button><button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button></div>
           </div>
           {episode.segments?.length

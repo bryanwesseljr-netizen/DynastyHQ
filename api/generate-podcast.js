@@ -91,6 +91,24 @@ const sanitizeStorylineThreads = (body = {}) => (Array.isArray(body.storylineThr
   editorialUse: ['primary', 'context', 'background-only'].includes(thread?.editorialUse) ? thread.editorialUse : 'context',
 })).filter((thread) => thread.key && thread.label) : []);
 
+const sanitizePostseason = (body = {}) => {
+  const raw = body.postseason || {};
+  return {
+    active: Boolean(raw.active),
+    displayLabel: safeText(raw.displayLabel, 120),
+    stage: safeText(raw.stage, 80),
+    playoffGame: Boolean(raw.playoffGame),
+    importance: ['major', 'career-defining'].includes(raw.importance) ? raw.importance : '',
+    opponent: safeText(raw.opponent, 160),
+    enteringRecord: raw.enteringRecord ? {
+      wins: Math.max(0, Number(raw.enteringRecord.wins) || 0),
+      losses: Math.max(0, Number(raw.enteringRecord.losses) || 0),
+      games: Math.max(0, Number(raw.enteringRecord.games) || 0),
+    } : null,
+    stakes: safeText(raw.stakes, 700),
+  };
+};
+
 const sanitizeResearchFact = (fact = {}) => ({
   key: safeText(fact.key, 180),
   label: safeText(fact.label, 200),
@@ -235,6 +253,7 @@ const validatePayload = (body = {}) => {
     weekType: safeText(body.weekType, 60),
     weekPhase: safeText(body.weekPhase, 80),
     careerPhase: safeText(body.careerPhase, 40),
+    postseason: sanitizePostseason(body),
     coverageStage,
     coverageDecision,
     storylineThreads: sanitizeStorylineThreads(body),
@@ -355,6 +374,12 @@ SHARED COVERAGE DECISION:
 - storylineThreads with changedThisWeek=true are fresh developments. Threads marked background-only or recentlyCovered should not be restated as if they are new.
 - A continuing status is not a new storyline merely because it remains true.
 
+POSTSEASON / PLAYOFF RULE:
+- When postseason.active=true and postseason.playoffGame=true, this is a special postseason edition. Give the game more breathing room, consequence, and emotional weight than a normal regular-season show while staying analytical rather than theatrical.
+- Use postseason.displayLabel as the stage identity. Say BOWL 1 when that is what the packet supplies; do not convert it to a fake Week 17.
+- Lead with the actual game and result, then the verified player performance, turning points supported by supplied scoring/team facts, and the supported meaning of the result.
+- Never invent bracket round, seed, ranking, advancement destination, title claim, elimination consequence, future opponent, or outside reaction unless explicitly supplied.
+
 EDITORIAL DECISION RULE:
 A supplied fact is not automatically a story. Ask what a real college-football audience would care about this week. Prioritize consequence, change, tension, performance and meaningful football questions. Ignore bookkeeping and unchanged states.
 
@@ -433,7 +458,10 @@ const requestEpisode = async ({ user, payload, repairNote = '' }) => {
   const storylineNote = payload.storylineThreads?.length
     ? ` Active storyline memory: ${payload.storylineThreads.map((thread) => `${thread.label}=${thread.status}${thread.changedThisWeek ? ' (changed this week)' : ''}${thread.recentlyCovered ? ' (recently covered)' : ''}`).join('; ')}.`
     : '';
-  const input = `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}. Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. The researchPacket is the detailed producer packet for THIS selected week: use its current game, tracked-player line, team comparison, scoring/drive facts, coverage notes, and progression/regression changes to make the conversation specific and complete. When researchPacket.game contains a completed game, that current game outranks older preseason/depth-chart storylines. A first start with a completed game should be treated as a new football event, with the prior QB1 announcement used only as context. Statistics are evidence for football conclusions, not lines that need to be read aloud, but do not omit the core individual stat line, meaningful team comparison, scoring flow, or verified development change when those are supplied and relevant. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`;
+  const postseasonNote = payload.postseason?.active
+    ? ` Postseason stage: ${payload.postseason.displayLabel || 'POSTSEASON'}; playoff game=${Boolean(payload.postseason.playoffGame)}; importance=${payload.postseason.importance || 'major'}.`
+    : '';
+  const input = `Write the conversational body of this local team podcast from the internal editorial packet. Coverage tier: ${payload.coverageDecision?.tier || 'standard'}.${postseasonNote} Aim for roughly ${range.min}-${range.max} spoken words when the football substance supports it; never pad. The researchPacket is the detailed producer packet for THIS selected week: use its current game, tracked-player line, team comparison, scoring/drive facts, coverage notes, and progression/regression changes to make the conversation specific and complete. When researchPacket.game contains a completed game, that current game outranks older preseason/depth-chart storylines. A first start with a completed game should be treated as a new football event, with the prior QB1 announcement used only as context. Statistics are evidence for football conclusions, not lines that need to be read aloud, but do not omit the core individual stat line, meaningful team comparison, scoring flow, or verified development change when those are supplied and relevant. Never explain editorial rules to the listener. Do not write a branded intro or sign-off because DynastyHQ adds those separately.${storylineNote}${note}\n${JSON.stringify(payload)}`;
 
   return generateTextFreeFirst({
     instructions: INSTRUCTIONS,

@@ -324,14 +324,17 @@ const SCHEDULE_INSTRUCTIONS = `You extract a college football season schedule fr
 - The tracked program context identifies which team owns the schedule, but context is not evidence for opponents, scores, dates, venues, or results.
 - Return screenType=season_schedule only when the image visibly shows a season schedule or list of weekly opponents. Otherwise return unknown with entries=[].
 - Extract every clearly visible schedule row. Multiple screenshots may show different parts of the same season, so do not invent missing weeks.
-- week is the visible week number. Preserve Week 0 if shown.
+- For ordinary regular-season rows, week is the visible numeric week. Preserve Week 0 if shown.
+- CFB 27 can show non-numeric postseason calendar rows such as "Conf Champ", "Bowl 1", "Bowl 2", and later playoff/bowl stages. Preserve the exact visible row name in label.
+- For those non-numeric rows, use a deterministic INTERNAL week sequence only so DynastyHQ can store/order them: Conf Champ=16, Bowl 1=17, Bowl 2=18, Bowl 3=19, Bowl 4=20. If a later visible postseason row uses another named stage, continue sequentially after the prior slot. This internal number is never the user-facing label.
+- A row labeled Bowl 1 or later Bowl/CFP stage is postseason/playoff context. Keep the exact visible label; never rename it to Week 17, Week 18, etc.
 - opponent is the visible opponent name. A bye row must use opponent="BYE", isBye=true, status="bye".
 - homeAway is home, away, neutral, or unknown only when the row visibly establishes it. Do not guess from team ordering.
 - For completed games, status=completed and result=W or L only when the result is visibly established. teamScore is the tracked PROGRAM's score and opponentScore is the opponent score regardless of home/away ordering.
 - If a final score is visible but W/L is not printed, you may derive W/L strictly from those two visible scores after correctly identifying the tracked team.
 - For future games, status=upcoming, result="", teamScore="", opponentScore="".
 - date, conference and label are optional visible text. Use empty strings when absent.
-- IMPORTANT FOR POSTSEASON: when the row visibly names a stage such as a conference championship, CFP First Round, CFP Quarterfinal, CFP Semifinal, National Championship, or a named bowl, copy that exact visible stage text into label. Do not invent a stage when it is not shown.
+- IMPORTANT FOR POSTSEASON: when the row visibly names a stage such as Conf Champ, Bowl 1, Bowl 2, a conference championship, CFP First Round, CFP Quarterfinal, CFP Semifinal, National Championship, or a named bowl, copy that exact visible stage text into label. Do not invent or normalize away the game's wording.
 - Do not infer kickoff time, rankings, opponent records, conference membership, rivalry status, postseason stakes, or player participation.
 - Confidence above 0.90 only for plainly legible rows. Evidence should briefly name the visible row/result used.`;
 

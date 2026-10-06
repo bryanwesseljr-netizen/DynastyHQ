@@ -1,0 +1,383 @@
+import { useMemo, useRef, useState } from 'react';
+import {
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CloudUpload,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
+import { runTransaction } from 'firebase/firestore';
+import { db, productionAppId } from '../firebase.js';
+import { compressImage } from '../services/imageCompression.js';
+import { analyzeSeasonScheduleScreenshot } from '../services/seasonScheduleClient.js';
+import {
+  mergeSeasonSchedule,
+  nextScheduledGame,
+  schedulePhaseForEntry,
+  scheduleWeekSetup,
+  seasonScheduleFor,
+  syncScheduleWithCareer,
+  teamRecordForSeason,
+  upsertSeasonSchedule,
+} from '../domain/seasonSchedule.js';
+import { detectDestructiveCareerRegression } from '../domain/saveProtection.js';
+import { estimatedJsonBytes, splitCareerStateForStorage } from '../domain/careerStorage.js';
+import {
+  readHydratedCareerInTransaction,
+  writeHydratedCareerInTransaction,
+} from '../services/careerStorageFirestore.js';
+import './schedule-experience.css';
+
+const MAX_FILES = 4;
+const DEVICE_ID = globalThis.crypto?.randomUUID?.() || `schedule-option-a-${Date.now()}`;
+const clean = (value) => String(value ?? '').trim();
+
+const statusLabel = (entry = {}) => {
+  if (entry.isBye) return 'BYE';
+  if (entry.completed) {
+    const score = entry.teamScore !== null && entry.teamScore !== undefined
+      && entry.opponentScore !== null && entry.opponentScore !== undefined
+      ? ` ${entry.teamScore}-${entry.opponentScore}`
+      : '';
+    return `${entry.result || 'FINAL'}${score}`;
+  }
+  return entry.homeAway === 'away'
+    ? 'AWAY'
+    : entry.homeAway === 'home'
+      ? 'HOME'
+      : entry.homeAway === 'neutral'
+        ? 'NEUTRAL'
+        : 'UPCOMING';
+};
+
+const setupWithPreservedDetails = (suggested, existing = {}) => {
+  if (!suggested) return existing;
+  if (suggested.type === 'bye') return { ...existing, ...suggested };
+  const sameOpponent = clean(existing.opponent).toLowerCase() === clean(suggested.opponent).toLowerCase();
+  return {
+    ...existing,
+    ...suggested,
+    opponentRecord: sameOpponent ? (existing.opponentRecord || '') : '',
+    kickoff: sameOpponent ? (existing.kickoff || suggested.kickoff || '') : (suggested.kickoff || ''),
+    venue: sameOpponent ? (existing.venue || suggested.venue || '') : (suggested.venue || ''),
+    note: sameOpponent ? (existing.note || '') : '',
+  };
+};
+
+const ScheduleRow = ({ entry, currentWeek, compact = false }) => {
+  const phase = schedulePhaseForEntry(entry);
+  const active = Number(entry.week) === Number(currentWeek) && !entry.completed;
+  return <div className={`oa-schedule-row ${entry.completed ? 'is-complete' : ''} ${active ? 'is-active' : ''} ${entry.isBye ? 'is-bye' : ''}`}>
+    <div className="oa-schedule-week">
+      <span>W{entry.week}</span>
+      {phase === 'postseason' ? <em>POST</em> : null}
+    </div>
+    <div className="oa-schedule-opponent">
+      <strong>{entry.isBye ? 'BYE WEEK' : clean(entry.opponent).toUpperCase() || 'OPPONENT TBD'}</strong>
+      {!compact && (entry.label || entry.date) ? <small>{entry.label || entry.date}</small> : null}
+    </div>
+    <b className={entry.result === 'W' ? 'is-win' : entry.result === 'L' ? 'is-loss' : ''}>{statusLabel(entry)}</b>
+  </div>;
+};
+
+const compactRows = ({ entries, currentWeek }) => {
+  if (!entries.length) return [];
+  const currentIndex = entries.findIndex((entry) => Number(entry.week) === Number(currentWeek));
+  if (currentIndex >= 0) return entries.slice(Math.max(0, currentIndex - 1), currentIndex + 3);
+  const nextIndex = entries.findIndex((entry) => !entry.completed && !entry.isBye);
+  if (nextIndex >= 0) return entries.slice(Math.max(0, nextIndex - 1), nextIndex + 3);
+  return entries.slice(-4);
+};
+
+const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify }) => {
+  const [open, setOpen] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [draftSchedule, setDraftSchedule] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  const activeSeason = Number(career?.currentSeason || data?.season || 1) || 1;
+  const displaySeason = mode === 'home'
+    ? activeSeason
+    : (Number(data?.season || activeSeason) || activeSeason);
+  const currentWeek = displaySeason === activeSeason
+    ? Number(career?.currentWeek || data?.week || 0)
+    : Number(data?.week || 0);
+  const schedule = useMemo(() => {
+    if (!career) return null;
+    const saved = seasonScheduleFor(career, displaySeason);
+    return saved ? syncScheduleWithCareer(career, saved) : null;
+  }, [career, displaySeason]);
+  const entries = schedule?.entries || [];
+  const rows = mode === 'home' ? compactRows({ entries, currentWeek }) : entries;
+  const record = useMemo(
+    () => teamRecordForSeason(career || {}, displaySeason),
+    [career, displaySeason],
+  );
+  const nextGame = displaySeason === activeSeason
+    ? nextScheduledGame(career || {}, activeSeason)
+    : entries.find((entry) => !entry.completed && !entry.isBye) || null;
+  const hasPostseason = entries.some((entry) => schedulePhaseForEntry(entry) === 'postseason');
+  const canUpdate = Boolean(user && career && displaySeason === activeSeason);
+
+  const resetImporter = () => {
+    setFiles([]);
+    setDraftSchedule(null);
+    setMessage('');
+    setError('');
+  };
+
+  const openImporter = () => {
+    if (!canUpdate) {
+      notify?.('Schedule updates are available on the live season.');
+      return;
+    }
+    resetImporter();
+    setOpen(true);
+  };
+
+  const addFiles = (list) => {
+    const images = [...(list || [])]
+      .filter((file) => file.type?.startsWith('image/'))
+      .slice(0, MAX_FILES);
+    setFiles(images);
+    setDraftSchedule(null);
+    setMessage('');
+    setError('');
+  };
+
+  const inspectSchedule = async () => {
+    if (!files.length || !user || !career) return;
+    setBusy(true);
+    setMessage('');
+    setError('');
+    try {
+      const idToken = await user.getIdToken();
+      let merged = schedule || {
+        season: activeSeason,
+        school: career.player?.college || career.player?.school || '',
+        entries: [],
+        sourceFiles: [],
+      };
+      let readable = 0;
+
+      for (const file of files) {
+        const imageDataUrl = await compressImage(file, 2200, 0.88);
+        const response = await analyzeSeasonScheduleScreenshot({
+          idToken,
+          imageDataUrl,
+          fileName: file.name,
+          player: career.player || {},
+          season: activeSeason,
+        });
+        const analysis = response.analysis || {};
+        if (analysis.screenType !== 'season_schedule' || !Array.isArray(analysis.entries) || !analysis.entries.length) continue;
+        readable += 1;
+        merged = mergeSeasonSchedule(merged, {
+          season: activeSeason,
+          school: analysis.school || career.player?.college || career.player?.school || '',
+          importedAt: new Date().toISOString(),
+          sourceFiles: [file.name],
+          entries: analysis.entries,
+        }, activeSeason);
+      }
+
+      if (!readable || !merged.entries?.length) {
+        throw new Error('DynastyHQ could not find a readable season schedule in those screenshots. Try a clearer schedule screen.');
+      }
+
+      setDraftSchedule(merged);
+      setMessage(`Found ${merged.entries.length} schedule rows. Existing weeks are preserved; new or changed rows will merge into Season ${activeSeason}.`);
+    } catch (scheduleError) {
+      setError(scheduleError?.message || 'The schedule could not be read.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmSchedule = async () => {
+    if (!draftSchedule || !user || !career || !db) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await runTransaction(db, async (transaction) => {
+        const loaded = await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId: productionAppId,
+          userId: user.uid,
+        });
+        if (!loaded) throw new Error('Your live DynastyHQ career could not be loaded. Nothing was changed.');
+
+        const remote = loaded.state;
+        let next = upsertSeasonSchedule(remote, draftSchedule);
+        const suggested = scheduleWeekSetup(next);
+        if (suggested && Number(suggested.week) === Number(next.currentWeek)) {
+          next = {
+            ...next,
+            currentWeekSetup: setupWithPreservedDetails(suggested, next.currentWeekSetup || {}),
+          };
+        }
+
+        const regression = detectDestructiveCareerRegression(remote, next);
+        if (regression.blocked) {
+          throw new Error('DynastyHQ blocked the schedule update because it would regress saved career history. ' + regression.reason);
+        }
+
+        const savedAt = new Date().toISOString();
+        next = {
+          ...next,
+          _sync: {
+            revision: (Number(loaded.rawMain?._sync?.revision) || 0) + 1,
+            deviceId: DEVICE_ID,
+            updatedAt: savedAt,
+          },
+        };
+
+        const storagePreview = splitCareerStateForStorage(next, savedAt);
+        const mainBytes = estimatedJsonBytes(storagePreview.mainState);
+        const largestArchiveBytes = storagePreview.archives.reduce(
+          (largest, archive) => Math.max(largest, estimatedJsonBytes(archive)),
+          0,
+        );
+        if (mainBytes >= 950 * 1024 || largestArchiveBytes >= 950 * 1024) {
+          throw new Error('The schedule update would make a DynastyHQ storage shard too large. Nothing was written.');
+        }
+
+        writeHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId: productionAppId,
+          userId: user.uid,
+          state: next,
+        });
+      });
+
+      setMessage(`Season ${activeSeason} schedule updated. Postseason rows will automatically feed Week Setup when their visible labels identify a bowl, conference championship, or CFP round.`);
+      setFiles([]);
+      setDraftSchedule(null);
+      notify?.('Season schedule updated.');
+      window.setTimeout(() => setOpen(false), 1000);
+    } catch (scheduleError) {
+      setError(scheduleError?.message || 'The schedule could not be saved.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!career) return null;
+
+  const statusText = entries.length
+    ? nextGame
+      ? `${record.wins}-${record.losses} · NEXT W${nextGame.week} ${clean(nextGame.opponent).toUpperCase()}`
+      : hasPostseason
+        ? `${record.wins}-${record.losses} · POSTSEASON SCHEDULE COMPLETE`
+        : `${record.wins}-${record.losses} · REGULAR SCHEDULE COMPLETE`
+    : `${record.wins}-${record.losses} · IMPORT SCHEDULE`;
+
+  return <>
+    {mode === 'home' ? (
+      <section className="oa-road-ahead" aria-label="The road ahead schedule">
+        <header>
+          <div>
+            <span><CalendarDays size={14}/> THE ROAD AHEAD</span>
+            <h2>{statusText}</h2>
+          </div>
+          <button type="button" onClick={openImporter}>
+            {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
+          </button>
+        </header>
+        {rows.length ? (
+          <div className="oa-road-ahead-rows">
+            {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} compact />)}
+          </div>
+        ) : (
+          <div className="oa-schedule-empty">
+            <strong>Your season road map belongs here.</strong>
+            <span>Upload the CFB 27 schedule once, then update it when conference championship, bowl, or CFP matchups are revealed.</span>
+          </div>
+        )}
+        {entries.length && !nextGame && !hasPostseason ? (
+          <div className="oa-postseason-wait"><ShieldCheck size={14}/><span>POSTSEASON: Awaiting the next CFB 27 matchup. Use Update Schedule when it appears.</span></div>
+        ) : null}
+        <footer>
+          <button type="button" className="oa-schedule-link" onClick={() => go?.('gamehub')}>VIEW FULL SCHEDULE <ChevronRight size={14}/></button>
+          <small>Schedule updates merge into Season {activeSeason}; completed weeks stay intact.</small>
+        </footer>
+      </section>
+    ) : (
+      <section className="oa-full-schedule" aria-label="Full season schedule">
+        <header>
+          <div>
+            <span><CalendarDays size={14}/> SEASON {displaySeason}</span>
+            <h2>FULL SEASON SCHEDULE</h2>
+            <p>{statusText}</p>
+          </div>
+          {canUpdate ? (
+            <button type="button" onClick={openImporter}>
+              {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
+            </button>
+          ) : null}
+        </header>
+        {entries.length ? (
+          <div className="oa-full-schedule-rows">
+            {rows.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={currentWeek} />)}
+          </div>
+        ) : (
+          <div className="oa-schedule-empty">
+            <strong>No schedule has been imported for Season {displaySeason}.</strong>
+            <span>{canUpdate ? 'Import the CFB 27 schedule to power the Road Ahead, team record, and upcoming opponent context.' : 'This archived season does not have saved schedule rows.'}</span>
+          </div>
+        )}
+      </section>
+    )}
+
+    {open ? <div className="oa-schedule-modal" role="dialog" aria-modal="true" aria-label="Update season schedule" data-schedule-importer>
+      <button className="oa-schedule-backdrop" type="button" aria-label="Close schedule importer" onClick={() => !busy && setOpen(false)}/>
+      <section className="oa-schedule-modal-card">
+        <button className="oa-schedule-close" type="button" onClick={() => !busy && setOpen(false)} aria-label="Close"><X size={18}/></button>
+        <span className="oa-schedule-eyebrow"><CalendarDays size={14}/> SEASON {activeSeason} SCHEDULE</span>
+        <h2>{schedule?.entries?.length ? 'Update the road ahead.' : 'Import the road ahead.'}</h2>
+        <p>Upload the CFB 27 schedule screen. You can add up to {MAX_FILES} screenshots if the regular season or postseason takes multiple screens. New rows merge into the existing season; saved games are not erased.</p>
+
+        {!draftSchedule ? <>
+          <button className="oa-schedule-drop" type="button" onClick={() => inputRef.current?.click()} disabled={busy}>
+            <CloudUpload size={28}/>
+            <strong>{files.length ? `${files.length} screenshot${files.length === 1 ? '' : 's'} ready` : 'Choose schedule screenshot'}</strong>
+            <small>PNG, JPEG, or WebP · regular season, conference championship, bowl, or CFP</small>
+          </button>
+          <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }}/>
+          {files.length ? <div className="oa-schedule-files">{files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}</div> : null}
+        </> : <div className="oa-schedule-review">
+          <div className="oa-schedule-review-head">
+            <span>REVIEW MERGED SCHEDULE</span>
+            <button type="button" onClick={() => { setDraftSchedule(null); setMessage(''); }} disabled={busy}>CHOOSE DIFFERENT SCREENSHOTS</button>
+          </div>
+          <div className="oa-schedule-review-list">
+            {draftSchedule.entries.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={career.currentWeek} />)}
+          </div>
+        </div>}
+
+        {error ? <div className="oa-schedule-error">{error}</div> : null}
+        {message ? <div className="oa-schedule-success"><Check size={14}/>{message}</div> : null}
+        <div className="oa-schedule-safety"><ShieldCheck size={15}/><span>Schedule rows are calendar context only. Weekly Game Data remains the authority for scores, player stats, and career production.</span></div>
+        <div className="oa-schedule-actions">
+          <button type="button" className="secondary" onClick={() => setOpen(false)} disabled={busy}>CANCEL</button>
+          {draftSchedule ? (
+            <button type="button" className="primary" onClick={confirmSchedule} disabled={busy}>{busy ? <><Loader2 className="spin" size={15}/> SAVING…</> : 'SAVE SCHEDULE UPDATE'}</button>
+          ) : (
+            <button type="button" className="primary" onClick={inspectSchedule} disabled={busy || !files.length}>{busy ? <><Loader2 className="spin" size={15}/> READING…</> : 'READ SCHEDULE'}</button>
+          )}
+        </div>
+      </section>
+    </div> : null}
+  </>;
+};
+
+export default ScheduleExperience;

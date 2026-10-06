@@ -34,6 +34,90 @@ test('confidence gate keeps clear Gemini scans and escalates uncertain ones', ()
   assert.equal(visionAnalysisNeedsFallback({ screenType: 'known', facts: [] }), true);
 });
 
+
+
+const SCHEDULE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['screenType', 'entries'],
+  properties: {
+    screenType: { type: 'string', enum: ['season_schedule', 'unknown'] },
+    entries: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['week', 'confidence'],
+        properties: {
+          week: { type: 'number' },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
+        },
+      },
+    },
+  },
+};
+
+test('season schedule entries use their own confidence gate instead of falling through the generic facts check', () => {
+  assert.equal(visionAnalysisNeedsFallback({
+    screenType: 'season_schedule',
+    entries: [{ week: 15, confidence: 0.96 }, { week: 17, confidence: 0.94 }],
+  }), false);
+  assert.equal(visionAnalysisNeedsFallback({
+    screenType: 'season_schedule',
+    entries: [{ week: 15, confidence: 0.61 }, { week: 17, confidence: 0.66 }],
+  }), true);
+  assert.equal(visionAnalysisNeedsFallback({ screenType: 'season_schedule', entries: [] }), true);
+});
+
+test('a confident schedule scan stops after the first successful Gemini model', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalGeminiKey = process.env.GEMINI_API_KEY;
+  const originalOpenAiKey = process.env.OPENAI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  delete process.env.OPENAI_API_KEY;
+  let requests = 0;
+
+  globalThis.fetch = async () => {
+    requests += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({
+          screenType: 'season_schedule',
+          entries: [
+            { week: 15, confidence: 0.96 },
+            { week: 17, confidence: 0.95 },
+          ],
+        }) }] } }],
+        usageMetadata: {},
+      }),
+    };
+  };
+
+  try {
+    const result = await analyzeVisionFreeFirst({
+      schema: SCHEDULE_SCHEMA,
+      schemaName: 'schedule_test_schema',
+      instructions: 'Read visible schedule rows.',
+      userText: 'Analyze the schedule screenshot.',
+      imageDataUrl: 'data:image/png;base64,AA==',
+      maxOutputTokens: 200,
+      maxFreeModelAttempts: 3,
+      geminiTimeoutMs: 7000,
+    });
+    assert.equal(requests, 1);
+    assert.equal(result.usage.provider, 'google');
+    assert.equal(result.analysis.entries.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = originalGeminiKey;
+    if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalOpenAiKey;
+  }
+});
+
 test('Gemini request uses JSON mode without provider-side schema enforcement', async () => {
   const originalFetch = globalThis.fetch;
   const originalGeminiKey = process.env.GEMINI_API_KEY;
@@ -184,4 +268,6 @@ test('free-first scanner wiring preserves specialized boundaries and exact Total
   assert.match(sharedApi, /They are NOT synonyms/);
   assert.match(sharedApi, /NEVER map the separate "Total Yards" row/);
   assert.match(sharedApi, /analyzeVisionFreeFirst/);
+  assert.match(sharedApi, /maxFreeModelAttempts:\s*task\.kind === 'schedule' \? 3/);
+  assert.match(sharedApi, /geminiTimeoutMs:\s*task\.kind === 'schedule' \? 7000/);
 });

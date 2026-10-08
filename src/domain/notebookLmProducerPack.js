@@ -508,7 +508,7 @@ const resolvedEpisodeTranscript = (episode = {}, data = {}) => {
   const candidates = [episode?.transcript, raw?.transcript, data?.podcast?.transcript]
     .map((value) => clean(value)).filter(Boolean);
   const editorialTranscript = candidates.find((value) =>
-    /(?:^|\\n)\\s*(?:Mark Thompson|Sarah Chen|Host \\d+):/im.test(value)
+    /(?:^|\n)\s*(?:Mark Thompson|Sarah Chen|Host \d+):/im.test(value)
     || (savedSegments.length && value.length > 150)
   );
   if (editorialTranscript) return editorialTranscript;
@@ -519,7 +519,7 @@ const resolvedEpisodeTranscript = (episode = {}, data = {}) => {
       : (index % 2 === 0 ? 'Mark Thompson' : 'Sarah Chen'));
   return savedSegments.map((segment, index) =>
     speakerFor(segment, index)+': '+clean(segment.text)
-  ).join('\\n\\n');
+  ).join('\n\n');
 };
 
 const resolvedEpisodeChapterMap=(episode={},data={},storylines=[])=>{

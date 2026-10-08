@@ -69,3 +69,24 @@ test('rewriting a podcast transcript preserves the previously uploaded master au
   assert.equal(after.podcastEpisodes[0].segments[0].text, 'New CFP first round story');
   assert.deepEqual(after.gameLogs, before.gameLogs);
 });
+
+test('partial Newsroom failure offers targeted retry without regenerating successful Podcast output', async () => {
+  const source = await readFile(new URL('../option-a-preview/PreviewApp.jsx', import.meta.url), 'utf8');
+  const start = source.indexOf('const refreshPublishedCoverage=async');
+  const end = source.indexOf('const publishVerifiedPacket=async', start);
+  const operation = source.slice(start, end);
+  assert.match(operation, /parts='both'/);
+  assert.match(operation, /const writeNewsroom=parts!=='podcast'/);
+  assert.match(operation, /const writePodcast=parts!=='newsroom'/);
+  assert.match(operation, /if\(writeNewsroom\) try/);
+  assert.match(operation, /if\(writePodcast\) try/);
+  assert.match(operation, /newsroom:writeNewsroom\?'pending':'unchanged'/);
+  assert.match(operation, /podcast:writePodcast\?'pending':'unchanged'/);
+  const view = source.slice(source.indexOf("{phase==='regenerate' && <section"), source.indexOf("{phase==='game' &&",source.indexOf("{phase==='regenerate' && <section")));
+  assert.match(view, /NEWSROOM ONLY/);
+  assert.match(view, /RETRY NEWSROOM ONLY/);
+  assert.match(view, /RETRY PODCAST ONLY/);
+  assert.match(view, /parts:regenerateTarget/);
+  assert.match(view, /podcast transcript, NotebookLM audio, game data and photos will not be changed/);
+  assert.match(view, /coverageRefreshResult\.podcast==='unchanged'\?'left unchanged'/);
+});

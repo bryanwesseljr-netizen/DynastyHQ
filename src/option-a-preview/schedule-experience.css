@@ -677,3 +677,89 @@
   .oa-playoff-detail-fields{grid-template-columns:1fr}
   .oa-full-schedule-column .oa-schedule-row{grid-template-columns:54px minmax(0,1fr) auto}
 }
+
+/* Postseason schedule entry without AI when screenshot providers are overloaded */
+.oa-schedule-import-modes{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin:18px 0 13px;
+}
+.oa-schedule-import-modes button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:40px;
+  padding:8px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;
+  background:#153329;
+  color:rgba(255,255,255,.78);
+  font-size:11px;
+  font-weight:850;
+  cursor:pointer;
+}
+.oa-schedule-import-modes button.selected{
+  border-color:#e9d23b;
+  background:rgba(231,204,53,.14);
+  color:#ffe979;
+}
+.oa-manual-schedule-form{
+  margin:10px 0;
+  padding:16px;
+  border:1px solid rgba(244,216,59,.25);
+  border-radius:12px;
+  background:rgba(15,54,40,.5);
+}
+.oa-manual-schedule-note{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin-bottom:15px;
+  color:#d9d5aa;
+  font-size:12px;
+  line-height:1.5;
+}
+.oa-manual-schedule-note svg{flex:none;color:#f3d93e}
+.oa-manual-schedule-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:13px;
+}
+.oa-manual-schedule-grid label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+  color:#c4d2cc;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+.oa-manual-schedule-grid input,
+.oa-manual-schedule-grid select{
+  width:100%;
+  min-width:0;
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:7px;
+  background:#09241b;
+  color:#fff;
+  font-size:12px;
+  font-weight:650;
+  letter-spacing:normal;
+}
+.oa-manual-schedule-grid input::placeholder{color:rgba(255,255,255,.45)}
+.oa-manual-schedule-form>p{
+  margin:13px 0 0;
+  color:#abbfb4;
+  font-size:11px;
+  line-height:1.5;
+}
+@media(max-width:540px){
+  .oa-schedule-import-modes{grid-template-columns:1fr}
+  .oa-manual-schedule-grid{grid-template-columns:1fr}
+  .oa-manual-schedule-form{padding:11px}
+}

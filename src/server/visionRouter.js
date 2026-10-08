@@ -261,23 +261,25 @@ const requestGeminiFreeChain = async ({
         message: 'Gemini extraction was too uncertain for automatic acceptance.',
       });
     } catch (error) {
+      let normalizedError = error;
       if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
-        error.status = 503;
-        error.code = 'GEMINI_TIMEOUT';
-        error.message = `Gemini vision model ${model} did not respond within ${geminiTimeoutMs}ms.`;
+        normalizedError = new Error(`Gemini vision model ${model} did not respond within ${geminiTimeoutMs}ms.`);
+        normalizedError.status = 503;
+        normalizedError.code = 'GEMINI_TIMEOUT';
+        normalizedError.cause = error;
       }
       const attempt = {
         model,
-        status: Number(error?.status) || 0,
-        code: String(error?.code || ''),
-        message: String(error?.message || 'Gemini vision request failed.').slice(0, 240),
+        status: Number(normalizedError?.status) || 0,
+        code: String(normalizedError?.code || ''),
+        message: String(normalizedError?.message || 'Gemini vision request failed.').slice(0, 240),
       };
       attempts.push(attempt);
       console.warn('Gemini vision model attempt failed', attempt);
 
-      if (!retryableGeminiVisionError(error)) {
-        error.geminiAttempts = attempts;
-        throw error;
+      if (!retryableGeminiVisionError(normalizedError)) {
+        normalizedError.geminiAttempts = attempts;
+        throw normalizedError;
       }
     }
   }

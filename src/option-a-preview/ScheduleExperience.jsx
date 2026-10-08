@@ -752,9 +752,51 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         <button className="oa-schedule-close" type="button" onClick={() => !busy && setOpen(false)} aria-label="Close"><X size={18}/></button>
         <span className="oa-schedule-eyebrow"><CalendarDays size={14}/> SEASON {activeSeason} SCHEDULE</span>
         <h2>{schedule?.entries?.length ? 'Update the road ahead.' : 'Import the road ahead.'}</h2>
-        <p>Upload the CFB 27 schedule screen. You can add up to {MAX_FILES} screenshots if the regular season or postseason takes multiple screens. New rows merge into the existing season; saved games are not erased.</p>
+        <p>Upload the CFB 27 schedule screen (up to {MAX_FILES} screenshots) or enter a confirmed postseason matchup yourself when the free AI scanner is busy. Existing completed games are protected.</p>
 
-        {!draftSchedule ? <>
+        {!draftSchedule && <div className="oa-schedule-import-modes">
+          <button type="button" className={!manualOpen?'selected':''} disabled={busy} onClick={()=>{setManualOpen(false);setError('')}}><CloudUpload size={15}/> SCAN SCREENSHOT</button>
+          <button type="button" className={manualOpen?'selected':''} disabled={busy} onClick={openManualEntry}><CalendarDays size={15}/> ENTER MATCHUP MANUALLY</button>
+        </div>}
+
+        {!draftSchedule && manualOpen ? <div className="oa-manual-schedule-form">
+          <div className="oa-manual-schedule-note"><ShieldCheck size={16}/><span>The free Gemini schedule scanner is optional. Enter only details confirmed by College Football 27. Unknown playoff rounds or bowl names can stay blank.</span></div>
+          <div className="oa-manual-schedule-grid">
+            <label>IN-GAME WEEK / SLOT
+              <input type="number" min="1" max="40" value={manualDraft.week} onChange={(event)=>setManualDraft((prior)=>({...prior,week:event.target.value}))}/>
+            </label>
+            <label>CONFIRMED OPPONENT
+              <input type="text" maxLength="160" placeholder="e.g. Georgia" value={manualDraft.opponent} onChange={(event)=>setManualDraft((prior)=>({...prior,opponent:event.target.value}))}/>
+            </label>
+            <label>CALENDAR LABEL (OPTIONAL)
+              <input type="text" maxLength="120" placeholder="e.g. Bowl 2" value={manualDraft.label} onChange={(event)=>setManualDraft((prior)=>({...prior,label:event.target.value}))}/>
+            </label>
+            <label>GAME LOCATION
+              <select value={manualDraft.homeAway} onChange={(event)=>setManualDraft((prior)=>({...prior,homeAway:event.target.value}))}>
+                <option value="unknown">Unconfirmed</option>
+                <option value="home">Home</option>
+                <option value="away">Away</option>
+                <option value="neutral">Neutral site</option>
+              </select>
+            </label>
+            <label>CFP ROUND
+              <select value={manualDraft.postseasonRound} onChange={(event)=>setManualDraft((prior)=>({...prior,postseasonRound:event.target.value}))}>
+                <option value="">Unconfirmed</option>
+                <option value="first-round">CFP First Round</option>
+                <option value="quarterfinal">CFP Quarterfinal</option>
+                <option value="semifinal">CFP Semifinal</option>
+                <option value="national-championship">CFP National Championship</option>
+                <option value="bowl">Other Bowl</option>
+              </select>
+            </label>
+            <label>NAMED BOWL (OPTIONAL)
+              <input type="text" maxLength="90" placeholder="e.g. Sugar Bowl" value={manualDraft.bowlName} onChange={(event)=>setManualDraft((prior)=>({...prior,bowlName:event.target.value}))}/>
+            </label>
+          </div>
+          <p>Reviewing stages an upcoming calendar entry only. It will not change scores, game stats, completed weeks, or advance the active career week.</p>
+        </div> : null}
+
+        {!draftSchedule && !manualOpen ? <>
           <button className="oa-schedule-drop" type="button" onClick={() => inputRef.current?.click()} disabled={busy}>
             <CloudUpload size={28}/>
             <strong>{files.length ? `${files.length} screenshot${files.length === 1 ? '' : 's'} ready` : 'Choose schedule screenshot'}</strong>
@@ -764,8 +806,8 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           {files.length ? <div className="oa-schedule-files">{files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}</div> : null}
         </> : <div className="oa-schedule-review">
           <div className="oa-schedule-review-head">
-            <span>REVIEW MERGED SCHEDULE</span>
-            <button type="button" onClick={() => { setDraftSchedule(null); setMessage(''); }} disabled={busy}>CHOOSE DIFFERENT SCREENSHOTS</button>
+            <span>{draftSource==='manual'?'REVIEW MANUAL MATCHUP':'REVIEW MERGED SCHEDULE'}</span>
+            <button type="button" onClick={() => { setDraftSchedule(null); setMessage(''); if(draftSource==='manual') setManualOpen(true); }} disabled={busy}>{draftSource==='manual'?'EDIT MATCHUP':'CHOOSE DIFFERENT SCREENSHOTS'}</button>
           </div>
           <div className="oa-schedule-review-list">
             {draftSchedule.entries.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={career.currentWeek} />)}
@@ -778,7 +820,9 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         <div className="oa-schedule-actions">
           <button type="button" className="secondary" onClick={() => setOpen(false)} disabled={busy}>CANCEL</button>
           {draftSchedule ? (
-            <button type="button" className="primary" onClick={confirmSchedule} disabled={busy}>{busy ? <><Loader2 className="spin" size={15}/> SAVING…</> : 'SAVE SCHEDULE UPDATE'}</button>
+            <button type="button" className="primary" onClick={confirmSchedule} disabled={busy}>{busy ? <><Loader2 className="spin" size={15}/> SAVING…</> : draftSource==='manual'?'SAVE CONFIRMED MATCHUP':'SAVE SCHEDULE UPDATE'}</button>
+          ) : manualOpen ? (
+            <button type="button" className="primary" onClick={reviewManualEntry} disabled={busy}>REVIEW MATCHUP</button>
           ) : (
             <button type="button" className="primary" onClick={inspectSchedule} disabled={busy || !files.length}>{busy ? <><Loader2 className="spin" size={15}/> READING…</> : 'READ SCHEDULE'}</button>
           )}

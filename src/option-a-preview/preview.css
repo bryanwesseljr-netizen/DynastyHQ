@@ -16100,3 +16100,38 @@ select optgroup{
   .home-page .hero h1{font-size:38px!important}
   .home-page .hero-score{grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr)!important}
 }
+
+/* NotebookLM export diagnostics: distinguish saved transcript from grounded outline */
+.notebook-missing-transcript{
+  margin:16px 0 9px;
+  padding:16px;
+  border:1px solid rgba(231,193,48,.42);
+  border-radius:10px;
+  background:rgba(233,187,35,.08);
+}
+.notebook-missing-transcript>span{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#a87508;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+.notebook-missing-transcript svg{height:17px;width:17px;flex:none}
+.notebook-missing-transcript p{margin:10px 0 12px;line-height:1.55;font-size:12px}
+.notebook-missing-transcript button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:11px 14px;
+  border-radius:7px;
+  border:1px solid #d1af39;
+  background:rgba(225,194,57,.15);
+  color:inherit;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+@media(max-width:700px){.notebook-missing-transcript button{width:100%}}

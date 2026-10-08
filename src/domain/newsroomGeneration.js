@@ -1,4 +1,5 @@
 import { buildProgramCoverageContext } from './programCoverage.js';
+import { polishNewsroomCopy } from './newsroomCopyPolish.js';
 import { buildStorylineEngine } from './storylineEngine.js';
 import { createCollegeOutletSet } from './collegeNewsroom.js';
 import {
@@ -415,7 +416,7 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
     const outletId = clean(entry.outletId, 80);
     const brief = briefsById.get(outletId);
     if (!brief) return null;
-    const paragraphs = (entry.paragraphs || []).map((paragraph) => clean(paragraph, 2200)).filter(Boolean).slice(0, 8);
+    const paragraphs = (entry.paragraphs || []).map((paragraph) => polishNewsroomCopy(clean(paragraph, 2200))).filter(Boolean).slice(0, 8);
     const articleWords = paragraphs.reduce((total, paragraph) => total + wordCount(paragraph), 0);
     if (paragraphs.length < 4) return null;
 
@@ -453,13 +454,13 @@ export const normalizeGeneratedNewsroomEdition = ({ generated, payload, model = 
       storyImportance: normalizeImportance(entry.storyImportance),
       storyFormat: normalizeStoryFormat(entry.storyFormat),
       kicker: clean(entry.kicker, 80),
-      headline: clean(entry.headline, 260),
-      dek: clean(entry.dek, 500),
+      headline: polishNewsroomCopy(clean(entry.headline, 260)),
+      dek: polishNewsroomCopy(clean(entry.dek, 500)),
       byline: clean(brief.byline, 160),
       dateline: clean(entry.dateline, 100),
       paragraphs,
       sectionHeadings,
-      pullQuote: clean(entry.pullQuote, 320),
+      pullQuote: polishNewsroomCopy(clean(entry.pullQuote, 320)),
       sidebars,
       citedFactKeys: safeCitedFactKeys,
       readingMinutes: Math.max(1, Math.round(articleWords / 225)),

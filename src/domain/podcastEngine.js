@@ -478,6 +478,12 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     throw error;
   }
   const researchPacket = buildPodcastResearchPacket(state, issue.publicationId || issue.id);
+  if (postseason.active) {
+    researchPacket.label = postseason.displayLabel;
+    researchPacket.currentFacts = (researchPacket.currentFacts || []).map((fact) => (
+      fact.key === 'postseason.stage' ? { ...fact, value: postseason.displayLabel } : fact
+    ));
+  }
   const factsByKey = new Map(factsForIssue(state, issue, coverageStage, coverageContext).map((fact) => [fact.key, fact]));
   researchPacket.currentFacts.forEach((fact) => {
     if (!(fact.key.startsWith('game.') || fact.key.startsWith('program.coverage.'))) return;
@@ -488,6 +494,14 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
       editorialUse: fact.key.startsWith('game.') || fact.key.startsWith('program.coverage.') ? 'primary' : 'context',
     });
   });
+  if (postseason.active) {
+    factsByKey.set('postseason.stage', {
+      key: 'postseason.stage',
+      label: 'Confirmed playoff round',
+      value: postseason.displayLabel,
+      editorialUse: 'primary',
+    });
+  }
   if (researchPacket.developmentSummary.length) {
     factsByKey.set('player.development.weekly', {
       key: 'player.development.weekly',
@@ -534,7 +548,7 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     publicationId: issue.publicationId || issue.id,
     season: Number(issue.season) || 1,
     week: Math.max(0, Number(issue.week) || 0),
-    label: text(issue.label || issue.weekLabel, 160),
+    label: text(postseason.active ? postseason.displayLabel : (issue.label || issue.weekLabel), 160),
     weekType,
     weekPhase: text(issue.weekPhase, 80).toLowerCase(),
     careerPhase: text(issue.careerPhase, 40),

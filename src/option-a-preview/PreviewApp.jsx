@@ -2752,7 +2752,12 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
               throw new Error('Coverage regeneration was blocked because the rollback archive is too large.');
             }
             transaction.set(
-              careerArchiveDoc(db,productionAppId,signedInUser.uid,checkpointArchiveId),
+              careerArchiveRef({
+                db,
+                appId:productionAppId,
+                userId:signedInUser.uid,
+                archiveId:checkpointArchiveId,
+              }),
               checkpointArchive,
             );
           }

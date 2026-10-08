@@ -351,7 +351,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
     const candidateWeek = nextUnassigned?.week || Math.max(
       1,
       latestFinished + 1,
-      Number(career?.currentWeek || 0) + 1,
+      Number(career?.currentWeek || 0),
     );
     const entry = entries.find((row) => Number(row.week) === Number(candidateWeek));
     setDraftSchedule(null);

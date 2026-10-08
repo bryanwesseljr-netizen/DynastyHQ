@@ -481,7 +481,8 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
   if (postseason.active) {
     researchPacket.label = postseason.displayLabel;
     researchPacket.currentFacts = (researchPacket.currentFacts || []).map((fact) => (
-      fact.key === 'postseason.stage' ? { ...fact, value: postseason.displayLabel } : fact
+      (fact.key === 'postseason.stage' || fact.key === 'weekly.label')
+        ? { ...fact, value: postseason.displayLabel } : fact
     ));
   }
   const factsByKey = new Map(factsForIssue(state, issue, coverageStage, coverageContext).map((fact) => [fact.key, fact]));
@@ -495,6 +496,12 @@ export const buildPodcastGenerationPayload = (state, publicationId) => {
     });
   });
   if (postseason.active) {
+    factsByKey.set('weekly.label', {
+      key: 'weekly.label',
+      label: 'Confirmed postseason game identity',
+      value: postseason.displayLabel,
+      editorialUse: 'context',
+    });
     factsByKey.set('postseason.stage', {
       key: 'postseason.stage',
       label: 'Confirmed playoff round',

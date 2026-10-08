@@ -97,6 +97,9 @@ const sanitizePostseason = (body = {}) => {
     active: Boolean(raw.active),
     displayLabel: safeText(raw.displayLabel, 120),
     stage: safeText(raw.stage, 80),
+    bowlName: safeText(raw.bowlName, 90),
+    homeAway: ['home', 'away', 'neutral'].includes(raw.homeAway) ? raw.homeAway : 'unknown',
+    venue: safeText(raw.venue, 40),
     playoffGame: Boolean(raw.playoffGame),
     importance: ['major', 'career-defining'].includes(raw.importance) ? raw.importance : '',
     opponent: safeText(raw.opponent, 160),
@@ -376,7 +379,7 @@ SHARED COVERAGE DECISION:
 
 POSTSEASON / PLAYOFF RULE:
 - When postseason.active=true and postseason.playoffGame=true, this is a special postseason edition. Give the game more breathing room, consequence, and emotional weight than a normal regular-season show while staying analytical rather than theatrical.
-- Use postseason.displayLabel as the stage identity. Say BOWL 1 when that is what the packet supplies; do not convert it to a fake Week 17.
+- Use postseason.displayLabel as the verified playoff stage identity, not the legacy BOWL 1 calendar slot or internal week number.\n- Honor postseason.homeAway: 'home' means the tracked school hosted, 'away' the opponent hosted, 'neutral' a neutral site. Never portray a confirmed home first-round playoff game as a neutral-site bowl. Do not invent a venue name.
 - Lead with the actual game and result, then the verified player performance, turning points supported by supplied scoring/team facts, and the supported meaning of the result.
 - Never invent bracket round, seed, ranking, advancement destination, title claim, elimination consequence, future opponent, or outside reaction unless explicitly supplied.
 

@@ -572,3 +572,108 @@
   .career-postseason-metrics article:nth-child(2){border-right:0}
   .career-postseason-metrics article:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.08)}
 }
+
+/* Confirmed postseason title/round treatment */
+.oa-schedule-header-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  flex:none;
+}
+.oa-road-ahead>header .oa-edit-playoff,
+.oa-full-schedule>header .oa-edit-playoff{
+  border-color:rgba(114,181,253,.35);
+  background:rgba(46,118,187,.12);
+  color:#abd9ff;
+}
+.oa-schedule-opponent .oa-postseason-game-title{
+  display:block;
+  color:#f1d94e;
+  font-weight:900;
+  letter-spacing:.015em;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.oa-schedule-week{min-width:0;flex-wrap:wrap}
+.oa-schedule-week span{overflow-wrap:anywhere;line-height:1.25}
+.oa-playoff-detail-grid{display:grid;gap:11px}
+.oa-playoff-detail-card{
+  padding:14px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:11px;
+  background:rgba(255,255,255,.035);
+}
+.oa-playoff-detail-card>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.oa-playoff-detail-card>header small{
+  color:#f0d832;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+.oa-playoff-detail-card>header strong{
+  color:#fff;
+  font-size:13px;
+}
+.oa-playoff-detail-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.oa-playoff-detail-fields label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  color:rgba(255,255,255,.72);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.05em;
+}
+.oa-playoff-detail-fields select,
+.oa-playoff-detail-fields input{
+  min-width:0;
+  width:100%;
+  min-height:41px;
+  padding:0 11px;
+  border:1px solid rgba(255,255,255,.17);
+  border-radius:8px;
+  background:#15231f;
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:normal;
+}
+.oa-playoff-detail-fields input::placeholder{color:rgba(255,255,255,.38)}
+.oa-playoff-detail-preview{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  align-items:center;
+  margin-top:12px;
+  padding:10px;
+  border-radius:8px;
+  background:rgba(237,214,61,.08);
+}
+.oa-playoff-detail-preview span{
+  color:rgba(255,255,255,.5);
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.09em;
+}
+.oa-playoff-detail-preview b{
+  color:#f2d847;
+  font-size:12px;
+  overflow-wrap:anywhere;
+}
+@media(max-width:620px){
+  .oa-road-ahead>header,
+  .oa-full-schedule>header{flex-wrap:wrap}
+  .oa-schedule-header-actions{width:100%;justify-content:stretch;display:grid;grid-template-columns:1fr 1fr}
+  .oa-schedule-header-actions button{width:100%;white-space:normal}
+  .oa-playoff-detail-fields{grid-template-columns:1fr}
+  .oa-full-schedule-column .oa-schedule-row{grid-template-columns:54px minmax(0,1fr) auto}
+}

@@ -244,7 +244,8 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
   } : null;
 
   const facts = sourceFactsFor(state, issue, coverageContext).map((fact) => (
-    postseason.active && fact.period === 'current edition' && fact.key === 'postseason.stage'
+    postseason.active && fact.period === 'current edition'
+      && (fact.key === 'postseason.stage' || fact.key === 'weekly.label')
       ? { ...fact, value: postseason.displayLabel }
       : fact
   ));

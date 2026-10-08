@@ -236,3 +236,68 @@ test('preview includes editable playoff details with verified-only stage metadat
   assert.match(source, /bowlName: clean\(detail\.bowlName\)/);
   assert.match(api, /A generic "Bowl 1\/2\/3" calendar slot is NOT evidence/);
 });
+
+test('editing a published LSU first-round game to home updates regeneration inputs without republishing', () => {
+  const activated = advancePostseasonCareer(baseCareer());
+  const published = createPublishedWeek({
+    state: activated,
+    game: {
+      opponent: 'LSU',
+      result: 'W',
+      homeScore: 24,
+      awayScore: 17,
+      passYds: 248,
+      passTD: 2,
+      rushYds: 37,
+      rushTD: 1,
+      int: 0,
+      didPlay: true,
+    },
+    rtg: { rank: 'QB1' },
+    facts: [],
+    sources: [],
+    season: 4,
+    week: 17,
+  });
+  const corrected = {
+    ...published,
+    seasonSchedules: published.seasonSchedules.map((schedule) => ({
+      ...schedule,
+      entries: schedule.entries.map((entry) => Number(entry.week) === 17
+        ? {
+          ...entry,
+          label: 'Bowl 1',
+          postseasonRound: 'first-round',
+          bowlName: '',
+          homeAway: 'home',
+        }
+        : entry),
+    })),
+  };
+  const unchangedGame = corrected.gameLogs.find((entry) => Number(entry.week) === 17);
+  assert.equal(unchangedGame.weekLabel, 'BOWL 1');
+  assert.equal(unchangedGame.homeScore, 24);
+
+  const newsroom = buildNewsroomGenerationPayload(corrected, 'season-4-week-17');
+  const podcast = buildPodcastGenerationPayload(corrected, 'season-4-week-17');
+
+  for (const payload of [newsroom, podcast]) {
+    assert.equal(payload.postseason.displayLabel, 'CFP FIRST ROUND');
+    assert.equal(payload.postseason.stage, 'first-round');
+    assert.equal(payload.postseason.homeAway, 'home');
+    assert.equal(payload.postseason.venue, 'Home');
+    assert.match(payload.postseason.stakes, /not a neutral-site bowl game/i);
+    assert.equal(payload.label, 'CFP FIRST ROUND');
+  }
+  assert.match(podcast.brief.title, /CFP FIRST ROUND/i);
+  assert.match(podcast.brief.summary, /LSU/i);
+  assert.equal(podcast.facts.find((fact) => fact.key === 'postseason.stage')?.value, 'CFP FIRST ROUND');
+  assert.equal(newsroom.facts.find((fact) => fact.key === 'postseason.stage' && fact.period === 'current edition')?.value, 'CFP FIRST ROUND');
+});
+
+test('playoff details editor includes an explicit correction for campus home games', async () => {
+  const source = await readFile(new URL('../option-a-preview/ScheduleExperience.jsx', import.meta.url), 'utf8');
+  assert.match(source, /GAME LOCATION/);
+  assert.match(source, /Home — our stadium/);
+  assert.match(source, /homeAway: \['home', 'away', 'neutral'\]/);
+});

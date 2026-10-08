@@ -178,6 +178,53 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
   };
 };
 
+// Manual fallback when the screenshot provider is unavailable. This only stages an
+// upcoming postseason calendar row; it cannot rewrite a completed game or a bye.
+export const manualPostseasonScheduleDraft = ({
+  existing = null,
+  season = 1,
+  school = '',
+  week,
+  opponent,
+  label = '',
+  homeAway = 'unknown',
+  postseasonRound = '',
+  bowlName = '',
+} = {}) => {
+  const targetWeek = Number(week);
+  if (!Number.isInteger(targetWeek) || targetWeek < 1 || targetWeek > 40) {
+    throw new Error('Enter a valid in-game schedule week between 1 and 40.');
+  }
+  const team = clean(opponent, 160);
+  if (!team || /^(?:bye(?: week)?|tbd|unknown|opponent tbd)$/i.test(team)) {
+    throw new Error('Enter the confirmed opponent before adding a manual matchup.');
+  }
+  const original = normalizeSeasonSchedule(existing || { season, entries: [] }, season);
+  const prior = original.entries.find((entry) => entry.week === targetWeek);
+  if (prior?.completed || prior?.isBye) {
+    throw new Error('This week is already completed or marked as a bye. Manual matchup entry cannot overwrite it.');
+  }
+  const round = verifiedPostseasonRound(postseasonRound);
+  if (postseasonRound && !round) throw new Error('Select a recognized playoff round or leave it unconfirmed.');
+  const cleanLabel = clean(label, 120) || prior?.label || 'Postseason';
+  const venue = ['home','away','neutral'].includes(homeAway) ? homeAway : 'unknown';
+  return mergeSeasonSchedule(original, {
+    season: original.season,
+    school: clean(school, 160) || original.school,
+    entries: [{
+      week: targetWeek,
+      opponent: team,
+      label: cleanLabel,
+      phase: 'postseason',
+      homeAway: venue,
+      postseasonRound: round,
+      bowlName: clean(bowlName, 90),
+      isBye: false,
+      status: 'upcoming',
+    }],
+  }, season);
+};
+
 export const syncScheduleWithCareer = (state = {}, scheduleInput = null) => {
   const season = Number(scheduleInput?.season || state.currentSeason || 1) || 1;
   const schedule = normalizeSeasonSchedule(scheduleInput || seasonScheduleFor(state, season) || { season, entries: [] }, season);

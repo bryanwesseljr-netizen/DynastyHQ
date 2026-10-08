@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  manualPostseasonScheduleDraft,
   mergeSeasonSchedule,
   nextScheduledGame,
   normalizeScheduleEntry,
@@ -267,4 +268,71 @@ test('generic schedule re-import retains already confirmed playoff names and pre
   assert.equal(scheduleDisplayLabel(merged.entries[0]), 'CFP QUARTERFINAL · PEACH BOWL');
   assert.equal(merged.entries[0].result, 'W');
   assert.equal(merged.entries[0].teamScore, 35);
+});
+
+test('manual matchup entry adds a confirmed future playoff opponent while preserving Oregon vs LSU', () => {
+  const original = {
+    season: 4,
+    school: 'Oregon',
+    entries: [
+      { week: 17, opponent: 'LSU', label: 'Bowl 1', postseasonRound: 'first-round',
+        homeAway: 'home', status: 'completed', result: 'W', teamScore: 44, opponentScore: 10 },
+      { week: 18, opponent: '', label: 'Bowl 2', status: 'upcoming' },
+    ],
+  };
+  const updated = manualPostseasonScheduleDraft({
+    existing: original,
+    season: 4,
+    school: 'Oregon',
+    week: '18',
+    opponent: 'Georgia',
+    label: 'Bowl 2',
+    homeAway: 'neutral',
+    postseasonRound: 'quarterfinal',
+    bowlName: 'Sugar Bowl',
+  });
+  assert.equal(updated.entries.length, 2);
+  const lsu = updated.entries.find(e => e.week === 17);
+  const quarterfinal = updated.entries.find(e => e.week === 18);
+  assert.equal(lsu.result, 'W');
+  assert.equal(lsu.teamScore, 44);
+  assert.equal(lsu.opponentScore, 10);
+  assert.equal(lsu.postseasonRound, 'first-round');
+  assert.equal(lsu.homeAway, 'home');
+  assert.equal(quarterfinal.opponent, 'Georgia');
+  assert.equal(quarterfinal.phase, 'postseason');
+  assert.equal(quarterfinal.homeAway, 'neutral');
+  assert.equal(scheduleDisplayLabel(quarterfinal), 'CFP QUARTERFINAL · SUGAR BOWL');
+  assert.equal(quarterfinal.completed, false);
+});
+
+test('manual schedule entry never overwrites a completed match, a bye, or invents a game', () => {
+  const existing = {
+    season: 4, entries: [
+      { week: 16, opponent: 'BYE', isBye: true, label: 'Conf Champ', status: 'bye' },
+      { week: 17, opponent: 'LSU', label: 'Bowl 1', status: 'completed', result: 'W' },
+    ],
+  };
+  const add = (patch) => manualPostseasonScheduleDraft({
+    existing, season: 4, week: 18, opponent: 'Texas', ...patch,
+  });
+  assert.throws(() => add({week:17}), /completed or marked as a bye/i);
+  assert.throws(() => add({week:16}), /completed or marked as a bye/i);
+  assert.throws(() => add({week:18,opponent:'TBD'}), /confirmed opponent/i);
+  assert.throws(() => add({week:'x'}), /valid in-game schedule week/i);
+  const blankRound = add({postseasonRound:'',bowlName:''});
+  assert.equal(blankRound.entries.find(e=>e.week===18).postseasonRound, '');
+  assert.equal(blankRound.entries.find(e=>e.week===18).phase, 'postseason');
+});
+
+test('manual schedule interface never activates career and retains screenshot option', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../option-a-preview/ScheduleExperience.jsx', import.meta.url), 'utf8');
+  assert.match(source, /ENTER MATCHUP MANUALLY/);
+  assert.match(source, /REVIEW MATCHUP/);
+  assert.match(source, /SAVE CONFIRMED MATCHUP/);
+  assert.match(source, /const scheduleToSave = draftSource === 'manual'/);
+  assert.match(source, /if \(draftSource !== 'manual'\) next = advancePostseasonCareer\(next\)/);
+  assert.match(source, /Number\(game\?\.week\) === Number\(manualDraft.week\)/);
+  assert.match(source, /READ SCHEDULE/);
 });

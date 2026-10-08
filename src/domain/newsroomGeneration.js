@@ -243,7 +243,11 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     ])].slice(0, 16),
   } : null;
 
-  const facts = sourceFactsFor(state, issue, coverageContext);
+  const facts = sourceFactsFor(state, issue, coverageContext).map((fact) => (
+    postseason.active && fact.period === 'current edition' && fact.key === 'postseason.stage'
+      ? { ...fact, value: postseason.displayLabel }
+      : fact
+  ));
   if (!facts.length) throw new Error('This edition has no published football facts available for writing.');
 
   const officialCoverage = (state.eaSportsNetworkArticles || [])
@@ -337,7 +341,7 @@ export const buildNewsroomGenerationPayload = (state, publicationId) => {
     publicationId: issue.publicationId || issue.id,
     season: Math.max(1, Number(issue.season) || 1),
     week: Math.max(0, Number(issue.week) || 0),
-    label: clean(issue.label, 160),
+    label: clean(postseason.active ? postseason.displayLabel : issue.label, 160),
     editionType: clean(issue.editionType, 80) || 'weekly',
     weekType: clean(issue.weekType, 60),
     weekPhase: clean(issue.weekPhase, 80),

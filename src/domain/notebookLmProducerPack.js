@@ -494,12 +494,69 @@ const recentLines=(data={})=>recentGamesFor(data,4).map((game)=>{
   const stats=rawPlayerLine(game);
   return '- Week '+num(game.week)+' vs '+clean(game.opponent,'Opponent')+' · '+clean(game.result,'—')+score+(stats?' · '+stats:'');
 });
-const chapterLines=(episode={})=>{
-  const chapters=Array.isArray(episode.chapters)?episode.chapters:[];
-  return chapters.length?chapters.map((chapter,index)=>{
-    const summary=clean(chapter?.summary);
-    return (index+1)+'. '+clean(chapter?.title,'Chapter '+(index+1))+(summary?' — '+summary:'');
-  }):['No saved chapter list.'];
+const savedEpisodeSegments = (episode = {}) => {
+  const raw = episode?.episode || episode || {};
+  const candidates = Array.isArray(episode?.segments) && episode.segments.length
+    ? episode.segments
+    : (Array.isArray(raw.segments) ? raw.segments : []);
+  return candidates.filter((segment) => clean(segment?.text));
+};
+
+const resolvedEpisodeTranscript = (episode = {}, data = {}) => {
+  const raw = episode?.episode || episode || {};
+  const savedSegments = savedEpisodeSegments(episode);
+  const candidates = [episode?.transcript, raw?.transcript, data?.podcast?.transcript]
+    .map((value) => clean(value)).filter(Boolean);
+  const editorialTranscript = candidates.find((value) =>
+    /(?:^|\\n)\\s*(?:Mark Thompson|Sarah Chen|Host \\d+):/im.test(value)
+    || (savedSegments.length && value.length > 150)
+  );
+  if (editorialTranscript) return editorialTranscript;
+  if (!savedSegments.length) return '';
+  const speakerFor = (segment, index) => clean(segment?.speaker)
+    || (/(?:sarah|chen|host-2)/i.test(clean(segment?.hostId)) ? 'Sarah Chen'
+      : /(?:mark|thompson|host-1)/i.test(clean(segment?.hostId)) ? 'Mark Thompson'
+      : (index % 2 === 0 ? 'Mark Thompson' : 'Sarah Chen'));
+  return savedSegments.map((segment, index) =>
+    speakerFor(segment, index)+': '+clean(segment.text)
+  ).join('\\n\\n');
+};
+
+const resolvedEpisodeChapterMap=(episode={},data={},storylines=[])=>{
+  const raw=episode?.episode || episode || {};
+  const chapters=Array.isArray(episode?.chapters) && episode.chapters.length
+    ? episode.chapters
+    : (Array.isArray(raw.chapters) ? raw.chapters : []);
+  if(chapters.length) return {
+    source:'saved',
+    lines:chapters.map((chapter,index)=>{
+      const summary=clean(chapter?.summary);
+      return (index+1)+'. '+clean(chapter?.title,'Chapter '+(index+1))+(summary?' — '+summary:'');
+    }),
+  };
+
+  const game=data.game || {};
+  const gameLabel=clean(game.weekLabel || data.weekLabel,'Current game');
+  const matchup=clean(data?.player?.school,'The team')+' vs '+clean(game.opponent,'the opponent');
+  const finalScore=Number.isFinite(Number(game.us)) && Number.isFinite(Number(game.them))
+    ? ' — final '+game.us+'–'+game.them : '';
+  const pass=Number.isFinite(Number(game.pass)) ? game.pass+' passing yards' : '';
+  const rush=Number.isFinite(Number(game.rush)) ? game.rush+' rushing yards' : '';
+  const td=Number.isFinite(Number(game.td)) ? game.td+' total touchdowns' : '';
+  const production=[pass,rush,td].filter(Boolean).join(' · ');
+  const story=storylines.find((entry)=>clean(entry?.label) && clean(entry?.detail));
+  return {
+    source:'suggested',
+    lines:[
+      '1. Opening Drive — '+gameLabel+': '+matchup+finalScore+'. Establish the stakes and final outcome.',
+      '2. How the Game Turned — Use verified team stats, scoring sequence and standout plays to explain the result.',
+      '3. Player Spotlight — '+(production || 'Use the verified player and individual-stat tables; do not guess unsupplied numbers.')+'.',
+      '4. Bigger Picture — '+(story
+        ? clean(story.label)+' — '+clean(story.detail)
+        : 'Use recent completed games for context, without inventing a next opponent or bracket assignment.'),
+      '5. Final Whistle — Recap what the verified result means. Preview the next game only if its matchup is confirmed.',
+    ],
+  };
 };
 
 const officialCoverageLines=(data={})=>{
@@ -539,7 +596,7 @@ const customizePromptFor=(data={})=>{
 export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
   const game=data.game||{};
   const rawEpisode=episode?.episode||episode||{};
-  const transcript=clean(episode.transcript||rawEpisode.transcript);
+  const transcript=resolvedEpisodeTranscript(episode,data);
   const screenshotBackfillFacts=notebookLegacyScreenshotFacts(data);
   const usable=uniqueFacts([...(facts||[]),...screenshotBackfillFacts].filter((fact)=>!isRtgFact(fact)));
   const scoringFacts=uniqueFacts(usable.filter((fact)=>isScoringFact(fact)&&!isCanonicalDuplicate(fact,data)));
@@ -547,6 +604,7 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
   const screenshotStats=organizedScreenshotStats(usable);
   const previousGame=previousGameFor(data);
   const storylines=storylinesFor(data,episode,previousGame);
+  const chapterMap=resolvedEpisodeChapterMap(episode,data,storylines);
   const recent=recentLines(data);
   const officialCoverage=officialCoverageLines(data);
   const school=clean(data?.player?.school,'Team');
@@ -628,7 +686,10 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
     ...(recent.length?recent:['No recent completed-game sequence was available.']),
     '',
     '## OPTIONAL EPISODE CHAPTER MAP',
-    ...chapterLines(episode),
+    chapterMap.source==='saved'
+      ? 'Saved chapter outline from the generated DynastyHQ episode.'
+      : 'Suggested chapter outline assembled from verified game data. This is a production guide, not a claim that an AI-generated script or chapters were saved.',
+    ...chapterMap.lines,
     '',
     '## STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT',
     'This transcript is generated editorial copy, not a verified fact source. Use it only for pacing, conversational rhythm and possible discussion structure.',
@@ -668,6 +729,8 @@ export const buildNotebookLmProducerPack=({data={},episode={},facts=[]}={})=>{
       recentGameCount:recent.length,
       officialArticleCount:Array.isArray(data?.news?.officialArticles)?data.news.officialArticles.length:0,
       hasTranscript:Boolean(transcript),
+      chapterMapSource:chapterMap.source,
+      chapterMapCount:chapterMap.lines.length,
       screenshotBackfillCount:screenshotBackfillFacts.length,
       suggestedFileName:'DynastyHQ-S'+num(data.season,1)+'-W'+num(game.week,0)+'-'+safeOpponent+'-NotebookLM-Producer-Pack.txt',
     },

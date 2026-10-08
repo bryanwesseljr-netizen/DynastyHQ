@@ -290,7 +290,9 @@ export const scheduleWeekSetup = (state = {}) => {
     week: row.week,
     type: 'game',
     phase: schedulePhaseForEntry(row),
-    label: scheduleDisplayLabel(row),
+    label: row.postseasonRound || row.bowlName
+      ? scheduleDisplayLabel(row)
+      : (row.label || `Week ${row.week}`),
     customLabel: '',
     opponent: row.opponent,
     opponentRecord: '',

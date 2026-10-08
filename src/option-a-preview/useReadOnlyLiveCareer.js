@@ -9,6 +9,7 @@ import { buildPlayerOffseasonMode } from '../domain/playerOffseason.js';
 import { buildCareerChronicle2 } from '../domain/careerChronicle2.js';
 import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation.js';
+import { polishNewsroomCopy } from '../domain/newsroomCopyPolish.js';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
 import { applyOfficialCoverageLegacyBackfill, mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
 import {
@@ -271,12 +272,12 @@ const newsroomArticleViews = (state = {}, issue = null) => {
       category: clean(presentation?.category, 'College Football'),
       outletId: clean(article?.outletId || article?.theme, `outlet-${index + 1}`),
       outletName: clean(article?.outletName, article?.outletId === 'national' ? 'College Football Central' : 'DynastyHQ Sports'),
-      headline: clean(article?.headline || article?.title, 'Saved DynastyHQ story'),
-      dek: clean(article?.dek || article?.summary, ''),
+      headline: polishNewsroomCopy(clean(article?.headline || article?.title, 'Saved DynastyHQ story')),
+      dek: polishNewsroomCopy(clean(article?.dek || article?.summary, '')),
       kicker: clean(article?.kicker, ''),
       byline: clean(article?.byline, 'DynastyHQ Staff'),
-      paragraphs: Array.isArray(article?.paragraphs) ? article.paragraphs.filter((entry) => clean(entry)).slice(0, 12) : [],
-      photoCaption: clean(article?.photoCaption || article?.dek),
+      paragraphs: Array.isArray(article?.paragraphs) ? article.paragraphs.filter((entry) => clean(entry)).slice(0, 12).map(polishNewsroomCopy) : [],
+      photoCaption: polishNewsroomCopy(clean(article?.photoCaption || article?.dek)),
       photo: asset?.downloadUrl ? {
         id: clean(asset.id),
         url: clean(asset.downloadUrl),

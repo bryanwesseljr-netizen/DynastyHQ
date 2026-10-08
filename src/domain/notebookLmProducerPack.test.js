@@ -127,3 +127,57 @@ test('Week 12 Wisconsin Producer Pack backfills the user-provided screenshot tab
   assert.ok(pack.meta.screenshotStatCount>150);
   assert.equal(pack.meta.suggestedFileName,'DynastyHQ-S4-W12-Wisconsin-NotebookLM-Producer-Pack.txt');
 });
+
+test('NotebookLM pack rebuilds the saved full dialogue from episode segments when a transcript string is absent',()=>{
+  const withoutCachedTranscript={
+    episode:{
+      title:'Oregon Wisconsin Postgame',
+      segments:[
+        {speaker:'Mark Thompson',text:'The Ducks closed out a decisive win and moved the ball effectively.'},
+        {speaker:'Sarah Chen',text:'Their passing numbers help explain the score and how the offense operated.'},
+      ],
+      chapters:[],
+    },
+  };
+  const pack=buildNotebookLmProducerPack({data,episode:withoutCachedTranscript,facts});
+  assert.equal(pack.meta.hasTranscript,true);
+  assert.match(pack.text,/Mark Thompson: The Ducks closed out a decisive win/);
+  assert.match(pack.text,/Sarah Chen: Their passing numbers help explain the score/);
+  assert.equal(pack.meta.chapterMapSource,'suggested');
+  assert.ok(pack.meta.chapterMapCount>=4);
+  assert.match(pack.text,/Suggested chapter outline assembled from verified game data/);
+  assert.match(pack.text,/## OPTIONAL EPISODE CHAPTER MAP[\s\S]*Opening Drive[\s\S]*Final Whistle/);
+  assert.doesNotMatch(pack.text,/No saved chapter list/);
+  assert.doesNotMatch(pack.text,/No generated transcript is saved for this selected week/);
+});
+
+test('NotebookLM pack never fabricates a transcript when there are no stored script segments',()=>{
+  const emptyPodcast={
+    transcript:'The Gridiron Grind\nEpisode\nHosted by Mark Thompson and Sarah Chen\nAI-generated voices',
+    chapters:[],
+    segments:[],
+  };
+  const pack=buildNotebookLmProducerPack({data,episode:emptyPodcast,facts});
+  assert.equal(pack.meta.hasTranscript,false);
+  assert.equal(pack.meta.chapterMapSource,'suggested');
+  assert.match(pack.text,/No generated transcript is saved for this selected week/);
+  assert.doesNotMatch(pack.text,/No saved chapter list/);
+});
+
+test('NotebookLM pack keeps saved chapters and does not replace a true verified script',()=>{
+  const pack=buildNotebookLmProducerPack({data,episode,facts});
+  assert.equal(pack.meta.hasTranscript,true);
+  assert.equal(pack.meta.chapterMapSource,'saved');
+  assert.equal(pack.meta.chapterMapCount,1);
+  assert.match(pack.text,/1\. Opening Drive — Why Oregon won/);
+  assert.match(pack.text,/Mark Thompson: Oregon handled Wisconsin/);
+});
+
+test('Podcast UI offers Podcast-only generation when selected source pack lacks a saved script',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const app=await readFile(new URL('../option-a-preview/PreviewApp.jsx',import.meta.url),'utf8');
+  assert.match(app,/OPEN PODCAST-ONLY GENERATION/);
+  assert.match(app,/PODCAST ONLY/);
+  assert.match(app,/chapterMapSource==='saved'/);
+  assert.match(app,/notebookProducerPack\.meta\.hasTranscript/);
+});

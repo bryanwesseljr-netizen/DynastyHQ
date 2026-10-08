@@ -257,6 +257,8 @@ const SCHEDULE_SCHEMA = {
           date: { type: 'string' },
           conference: { type: 'string' },
           label: { type: 'string' },
+          postseasonRound: { type: 'string', enum: ['', 'first-round', 'quarterfinal', 'semifinal', 'national-championship', 'bowl'] },
+          bowlName: { type: 'string' },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
           evidence: { type: 'string' },
         },
@@ -328,6 +330,8 @@ const SCHEDULE_INSTRUCTIONS = `You extract a college football season schedule fr
 - CFB 27 can show non-numeric postseason calendar rows such as "Conf Champ", "Bowl 1", "Bowl 2", and later playoff/bowl stages. Preserve the exact visible row name in label.
 - For those non-numeric rows, use a deterministic INTERNAL week sequence only so DynastyHQ can store/order them: Conf Champ=16, Bowl 1=17, Bowl 2=18, Bowl 3=19, Bowl 4=20. If a later visible postseason row uses another named stage, continue sequentially after the prior slot. This internal number is never the user-facing label.
 - A row labeled Bowl 1 or later Bowl/CFP stage is postseason/playoff context. Keep the exact visible label; never rename it to Week 17, Week 18, etc.
+- Optionally extract postseasonRound (first-round, quarterfinal, semifinal, national-championship or bowl) and bowlName ONLY when directly visible on this screenshot. A generic "Bowl 1/2/3" calendar slot is NOT evidence for a CFP round or a specific named bowl. Leave these fields empty when they cannot be verified.
+- When visible, bowlName should contain the actual named bowl (for example, "Sugar Bowl" or "Rose Bowl"), not "Bowl 1". A screenshot might show a bracket's playoff round but no bowl name; preserve only what is visible. Do not assign real-world bowl rotations to an in-game matchup.
 - opponent is the visible opponent name without a separate ranking number. For example, a row visually showing "10 LSU" should return opponent="LSU", not "10 LSU". A bye row must use opponent="BYE", isBye=true, status="bye".
 - homeAway is home, away, neutral, or unknown only when the row visibly establishes it. Do not guess from team ordering.
 - For completed games, status=completed and result=W or L only when the result is visibly established. teamScore is the tracked PROGRAM's score and opponentScore is the opponent score regardless of home/away ordering.

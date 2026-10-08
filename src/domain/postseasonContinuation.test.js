@@ -185,3 +185,54 @@ test('preview week selector includes all saved schedule slots instead of only co
   assert.match(source, /if \(week >= 0\) weekSet\.add\(week\)/);
   assert.doesNotMatch(source, /!entry\?\.isBye && entry\?\.completed/);
 });
+
+test('confirmed playoff title travels from schedule activation into published newsroom, podcast and chronicle', () => {
+  const career = baseCareer();
+  career.seasonSchedules[0].entries = career.seasonSchedules[0].entries.map((entry) => (
+    Number(entry.week) === 17
+      ? { ...entry, postseasonRound: 'quarterfinal', bowlName: 'Rose Bowl' }
+      : entry
+  ));
+  const ready = postseasonAdvanceCandidate(career);
+  assert.equal(ready.displayLabel, 'CFP QUARTERFINAL · ROSE BOWL');
+  assert.equal(ready.stage, 'quarterfinal');
+  assert.equal(ready.bowlName, 'Rose Bowl');
+  const active = advancePostseasonCareer(career);
+  assert.equal(active.currentWeek, 17);
+  assert.equal(active.currentWeekSetup.label, 'CFP QUARTERFINAL · ROSE BOWL');
+  const saved = createPublishedWeek({
+    state: active,
+    game: {
+      opponent: 'LSU', result: 'W', homeScore: 28, awayScore: 24,
+      passYds: 255, passTD: 2, rushYds: 49, rushTD: 1,
+      int: 0, didPlay: true,
+    },
+    rtg: { rank: 'QB1' },
+    facts: [],
+    sources: [],
+    season: 4,
+    week: 17,
+  });
+  assert.equal(saved.gameLogs.at(-1).weekLabel, 'CFP QUARTERFINAL · ROSE BOWL');
+  assert.equal(saved.gameLogs.at(-1).postseason.stage, 'quarterfinal');
+  assert.equal(saved.gameLogs.at(-1).postseason.bowlName, 'Rose Bowl');
+
+  const newsroom = buildNewsroomGenerationPayload(saved, 'season-4-week-17');
+  const podcast = buildPodcastGenerationPayload(saved, 'season-4-week-17');
+  assert.equal(newsroom.postseason.displayLabel, 'CFP QUARTERFINAL · ROSE BOWL');
+  assert.equal(newsroom.postseason.bowlName, 'Rose Bowl');
+  assert.match(podcast.brief.title, /ROSE BOWL/i);
+  const chronicle = buildCareerChronicle2(saved);
+  const entry = chronicle.entries.find((entry) => Number(entry.week) === 17);
+  assert.ok(entry.signatureReasons.some((reason) => /ROSE BOWL/i.test(reason)));
+});
+
+test('preview includes editable playoff details with verified-only stage metadata', async () => {
+  const source = await readFile(new URL('../option-a-preview/ScheduleExperience.jsx', import.meta.url), 'utf8');
+  const api = await readFile(new URL('../../api/analyze-coverage-reference.js', import.meta.url), 'utf8');
+  assert.match(source, /PLAYOFF DETAILS/);
+  assert.match(source, /SAVE PLAYOFF DETAILS/);
+  assert.match(source, /postseasonRound: detail\.postseasonRound/);
+  assert.match(source, /bowlName: clean\(detail\.bowlName\)/);
+  assert.match(api, /A generic "Bowl 1\/2\/3" calendar slot is NOT evidence/);
+});

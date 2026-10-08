@@ -12,6 +12,7 @@ import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
 import ScheduleExperience from './ScheduleExperience.jsx';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
+import { nextCareerMatchupForHome, weekSelectorOptions, weekSelectorDisplayLabel } from '../domain/previewHomeMatchup.js';
 import { postseasonPendingLabel } from '../domain/postseasonContext.js';
 import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
@@ -959,9 +960,9 @@ function App(){
   },[page,season,week,articleOpen,selectedArticleId,data.news?.publicationId,live.career]);
 
   const seasonOptions=data.navigation?.seasons?.length ? data.navigation.seasons : [season];
-  const weekOptions=data.navigation?.weeks?.length ? data.navigation.weeks : [week];
+  const weekOptions=weekSelectorOptions(data.navigation?.weeks?.length ? data.navigation.weeks : [week]);
   const selectedWeekLabel=previewWeekLabelFor(live.career || data.state || {},season,week);
-  const weekOptionLabel=(value)=>previewWeekLabelFor(live.career || data.state || {},season,value);
+  const weekOptionLabel=(value)=>weekSelectorDisplayLabel(value,previewWeekLabelFor(live.career || data.state || {},season,value));
 
   const persistSelection = (nextSeason,nextWeek) => {
     const current=loadPreviewViewState();
@@ -4021,37 +4022,7 @@ function ScoreRibbon({data}){
   </div>;
 }
 
-const liveCareerNextGame=(data)=>{
-  const state=data?.state || {};
-  const season=Number(state.currentSeason || data?.season || 1) || 1;
-  const currentWeek=Number(state.currentWeek ?? data?.week ?? 0) || 0;
-  const seasonSchedule=(state.seasonSchedules || []).find((entry)=>Number(entry?.season || 1)===season) || {};
-  const entries=Array.isArray(seasonSchedule.entries)
-    ? seasonSchedule.entries
-    : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
-  const nextPlayable=entries
-    .filter((entry)=>entry && !entry.isBye && String(entry.opponent || '').trim())
-    .sort((a,b)=>(Number(a.week)||0)-(Number(b.week)||0))
-    .find((entry)=>{
-      const status=String(entry.status || '').trim().toLowerCase();
-      return Number(entry.week)>=currentWeek && entry.completed!==true && status!=='completed';
-    });
-  if(nextPlayable){
-    return {
-      season,
-      week:Number(nextPlayable.week)||currentWeek,
-      displayLabel:scheduleDisplayLabel(nextPlayable),
-      opponent:String(nextPlayable.opponent || 'NEXT OPPONENT').toUpperCase(),
-    };
-  }
-  const liveTarget=liveCareerTarget(data);
-  return {
-    season:liveTarget.season || season,
-    week:liveTarget.week || currentWeek,
-    displayLabel:liveTarget.displayLabel || `W${liveTarget.week || currentWeek}`,
-    opponent:liveTarget.isBye ? 'NEXT OPPONENT' : liveTarget.opponent,
-  };
-};
+const liveCareerNextGame=(data)=>nextCareerMatchupForHome(data);
 
 function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialArticle,openPodcast,openArchiveMoment,notify,schedulePanel}){
   const story=homeHeroStory(data);
@@ -4116,8 +4087,12 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
           <Logo team={matchup.opponent} type="big"/>
           <div><small>{matchup.displayLabel || `W${matchup.week}`}</small><h3>{matchup.opponent}</h3></div>
         </div>
-        <p>{selectedIsLive && pregame?'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.':'This is the next unplayed game in your live career, even while you browse older weeks.'}</p>
-        <button className="yellow" onClick={()=>openArchiveMoment(liveNextGame.season,liveNextGame.week,'gamehub')}><CalendarDays/>{selectedIsLive && pregame?'OPEN THIS GAME':'PREPARE NEXT GAME'}<ChevronRight/></button>
+        <p>{matchup.awaiting
+          ? 'Your latest game is complete. The next opponent has not been confirmed in the schedule yet.'
+          : selectedIsLive && pregame
+            ? 'This is the active matchup. Play the game, then upload the result to turn this page into the postgame story.'
+            : 'This is the next unplayed game in your live career, even while you browse older weeks.'}</p>
+        <button className="yellow" onClick={()=>matchup.awaiting?go('gamehub'):openArchiveMoment(matchup.season,matchup.week,'gamehub')}><CalendarDays/>{matchup.awaiting?'VIEW THE ROAD AHEAD':selectedIsLive && pregame?'OPEN THIS GAME':'PREPARE NEXT GAME'}<ChevronRight/></button>
       </article>
 
       <article className="dark-card wrap-card reference-wrap">

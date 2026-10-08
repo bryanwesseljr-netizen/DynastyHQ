@@ -752,7 +752,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         <button className="oa-schedule-close" type="button" onClick={() => !busy && setOpen(false)} aria-label="Close"><X size={18}/></button>
         <span className="oa-schedule-eyebrow"><CalendarDays size={14}/> SEASON {activeSeason} SCHEDULE</span>
         <h2>{schedule?.entries?.length ? 'Update the road ahead.' : 'Import the road ahead.'}</h2>
-        <p>Upload the CFB 27 schedule screen (up to {MAX_FILES} screenshots) or enter a confirmed postseason matchup yourself when the free AI scanner is busy. Existing completed games are protected.</p>
+        <p>Upload the CFB 27 schedule screen (up to {MAX_FILES} screenshots) or enter a confirmed postseason matchup yourself when the free AI scanner is busy. New rows merge into the existing season; saved games are not erased.</p>
 
         {!draftSchedule && <div className="oa-schedule-import-modes">
           <button type="button" className={!manualOpen?'selected':''} disabled={busy} onClick={()=>{setManualOpen(false);setError('')}}><CloudUpload size={15}/> SCAN SCREENSHOT</button>

@@ -85,6 +85,8 @@ test('coverage generation is non-destructive and can be retried independently af
   assert.match(source, /RETRY COVERAGE/);
   assert.match(source, /detectDestructiveCareerRegression\(remote,nextState\)/);
   assert.match(source, /findPublishedWeekConflict\(remote/);
-  assert.match(source, /audioStatus:priorEpisode\?\.audioStatus==='ready' \? 'stale' : 'not-generated'/);
+  assert.match(source, /audioStatus:hadRecordedAudio \? 'stale' : 'not-generated'/);
+  assert.match(source, /masterAudioUploadedAt/);
+  assert.match(source, /audioModel:priorEpisode.audioModel/);
   assert.match(source, /Existing audio is never regenerated automatically/);
 });

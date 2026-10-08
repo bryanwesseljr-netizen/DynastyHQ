@@ -3237,6 +3237,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
               {!regenerateConfirm && !coverageRefreshBusy && !coverageRefreshResult && <div className="coverage-regen-actions">
                 <button type="button" className="secondary" onClick={()=>setPhase('game')}>BACK TO WEEK PROCESSING</button>
                 <button type="button" className="secondary" onClick={()=>{setRegenerateTarget('newsroom');setRegenerateConfirm(true)}}><Newspaper/>NEWSROOM ONLY</button>
+                <button type="button" className="secondary" onClick={()=>{setRegenerateTarget('podcast');setRegenerateConfirm(true)}}><Mic2/>PODCAST ONLY</button>
                 <button type="button" className="primary" onClick={()=>{setRegenerateTarget('both');setRegenerateConfirm(true)}}><Sparkles/>NEWSROOM + PODCAST</button>
               </div>}
               {regenerateConfirm && !coverageRefreshBusy && !coverageRefreshResult && <div className="coverage-regen-confirm">
@@ -5005,9 +5006,15 @@ function PodcastPage({
             <div><Check/><span><b>Complete uploaded screenshot stats</b><small>{notebookProducerPack.meta.screenshotStatCount || notebookProducerPack.meta.supportingFactCount} published screenshot stats are preserved and organized into passing, rushing, receiving, defense, kicking, punting, returns and other verified data.</small></span></div>
             <div><Check/><span><b>Previous-game + recent trend context</b><small>{notebookProducerPack.meta.recentGameCount} recent completed games can provide continuity without replacing the current game.</small></span></div>
             <div><Check/><span><b>RTG mechanics excluded</b><small>No overall, coach trust, skill points, wear, GPA, followers, NIL systems or progression-menu data is exported.</small></span></div>
-            <div><Check/><span><b>Full DynastyHQ transcript</b><small>{notebookProducerPack.meta.hasTranscript?'Complete saved transcript included as a secondary editorial reference.':'No saved transcript exists for this game yet; the verified research packet still downloads.'}</small></span></div>
+            <div><Check/><span><b>Full DynastyHQ transcript</b><small>{notebookProducerPack.meta.hasTranscript?'Complete saved transcript included as a secondary editorial reference.':'No transcript was saved for the selected game. The verified research pack still downloads; generate the podcast transcript separately.'}</small></span></div>
+            <div><Check/><span><b>Optional episode chapter map</b><small>{notebookProducerPack.meta.chapterMapSource==='saved'?'Saved episode chapters are included.':'A suggested chapter map is included, built from the selected game\'s verified context.'}</small></span></div>
           </div>
 
+          {!notebookProducerPack.meta.hasTranscript && notebookTargetData.selection?.hasGame && <div className="notebook-missing-transcript">
+            <span><ShieldCheck/><strong>NO SAVED PODCAST SCRIPT FOR THIS GAME</strong></span>
+            <p>The producer pack still includes verified game research and a suggested episode map, but it cannot include a transcript that was never saved. Use Podcast-only generation to create one without rewriting the Newsroom or game.</p>
+            <button type="button" onClick={onRegenerateCoverage}><Mic2/>OPEN PODCAST-ONLY GENERATION</button>
+          </div>}
           <div className="notebook-actions">
             <button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD WEEK {notebookProducerPack.meta.week} PRODUCER PACK<ChevronRight/></button>
             <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY OPTIONAL DEEP DIVE FOCUS</button>

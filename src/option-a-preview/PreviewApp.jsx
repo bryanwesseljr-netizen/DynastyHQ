@@ -1929,6 +1929,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
   const [coverageRefreshError,setCoverageRefreshError]=useState('');
   const [coverageRefreshResult,setCoverageRefreshResult]=useState(null);
   const [regenerateConfirm,setRegenerateConfirm]=useState(false);
+  const [regenerateTarget,setRegenerateTarget]=useState('both');
 
   const game=data.game || {};
   const weekDisplayLabel=data.weekLabel || `W${game.week}`;
@@ -1957,6 +1958,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
     if(!open) return;
     setPhase(intent==='regenerate' && data.selection?.hasGame ? 'regenerate' : 'game');
     setRegenerateConfirm(false);
+    setRegenerateTarget('both');
     revokeFiles(files);
     setFiles([]);
     setDragging(false);
@@ -2525,7 +2527,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
     opponent:coverageScreens.some((entry)=>entry.screenType==='team_stats' || entry.screenType==='player_stats'),
   };
 
-  const refreshPublishedCoverage=async({targetPublicationId,targetSeason,targetWeek})=>{
+  const refreshPublishedCoverage=async({targetPublicationId,targetSeason,targetWeek,parts='both'})=>{
     if(coverageRefreshBusy) return coverageRefreshResult;
     const signedInUser=auth.currentUser;
     if(!signedInUser || !user || signedInUser.uid!==user.uid){
@@ -2538,7 +2540,13 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
     setCoverageRefreshError('');
     setCoverageRefreshResult(null);
 
-    const outcome={newsroom:'pending',podcast:'pending',errors:[]};
+    const writeNewsroom=parts!=='podcast';
+    const writePodcast=parts!=='newsroom';
+    const outcome={
+      newsroom:writeNewsroom?'pending':'unchanged',
+      podcast:writePodcast?'pending':'unchanged',
+      errors:[],
+    };
     let newsroomEdition=null;
     let podcastEpisode=null;
 
@@ -2562,7 +2570,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
 
       const idToken=await signedInUser.getIdToken();
 
-      try{
+      if(writeNewsroom) try{
         const newsroomPayload=buildNewsroomGenerationPayload(baseState,targetPublicationId);
         const generated=await generateNewsroomEdition({idToken,payload:newsroomPayload});
         newsroomEdition=normalizeGeneratedNewsroomEdition({
@@ -2576,11 +2584,15 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
           outcome.newsroom='skipped';
         }else{
           outcome.newsroom='failed';
-          outcome.errors.push('Newsroom: '+String(error?.message || 'generation failed'));
+          outcome.errors.push(
+            error?.name==='TypeError' && /failed to fetch|networkerror/i.test(String(error?.message || ''))
+              ? 'Newsroom: Browser connection to the writing server was interrupted. The draft may have been generated but was not attached to this saved week. Use RETRY NEWSROOM ONLY to try again without rewriting your podcast.'
+              : 'Newsroom: '+String(error?.message || 'generation failed')
+          );
         }
       }
 
-      try{
+      if(writePodcast) try{
         const podcastPayload=buildPodcastGenerationPayload(baseState,targetPublicationId);
         const generated=await generatePodcastScript({
           idToken,
@@ -2779,7 +2791,11 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
         notify(
           outcome.newsroom==='generated' && outcome.podcast==='generated'
             ? 'Newsroom coverage and The Huddle transcript are ready.'
-            : 'Postgame coverage refresh is complete.',
+            : outcome.newsroom==='generated'
+              ? 'LSU Newsroom articles have been updated. Your podcast was left unchanged.'
+              : outcome.podcast==='generated'
+                ? 'Podcast transcript updated. Existing Newsroom articles were left unchanged.'
+                : 'Postgame coverage refresh is complete.',
         );
       }
       return completed;
@@ -3219,26 +3235,49 @@ function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
               </div>
               {!regenerateConfirm && !coverageRefreshBusy && !coverageRefreshResult && <div className="coverage-regen-actions">
                 <button type="button" className="secondary" onClick={()=>setPhase('game')}>BACK TO WEEK PROCESSING</button>
-                <button type="button" className="primary" onClick={()=>setRegenerateConfirm(true)}><Sparkles/>REGENERATE COVERAGE</button>
+                <button type="button" className="secondary" onClick={()=>{setRegenerateTarget('newsroom');setRegenerateConfirm(true)}}><Newspaper/>NEWSROOM ONLY</button>
+                <button type="button" className="primary" onClick={()=>{setRegenerateTarget('both');setRegenerateConfirm(true)}}><Sparkles/>NEWSROOM + PODCAST</button>
               </div>}
               {regenerateConfirm && !coverageRefreshBusy && !coverageRefreshResult && <div className="coverage-regen-confirm">
-                <strong>Replace this week's saved Newsroom text and podcast transcript?</strong>
-                <p>Your game data and existing audio files will remain in place. A checkpoint will preserve the previous editorial version for recovery.</p>
+                <strong>{regenerateTarget==='newsroom'
+                  ? "Regenerate this week's Newsroom articles only?"
+                  : regenerateTarget==='podcast'
+                    ? "Regenerate this week's podcast transcript only?"
+                    : "Replace this week's saved Newsroom text and podcast transcript?"}</strong>
+                <p>{regenerateTarget==='newsroom'
+                  ? 'Only the selected Newsroom articles will be rewritten. Your already-generated podcast transcript, NotebookLM audio, game data and photos will not be changed.'
+                  : regenerateTarget==='podcast'
+                    ? 'Only the saved podcast transcript will be rewritten. Your Newsroom articles will remain unchanged, and any existing audio is preserved but marked outdated.'
+                    : 'Your game data and existing audio files will remain in place. A checkpoint will preserve the previous editorial version for recovery.'}</p>
                 <div className="coverage-regen-actions">
                   <button type="button" className="secondary" onClick={()=>setRegenerateConfirm(false)}>CANCEL</button>
-                  <button type="button" className="primary" onClick={()=>refreshPublishedCoverage({targetPublicationId:publicationId,targetSeason:Number(data.season)||1,targetWeek:Number(data.week)||0})}><Sparkles/>YES · REGENERATE BOTH</button>
+                  <button type="button" className="primary" onClick={()=>refreshPublishedCoverage({targetPublicationId:publicationId,targetSeason:Number(data.season)||1,targetWeek:Number(data.week)||0,parts:regenerateTarget})}><Sparkles/>{regenerateTarget==='newsroom'?'YES · NEWSROOM ONLY':regenerateTarget==='podcast'?'YES · PODCAST ONLY':'YES · REGENERATE BOTH'}</button>
                 </div>
               </div>}
-              {coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>REGENERATING SAVED COVERAGE</b><small>Writing new articles and transcript from your confirmed playoff details. Keep this window open.</small></span></div>}
+              {coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>REGENERATING SAVED COVERAGE</b><small>{regenerateTarget==='newsroom'
+                ? 'Writing just your Newsroom articles from confirmed playoff details. The podcast will stay untouched.'
+                : 'Writing new articles and transcript from your confirmed playoff details.'} Keep this window open.</small></span></div>}
               {!coverageRefreshBusy && coverageRefreshResult && <div className={'coverage-refresh-card '+(coverageRefreshError?'warning':'success')}>
                 {coverageRefreshError?<Shield/>:<Check/>}
                 <span><b>{coverageRefreshError?'REGENERATION NEEDS ATTENTION':'COVERAGE REGENERATION COMPLETE'}</b>
-                <small>Newsroom: {coverageRefreshResult.newsroom==='generated'?'updated':coverageRefreshResult.newsroom==='skipped'?'skipped':'not updated'} · Podcast transcript: {coverageRefreshResult.podcast==='generated'?'updated':'not updated'}.</small>
+                <small>Newsroom: {coverageRefreshResult.newsroom==='generated'?'updated':coverageRefreshResult.newsroom==='skipped'?'skipped':coverageRefreshResult.newsroom==='unchanged'?'left unchanged':'not updated'} · Podcast transcript: {coverageRefreshResult.podcast==='generated'?'updated':coverageRefreshResult.podcast==='unchanged'?'left unchanged':'not updated'}.</small>
                 {coverageRefreshError ? <em>{coverageRefreshError}</em> : null}</span>
               </div>}
               {!coverageRefreshBusy && coverageRefreshResult && <div className="coverage-regen-actions">
                 <button type="button" className="secondary" onClick={closeSafe}>CLOSE</button>
-                <button type="button" className="primary" onClick={()=>{setCoverageRefreshResult(null);setCoverageRefreshError('');setRegenerateConfirm(true)}}><Sparkles/>REGENERATE AGAIN</button>
+                {coverageRefreshResult.newsroom==='failed' && <button type="button" className="primary" onClick={()=>{
+                  setRegenerateTarget('newsroom');
+                  setCoverageRefreshResult(null);
+                  setCoverageRefreshError('');
+                  setRegenerateConfirm(true);
+                }}><Newspaper/>RETRY NEWSROOM ONLY</button>}
+                {coverageRefreshResult.podcast==='failed' && <button type="button" className="primary" onClick={()=>{
+                  setRegenerateTarget('podcast');
+                  setCoverageRefreshResult(null);
+                  setCoverageRefreshError('');
+                  setRegenerateConfirm(true);
+                }}><Mic2/>RETRY PODCAST ONLY</button>}
+                {coverageRefreshResult.newsroom!=='failed' && coverageRefreshResult.podcast!=='failed' && <button type="button" className="secondary" onClick={()=>{setCoverageRefreshResult(null);setCoverageRefreshError('');setRegenerateConfirm(false)}}><Sparkles/>MORE OPTIONS</button>}
               </div>}
             </>}
           </section>}

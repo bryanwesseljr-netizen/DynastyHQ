@@ -822,6 +822,15 @@ function App(){
   const [shareEnabled,setShareEnabled] = useState(false);
   const [shareLastSynced,setShareLastSynced] = useState('');
   const [processingOpen,setProcessingOpen] = useState(false);
+  const [processingIntent,setProcessingIntent] = useState('normal');
+  const openSavedCoverageRegenerator=()=>{
+    setProcessingIntent('regenerate');
+    setProcessingOpen(true);
+  };
+  const openNormalWeekProcessor=()=>{
+    setProcessingIntent('normal');
+    setProcessingOpen(true);
+  };
   const restoredSelectionRef=useRef(Boolean(restoredView.hasSelection || (hasRestoredSeason && hasRestoredWeek)));
   const pendingScrollRestoreRef=useRef(Number(restoredView.scrollY)||0);
   const scrollRestoredRef=useRef(false);
@@ -1585,9 +1594,9 @@ function App(){
     <main className="preview-main">
       <button className="page-visual-trigger" onClick={()=>openVisualEditor(page)} aria-label={`Change ${pageTitle} hero photo`} title="Change page photo"><Camera/></button>
       {page==='home' && <HomePage data={data} visual={visualFor('home')} podcastEpisodeCover={currentEpisodeCoverImage} go={go} openArticle={openNewsArticle} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} notify={notify} schedulePanel={<ScheduleExperience career={live.career} user={live.user} data={data} mode="home" go={go} notify={notify} connectLive={()=>setLiveAuthOpen(true)}/>}/>} 
-      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openProcessing={()=>setProcessingOpen(true)} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify} schedulePanel={<ScheduleExperience career={live.career} user={live.user} data={data} mode="full" go={go} notify={notify} connectLive={()=>setLiveAuthOpen(true)}/>}/>} 
-      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} officialArticleRequest={officialArticleRequest} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
-      {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify}/>} 
+      {page==='gamehub' && <GameHub data={data} visual={visualFor('gamehub')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openOfficialArticle={openOfficialArticle} openPodcast={openPodcast} openProcessing={openNormalWeekProcessor} onRegenerateCoverage={openSavedCoverageRegenerator} statsTab={statsTab} setStatsTab={setStatsTab} notify={notify} schedulePanel={<ScheduleExperience career={live.career} user={live.user} data={data} mode="full" go={go} notify={notify} connectLive={()=>setLiveAuthOpen(true)}/>}/>} 
+      {page==='newsroom' && <Newsroom data={data} visual={visualFor('newsroom')} profileVisual={profileVisual} podcastEpisodeCover={currentEpisodeCoverImage} openProfilePhoto={openProfilePhotoEditor} onRegenerateCoverage={openSavedCoverageRegenerator} articleOpen={articleOpen} setArticleOpen={setArticleOpen} selectedArticleId={selectedArticleId} setSelectedArticleId={setSelectedArticleId} officialArticleRequest={officialArticleRequest} openArticle={openNewsArticle} openPodcast={openPodcast} openArchiveMoment={openArchiveMoment} go={go} playing={playing} setPlaying={setPlaying} notify={notify}/>} 
+      {page==='podcast' && <PodcastPage data={data} visual={visualFor('podcast')} showCover={showCoverImage} episodeCover={currentEpisodeCoverImage} localPodcastArtwork={currentPodcastArtwork} podcastCoverForPublication={podcastCoverForPublication} podcastArtBusy={podcastArtBusy} onUploadShowCover={uploadPodcastShowCover} onResetShowCover={resetPodcastShowCover} onUploadEpisodeCover={uploadPodcastEpisodeCover} onUseShowCover={useShowCoverForCurrentEpisode} go={go} openArchiveMoment={openArchiveMoment} playing={playing} setPlaying={setPlaying} podcastTab={podcastTab} setPodcastTab={setPodcastTab} notify={notify} onRegenerateCoverage={openSavedCoverageRegenerator}/>} 
       {page==='offseason' && <OffseasonPage data={data} visual={visualFor('offseason')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} notify={notify}/>}
       {page==='career' && <CareerPage data={data} visual={visualFor('career')} profileVisual={profileVisual} openProfilePhoto={openProfilePhotoEditor} go={go} openArchiveMoment={openArchiveMoment}/>} 
       {page==='chronicle' && <ChroniclePage data={data} visual={visualFor('chronicle')} go={go} openPodcast={openPodcast} openArticle={openNewsArticle} openArchiveMoment={openArchiveMoment} notify={notify}/>} 
@@ -1638,6 +1647,7 @@ function App(){
 
     <WeekProcessingCenter
       open={processingOpen}
+      intent={processingIntent}
       data={data}
       user={live.user}
       onClose={()=>setProcessingOpen(false)}
@@ -1870,7 +1880,7 @@ function FollowerView({view}){
   </div>;
 }
 
-function WeekProcessingCenter({open,data,user,onClose,notify}){
+function WeekProcessingCenter({open,data,user,onClose,notify,intent='normal'}){
   const inputRef=useRef(null);
   const rtgInputRef=useRef(null);
   const coverageInputRef=useRef(null);
@@ -1918,6 +1928,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
   const [coverageRefreshBusy,setCoverageRefreshBusy]=useState(false);
   const [coverageRefreshError,setCoverageRefreshError]=useState('');
   const [coverageRefreshResult,setCoverageRefreshResult]=useState(null);
+  const [regenerateConfirm,setRegenerateConfirm]=useState(false);
 
   const game=data.game || {};
   const weekDisplayLabel=data.weekLabel || `W${game.week}`;
@@ -1944,7 +1955,8 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
 
   useEffect(()=>{
     if(!open) return;
-    setPhase('game');
+    setPhase(intent==='regenerate' && data.selection?.hasGame ? 'regenerate' : 'game');
+    setRegenerateConfirm(false);
     revokeFiles(files);
     setFiles([]);
     setDragging(false);
@@ -1983,7 +1995,7 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
     setCoverageRefreshBusy(false);
     setCoverageRefreshError('');
     setCoverageRefreshResult(null);
-  },[open,data.season,data.week]);
+  },[open,data.season,data.week,intent]);
 
   useEffect(()=>()=>revokeFiles(files),[]);
 
@@ -2586,10 +2598,18 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
           targetSeason,
           targetWeek,
         ));
+        const hadRecordedAudio=['ready','stale'].includes(priorEpisode?.audioStatus)
+          || Boolean(priorEpisode?.masterAudioUploadedAt || priorEpisode?.audioGeneratedAt);
         podcastEpisode={
           ...normalized,
-          audioStatus:priorEpisode?.audioStatus==='ready' ? 'stale' : 'not-generated',
-          ...(priorEpisode?.audioStatus==='ready' ? {audioStaleAt:new Date().toISOString()} : {}),
+          // A regenerated transcript never deletes or replaces uploaded audio.
+          // Keep the existing audio provenance while clearly marking it outdated.
+          ...(priorEpisode ? {
+            audioModel:priorEpisode.audioModel || '',
+            audioGeneratedAt:priorEpisode.audioGeneratedAt || '',
+          } : {}),
+          audioStatus:hadRecordedAudio ? 'stale' : 'not-generated',
+          ...(hadRecordedAudio ? {audioStaleAt:new Date().toISOString()} : {}),
         };
         outcome.podcast='generated';
       }catch(error){
@@ -2614,6 +2634,9 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             weekKey:targetPublicationId,
           });
           if(!target) throw new Error('The selected week changed before generated coverage could be attached.');
+          if(Number(remote._sync?.revision || 0)!==Number(baseState._sync?.revision || 0)){
+            throw new Error('The career was updated while coverage was being generated. No coverage was replaced. Refresh and regenerate again from the newest saved facts.');
+          }
 
           let nextState=remote;
           if(newsroomEdition){
@@ -2682,6 +2705,57 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             throw new Error('Generated coverage was not attached because the resulting DynastyHQ storage shard would be too large.');
           }
 
+          // Save an immutable rollback checkpoint of the prior article/transcript
+          // before replacing published coverage. The source game stays untouched.
+          const checkpointId=`before-coverage-regeneration-${targetPublicationId}-${Date.now()}`;
+          const beforeStorage=splitCareerStateForStorage(remote,savedAt);
+          const beforeTargetArchive=beforeStorage.archives.find((archive)=>archive.archiveId===targetPublicationId) || null;
+          const checkpointArchiveId=beforeTargetArchive ? `${checkpointId}-target` : '';
+          const checkpointArchiveIds=beforeStorage.archives.map((archive)=>(
+            beforeTargetArchive && archive.archiveId===targetPublicationId ? checkpointArchiveId : archive.archiveId
+          ));
+          const checkpointMain={
+            ...beforeStorage.mainState,
+            _storage:{
+              ...(beforeStorage.mainState._storage || {}),
+              archiveIds:checkpointArchiveIds,
+            },
+            _checkpoint:{
+              immutable:true,
+              createdAt:savedAt,
+              reason:'Backup before coverage-only Newsroom and Podcast transcript regeneration.',
+              targetPublicationId,
+              action:'regenerate-coverage',
+              originalArchiveIds:beforeStorage.archives.map((archive)=>archive.archiveId),
+              targetArchiveBackupId:checkpointArchiveId,
+            },
+          };
+          if(estimatedJsonBytes(checkpointMain)>=950*1024){
+            throw new Error('Coverage regeneration was blocked because a safe rollback checkpoint could not be created.');
+          }
+          transaction.set(
+            doc(db,'artifacts',productionAppId,'users',signedInUser.uid,'hq_data',checkpointId),
+            checkpointMain,
+          );
+          if(beforeTargetArchive){
+            const checkpointArchive={
+              ...beforeTargetArchive,
+              archiveId:checkpointArchiveId,
+              _checkpointArchive:{
+                immutable:true,
+                createdAt:savedAt,
+                targetPublicationId,
+                originalArchiveId:beforeTargetArchive.archiveId,
+              },
+            };
+            if(estimatedJsonBytes(checkpointArchive)>=950*1024){
+              throw new Error('Coverage regeneration was blocked because the rollback archive is too large.');
+            }
+            transaction.set(
+              careerArchiveDoc(db,productionAppId,signedInUser.uid,checkpointArchiveId),
+              checkpointArchive,
+            );
+          }
           writeHydratedCareerInTransaction({
             transaction,
             db,
@@ -3103,14 +3177,14 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
         <header className="processing-topbar">
           <button className="processing-brand" onClick={closeSafe}>DYNASTY<span>HQ</span></button>
           <div className="processing-context">
-            <span>WEEK PROCESSING CENTER</span>
+            <span>{phase==='regenerate'?'COVERAGE REGENERATION':'WEEK PROCESSING CENTER'}</span>
             <b>SEASON {data.season} · {weekDisplayLabel} · {data.player.school} vs {game.opponent}</b>
           </div>
           <div className="processing-safety"><ShieldCheck/><span>REAL SCANNERS · DRAFT UNTIL CONFIRMED</span></div>
           <button className="processing-close" onClick={closeSafe} aria-label="Close Processing Center"><X/></button>
         </header>
 
-        <nav className="processing-steps" aria-label="Processing steps">
+        {phase!=='regenerate' && <nav className="processing-steps" aria-label="Processing steps">
           {steps.map(([id,label,Icon],index)=><React.Fragment key={id}>
             <button className={(phase===id?'current ':'')+(index<phaseIndex?'complete':'')} onClick={()=>index<=phaseIndex && !publishing && setPhase(id)} disabled={publishing || index>phaseIndex}>
               <i>{index<phaseIndex?<Check/>:<Icon/>}</i>
@@ -3118,9 +3192,52 @@ function WeekProcessingCenter({open,data,user,onClose,notify}){
             </button>
             {index<steps.length-1 && <em className={index<phaseIndex?'complete':''}/>}
           </React.Fragment>)}
-        </nav>
+        </nav>}
+
+        {hasSavedGame && phase!=='regenerate' && <div className="coverage-regen-shortcut">
+          <div><Sparkles/><span><strong>Already published this week?</strong><small>Rebuild Newsroom articles and the podcast transcript without re-uploading or republishing game data.</small></span></div>
+          <button type="button" disabled={publishing || coverageRefreshBusy} onClick={()=>{setPhase('regenerate');setRegenerateConfirm(false);setCoverageRefreshResult(null);setCoverageRefreshError('')}}>REGENERATE COVERAGE</button>
+        </div>}
 
         <main className="processing-main">
+          {phase==='regenerate' && <section className="processing-stage coverage-regen-stage">
+            <div className="processing-stage-head">
+              <span>SAVED GAME · COVERAGE ONLY</span>
+              <h1>REGENERATE NEWSROOM + PODCAST</h1>
+              <p>Season {data.season} · {weekDisplayLabel} · {data.player.school} vs {game.opponent}. Use this after changing the playoff round or location. The existing game results, player stats, progression, Game Photos, and EA SPORTS Network uploads will stay as saved.</p>
+            </div>
+            {!hasSavedGame ? <div className="coverage-refresh-card warning"><Shield/><span><b>NO PUBLISHED GAME FOUND</b><small>Select a completed saved week before rebuilding its coverage.</small></span></div> : <>
+              <div className="coverage-regen-target">
+                <div><ShieldCheck/><span><b>Uses your latest saved verified facts</b><small>Updates the Newsroom articles, Podcast transcript and NotebookLM material for this selected week only.</small></span></div>
+                <div><Headphones/><span><b>Existing audio is preserved</b><small>Any attached recording remains saved but is marked stale if the transcript changes. New audio must be created separately.</small></span></div>
+                <div><LockKeyhole/><span><b>Shared career save</b><small>This preview connects to your real saved career. Regeneration replaces the selected published editorial text only after your confirmation and makes a safety checkpoint first.</small></span></div>
+              </div>
+              {!regenerateConfirm && !coverageRefreshBusy && !coverageRefreshResult && <div className="coverage-regen-actions">
+                <button type="button" className="secondary" onClick={()=>setPhase('game')}>BACK TO WEEK PROCESSING</button>
+                <button type="button" className="primary" onClick={()=>setRegenerateConfirm(true)}><Sparkles/>REGENERATE COVERAGE</button>
+              </div>}
+              {regenerateConfirm && !coverageRefreshBusy && !coverageRefreshResult && <div className="coverage-regen-confirm">
+                <strong>Replace this week's saved Newsroom text and podcast transcript?</strong>
+                <p>Your game data and existing audio files will remain in place. A checkpoint will preserve the previous editorial version for recovery.</p>
+                <div className="coverage-regen-actions">
+                  <button type="button" className="secondary" onClick={()=>setRegenerateConfirm(false)}>CANCEL</button>
+                  <button type="button" className="primary" onClick={()=>refreshPublishedCoverage({targetPublicationId:publicationId,targetSeason:Number(data.season)||1,targetWeek:Number(data.week)||0})}><Sparkles/>YES · REGENERATE BOTH</button>
+                </div>
+              </div>}
+              {coverageRefreshBusy && <div className="coverage-refresh-card busy"><Sparkles/><span><b>REGENERATING SAVED COVERAGE</b><small>Writing new articles and transcript from your confirmed playoff details. Keep this window open.</small></span></div>}
+              {!coverageRefreshBusy && coverageRefreshResult && <div className={'coverage-refresh-card '+(coverageRefreshError?'warning':'success')}>
+                {coverageRefreshError?<Shield/>:<Check/>}
+                <span><b>{coverageRefreshError?'REGENERATION NEEDS ATTENTION':'COVERAGE REGENERATION COMPLETE'}</b>
+                <small>Newsroom: {coverageRefreshResult.newsroom==='generated'?'updated':coverageRefreshResult.newsroom==='skipped'?'skipped':'not updated'} · Podcast transcript: {coverageRefreshResult.podcast==='generated'?'updated':'not updated'}.</small>
+                {coverageRefreshError ? <em>{coverageRefreshError}</em> : null}</span>
+              </div>}
+              {!coverageRefreshBusy && coverageRefreshResult && <div className="coverage-regen-actions">
+                <button type="button" className="secondary" onClick={closeSafe}>CLOSE</button>
+                <button type="button" className="primary" onClick={()=>{setCoverageRefreshResult(null);setCoverageRefreshError('');setRegenerateConfirm(true)}}><Sparkles/>REGENERATE AGAIN</button>
+              </div>}
+            </>}
+          </section>}
+
           {phase==='game' && <section className="processing-stage processing-game">
             <div className="processing-stage-head">
               <span>STEP 1 · GAME DATA</span>
@@ -4013,7 +4130,7 @@ function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialAr
 function CardHeader({title,light=false}){ return <div className={'card-title '+(light?'light':'')}><b>{title}</b><ChevronRight size={17}/></div>; }
 function CheckRow({title,sub,pending=false}){ return <div className={'check-row '+(pending?'pending':'')}><span>{pending?<CalendarDays/>:<Check/>}</span><div><b>{title}</b><small>{sub}</small></div></div>; }
 
-function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArticle,openPodcast,openProcessing,statsTab,setStatsTab,notify,schedulePanel}){
+function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArticle,openPodcast,openProcessing,onRegenerateCoverage,statsTab,setStatsTab,notify,schedulePanel}){
   const [detailOpen,setDetailOpen]=useState('');
   const showStat=(value)=>value===null||value===undefined||value===''?'—':String(value);
   const pregame=!data.selection?.hasGame;
@@ -4115,6 +4232,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
           <CoverageRow icon={BookOpen} title="NotebookLM pack" sub={pregame?'Generates after the completed week.':'Game files and key moments.'} status={pregame?'WAITING':'READY'} onClick={()=>pregame?notify('NotebookLM material will unlock after the game.'):openPodcast('notebook')}/>
           {!pregame && latestOfficial && <CoverageRow icon={RadioIcon} title="EA SPORTS Network" sub={latestOfficial.headline || 'Official in-game coverage attached.'} status="READY" onClick={openOfficialArticle}/>}
           <button className="yellow full" onClick={()=>pregame?notify('Coverage opens after the final is processed.'):go('newsroom')}><Zap/>{pregame?'COVERAGE AFTER GAME':'OPEN COVERAGE'}<ChevronRight/></button>
+          {!pregame && <button type="button" className="ghost full hub-regenerate-coverage" onClick={onRegenerateCoverage}><Sparkles/>REGENERATE NEWS + PODCAST<ChevronRight/></button>}
         </article>
 
         <article className="paper-panel development reference-development">
@@ -4233,6 +4351,7 @@ function PodcastPage({
   podcastTab,
   setPodcastTab,
   notify,
+  onRegenerateCoverage,
 }){
   const episode=data.podcast || {};
   const archiveRef=useRef(null);
@@ -4592,6 +4711,7 @@ function PodcastPage({
         <span><Mic2/>DYNASTYHQ SPORTS NETWORK</span>
         <div className="pod-network-actions">
           <b>{episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
+          {data.selection?.hasGame && <button type="button" className="pod-regenerate-coverage" onClick={onRegenerateCoverage}><Sparkles/>REGENERATE</button>}
           <button type="button" className={studioOpen?'active':''} onClick={()=>studioOpen?closeStudio():setStudioOpen(true)} aria-expanded={studioOpen}>
             <LockKeyhole/>STUDIO<ChevronDown/>
           </button>
@@ -5313,7 +5433,7 @@ function ChroniclePage({data,visual,go,openPodcast,openArticle,openArchiveMoment
   </div>;
 }
 
-function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,officialArticleRequest,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
+function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhoto,onRegenerateCoverage,articleOpen,setArticleOpen,selectedArticleId,setSelectedArticleId,officialArticleRequest,openArticle,openPodcast,openArchiveMoment,go,playing,setPlaying,notify}){
   const news=data.news || {};
   const [archiveOpen,setArchiveOpen]=useState(false);
   const [officialOpen,setOfficialOpen]=useState(null);
@@ -5503,6 +5623,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           <button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>
           <button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>
           <button className={archiveOpen?'active':''} onClick={()=>{setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
+          {data.selection?.hasGame && <button type="button" className="newsroom-regenerate-coverage" onClick={onRegenerateCoverage}><Sparkles/>REGENERATE COVERAGE</button>}
         </div>
       </header>
 

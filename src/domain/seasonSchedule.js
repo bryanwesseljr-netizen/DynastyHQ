@@ -16,6 +16,17 @@ const resultForScores = (teamScore, opponentScore) => {
   return teamScore > opponentScore ? 'W' : 'L';
 };
 
+export const CFP_ROUND_LABELS = {
+  'first-round': 'CFP FIRST ROUND',
+  quarterfinal: 'CFP QUARTERFINAL',
+  semifinal: 'CFP SEMIFINAL',
+  'national-championship': 'CFP NATIONAL CHAMPIONSHIP',
+  bowl: 'POSTSEASON BOWL',
+};
+const verifiedPostseasonRound = (value) => {
+  const round = clean(value, 40).toLowerCase();
+  return Object.hasOwn(CFP_ROUND_LABELS, round) ? round : '';
+};
 const SPECIAL_SCHEDULE_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|championship|conf\s+champ|quarterfinal|semi[- ]?final|first round)\b/i;
 const POSTSEASON_LABEL_PATTERN = /\b(cfp|college football playoff|playoff|postseason|bowl|championship|quarterfinal|semi[- ]?final|first round)\b/i;
 
@@ -27,6 +38,8 @@ export const schedulePhaseForEntry = (entry = {}) => {
   if (/^conf\s+champ\b/i.test(label) && entry.isBye) return 'regular-season';
   const visibleContext = [
     label,
+    clean(entry.postseasonRound, 40),
+    clean(entry.bowlName, 90),
     entry.conference,
     entry.evidence,
   ].map((value) => clean(value, 300)).filter(Boolean).join(' ');
@@ -34,6 +47,11 @@ export const schedulePhaseForEntry = (entry = {}) => {
 };
 
 export const scheduleDisplayLabel = (entry = {}) => {
+  const round = verifiedPostseasonRound(entry.postseasonRound);
+  const bowl = clean(entry.bowlName, 90).toUpperCase();
+  if (round && round !== 'bowl') return CFP_ROUND_LABELS[round] + (bowl ? ` · ${bowl}` : '');
+  if (bowl) return bowl;
+  if (round === 'bowl') return CFP_ROUND_LABELS.bowl;
   const label = clean(entry.label, 120);
   if (label && SPECIAL_SCHEDULE_LABEL_PATTERN.test(label)) return label.toUpperCase();
   return `W${weekNumber(entry.week, 0)}`;
@@ -86,6 +104,8 @@ export const normalizeScheduleEntry = (entry = {}, index = 0) => {
     date: clean(entry.date, 80),
     conference: clean(entry.conference, 80),
     label: clean(entry.label, 120),
+    postseasonRound: verifiedPostseasonRound(entry.postseasonRound),
+    bowlName: clean(entry.bowlName, 90),
     phase: schedulePhaseForEntry(entry),
     confidence: Number.isFinite(Number(entry.confidence)) ? Number(entry.confidence) : null,
     evidence: clean(entry.evidence, 300),
@@ -133,10 +153,14 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
       date: entry.date || prior.date || '',
       conference: entry.conference || prior.conference || '',
       label: entry.label || prior.label || '',
+      postseasonRound: entry.postseasonRound || prior.postseasonRound || '',
+      bowlName: entry.bowlName || prior.bowlName || '',
       phase: schedulePhaseForEntry({
         ...prior,
         ...entry,
         label: entry.label || prior.label || '',
+        postseasonRound: entry.postseasonRound || prior.postseasonRound || '',
+        bowlName: entry.bowlName || prior.bowlName || '',
         conference: entry.conference || prior.conference || '',
         evidence: entry.evidence || prior.evidence || '',
       }),
@@ -266,7 +290,7 @@ export const scheduleWeekSetup = (state = {}) => {
     week: row.week,
     type: 'game',
     phase: schedulePhaseForEntry(row),
-    label: row.label || `Week ${row.week}`,
+    label: scheduleDisplayLabel(row),
     customLabel: '',
     opponent: row.opponent,
     opponentRecord: '',

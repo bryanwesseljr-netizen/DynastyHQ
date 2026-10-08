@@ -50,7 +50,8 @@ export const postseasonContextForWeek = (state = {}, options = {}) => {
   const active = phase === 'postseason';
   const opponent = clean(options.game?.opponent || row?.opponent || setup.opponent);
   const isBye = Boolean(row?.isBye || setup.type === 'bye' || setup.isBye);
-  const stage = active ? stageForLabel(displayLabel) : '';
+  const stage = active ? (clean(row?.postseasonRound) || stageForLabel(displayLabel)) : '';
+  const bowlName = active ? clean(row?.bowlName) : '';
   const playoffGame = active && !isBye && Boolean(opponent);
   const entering = active ? teamRecordThroughWeek(state, season, Math.max(0, week - 1)) : null;
   const importance = !active
@@ -66,6 +67,7 @@ export const postseasonContextForWeek = (state = {}, options = {}) => {
     phase: active ? 'postseason' : phase,
     displayLabel,
     stage,
+    bowlName,
     playoffGame,
     isBye,
     opponent,
@@ -76,7 +78,7 @@ export const postseasonContextForWeek = (state = {}, options = {}) => {
       games: Number(entering.games) || 0,
     } : null,
     stakes: active
-      ? 'Postseason/playoff game. Treat the stage as materially higher-stakes than a regular-season week, but never invent a bracket round, advancement destination, title claim, ranking, or elimination detail that is not supplied.'
+      ? `Postseason/playoff game: ${displayLabel}. ${bowlName ? `Confirmed bowl: ${bowlName}. ` : ''}Treat this as materially higher-stakes than a regular-season week; never invent an unconfirmed bracket round, bowl assignment, advancement destination, title claim, ranking, or elimination detail.`
       : '',
   };
 };

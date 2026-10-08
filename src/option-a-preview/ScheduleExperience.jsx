@@ -215,6 +215,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       slot: entry.label || `W${entry.week}`,
       postseasonRound: entry.postseasonRound || '',
       bowlName: entry.bowlName || '',
+      homeAway: entry.homeAway || 'unknown',
     })));
     setMessage('');
     setError('');
@@ -257,6 +258,9 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
               ...entry,
               postseasonRound: detail.postseasonRound || '',
               bowlName: clean(detail.bowlName).slice(0, 90),
+              homeAway: ['home', 'away', 'neutral'].includes(detail.homeAway)
+                ? detail.homeAway
+                : 'unknown',
             };
           }),
           updatedAt: new Date().toISOString(),
@@ -273,7 +277,15 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         if (suggested && Number(suggested.week) === Number(next.currentWeek)) {
           next = {
             ...next,
-            currentWeekSetup: setupWithPreservedDetails(suggested, next.currentWeekSetup || {}),
+            currentWeekSetup: {
+              ...setupWithPreservedDetails(suggested, next.currentWeekSetup || {}),
+              // An explicitly confirmed schedule location must override the stale
+              // auto-derived venue (e.g. a prior neutral-site assumption).
+              ...(postseasonDraft.some((entry) => Number(entry.week) === Number(suggested.week)
+                && ['home', 'away', 'neutral'].includes(entry.homeAway))
+                ? { venue: suggested.venue }
+                : {}),
+            },
           };
         }
 
@@ -636,8 +648,16 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
               <label>BOWL NAME
                 <input value={entry.bowlName} maxLength={90} list="oa-playoff-bowl-suggestions" placeholder="If confirmed, e.g. Rose Bowl" onChange={(event) => editPostseasonDetail(entry.week, {bowlName: event.target.value})}/>
               </label>
+              <label>GAME LOCATION
+                <select value={entry.homeAway} onChange={(event) => editPostseasonDetail(entry.week, {homeAway: event.target.value})}>
+                  <option value="unknown">Not confirmed yet</option>
+                  <option value="home">Home — our stadium</option>
+                  <option value="away">Away — opponent's stadium</option>
+                  <option value="neutral">Neutral site</option>
+                </select>
+              </label>
             </div>
-            <div className="oa-playoff-detail-preview"><span>WILL DISPLAY</span><b>{scheduleDisplayLabel({...entry, label: entry.slot})}</b></div>
+            <div className="oa-playoff-detail-preview"><span>WILL DISPLAY</span><b>{scheduleDisplayLabel({...entry, label: entry.slot})}</b><small>{entry.homeAway === 'home' ? 'HOME GAME' : entry.homeAway === 'away' ? 'AWAY GAME' : entry.homeAway === 'neutral' ? 'NEUTRAL SITE' : 'LOCATION UNCONFIRMED'}</small></div>
           </div>)}
         </div>
         <datalist id="oa-playoff-bowl-suggestions">
@@ -645,7 +665,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           <option value="Cotton Bowl"/><option value="Fiesta Bowl"/><option value="Peach Bowl"/>
         </datalist>
         {error ? <div className="oa-schedule-error">{error}</div> : null}
-        <div className="oa-schedule-safety"><ShieldCheck size={15}/><span>Only the postseason presentation is updated. Opponents, scores, stats, completed weeks and the internal calendar slots remain unchanged.</span></div>
+        <div className="oa-schedule-safety"><ShieldCheck size={15}/><span>Playoff titles and verified game locations are updated. Opponents, scores, player stats, completed weeks and internal calendar slots remain unchanged.</span></div>
         <div className="oa-schedule-actions">
           <button className="secondary" type="button" onClick={() => setDetailsOpen(false)} disabled={busy}>CANCEL</button>
           <button className="primary" type="button" onClick={saveDetails} disabled={busy}>{busy ? <><Loader2 className="spin" size={15}/> SAVING…</> : 'SAVE PLAYOFF DETAILS'}</button>

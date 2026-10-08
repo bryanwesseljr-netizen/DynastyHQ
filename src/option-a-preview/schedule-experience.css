@@ -763,3 +763,24 @@
   .oa-manual-schedule-grid{grid-template-columns:1fr}
   .oa-manual-schedule-form{padding:11px}
 }
+
+/* Visible escape hatch when the schedule screenshot provider is unavailable */
+.oa-schedule-error .oa-schedule-outage-fallback{
+  margin-top:12px;
+  min-height:39px;
+  padding:9px 13px;
+  display:inline-flex;
+  gap:8px;
+  justify-content:center;
+  align-items:center;
+  max-width:100%;
+  border:1px solid #efd744;
+  border-radius:8px;
+  background:rgba(239,215,68,.14);
+  color:#ffe777;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.02em;
+  cursor:pointer;
+}
+.oa-schedule-outage-fallback svg{flex:none}

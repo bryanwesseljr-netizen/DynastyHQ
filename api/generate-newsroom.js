@@ -54,6 +54,9 @@ const sanitizePostseason = (body = {}) => {
     active: Boolean(raw.active),
     displayLabel: text(raw.displayLabel, 120),
     stage: text(raw.stage, 80),
+    bowlName: text(raw.bowlName, 90),
+    homeAway: ['home', 'away', 'neutral'].includes(raw.homeAway) ? raw.homeAway : 'unknown',
+    venue: text(raw.venue, 40),
     playoffGame: Boolean(raw.playoffGame),
     importance: ['major', 'career-defining'].includes(raw.importance) ? raw.importance : '',
     opponent: text(raw.opponent, 160),
@@ -265,7 +268,7 @@ SHARED COVERAGE DECISION:
 
 POSTSEASON / PLAYOFF RULE:
 - When postseason.active=true and postseason.playoffGame=true, the game has materially higher stakes than a routine regular-season week. Let that change the prominence, framing, headline energy, and depth of coverage.
-- Use postseason.displayLabel exactly as the supplied stage identity (for example BOWL 1) instead of inventing a fake Week 17 label.
+- Use postseason.displayLabel as the verified playoff stage identity (for example CFP FIRST ROUND), not the legacy BOWL 1 calendar slot or internal week number.\n- Use postseason.homeAway as the verified site: 'home' means the tracked school's home stadium, 'away' means the opponent hosts, and 'neutral' means neutral site. Never call a verified home first-round game a neutral-site bowl, and do not invent a stadium name or bowl sponsor.
 - The result, actual opponent, verified player/team performance, entering record, and supplied stage are legitimate major-story material.
 - Never invent the bracket round, seed, ranking, championship path, advancement destination, elimination consequence, or outside reaction unless the packet explicitly supplies it. Bigger coverage must still be factual.
 

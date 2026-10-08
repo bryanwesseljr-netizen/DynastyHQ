@@ -271,3 +271,53 @@ test('free-first scanner wiring preserves specialized boundaries and exact Total
   assert.match(sharedApi, /maxFreeModelAttempts:\s*task\.kind === 'schedule' \? 3/);
   assert.match(sharedApi, /geminiTimeoutMs:\s*task\.kind === 'schedule' \? 7000/);
 });
+
+test('Gemini timeout errors do not crash the free-model fallback chain', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalGeminiKey = process.env.GEMINI_API_KEY;
+  const originalOpenAiKey = process.env.OPENAI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  delete process.env.OPENAI_API_KEY;
+  let requests = 0;
+
+  globalThis.fetch = async () => {
+    requests += 1;
+    if (requests === 1) {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({
+          screenType: 'known',
+          facts: [{ confidence: 0.96 }],
+        }) }] } }],
+        usageMetadata: {},
+      }),
+    };
+  };
+
+  try {
+    const result = await analyzeVisionFreeFirst({
+      schema: SIMPLE_SCHEMA,
+      schemaName: 'timeout_fallback_test',
+      instructions: 'Extract only visible facts.',
+      userText: 'Analyze the test screenshot.',
+      imageDataUrl: 'data:image/png;base64,AA==',
+      maxOutputTokens: 100,
+      maxFreeModelAttempts: 2,
+      geminiTimeoutMs: 5,
+    });
+
+    assert.equal(requests, 2);
+    assert.equal(result.usage.provider, 'google');
+    assert.equal(result.analysis.facts[0].confidence, 0.96);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = originalGeminiKey;
+    if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalOpenAiKey;
+  }
+});

@@ -17,6 +17,7 @@ import { analyzeSeasonScheduleScreenshot } from '../services/seasonScheduleClien
 import { resolveTeamBrand } from '../domain/teamBrandResolver.js';
 import {
   mergeSeasonSchedule,
+  manualPostseasonScheduleDraft,
   nextScheduledGame,
   scheduleDisplayLabel,
   scheduleHighlightWeek,
@@ -166,6 +167,11 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]);
   const [draftSchedule, setDraftSchedule] = useState(null);
+  const [draftSource, setDraftSource] = useState('scan');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDraft, setManualDraft] = useState({
+    week:'', opponent:'', label:'', homeAway:'unknown', postseasonRound:'', bowlName:'',
+  });
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [postseasonDraft, setPostseasonDraft] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -327,8 +333,58 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   const resetImporter = () => {
     setFiles([]);
     setDraftSchedule(null);
+    setDraftSource('scan');
+    setManualOpen(false);
+    setManualDraft({week:'', opponent:'', label:'', homeAway:'unknown', postseasonRound:'', bowlName:''});
     setMessage('');
     setError('');
+  };
+
+  const openManualEntry = () => {
+    const nextUnassigned = entries.find((entry) => (
+      !entry.completed && !entry.isBye
+      && (!clean(entry.opponent) || /^(tbd|unknown|opponent tbd)$/i.test(clean(entry.opponent)))
+    ));
+    const latestFinished = entries
+      .filter((entry) => entry.completed)
+      .reduce((latest, entry) => Math.max(latest, Number(entry.week) || 0), 0);
+    const candidateWeek = nextUnassigned?.week || Math.max(
+      1,
+      latestFinished + 1,
+      Number(career?.currentWeek || 0) + 1,
+    );
+    const entry = entries.find((row) => Number(row.week) === Number(candidateWeek));
+    setDraftSchedule(null);
+    setDraftSource('manual');
+    setManualDraft({
+      week:String(candidateWeek),
+      opponent:'',
+      label:entry?.label || '',
+      homeAway:entry?.homeAway || 'unknown',
+      postseasonRound:entry?.postseasonRound || '',
+      bowlName:entry?.bowlName || '',
+    });
+    setManualOpen(true);
+    setError('');
+    setMessage('');
+  };
+
+  const reviewManualEntry = () => {
+    try {
+      const draft = manualPostseasonScheduleDraft({
+        existing:schedule,
+        season:activeSeason,
+        school:career?.player?.college || career?.player?.school || '',
+        ...manualDraft,
+      });
+      setDraftSchedule(draft);
+      setDraftSource('manual');
+      setManualOpen(false);
+      setError('');
+      setMessage('Manual matchup staged for review. Nothing has been saved or activated.');
+    } catch (manualError) {
+      setError(manualError?.message || 'The manual matchup could not be staged.');
+    }
   };
 
   const openImporter = () => {
@@ -398,6 +454,8 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       .slice(0, MAX_FILES);
     setFiles(images);
     setDraftSchedule(null);
+    setDraftSource('scan');
+    setManualOpen(false);
     setMessage('');
     setError('');
   };
@@ -442,6 +500,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         throw new Error('DynastyHQ could not find a readable season schedule in those screenshots. Try a clearer schedule screen.');
       }
 
+      setDraftSource('scan');
       setDraftSchedule(merged);
       setMessage(`Found ${merged.entries.length} schedule rows. Existing weeks are preserved; new or changed rows will merge into Season ${activeSeason}.`);
     } catch (scheduleError) {
@@ -467,8 +526,20 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         if (!loaded) throw new Error('Your live DynastyHQ career could not be loaded. Nothing was changed.');
 
         const remote = loaded.state;
-        let next = upsertSeasonSchedule(remote, draftSchedule);
-        next = advancePostseasonCareer(next);
+        const scheduleToSave = draftSource === 'manual'
+          ? manualPostseasonScheduleDraft({
+              existing:seasonScheduleFor(remote,activeSeason),
+              season:activeSeason,
+              school:remote.player?.college || remote.player?.school || '',
+              ...manualDraft,
+            })
+          : draftSchedule;
+        if(draftSource === 'manual' && (remote.gameLogs || []).some((game) => (
+          Number(game?.season || 1) === activeSeason && Number(game?.week) === Number(manualDraft.week)
+        ))) throw new Error('A completed game already exists for that week. No schedule changes were saved.');
+        let next = upsertSeasonSchedule(remote, scheduleToSave);
+        // Manual calendar entry must not silently advance the real career week.
+        if (draftSource !== 'manual') next = advancePostseasonCareer(next);
         const suggested = scheduleWeekSetup(next);
         if (suggested && Number(suggested.week) === Number(next.currentWeek)) {
           next = {
@@ -514,7 +585,9 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       setMessage(`Season ${activeSeason} schedule updated. Postseason rows will automatically feed Week Setup when their visible labels identify a bowl, conference championship, or CFP round.`);
       setFiles([]);
       setDraftSchedule(null);
-      notify?.('Season schedule updated.');
+      notify?.(draftSource === 'manual'
+        ? 'Next playoff matchup saved. The active career week was not advanced.'
+        : 'Season schedule updated.');
       window.setTimeout(() => setOpen(false), 1000);
     } catch (scheduleError) {
       setError(scheduleError?.message || 'The schedule could not be saved.');

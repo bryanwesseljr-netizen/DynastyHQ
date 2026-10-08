@@ -61,4 +61,6 @@ test('manual editor and review cannot render together before a draft exists', as
   assert.match(schedule, /<\/div> : null\}\s*\{error \?/);
   assert.match(schedule, /draftSchedule\.entries\.map/);
   assert.match(schedule, /!draftSchedule && <div className="oa-schedule-import-modes">/);
+  assert.match(schedule, /latestFinished \+ 1,\s*Number\(career\?\.currentWeek \|\| 0\),/);
+  assert.doesNotMatch(schedule, /Number\(career\?\.currentWeek \|\| 0\) \+ 1,/);
 });

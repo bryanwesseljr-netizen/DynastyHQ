@@ -500,7 +500,11 @@ export const derivePreviewData = (state, selection = {}) => {
     || /scoring|touchdown|field goal|extra point/i.test(`${fact?.label || ''} ${fact?.evidence || ''}`)
   ));
   const transcriptSections = episodeTranscriptSections(episode || {});
-  const transcriptText = episode ? podcastTranscriptText(episode) : '';
+  const transcriptText = episode
+    ? (Array.isArray(episode.segments) && episode.segments.some((segment) => clean(segment?.text))
+      ? podcastTranscriptText(episode)
+      : clean(episode?.transcript))
+    : '';
   const offseason = buildPlayerOffseasonMode(state);
   const chronicleView = buildCareerChronicle2(state);
   const career = careerOverview(state);

@@ -170,7 +170,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   const [draftSource, setDraftSource] = useState('scan');
   const [manualOpen, setManualOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState({
-    week:'', opponent:'', label:'', homeAway:'unknown', postseasonRound:'', bowlName:'',
+    week:'', opponent:'', label:'', date:'', homeAway:'unknown', postseasonRound:'', bowlName:'',
   });
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [postseasonDraft, setPostseasonDraft] = useState([]);
@@ -335,7 +335,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
     setDraftSchedule(null);
     setDraftSource('scan');
     setManualOpen(false);
-    setManualDraft({week:'', opponent:'', label:'', homeAway:'unknown', postseasonRound:'', bowlName:''});
+    setManualDraft({week:'', opponent:'', label:'', date:'', homeAway:'unknown', postseasonRound:'', bowlName:''});
     setMessage('');
     setError('');
   };
@@ -360,6 +360,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       week:String(candidateWeek),
       opponent:'',
       label:entry?.label || '',
+      date:entry?.date || '',
       homeAway:entry?.homeAway || 'unknown',
       postseasonRound:entry?.postseasonRound || '',
       bowlName:entry?.bowlName || '',
@@ -771,6 +772,9 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             <label>CALENDAR LABEL (OPTIONAL)
               <input type="text" maxLength="120" placeholder="e.g. Bowl 2" value={manualDraft.label} onChange={(event)=>setManualDraft((prior)=>({...prior,label:event.target.value}))}/>
             </label>
+            <label>DATE AS SHOWN IN GAME
+              <input type="text" maxLength="80" placeholder="e.g. Tue, Dec 24" value={manualDraft.date} onChange={(event)=>setManualDraft((prior)=>({...prior,date:event.target.value}))}/>
+            </label>
             <label>GAME LOCATION
               <select value={manualDraft.homeAway} onChange={(event)=>setManualDraft((prior)=>({...prior,homeAway:event.target.value}))}>
                 <option value="unknown">Unconfirmed</option>
@@ -814,7 +818,14 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           </div>
         </div>}
 
-        {error ? <div className="oa-schedule-error">{error}</div> : null}
+        {error ? <div className="oa-schedule-error">
+          <div>{error}</div>
+          {!draftSchedule && !manualOpen && /temporarily busy|provider outage|unavailable|timeout|high demand/i.test(error)
+            ? <button type="button" className="oa-schedule-outage-fallback" onClick={openManualEntry}>
+                <CalendarDays size={15}/> ADD NEXT POSTSEASON MATCHUP WITHOUT AI
+              </button>
+            : null}
+        </div> : null}
         {message ? <div className="oa-schedule-success"><Check size={14}/>{message}</div> : null}
         <div className="oa-schedule-safety"><ShieldCheck size={15}/><span>Schedule rows are calendar context only. Weekly Game Data remains the authority for scores, player stats, and career production.</span></div>
         <div className="oa-schedule-actions">

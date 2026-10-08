@@ -132,17 +132,21 @@ const setupWithPreservedDetails = (suggested, existing = {}) => {
 
 const ScheduleRow = ({ entry, currentWeek, compact = false }) => {
   const phase = schedulePhaseForEntry(entry);
+  const namedPostseason = phase === 'postseason' && (entry.postseasonRound || entry.bowlName);
+  const slotLabel = namedPostseason && /^bowl\s*\d+$/i.test(clean(entry.label))
+    ? clean(entry.label).toUpperCase()
+    : scheduleDisplayLabel(entry);
   const active = Number(entry.week) === Number(currentWeek) && !entry.completed;
   return <div className={`oa-schedule-row ${entry.completed ? 'is-complete' : ''} ${active ? 'is-active' : ''} ${entry.isBye ? 'is-bye' : ''}`}>
     <div className="oa-schedule-week">
-      <span>{scheduleDisplayLabel(entry)}</span>
+      <span>{slotLabel}</span>
       {phase === 'postseason' ? <em>POST</em> : null}
     </div>
     <div className="oa-schedule-opponent">
       {!compact ? <ScheduleTeamLogo team={entry.opponent} bye={entry.isBye}/> : null}
       <span>
         <strong>{entry.isBye ? 'BYE WEEK' : clean(entry.opponent).toUpperCase() || 'OPPONENT TBD'}</strong>
-        {!compact && (entry.label || entry.date) ? <small>{entry.label || entry.date}</small> : null}
+        {namedPostseason ? <small className="oa-postseason-game-title">{scheduleDisplayLabel(entry)}</small> : !compact && (entry.label || entry.date) ? <small>{entry.label || entry.date}</small> : null}
       </span>
     </div>
     <b className={entry.result === 'W' ? 'is-win' : entry.result === 'L' ? 'is-loss' : ''}>{statusLabel(entry)}</b>
@@ -162,6 +166,8 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]);
   const [draftSchedule, setDraftSchedule] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [postseasonDraft, setPostseasonDraft] = useState([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -193,12 +199,118 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
   const rows = mode === 'home' ? compactRows({ entries, currentWeek: highlightedWeek }) : entries;
   const splitIndex = Math.ceil(rows.length / 2);
   const scheduleColumns = mode === 'home' ? [] : [rows.slice(0, splitIndex), rows.slice(splitIndex)];
+  const playoffEntries = entries.filter((entry) => !entry.isBye && schedulePhaseForEntry(entry) === 'postseason');
   const hasPostseason = entries.some((entry) => schedulePhaseForEntry(entry) === 'postseason');
   const canUpdate = Boolean(user && career && displaySeason === activeSeason);
   const postseasonCandidate = useMemo(
     () => (career && displaySeason === activeSeason ? postseasonAdvanceCandidate(career) : null),
     [career, displaySeason, activeSeason],
   );
+
+  const openDetails = () => {
+    if (!canUpdate || !playoffEntries.length) return;
+    setPostseasonDraft(playoffEntries.map((entry) => ({
+      week: Number(entry.week),
+      opponent: entry.opponent,
+      slot: entry.label || `W${entry.week}`,
+      postseasonRound: entry.postseasonRound || '',
+      bowlName: entry.bowlName || '',
+    })));
+    setMessage('');
+    setError('');
+    setDetailsOpen(true);
+  };
+
+  const editPostseasonDetail = (week, patch) => {
+    setPostseasonDraft((current) => current.map((entry) => Number(entry.week) === Number(week)
+      ? { ...entry, ...patch }
+      : entry));
+  };
+
+  const saveDetails = async () => {
+    if (!user || !career || !db || busy || !canUpdate || !postseasonDraft.length) return;
+    setBusy(true);
+    setError('');
+    try {
+      await runTransaction(db, async (transaction) => {
+        const loaded = await readHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId: productionAppId,
+          userId: user.uid,
+        });
+        if (!loaded) throw new Error('Your live DynastyHQ schedule could not be reloaded. Nothing was changed.');
+
+        const remote = loaded.state;
+        if (Number(remote.currentSeason || 1) !== Number(activeSeason)) {
+          throw new Error('The active season changed during editing. Reload and try again.');
+        }
+        const savedSchedule = seasonScheduleFor(remote, activeSeason);
+        if (!savedSchedule) throw new Error('The saved schedule is unavailable. Nothing was changed.');
+        const requested = new Map(postseasonDraft.map((entry) => [Number(entry.week), entry]));
+        const updated = {
+          ...savedSchedule,
+          entries: savedSchedule.entries.map((entry) => {
+            const detail = requested.get(Number(entry.week));
+            if (!detail || entry.isBye || schedulePhaseForEntry(entry) !== 'postseason') return entry;
+            return {
+              ...entry,
+              postseasonRound: detail.postseasonRound || '',
+              bowlName: clean(detail.bowlName).slice(0, 90),
+            };
+          }),
+          updatedAt: new Date().toISOString(),
+        };
+        let next = {
+          ...remote,
+          seasonSchedules: [
+            ...(remote.seasonSchedules || []).filter((entry) => Number(entry?.season) !== Number(activeSeason)),
+            updated,
+          ].sort((a,b) => Number(a.season) - Number(b.season)),
+        };
+
+        const suggested = scheduleWeekSetup(next);
+        if (suggested && Number(suggested.week) === Number(next.currentWeek)) {
+          next = {
+            ...next,
+            currentWeekSetup: setupWithPreservedDetails(suggested, next.currentWeekSetup || {}),
+          };
+        }
+
+        const regression = detectDestructiveCareerRegression(remote, next);
+        if (regression.blocked) {
+          throw new Error('DynastyHQ protected your saved career history. ' + regression.reason);
+        }
+        const savedAt = new Date().toISOString();
+        next = {
+          ...next,
+          _sync: {
+            revision: (Number(loaded.rawMain?._sync?.revision) || 0) + 1,
+            deviceId: DEVICE_ID,
+            updatedAt: savedAt,
+          },
+        };
+        const split = splitCareerStateForStorage(next, savedAt);
+        if (estimatedJsonBytes(split.mainState) >= 950 * 1024
+          || split.archives.some((archive) => estimatedJsonBytes(archive) >= 950 * 1024)) {
+          throw new Error('The updated playoff details exceed the safe storage limit. Nothing was changed.');
+        }
+        writeHydratedCareerInTransaction({
+          transaction,
+          db,
+          appId: productionAppId,
+          userId: user.uid,
+          state: next,
+        });
+      });
+      setDetailsOpen(false);
+      notify?.('Confirmed playoff round and bowl details saved.');
+    } catch (saveError) {
+      setError(saveError?.message || 'Playoff details could not be saved.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const resetImporter = () => {
     setFiles([]);
@@ -417,9 +529,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             <span><CalendarDays size={14}/> THE ROAD AHEAD</span>
             <h2>{statusText}</h2>
           </div>
-          <button type="button" onClick={openImporter} disabled={!canUpdate} title={!canUpdate ? 'Connect Live Career first' : ''}>
-            {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
-          </button>
+          <div className="oa-schedule-header-actions">
+            {canUpdate && playoffEntries.length ? <button type="button" className="oa-edit-playoff" onClick={openDetails}><Trophy size={14}/> PLAYOFF DETAILS</button> : null}
+            <button type="button" onClick={openImporter} disabled={!canUpdate} title={!canUpdate ? 'Connect Live Career first' : ''}>
+              {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
+            </button>
+          </div>
         </header>
         {postseasonCandidate ? (
           <div className="oa-postseason-ready oa-postseason-ready-full">
@@ -464,11 +579,12 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             <h2>FULL SEASON SCHEDULE</h2>
             <p>{statusText}</p>
           </div>
-          {canUpdate ? (
+          {canUpdate ? <div className="oa-schedule-header-actions">
+            {playoffEntries.length ? <button type="button" className="oa-edit-playoff" onClick={openDetails}><Trophy size={14}/> PLAYOFF DETAILS</button> : null}
             <button type="button" onClick={openImporter}>
               {entries.length ? <><RefreshCw size={14}/> UPDATE SCHEDULE</> : <><CloudUpload size={14}/> IMPORT SCHEDULE</>}
             </button>
-          ) : null}
+          </div> : null}
         </header>
         {disconnected ? (
           <div className="oa-schedule-empty oa-schedule-disconnected">
@@ -492,6 +608,50 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         )}
       </section>
     )}
+
+    {detailsOpen ? <div className="oa-schedule-modal" role="dialog" aria-modal="true" aria-label="Edit playoff round and bowl details" data-playoff-details>
+      <button className="oa-schedule-backdrop" type="button" aria-label="Close playoff details" onClick={() => !busy && setDetailsOpen(false)}/>
+      <section className="oa-schedule-modal-card">
+        <button className="oa-schedule-close" type="button" onClick={() => !busy && setDetailsOpen(false)} aria-label="Close"><X size={18}/></button>
+        <span className="oa-schedule-eyebrow"><Trophy size={14}/> SEASON {activeSeason} PLAYOFF DETAILS</span>
+        <h2>Give every postseason game its real name.</h2>
+        <p>Choose the round and enter the actual bowl name when College Football 27 confirms them. A Bowl 1/2/3 calendar slot does not prove the playoff round. Unknown details can stay blank until the bracket reveals them.</p>
+        <div className="oa-playoff-detail-grid">
+          {postseasonDraft.map((entry) => <div className="oa-playoff-detail-card" key={entry.week}>
+            <header>
+              <small>{entry.slot.toUpperCase()} · INTERNAL WEEK {entry.week}</small>
+              <strong>{clean(entry.opponent).toUpperCase()}</strong>
+            </header>
+            <div className="oa-playoff-detail-fields">
+              <label>PLAYOFF ROUND
+                <select value={entry.postseasonRound} onChange={(event) => editPostseasonDetail(entry.week, {postseasonRound: event.target.value})}>
+                  <option value="">Not confirmed yet</option>
+                  <option value="first-round">CFP First Round</option>
+                  <option value="quarterfinal">CFP Quarterfinal</option>
+                  <option value="semifinal">CFP Semifinal</option>
+                  <option value="national-championship">CFP National Championship</option>
+                  <option value="bowl">Other Bowl Game</option>
+                </select>
+              </label>
+              <label>BOWL NAME
+                <input value={entry.bowlName} maxLength={90} list="oa-playoff-bowl-suggestions" placeholder="If confirmed, e.g. Rose Bowl" onChange={(event) => editPostseasonDetail(entry.week, {bowlName: event.target.value})}/>
+              </label>
+            </div>
+            <div className="oa-playoff-detail-preview"><span>WILL DISPLAY</span><b>{scheduleDisplayLabel({...entry, label: entry.slot})}</b></div>
+          </div>)}
+        </div>
+        <datalist id="oa-playoff-bowl-suggestions">
+          <option value="Rose Bowl"/><option value="Sugar Bowl"/><option value="Orange Bowl"/>
+          <option value="Cotton Bowl"/><option value="Fiesta Bowl"/><option value="Peach Bowl"/>
+        </datalist>
+        {error ? <div className="oa-schedule-error">{error}</div> : null}
+        <div className="oa-schedule-safety"><ShieldCheck size={15}/><span>Only the postseason presentation is updated. Opponents, scores, stats, completed weeks and the internal calendar slots remain unchanged.</span></div>
+        <div className="oa-schedule-actions">
+          <button className="secondary" type="button" onClick={() => setDetailsOpen(false)} disabled={busy}>CANCEL</button>
+          <button className="primary" type="button" onClick={saveDetails} disabled={busy}>{busy ? <><Loader2 className="spin" size={15}/> SAVING…</> : 'SAVE PLAYOFF DETAILS'}</button>
+        </div>
+      </section>
+    </div> : null}
 
     {open ? <div className="oa-schedule-modal" role="dialog" aria-modal="true" aria-label="Update season schedule" data-schedule-importer>
       <button className="oa-schedule-backdrop" type="button" aria-label="Close schedule importer" onClick={() => !busy && setOpen(false)}/>

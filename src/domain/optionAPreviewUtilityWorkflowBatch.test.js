@@ -121,11 +121,14 @@ test('weekly photo resolver remains safe when the selected week has no Newsroom 
 test('home next-game card follows the live career instead of the archived week being viewed',async ()=>{
   const source = await readFile(sourceUrl,'utf8');
   assert.match(source, /const liveCareerNextGame=\(data\)=>/);
-  assert.match(source, /Number\(entry\.week\)>=currentWeek/);
-  assert.match(source, /entry\.completed!==true/);
+  assert.match(source, /nextCareerMatchupForHome\(data\)/);
+  const helper = await readFile(new URL('./previewHomeMatchup.js', import.meta.url), 'utf8');
+  assert.match(helper, /playedWeeks\.has\(week\)/);
+  assert.match(helper, /entry\.completed === true/);
   assert.match(source, /const matchup=liveNextGame/);
   assert.match(source, /<CardHeader title="YOUR NEXT GAME"\/>/);
-  assert.match(source, /openArchiveMoment\(liveNextGame\.season,liveNextGame\.week,'gamehub'\)/);
+  assert.match(source, /openArchiveMoment\(matchup\.season,matchup\.week,'gamehub'\)/);
+  assert.match(source, /matchup\.awaiting\?go\('gamehub'\)/);
   assert.match(source, /PREPARE NEXT GAME/);
   assert.doesNotMatch(source, /openArchiveMoment\(data\.next\?\.season \|\| data\.season,data\.next\?\.week,'gamehub'\)/);
 });
@@ -157,7 +160,8 @@ test('EA SPORTS Network coverage is promoted as a first-class official artifact'
 test('homepage navigation uses explicit targets and flexible cards',async ()=>{
   const [source,css] = await Promise.all([readFile(sourceUrl,'utf8'),readFile(cssUrl,'utf8')]);
   assert.match(source, /onClick=\{\(\)=>openArticle\(data\.news\?\.article\?\.id \|\| ''\)\}/);
-  assert.match(source, /openArchiveMoment\(liveNextGame\.season,liveNextGame\.week,'gamehub'\)/);
+  assert.match(source, /openArchiveMoment\(matchup\.season,matchup\.week,'gamehub'\)/);
+  assert.match(source, /matchup\.awaiting\?go\('gamehub'\)/);
   assert.match(css, /flexible homepage cards/);
   assert.match(css, /\.home-page \.reference-newsroom-card\{[\s\S]*height:auto!important/);
 });

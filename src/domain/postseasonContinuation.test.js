@@ -45,7 +45,10 @@ const baseCareer = () => ({
     label: 'Week 15 Bye',
     opponent: '',
   },
-  seasonSchedules: postseasonSchedule,
+  seasonSchedules: postseasonSchedule.map((schedule) => ({
+    ...schedule,
+    entries: schedule.entries.map((entry) => ({ ...entry })),
+  })),
   gameLogs: [
     { season: 4, week: 13, opponent: 'Washington', result: 'W', homeScore: 42, awayScore: 35, passYds: 310, passTD: 3, rushYds: 62, rushTD: 1, int: 1, didPlay: true },
     { season: 4, week: 14, opponent: 'Michigan State', result: 'W', homeScore: 38, awayScore: 30, passYds: 275, passTD: 2, rushYds: 70, rushTD: 1, int: 0, didPlay: true },

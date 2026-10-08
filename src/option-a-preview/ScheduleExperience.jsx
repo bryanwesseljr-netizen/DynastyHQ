@@ -808,7 +808,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           </button>
           <input ref={inputRef} type="file" accept="image/*" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }}/>
           {files.length ? <div className="oa-schedule-files">{files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}</div> : null}
-        </> : <div className="oa-schedule-review">
+        </> : draftSchedule ? <div className="oa-schedule-review">
           <div className="oa-schedule-review-head">
             <span>{draftSource==='manual'?'REVIEW MANUAL MATCHUP':'REVIEW MERGED SCHEDULE'}</span>
             <button type="button" onClick={() => { setDraftSchedule(null); setMessage(''); if(draftSource==='manual') setManualOpen(true); }} disabled={busy}>{draftSource==='manual'?'EDIT MATCHUP':'CHOOSE DIFFERENT SCREENSHOTS'}</button>
@@ -816,7 +816,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
           <div className="oa-schedule-review-list">
             {draftSchedule.entries.map((entry) => <ScheduleRow key={`${entry.week}-${entry.opponent}`} entry={entry} currentWeek={career.currentWeek} />)}
           </div>
-        </div>}
+        </div> : null}
 
         {error ? <div className="oa-schedule-error">
           <div>{error}</div>

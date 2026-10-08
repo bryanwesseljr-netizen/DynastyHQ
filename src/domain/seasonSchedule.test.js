@@ -287,6 +287,7 @@ test('manual matchup entry adds a confirmed future playoff opponent while preser
     week: '18',
     opponent: 'Georgia',
     label: 'Bowl 2',
+    date: 'Tue, Dec 24',
     homeAway: 'neutral',
     postseasonRound: 'quarterfinal',
     bowlName: 'Sugar Bowl',
@@ -300,6 +301,7 @@ test('manual matchup entry adds a confirmed future playoff opponent while preser
   assert.equal(lsu.postseasonRound, 'first-round');
   assert.equal(lsu.homeAway, 'home');
   assert.equal(quarterfinal.opponent, 'Georgia');
+  assert.equal(quarterfinal.date, 'Tue, Dec 24');
   assert.equal(quarterfinal.phase, 'postseason');
   assert.equal(quarterfinal.homeAway, 'neutral');
   assert.equal(scheduleDisplayLabel(quarterfinal), 'CFP QUARTERFINAL · SUGAR BOWL');
@@ -329,6 +331,8 @@ test('manual schedule interface never activates career and retains screenshot op
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../option-a-preview/ScheduleExperience.jsx', import.meta.url), 'utf8');
   assert.match(source, /ENTER MATCHUP MANUALLY/);
+  assert.match(source, /ADD NEXT POSTSEASON MATCHUP WITHOUT AI/);
+  assert.match(source, /DATE AS SHOWN IN GAME/);
   assert.match(source, /REVIEW MATCHUP/);
   assert.match(source, /SAVE CONFIRMED MATCHUP/);
   assert.match(source, /const scheduleToSave = draftSource === 'manual'/);

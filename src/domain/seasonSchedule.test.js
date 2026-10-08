@@ -217,3 +217,54 @@ test('schedule highlight skips byes and advances to the next playable postseason
   assert.equal(scheduleHighlightWeek(entries, 16), 17);
   assert.equal(scheduleHighlightWeek(entries, 17), 17);
 });
+
+test('confirmed playoff round and bowl name replace generic slot labels without touching the internal week', () => {
+  const unknown = normalizeScheduleEntry({ week: 17, label: 'Bowl 1', opponent: 'LSU' });
+  assert.equal(scheduleDisplayLabel(unknown), 'BOWL 1');
+  assert.equal(unknown.week, 17);
+  assert.equal(unknown.postseasonRound, '');
+  assert.equal(unknown.bowlName, '');
+
+  const first = normalizeScheduleEntry({
+    week: 17, label: 'Bowl 1', opponent: 'LSU', postseasonRound: 'first-round',
+  });
+  assert.equal(scheduleDisplayLabel(first), 'CFP FIRST ROUND');
+  assert.equal(first.week, 17);
+
+  const quarter = normalizeScheduleEntry({
+    week: 18, label: 'Bowl 2', opponent: 'Texas',
+    postseasonRound: 'quarterfinal', bowlName: 'Rose Bowl',
+  });
+  assert.equal(scheduleDisplayLabel(quarter), 'CFP QUARTERFINAL · ROSE BOWL');
+  assert.equal(schedulePhaseForEntry(quarter), 'postseason');
+
+  const semi = normalizeScheduleEntry({
+    week: 19, label: 'Bowl 3', opponent: 'Georgia',
+    postseasonRound: 'semifinal', bowlName: 'Sugar Bowl',
+  });
+  assert.equal(scheduleDisplayLabel(semi), 'CFP SEMIFINAL · SUGAR BOWL');
+  assert.equal(scheduleDisplayLabel(normalizeScheduleEntry({
+    week: 20, label: 'Bowl 4', opponent: 'Penn State',
+    postseasonRound: 'national-championship',
+  })), 'CFP NATIONAL CHAMPIONSHIP');
+});
+
+test('generic schedule re-import retains already confirmed playoff names and preserves game scores', () => {
+  const original = mergeSeasonSchedule(null, {
+    season: 4,
+    entries: [{
+      week: 17, label: 'Bowl 1', opponent: 'LSU',
+      postseasonRound: 'quarterfinal', bowlName: 'Peach Bowl',
+      result: 'W', teamScore: 35, opponentScore: 28,
+    }],
+  }, 4);
+  const merged = mergeSeasonSchedule(original, {
+    season: 4,
+    entries: [{ week: 17, label: 'Bowl 1', opponent: 'LSU', status: 'upcoming' }],
+  }, 4);
+  assert.equal(merged.entries[0].postseasonRound, 'quarterfinal');
+  assert.equal(merged.entries[0].bowlName, 'Peach Bowl');
+  assert.equal(scheduleDisplayLabel(merged.entries[0]), 'CFP QUARTERFINAL · PEACH BOWL');
+  assert.equal(merged.entries[0].result, 'W');
+  assert.equal(merged.entries[0].teamScore, 35);
+});

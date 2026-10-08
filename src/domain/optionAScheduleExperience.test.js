@@ -52,3 +52,13 @@ test('Game Hub places the full schedule after the weekly dashboard content', asy
   assert.ok(gameHub.indexOf('className="hub-bottom"') >= 0);
   assert.ok(gameHub.lastIndexOf('{schedulePanel}') > gameHub.indexOf('className="hub-bottom"'));
 });
+
+test('manual editor and review cannot render together before a draft exists', async () => {
+  const schedule = await readFile(scheduleUrl, 'utf8');
+  assert.match(schedule, /!draftSchedule && manualOpen \? <div className="oa-manual-schedule-form">/);
+  assert.match(schedule, /!draftSchedule && !manualOpen \? <>/);
+  assert.match(schedule, /<\/\> : draftSchedule \? <div className="oa-schedule-review">/);
+  assert.match(schedule, /<\/div> : null\}\s*\{error \?/);
+  assert.match(schedule, /draftSchedule\.entries\.map/);
+  assert.match(schedule, /!draftSchedule && <div className="oa-schedule-import-modes">/);
+});

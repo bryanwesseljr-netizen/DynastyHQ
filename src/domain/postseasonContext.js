@@ -52,6 +52,9 @@ export const postseasonContextForWeek = (state = {}, options = {}) => {
   const isBye = Boolean(row?.isBye || setup.type === 'bye' || setup.isBye);
   const stage = active ? (clean(row?.postseasonRound) || stageForLabel(displayLabel)) : '';
   const bowlName = active ? clean(row?.bowlName) : '';
+  const rawVenue = clean(row?.homeAway || options.game?.homeAway || setup.homeAway).toLowerCase();
+  const homeAway = ['home', 'away', 'neutral'].includes(rawVenue) ? rawVenue : 'unknown';
+  const venue = homeAway === 'home' ? 'Home' : homeAway === 'away' ? 'Away' : homeAway === 'neutral' ? 'Neutral site' : '';
   const playoffGame = active && !isBye && Boolean(opponent);
   const entering = active ? teamRecordThroughWeek(state, season, Math.max(0, week - 1)) : null;
   const importance = !active
@@ -68,6 +71,8 @@ export const postseasonContextForWeek = (state = {}, options = {}) => {
     displayLabel,
     stage,
     bowlName,
+    homeAway,
+    venue,
     playoffGame,
     isBye,
     opponent,
@@ -78,7 +83,7 @@ export const postseasonContextForWeek = (state = {}, options = {}) => {
       games: Number(entering.games) || 0,
     } : null,
     stakes: active
-      ? `Postseason/playoff game: ${displayLabel}. ${bowlName ? `Confirmed bowl: ${bowlName}. ` : ''}Treat this as materially higher-stakes than a regular-season week; never invent an unconfirmed bracket round, bowl assignment, advancement destination, title claim, ranking, or elimination detail.`
+      ? `Postseason/playoff game: ${displayLabel}. ${bowlName ? `Confirmed bowl: ${bowlName}. ` : ''}${homeAway === 'home' ? 'Verified home game for the tracked school; the opponent is visiting, not a neutral-site bowl game. ' : homeAway === 'away' ? 'Verified road game at the opponent program; do not describe this as a neutral site. ' : homeAway === 'neutral' ? 'Verified neutral-site game. ' : 'The game site is not verified. '}Treat this as materially higher-stakes than a regular-season week; never invent an unconfirmed bracket round, bowl assignment, stadium, advancement destination, title claim, ranking, or elimination detail.`
       : '',
   };
 };

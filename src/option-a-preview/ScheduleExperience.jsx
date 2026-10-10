@@ -354,16 +354,22 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       Number(career?.currentWeek || 0),
     );
     const entry = entries.find((row) => Number(row.week) === Number(candidateWeek));
+    const previous = entries.find((row) => Number(row.week) === Number(candidateWeek) - 1);
+    const duplicatedPreviousStage = Boolean(
+      entry && previous?.completed && entry.postseasonRound
+      && entry.postseasonRound === previous.postseasonRound
+      && entry.bowlName === previous.bowlName
+    );
     setDraftSchedule(null);
     setDraftSource('manual');
     setManualDraft({
       week:String(candidateWeek),
       opponent:'',
-      label:entry?.label || '',
+      label:duplicatedPreviousStage && entry?.label === previous?.label ? '' : (entry?.label || ''),
       date:entry?.date || '',
       homeAway:entry?.homeAway || 'unknown',
-      postseasonRound:entry?.postseasonRound || '',
-      bowlName:entry?.bowlName || '',
+      postseasonRound:duplicatedPreviousStage ? '' : (entry?.postseasonRound || ''),
+      bowlName:duplicatedPreviousStage ? '' : (entry?.bowlName || ''),
     });
     setManualOpen(true);
     setError('');
@@ -529,7 +535,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         const remote = loaded.state;
         const scheduleToSave = draftSource === 'manual'
           ? manualPostseasonScheduleDraft({
-              existing:seasonScheduleFor(remote,activeSeason),
+              existing:syncScheduleWithCareer(remote,seasonScheduleFor(remote,activeSeason) || {season:activeSeason,entries:[]}),
               season:activeSeason,
               school:remote.player?.college || remote.player?.school || '',
               ...manualDraft,
@@ -538,7 +544,18 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
         if(draftSource === 'manual' && (remote.gameLogs || []).some((game) => (
           Number(game?.season || 1) === activeSeason && Number(game?.week) === Number(manualDraft.week)
         ))) throw new Error('A completed game already exists for that week. No schedule changes were saved.');
-        let next = upsertSeasonSchedule(remote, scheduleToSave);
+        // Manual draft is already safely merged against the latest remote
+        // schedule and contains intentionally empty round/bowl fields. An
+        // additional generic merge here would resurrect those old values.
+        let next = draftSource === 'manual'
+          ? {
+              ...remote,
+              seasonSchedules: [
+                ...(remote.seasonSchedules || []).filter((entry) => Number(entry?.season) !== activeSeason),
+                scheduleToSave,
+              ].sort((a,b) => Number(a.season) - Number(b.season)),
+            }
+          : upsertSeasonSchedule(remote, scheduleToSave);
         // Manual calendar entry must not silently advance the real career week.
         if (draftSource !== 'manual') next = advancePostseasonCareer(next);
         const suggested = scheduleWeekSetup(next);

@@ -146,8 +146,8 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
     // but never carry the old bowl identity into a different unplayed opponent.
     const opponentChanged = Boolean(prior.opponent && entry.opponent)
       && clean(prior.opponent).toLowerCase() !== clean(entry.opponent).toLowerCase();
-    const calendarSlotChanged = /^bowl\\s*\\d+$/i.test(clean(prior.label))
-      && /^bowl\\s*\\d+$/i.test(clean(entry.label))
+    const calendarSlotChanged = /^bowl\s*\d+$/i.test(clean(prior.label))
+      && /^bowl\s*\d+$/i.test(clean(entry.label))
       && clean(prior.label).toLowerCase() !== clean(entry.label).toLowerCase();
     const retainPriorPlayoffIdentity = (!opponentChanged && !calendarSlotChanged)
       || Boolean(prior.completed);

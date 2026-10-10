@@ -424,6 +424,12 @@ test('new screenshot opponent resets obsolete playoff identity but same opponent
   },4);
   assert.equal(unchanged.entries[0].postseasonRound,'quarterfinal');
   assert.equal(unchanged.entries[0].bowlName,'Sugar Bowl');
+  const sameOpponentDifferentSlot=mergeSeasonSchedule(initial,{
+    season:4,entries:[{week:19,label:'Bowl 3',opponent:'BYU',status:'upcoming'}],
+  },4);
+  assert.equal(sameOpponentDifferentSlot.entries[0].postseasonRound,'');
+  assert.equal(sameOpponentDifferentSlot.entries[0].bowlName,'');
+  assert.equal(scheduleDisplayLabel(sameOpponentDifferentSlot.entries[0]),'BOWL 3');
 });
 
 test('manual schedule blocks same CFP round in consecutive games after a completed quarterfinal',()=>{

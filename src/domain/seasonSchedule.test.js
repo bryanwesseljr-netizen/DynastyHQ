@@ -450,6 +450,9 @@ test('preview editor makes repeated quarterfinal title a visible editable semifi
   assert.match(source,/const duplicatedPriorPlayoffTitle =/);
   assert.match(source,/THIS ROUND MATCHES THE COMPLETED PREVIOUS GAME/);
   assert.match(source,/SET CFP SEMIFINAL · CLEAR COPIED BOWL/);
+  assert.match(source,/IN-GAME CALENDAR SLOT/);
+  assert.match(source,/disabled=\{entry.completed\}/);
+  assert.match(source,/label: !entry.completed && clean\(detail.slot, 120\)/);
   assert.match(source,/postseasonRound:duplicatedPreviousStage \? ''/);
   assert.match(source,/bowlName:duplicatedPreviousStage \? ''/);
   assert.match(source,/seasonSchedules:\s*\[/);

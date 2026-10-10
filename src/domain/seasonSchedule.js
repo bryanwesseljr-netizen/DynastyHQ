@@ -142,6 +142,15 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
   const byWeek = new Map(base.entries.map((entry) => [entry.week, entry]));
   next.entries.forEach((entry) => {
     const prior = byWeek.get(entry.week) || {};
+    // Keep manually confirmed playoff metadata when rereading the SAME game,
+    // but never carry the old bowl identity into a different unplayed opponent.
+    const opponentChanged = Boolean(prior.opponent && entry.opponent)
+      && clean(prior.opponent).toLowerCase() !== clean(entry.opponent).toLowerCase();
+    const retainPriorPlayoffIdentity = !opponentChanged || Boolean(prior.completed);
+    const postseasonRound = entry.postseasonRound
+      || (retainPriorPlayoffIdentity ? prior.postseasonRound : '') || '';
+    const bowlName = entry.bowlName
+      || (retainPriorPlayoffIdentity ? prior.bowlName : '') || '';
     byWeek.set(entry.week, {
       ...prior,
       ...entry,
@@ -153,14 +162,14 @@ export const mergeSeasonSchedule = (existing = null, incoming = {}, fallbackSeas
       date: entry.date || prior.date || '',
       conference: entry.conference || prior.conference || '',
       label: entry.label || prior.label || '',
-      postseasonRound: entry.postseasonRound || prior.postseasonRound || '',
-      bowlName: entry.bowlName || prior.bowlName || '',
+      postseasonRound,
+      bowlName,
       phase: schedulePhaseForEntry({
         ...prior,
         ...entry,
         label: entry.label || prior.label || '',
-        postseasonRound: entry.postseasonRound || prior.postseasonRound || '',
-        bowlName: entry.bowlName || prior.bowlName || '',
+        postseasonRound,
+        bowlName,
         conference: entry.conference || prior.conference || '',
         evidence: entry.evidence || prior.evidence || '',
       }),
@@ -209,7 +218,17 @@ export const manualPostseasonScheduleDraft = ({
   if (postseasonRound && !round) throw new Error('Select a recognized playoff round or leave it unconfirmed.');
   const cleanLabel = clean(label, 120) || prior?.label || 'Postseason';
   const venue = ['home','away','neutral'].includes(homeAway) ? homeAway : 'unknown';
-  return mergeSeasonSchedule(original, {
+  const confirmedBowl = clean(bowlName, 90);
+  const previous = original.entries.find((entry) => entry.week === targetWeek - 1);
+  if (
+    round
+    && round !== 'bowl'
+    && previous?.completed
+    && previous.postseasonRound === round
+  ) {
+    throw new Error('This round is the same as the completed previous playoff game. Select the confirmed new round (for example CFP Semifinal), or leave it unconfirmed.');
+  }
+  const merged = mergeSeasonSchedule(original, {
     season: original.season,
     school: clean(school, 160) || original.school,
     entries: [{
@@ -220,11 +239,29 @@ export const manualPostseasonScheduleDraft = ({
       phase: 'postseason',
       homeAway: venue,
       postseasonRound: round,
-      bowlName: clean(bowlName, 90),
+      bowlName: confirmedBowl,
       isBye: false,
       status: 'upcoming',
     }],
   }, season);
+  // Manual input is authoritative for this ONE upcoming slot. In particular,
+  // empty round/bowl fields mean "unconfirmed": do not resurrect stale Sugar
+  // Bowl or quarterfinal metadata from an earlier mistaken schedule row.
+  return {
+    ...merged,
+    entries: merged.entries.map((entry) => entry.week === targetWeek
+      ? {
+          ...entry,
+          opponent: team,
+          label: cleanLabel,
+          date: clean(date, 80) || entry.date,
+          phase: 'postseason',
+          homeAway: venue,
+          postseasonRound: round,
+          bowlName: confirmedBowl,
+        }
+      : entry),
+  };
 };
 
 export const syncScheduleWithCareer = (state = {}, scheduleInput = null) => {

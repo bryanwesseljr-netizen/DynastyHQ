@@ -340,3 +340,100 @@ test('manual schedule interface never activates career and retains screenshot op
   assert.match(source, /Number\(game\?\.week\) === Number\(manualDraft.week\)/);
   assert.match(source, /READ SCHEDULE/);
 });
+
+test('Bowl 3 manual edit replaces mistakenly copied W18 quarterfinal bowl title only', () => {
+  const original = {
+    season: 4,
+    school: 'Oregon',
+    entries: [
+      {
+        week: 17, opponent: 'LSU', label: 'Bowl 1', postseasonRound: 'first-round',
+        status: 'completed', result: 'W', teamScore: 44, opponentScore: 10,
+      },
+      {
+        week: 18, opponent: 'BYU', label: 'Bowl 2', postseasonRound: 'quarterfinal',
+        bowlName: 'Sugar Bowl', status: 'completed', result: 'W',
+        teamScore: 35, opponentScore: 20,
+      },
+      {
+        week: 19, opponent: 'Georgia', label: 'Bowl 2',
+        postseasonRound: 'quarterfinal', bowlName: 'Sugar Bowl',
+        status: 'upcoming',
+      },
+    ],
+  };
+  const result = manualPostseasonScheduleDraft({
+    existing:original,
+    season:4,
+    week:19,
+    opponent:'Georgia',
+    label:'Bowl 3',
+    postseasonRound:'semifinal',
+    bowlName:'',
+    homeAway:'unknown',
+  });
+  const w18 = result.entries.find((entry) => entry.week === 18);
+  const w19 = result.entries.find((entry) => entry.week === 19);
+  assert.equal(scheduleDisplayLabel(w18),'CFP QUARTERFINAL · SUGAR BOWL');
+  assert.equal(w18.teamScore,35);
+  assert.equal(w18.opponentScore,20);
+  assert.equal(w18.completed,true);
+  assert.equal(w19.label,'Bowl 3');
+  assert.equal(w19.postseasonRound,'semifinal');
+  assert.equal(w19.bowlName,'');
+  assert.equal(w19.completed,false);
+  assert.equal(scheduleDisplayLabel(w19),'CFP SEMIFINAL');
+  assert.equal(result.entries.length,3);
+});
+
+test('unconfirmed Bowl 3 identity intentionally clears wrong inherited bowl', () => {
+  const original = {
+    season:4,
+    entries:[
+      { week:18, opponent:'BYU', label:'Bowl 2', postseasonRound:'quarterfinal',
+        bowlName:'Sugar Bowl', result:'W', status:'completed' },
+      { week:19, opponent:'Georgia', label:'Bowl 2', postseasonRound:'quarterfinal',
+        bowlName:'Sugar Bowl', status:'upcoming' },
+    ],
+  };
+  const draft = manualPostseasonScheduleDraft({
+    existing:original,season:4,week:19,opponent:'Georgia',label:'Bowl 3',
+    postseasonRound:'',bowlName:'',
+  });
+  const row=draft.entries.find((entry)=>entry.week===19);
+  assert.equal(row.postseasonRound,'');
+  assert.equal(row.bowlName,'');
+  assert.equal(scheduleDisplayLabel(row),'BOWL 3');
+});
+
+test('new screenshot opponent resets obsolete playoff identity but same opponent preserves confirmed bowl', () => {
+  const initial=mergeSeasonSchedule(null,{
+    season:4,entries:[
+      {week:19,label:'Bowl 2',opponent:'BYU',
+        postseasonRound:'quarterfinal',bowlName:'Sugar Bowl',status:'upcoming'},
+    ],
+  },4);
+  const different=mergeSeasonSchedule(initial,{
+    season:4,entries:[{week:19,label:'Bowl 3',opponent:'Georgia',status:'upcoming'}],
+  },4);
+  assert.equal(different.entries[0].opponent,'Georgia');
+  assert.equal(different.entries[0].postseasonRound,'');
+  assert.equal(different.entries[0].bowlName,'');
+  const unchanged=mergeSeasonSchedule(initial,{
+    season:4,entries:[{week:19,label:'Bowl 2',opponent:'BYU',status:'upcoming'}],
+  },4);
+  assert.equal(unchanged.entries[0].postseasonRound,'quarterfinal');
+  assert.equal(unchanged.entries[0].bowlName,'Sugar Bowl');
+});
+
+test('manual schedule blocks same CFP round in consecutive games after a completed quarterfinal',()=>{
+  const original={
+    season:4,
+    entries:[{week:18,label:'Bowl 2',opponent:'BYU',result:'W',
+      postseasonRound:'quarterfinal',bowlName:'Sugar Bowl',status:'completed'}],
+  };
+  assert.throws(()=>manualPostseasonScheduleDraft({
+    existing:original,season:4,week:19,opponent:'Texas',
+    label:'Bowl 3',postseasonRound:'quarterfinal',
+  }),/same as the completed previous playoff game/i);
+});

@@ -117,6 +117,16 @@ const statusLabel = (entry = {}) => {
         : 'UPCOMING';
 };
 
+const duplicatedPriorPlayoffTitle = (draft = {}, entries = []) => {
+  const current = entries.find((entry) => Number(entry.week) === Number(draft.week));
+  const previous = entries.find((entry) => Number(entry.week) === Number(draft.week) - 1);
+  return Boolean(
+    current && !current.completed && previous?.completed
+    && draft.postseasonRound && draft.postseasonRound === previous.postseasonRound
+    && clean(draft.bowlName).toLowerCase() === clean(previous.bowlName).toLowerCase()
+  );
+};
+
 const setupWithPreservedDetails = (suggested, existing = {}) => {
   if (!suggested) return existing;
   if (suggested.type === 'bye') return { ...existing, ...suggested };
@@ -748,6 +758,16 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
                 </select>
               </label>
             </div>
+            {duplicatedPriorPlayoffTitle(entry, entries) ? <div className="oa-playoff-duplicate-warning">
+              <strong>THIS ROUND MATCHES THE COMPLETED PREVIOUS GAME</strong>
+              <span>W{entry.week} is repeating W{entry.week - 1}'s playoff title. Confirm this game's actual round and bowl before saving; the prior game's result won't change.</span>
+              <button type="button" onClick={() => editPostseasonDetail(entry.week, {
+                postseasonRound: entries.find((row) => Number(row.week) === Number(entry.week) - 1)?.postseasonRound === 'quarterfinal' ? 'semifinal' : '',
+                bowlName: '',
+              })}>{entries.find((row) => Number(row.week) === Number(entry.week) - 1)?.postseasonRound === 'quarterfinal'
+                ? 'SET CFP SEMIFINAL · CLEAR COPIED BOWL'
+                : 'CLEAR COPIED ROUND AND BOWL'}</button>
+            </div> : null}
             <div className="oa-playoff-detail-preview"><span>WILL DISPLAY</span><b>{scheduleDisplayLabel({...entry, label: entry.slot})}</b><small>{entry.homeAway === 'home' ? 'HOME GAME' : entry.homeAway === 'away' ? 'AWAY GAME' : entry.homeAway === 'neutral' ? 'NEUTRAL SITE' : 'LOCATION UNCONFIRMED'}</small></div>
           </div>)}
         </div>

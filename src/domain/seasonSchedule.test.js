@@ -437,3 +437,16 @@ test('manual schedule blocks same CFP round in consecutive games after a complet
     label:'Bowl 3',postseasonRound:'quarterfinal',
   }),/same as the completed previous playoff game/i);
 });
+
+test('preview editor makes repeated quarterfinal title a visible editable semifinal warning',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const source=await readFile(new URL('../option-a-preview/ScheduleExperience.jsx',import.meta.url),'utf8');
+  assert.match(source,/const duplicatedPriorPlayoffTitle =/);
+  assert.match(source,/THIS ROUND MATCHES THE COMPLETED PREVIOUS GAME/);
+  assert.match(source,/SET CFP SEMIFINAL · CLEAR COPIED BOWL/);
+  assert.match(source,/postseasonRound:duplicatedPreviousStage \? ''/);
+  assert.match(source,/bowlName:duplicatedPreviousStage \? ''/);
+  assert.match(source,/seasonSchedules:\s*\[/);
+  assert.match(source,/scheduleToSave,/);
+  assert.match(source,/existing:syncScheduleWithCareer\(remote,seasonScheduleFor\(remote,activeSeason\)/);
+});

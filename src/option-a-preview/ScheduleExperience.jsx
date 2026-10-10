@@ -229,6 +229,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
       week: Number(entry.week),
       opponent: entry.opponent,
       slot: entry.label || `W${entry.week}`,
+      completed: Boolean(entry.completed),
       postseasonRound: entry.postseasonRound || '',
       bowlName: entry.bowlName || '',
       homeAway: entry.homeAway || 'unknown',
@@ -272,6 +273,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             if (!detail || entry.isBye || schedulePhaseForEntry(entry) !== 'postseason') return entry;
             return {
               ...entry,
+              label: !entry.completed && clean(detail.slot, 120) ? clean(detail.slot, 120) : entry.label,
               postseasonRound: detail.postseasonRound || '',
               bowlName: clean(detail.bowlName).slice(0, 90),
               homeAway: ['home', 'away', 'neutral'].includes(detail.homeAway)
@@ -736,6 +738,9 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
               <strong>{clean(entry.opponent).toUpperCase()}</strong>
             </header>
             <div className="oa-playoff-detail-fields">
+              <label>IN-GAME CALENDAR SLOT
+                <input value={entry.slot} maxLength={120} disabled={entry.completed} placeholder="e.g. Bowl 3" onChange={(event) => editPostseasonDetail(entry.week, {slot: event.target.value})}/>
+              </label>
               <label>PLAYOFF ROUND
                 <select value={entry.postseasonRound} onChange={(event) => editPostseasonDetail(entry.week, {postseasonRound: event.target.value})}>
                   <option value="">Not confirmed yet</option>
@@ -760,7 +765,7 @@ const ScheduleExperience = ({ career, user, data, mode = 'home', go, notify, con
             </div>
             {duplicatedPriorPlayoffTitle(entry, entries) ? <div className="oa-playoff-duplicate-warning">
               <strong>THIS ROUND MATCHES THE COMPLETED PREVIOUS GAME</strong>
-              <span>W{entry.week} is repeating W{entry.week - 1}'s playoff title. Confirm this game's actual round and bowl before saving; the prior game's result won't change.</span>
+              <span>W{entry.week} is repeating W{entry.week - 1}'s playoff title. Confirm the new round and bowl; also check that the calendar slot says Bowl 3 rather than Bowl 2. The completed previous game won't change.</span>
               <button type="button" onClick={() => editPostseasonDetail(entry.week, {
                 postseasonRound: entries.find((row) => Number(row.week) === Number(entry.week) - 1)?.postseasonRound === 'quarterfinal' ? 'semifinal' : '',
                 bowlName: '',

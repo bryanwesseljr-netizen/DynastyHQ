@@ -51,10 +51,10 @@ export default function OffseasonCoverageStudio({data,notify}){
       if(!user)throw new Error('Connect your DynastyHQ owner account first.');
       const facts=offseasonCoverageFacts(state,tab,{portalConfirmed:portalReady});
       const token=await user.getIdToken();
-      const response=await fetch('/api/generate-offseason-coverage',{
+      const response=await fetch('/api/generate-newsroom',{
         method:'POST',
         headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
-        body:JSON.stringify({facts}),
+        body:JSON.stringify({offseasonSpecial:true,facts}),
       });
       const result=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(result.error||'The offseason desk could not produce a complete special edition.');

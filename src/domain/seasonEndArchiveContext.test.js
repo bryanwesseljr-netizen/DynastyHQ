@@ -92,3 +92,62 @@ test('end-of-season rendering replaces pregame processing in mobile Home, Game H
   assert.match(css,/\.score-ribbon\.offseason-ribbon/);
   assert.match(css,/@media\(max-width:700px\)/);
 });
+
+test('a mistakenly duplicated Week 20 game log cannot turn the offseason into a second Cotton Bowl',()=>{
+  const career=savedCareer();
+  career.gameLogs.push({
+    ...career.gameLogs.at(-1),
+    week:20,
+    publicationId:'season-4-week-20',
+  });
+  career.seasonSchedules[0].entries.push({
+    week:20,opponent:'Alabama',label:'Bowl 3',
+    postseasonRound:'semifinal',bowlName:'Cotton Bowl',
+    status:'completed',completed:true,
+  });
+  const end=seasonEndArchiveContext(career,4,20);
+  assert.equal(end.isSeasonEnd,true);
+  assert.equal(end.label,SEASON_END_WEEK_LABEL);
+  assert.equal(end.lastGameWeek,19);
+  assert.equal(end.lastOpponent,'Alabama');
+  // View classification must never rewrite or delete either underlying log.
+  assert.equal(career.gameLogs.length,4);
+  assert.equal(career.seasonSchedules[0].entries.length,4);
+});
+
+test('a copied Week 20 published semifinal with an uncompleted schedule row is still offseason',()=>{
+  const career=savedCareer();
+  career.gameLogs.push({...career.gameLogs.at(-1),week:20,weekLabel:'CFP SEMIFINAL · COTTON BOWL'});
+  career.seasonSchedules[0].entries.push({
+    week:20,opponent:'Alabama',postseasonRound:'semifinal',bowlName:'Cotton Bowl',
+    completed:false,status:'upcoming',
+  });
+  assert.equal(seasonEndArchiveContext(career,4,20).isSeasonEnd,true);
+  assert.equal(seasonEndArchiveContext(career,4,19).isSeasonEnd,false);
+});
+
+test('a later verified different semifinal opponent remains visible, not silently relabeled',()=>{
+  const career=savedCareer();
+  career.gameLogs.push({
+    season:4,week:20,opponent:'Texas',result:'L',
+    teamScore:17,opponentScore:24,didPlay:true,
+    weekLabel:'CFP NATIONAL CHAMPIONSHIP',
+  });
+  career.seasonSchedules[0].entries.push({
+    week:20,opponent:'Texas',label:'Bowl 4',postseasonRound:'championship',completed:true,
+  });
+  assert.equal(seasonEndArchiveContext(career,4,20).isSeasonEnd,false);
+});
+
+test('a copied game label is not promoted to a new game even when Week 20 was advanced',()=>{
+  const career=savedCareer();
+  career.currentWeek=20;
+  career.currentWeekSetup={
+    label:'CFP SEMIFINAL · COTTON BOWL',
+    opponent:'Alabama',
+    postseasonRound:'semifinal',
+    bowlName:'Cotton Bowl',
+  };
+  assert.equal(seasonEndArchiveContext(career,4,20).label,'SEASON COMPLETE · OFFSEASON');
+  assert.equal(seasonEndArchiveContext(career,4,19).isSeasonEnd,false);
+});

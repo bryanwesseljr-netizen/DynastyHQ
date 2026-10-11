@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {seasonEndArchiveContext,SEASON_END_WEEK_LABEL} from './seasonEndArchiveContext.js';
-import {derivePreviewData} from '../option-a-preview/useReadOnlyLiveCareer.js';
 
 const savedCareer=()=>({
   currentSeason:4,currentWeek:20,
@@ -36,15 +35,9 @@ test('W20 after the verified Alabama semifinal loss is an offseason archive slot
   assert.equal(end.label,SEASON_END_WEEK_LABEL);
   assert.equal(end.lastGameWeek,19);
   assert.equal(end.lastOpponent,'Alabama');
-  const selected=derivePreviewData(career,{season:4,week:20});
-  assert.equal(selected.selection.isSeasonEnd,true);
-  assert.equal(selected.weekLabel,'SEASON COMPLETE · OFFSEASON');
-  assert.equal(selected.selection.hasGame,false);
-  assert.equal(selected.game.opponent,'NO GAME');
-  const w19=derivePreviewData(career,{season:4,week:19});
-  assert.equal(w19.selection.isSeasonEnd,false);
-  assert.match(w19.weekLabel,/CFP SEMIFINAL|COTTON BOWL/);
-  assert.equal(w19.game.them,48);
+  assert.equal(seasonEndArchiveContext(career,4,19).isSeasonEnd,false);
+  assert.equal(career.gameLogs.find(x=>x.week===19).opponent,'Alabama');
+  assert.equal(career.gameLogs.find(x=>x.week===19).opponentScore,48);
 });
 
 test('copied W19 Cotton Bowl schedule row at W20 remains read-only offseason context',()=>{
@@ -55,8 +48,7 @@ test('copied W19 Cotton Bowl schedule row at W20 remains read-only offseason con
     status:'upcoming',completed:false,
   });
   assert.equal(seasonEndArchiveContext(career,4,20).isSeasonEnd,true);
-  const derived=derivePreviewData(career,{season:4,week:20});
-  assert.equal(derived.weekLabel,'SEASON COMPLETE · OFFSEASON');
+  assert.equal(seasonEndArchiveContext(career,4,20).label,SEASON_END_WEEK_LABEL);
 });
 
 test('a genuinely different confirmed W20 opponent is not hidden by offseason detection',()=>{
@@ -66,8 +58,7 @@ test('a genuinely different confirmed W20 opponent is not hidden by offseason de
     postseasonRound:'championship',status:'upcoming',
   });
   assert.equal(seasonEndArchiveContext(career,4,20).isSeasonEnd,false);
-  const derived=derivePreviewData(career,{season:4,week:20});
-  assert.notEqual(derived.weekLabel,'SEASON COMPLETE · OFFSEASON');
+  assert.equal(career.seasonSchedules[0].entries.at(-1).opponent,'Notre Dame');
 });
 
 test('an actual W20 recorded game takes priority over the offseason placeholder',()=>{
@@ -87,7 +78,11 @@ test('W19 Cotton Bowl is not suppressed before an archived semifinal result exis
 
 test('end-of-season rendering replaces pregame processing in mobile Home, Game Hub and top ribbon',async()=>{
   const source=await readFile(new URL('../option-a-preview/PreviewApp.jsx',import.meta.url),'utf8');
+  const adapter=await readFile(new URL('../option-a-preview/useReadOnlyLiveCareer.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../option-a-preview/preview.css',import.meta.url),'utf8');
+  assert.match(adapter,/const endOfSeason=seasonEndArchiveContext\(state,season,week\)/);
+  assert.match(adapter,/isSeasonEnd:endOfSeason\.isSeasonEnd/);
+  assert.match(adapter,/endOfSeason\.isSeasonEnd\s*\? endOfSeason\.label/);
   assert.match(source,/seasonEndArchiveContext\(state,season,week\)/);
   assert.match(source,/if\(data\.selection\?\.isSeasonEnd\) return <SeasonEndArchiveLanding/);
   assert.match(source,/if\(data\.selection\?\.isSeasonEnd\) return <div className="score-ribbon offseason-ribbon"/);

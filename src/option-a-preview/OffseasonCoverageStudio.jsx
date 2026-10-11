@@ -304,26 +304,63 @@ export default function OffseasonCoverageStudio({data,notify}){
 }
 
 export function OffseasonSpecialLinks({data,go,kind='newsroom'}){
-  const season=Number(data.state?.currentSeason||data.season)||1;
-  const saved=(data.state?.offseasonEditions||[]).filter(e=>Number(e.season)===season);
-  if(!saved.length)return null;
+  const [selectedId,setSelectedId]=useState('');
+  // The week selector can point at a historical season; do not hide its offseason specials.
+  const season=Number(data.season||data.state?.currentSeason)||1;
+  const saved=(data.state?.offseasonEditions||[])
+    .filter(e=>Number(e.season)===season && e.publishedAt && e.article && e.podcast)
+    .sort((a,b)=>(a.type==='season-review'?0:1)-(b.type==='season-review'?0:1));
   const isPodcast=kind==='podcast';
   const Icon=isPodcast?Headphones:Newspaper;
-  return <section className="offseason-special-links">
+  const selected=saved.find(e=>e.id===selectedId)||null;
+  const openStudio=(edition)=>{
+    try{window.sessionStorage.setItem('dynastyhq-offseason-open-special',edition.type)}catch{}
+    go?.('offseason');
+  };
+  if(!saved.length)return null;
+  return <section className="offseason-special-links" aria-label={isPodcast?'Published offseason podcast specials':'Published offseason Newsroom articles'}>
     <div className="offseason-special-links-heading">
-      <span><Sparkles size={16}/> OFFSEASON SPECIAL EDITIONS</span>
-      <p>Separate from weekly game coverage · Season {season}</p>
+      <span><Sparkles size={16}/> {isPodcast?'THE HUDDLE · OFFSEASON EPISODES':'NEWSROOM · OFFSEASON SPECIAL EDITIONS'}</span>
+      <p>Published coverage · Season {season} · preserved separately from weekly games</p>
     </div>
     <div className="offseason-special-links-grid">
-      {saved.map(edition=><button key={edition.id} type="button" onClick={()=>{
-        try{window.sessionStorage.setItem('dynastyhq-offseason-open-special',edition.type)}catch{}
-        go('offseason');
-      }}>
-        <Icon size={20}/><span><small>{edition.type==='portal-entry'?'BREAKING NEWS · TRANSFER PORTAL':'SEASON IN REVIEW'}</small>
+      {saved.map(edition=><button key={edition.id} type="button" aria-expanded={selected?.id===edition.id}
+        onClick={()=>setSelectedId(old=>old===edition.id?'':edition.id)}>
+        <Icon size={20}/><span>
+          <small>{edition.type==='portal-entry'?'BREAKING NEWS · TRANSFER PORTAL':'SEASON IN REVIEW'}</small>
           <strong>{isPodcast?edition.podcast?.title:edition.article?.headline}</strong>
-          <em>OPEN IN OFFSEASON COVERAGE STUDIO →</em>
+          <em>{selected?.id===edition.id?'CLOSE SPECIAL':isPodcast?'VIEW EPISODE + TRANSCRIPT':'READ PUBLISHED ARTICLE'} →</em>
         </span>
       </button>)}
     </div>
+    {selected&&<article className="offseason-special-reader" key={selected.id}>
+      <header>
+        <span>{isPodcast?'THE HUDDLE · PODCAST SPECIAL':'THE FOOTBALL JOURNAL · FEATURE STORY'}</span>
+        <h3>{isPodcast?selected.podcast?.title:selected.article?.headline}</h3>
+        <p>{isPodcast?selected.podcast?.summary:selected.article?.dek}</p>
+        <small>Season {selected.season} · {selected.school} · Published edition</small>
+      </header>
+      {isPodcast?<div className="offseason-special-reader-content">
+        <h4>EPISODE CHAPTER MAP</h4>
+        {(selected.podcast?.chapters||[]).map((chapter,index)=><p key={index}><strong>{index+1}. {chapter.title}</strong> — {chapter.summary}</p>)}
+        <h4>FULL EPISODE TRANSCRIPT</h4>
+        {(selected.podcast?.segments||[]).map((segment,index)=><p key={index}><strong>{segment.speaker}:</strong> {segment.text}</p>)}
+        <p className="offseason-special-audio-state">Transcript published · Offseason master audio has not been connected yet.</p>
+      </div>:<div className="offseason-special-reader-content">
+        {(selected.article?.paragraphs||[]).map((paragraph,index)=><p key={index}>{paragraph}</p>)}
+      </div>}
+      <footer>
+        {isPodcast&&<>
+          <button type="button" onClick={()=>saveText('DynastyHQ-S'+season+'-'+selected.type+'-Transcript.txt',[
+            selected.podcast?.showName||'The Huddle',selected.podcast?.title||'Offseason Special',
+            ...(selected.podcast?.segments||[]).map(segment=>'\n'+segment.speaker+': '+segment.text),
+          ].join('\n'))}><FileText size={16}/> DOWNLOAD TRANSCRIPT</button>
+          <button type="button" onClick={()=>saveText('DynastyHQ-S'+season+'-'+selected.type+'-NotebookLM.txt',offseasonNotebookSourcePack(selected))}>
+            <Download size={16}/> NOTEBOOKLM PRODUCER PACK
+          </button>
+        </>}
+        <button type="button" onClick={()=>openStudio(selected)}><Archive size={16}/> OPEN SAVED SPECIAL IN OFFSEASON STUDIO</button>
+      </footer>
+    </article>}
   </section>;
 }

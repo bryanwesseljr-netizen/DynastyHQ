@@ -326,7 +326,16 @@ export function OffseasonSpecialLinks({data,go,kind='newsroom'}){
     try{window.sessionStorage.setItem('dynastyhq-offseason-open-special',edition.type)}catch{}
     go?.('offseason');
   };
-  if(!saved.length)return null;
+  if(!saved.length){
+    if(!data.offseason?.seasonComplete || Number(data.offseason?.season||season)!==season)return null;
+    return <section className="offseason-special-links offseason-special-empty" aria-label="Offseason special publication status">
+      <div className="offseason-special-links-heading">
+        <span><Sparkles size={16}/> {isPodcast?'OFFSEASON PODCAST':'OFFSEASON NEWSROOM'}</span>
+      </div>
+      <p>No Season {season} special is published in this section yet. A restored or generated draft must be published in Offseason Studio before it appears here.</p>
+      <button type="button" onClick={()=>go?.('offseason')}><Archive size={16}/> OPEN OFFSEASON STUDIO TO PUBLISH</button>
+    </section>;
+  }
   return <section className="offseason-special-links" aria-label={isPodcast?'Published offseason podcast specials':'Published offseason Newsroom articles'}>
     <div className="offseason-special-links-heading">
       <span><Sparkles size={16}/> {isPodcast?'THE HUDDLE · OFFSEASON EPISODES':'NEWSROOM · OFFSEASON SPECIAL EDITIONS'}</span>

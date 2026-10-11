@@ -174,8 +174,12 @@ test('offseason UI uses separate preview, confirm, transaction, checkpoint and p
   readFile(new URL('../server/offseasonCoverageRoute.js',import.meta.url),'utf8'),
  ]);
  assert.match(app,/<OffseasonCoverageStudio data=\{data\} notify=\{notify\} go=\{go\}\/>/);
- assert.match(app,/OffseasonSpecialLinks data=\{data\} go=\{go\} kind="newsroom"/);
- assert.match(app,/OffseasonSpecialLinks data=\{data\} go=\{go\} kind="podcast"/);
+ assert.match(app,/<OffseasonFrontPage/);
+ assert.match(app,/<OffseasonFeatureArticle/);
+ assert.match(app,/publishedOffseasonMedia\(data\.state\)/);
+ assert.match(app,/allOffseason\.map\(offshoreArchiveEntry\)/);
+ assert.match(app,/isOffseasonEpisode\?offseasonPodcastView\(chosenOffseason\)/);
+ assert.match(app,/offseasonNotebookSourcePack\(chosenOffseason\)/);
  assert.match(studio,/setDrafts\(old=>/);
  assert.match(studio,/REVIEW PUBLISH CONFIRMATION/);
  assert.match(studio,/YES · PUBLISH SPECIAL/);

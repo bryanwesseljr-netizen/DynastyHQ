@@ -24,7 +24,13 @@ const saveText=(name,text)=>{
 };
 
 export default function OffseasonCoverageStudio({data,notify}){
-  const [tab,setTab]=useState('season-review');
+  const [tab,setTab]=useState(()=>{
+    try{
+      const requested=window.sessionStorage.getItem('dynastyhq-offseason-open-special');
+      window.sessionStorage.removeItem('dynastyhq-offseason-open-special');
+      return ['portal-entry','season-review'].includes(requested)?requested:'season-review';
+    }catch{return 'season-review';}
+  });
   const [drafts,setDrafts]=useState({});
   const [busy,setBusy]=useState('');
   const [error,setError]=useState('');
@@ -202,6 +208,7 @@ export default function OffseasonCoverageStudio({data,notify}){
               <button type="button" onClick={downloadTranscript}><FileText size={16}/> DOWNLOAD TRANSCRIPT</button>
               <button type="button" onClick={downloadNotebook}><Download size={16}/> NOTEBOOKLM PRODUCER PACK</button>
             </div>
+            <p className="offseason-studio-audio-note">The Huddle transcript is ready for NotebookLM audio generation. Master-audio upload for offseason specials is not yet connected; existing weekly audio stays untouched.</p>
           </article>
         </div>
         {draft&&<>
@@ -240,7 +247,10 @@ export function OffseasonSpecialLinks({data,go,kind='newsroom'}){
       <p>Separate from weekly game coverage · Season {season}</p>
     </div>
     <div className="offseason-special-links-grid">
-      {saved.map(edition=><button key={edition.id} type="button" onClick={()=>go('offseason')}>
+      {saved.map(edition=><button key={edition.id} type="button" onClick={()=>{
+        try{window.sessionStorage.setItem('dynastyhq-offseason-open-special',edition.type)}catch{}
+        go('offseason');
+      }}>
         <Icon size={20}/><span><small>{edition.type==='portal-entry'?'BREAKING NEWS · TRANSFER PORTAL':'SEASON IN REVIEW'}</small>
           <strong>{isPodcast?edition.podcast?.title:edition.article?.headline}</strong>
           <em>OPEN IN OFFSEASON COVERAGE STUDIO →</em>

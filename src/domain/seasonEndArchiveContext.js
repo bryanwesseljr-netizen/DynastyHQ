@@ -42,7 +42,10 @@ export const seasonEndArchiveContext=(state={},season,week)=>{
     const row=rows.find(entry=>number(entry.week)===number(game.week))||{};
     return endedInSemifinalLoss(game,row);
   });
-  const finished=semifinalLosses.at(-1)||null;
+  // A team cannot exit the same CFP semifinal twice in one season. If the
+  // next archive week repeats that same loss, the first semifinal loss is the
+  // real final game and later copies are presentation artifacts.
+  const finished=semifinalLosses.at(0)||null;
   const lastWeek=number(finished?.week,-1);
   if(!finished||targetWeek<=lastWeek)return {isSeasonEnd:false};
   const lastRow=rows.find(row=>number(row.week)===lastWeek)||{};

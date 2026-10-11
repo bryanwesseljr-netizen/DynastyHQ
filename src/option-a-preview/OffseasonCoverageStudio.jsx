@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { Archive, BookOpen, Check, Download, FileText, Headphones, Loader2, Newspaper, Shield, ShieldCheck, Sparkles, Target } from 'lucide-react';
 import { auth, db, productionAppId } from '../firebase.js';
@@ -10,8 +10,13 @@ import {
   offseasonCoverageFacts, normalizeOffseasonDraft, offseasonNotebookSourcePack,
   offseasonPublicationId, upsertOffseasonEdition,
 } from '../domain/offseasonCoverageStudio.js';
+import {
+  loadOffseasonDraftBackup, saveOffseasonDraftBackup, clearOffseasonDraftBackup,
+  restoreOffseasonDraftFromDownload,
+} from '../domain/offseasonDraftRecovery.js';
 import './offseason-coverage-studio.css';
 
+const draftBrowserStore=()=>{try{return window.localStorage}catch{return null}};
 const SPECIALS=[
   {type:'season-review',eyebrow:'01 · SEASON FINALE',heading:'The Season That Almost Was',summary:'A complete season retrospective, from regular-season performances to the Cotton Bowl semifinal exit.',icon:Newspaper},
   {type:'portal-entry',eyebrow:'02 · BREAKING NEWS',heading:'The Transfer Portal Announcement',summary:'Announce the verified portal entry for your final year. Your next school stays unconfirmed.',icon:Target},
@@ -32,6 +37,8 @@ export default function OffseasonCoverageStudio({data,notify}){
     }catch{return 'season-review';}
   });
   const [drafts,setDrafts]=useState({});
+  const recoveryPicker=useRef(null);
+  const [recoveryMessage,setRecoveryMessage]=useState('');
   const [busy,setBusy]=useState('');
   const [error,setError]=useState('');
   const [portalConfirmed,setPortalConfirmed]=useState(false);
@@ -39,15 +46,29 @@ export default function OffseasonCoverageStudio({data,notify}){
   const [expanded,setExpanded]=useState({article:true,podcast:false});
   const state=data.state||{};
   const season=Number(state.currentSeason||data.season)||1;
+  const ownerUid=auth.currentUser?.uid||'';
   const editions=useMemo(()=>(state.offseasonEditions||[]).filter(e=>Number(e.season)===season),[state.offseasonEditions,season]);
   const persisted=editions.find(e=>e.type===tab)||null;
-  const draft=drafts[tab]||null;
+  const draft=drafts[offseasonPublicationId(season,tab)]||null;
   const shown=draft||persisted;
+  useEffect(()=>{
+    if(!ownerUid)return;
+    const restored={};
+    for(const type of ['season-review','portal-entry']){
+      if(editions.some(e=>e.type===type))continue;
+      const saved=loadOffseasonDraftBackup(draftBrowserStore(),ownerUid,season,type);
+      if(saved)restored[saved.id]=saved;
+    }
+    if(Object.keys(restored).length){
+      setDrafts(old=>({...restored,...old}));
+      setRecoveryMessage('A previously generated unsaved draft was restored from this browser.');
+    }
+  },[season,ownerUid,editions]);
   const feature=SPECIALS.find(e=>e.type===tab)||SPECIALS[0];
   const existingPortal=state.playerRecruiting?.transfer?.status==='exploring';
   const portalReady=portalConfirmed||existingPortal;
 
-  const selectTab=(type)=>{setTab(type);setError('');setShowPublishConfirm(false);setExpanded({article:true,podcast:false});};
+  const selectTab=(type)=>{setTab(type);setError('');setRecoveryMessage('');setShowPublishConfirm(false);setExpanded({article:true,podcast:false});};
   const generate=async()=>{
     if(busy)return;
     setError('');setShowPublishConfirm(false);
@@ -65,7 +86,13 @@ export default function OffseasonCoverageStudio({data,notify}){
       const result=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(result.error||'The offseason desk could not produce a complete special edition.');
       const generated=normalizeOffseasonDraft(result.edition,facts,result.model);
-      setDrafts(old=>({...old,[tab]:generated}));
+      setDrafts(old=>({...old,[generated.id]:generated}));
+      try{
+        saveOffseasonDraftBackup(draftBrowserStore(),user.uid,generated);
+        setRecoveryMessage('Draft safely saved in this browser. Refreshing will not erase it.');
+      }catch{
+        setRecoveryMessage('Draft is available now, but this browser blocked automatic storage. Download a draft backup before leaving the page.');
+      }
       setExpanded({article:true,podcast:false});
       notify?.('Offseason special drafted. Review the article and transcript, then publish when ready.');
     }catch(e){setError(e?.message||'Generation did not complete; your saved career is unchanged.');}
@@ -119,13 +146,41 @@ export default function OffseasonCoverageStudio({data,notify}){
           transaction,db,appId:productionAppId,userId:user.uid,state:next,
         });
       });
-      setDrafts(old=>({...old,[eventType]:null}));
+      setDrafts(old=>({...old,[publishedDraft.id]:null}));
+      try{clearOffseasonDraftBackup(draftBrowserStore(),user.uid,season,eventType)}catch{}
+      setRecoveryMessage('');
       setShowPublishConfirm(false);
       notify?.(tab==='portal-entry'
         ? 'Transfer portal announcement published. Portal exploration recorded; no destination selected.'
         : 'Season retrospective published without changing the semifinal coverage.');
     }catch(e){setError(e?.message||'The offseason special could not be saved. Existing coverage is safe.');}
     finally{setBusy('');}
+  };
+  const downloadDraftBackup=()=>{
+    if(!draft)return;
+    saveText(`DynastyHQ-S${season}-${tab}-DRAFT-BACKUP.json`,JSON.stringify(draft,null,2));
+  };
+  const restoreDownload=async(event)=>{
+    const file=event.target?.files?.[0];
+    if(event.target)event.target.value='';
+    if(!file)return;
+    setError('');setRecoveryMessage('');
+    try{
+      if(file.size>1_500_000)throw new Error('This file is larger than the expected DynastyHQ producer pack. Choose the original text download.');
+      if(!auth.currentUser)throw new Error('Connect your DynastyHQ owner account before restoring a draft.');
+      const facts=offseasonCoverageFacts(state,tab,{portalConfirmed:portalReady});
+      const source=await file.text();
+      const recovered=restoreOffseasonDraftFromDownload(source,facts);
+      setDrafts(old=>({...old,[recovered.id]:recovered}));
+      setExpanded({article:true,podcast:true});
+      setShowPublishConfirm(false);
+      try{
+        saveOffseasonDraftBackup(draftBrowserStore(),auth.currentUser.uid,recovered);
+        setRecoveryMessage('Original article, episode chapters and podcast script restored from your download. A recoverable copy is saved in this browser.');
+      }catch{
+        setRecoveryMessage('Original article and podcast restored. This browser could not save a backup; download the draft backup before refreshing.');
+      }
+    }catch(e){setError(e?.message||'This file could not restore the previous draft. Nothing was overwritten.');}
   };
   const downloadNotebook=()=>{
     if(!shown)return;
@@ -177,6 +232,19 @@ export default function OffseasonCoverageStudio({data,notify}){
         {persisted&&!draft&&<span className="offseason-studio-saved"><Check size={16}/> PUBLISHED · {new Date(persisted.publishedAt||persisted.generatedAt).toLocaleDateString()}</span>}
       </div>
       {error&&<p className="offseason-studio-error" role="alert">{error}</p>}
+      {recoveryMessage&&<p className="offseason-studio-draft-note"><ShieldCheck size={16}/>{recoveryMessage}</p>}
+      <div className="offseason-studio-recovery">
+        <div><strong>ALREADY GENERATED THIS STORY?</strong>
+          <small>If you refreshed before publishing, you can recover your original article and podcast from the NotebookLM Producer Pack downloaded earlier. No new AI generation required.</small>
+        </div>
+        <input ref={recoveryPicker} type="file" accept=".txt,.json,text/plain,application/json" className="offseason-studio-recovery-input" aria-label="Restore an offseason draft from a NotebookLM download" onChange={restoreDownload}/>
+        <button type="button" onClick={()=>recoveryPicker.current?.click()} disabled={!!busy}>
+          <Archive size={16}/> RESTORE PREVIOUS DOWNLOAD
+        </button>
+        {draft&&<button type="button" className="offseason-studio-backup" onClick={downloadDraftBackup}>
+          <Download size={16}/> DOWNLOAD DRAFT BACKUP
+        </button>}
+      </div>
       {!shown&&<div className="offseason-studio-empty">
         <Newspaper/><div><b>Two distinct stories, no overwritten game coverage.</b><p>Generate this special using the verified completed season. You'll be able to review the complete article, transcript, and episode map before publishing.</p></div>
       </div>}

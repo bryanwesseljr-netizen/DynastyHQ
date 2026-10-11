@@ -96,12 +96,68 @@ test('NotebookLM pack includes a real transcript and verified source facts',()=>
  const edition=normalizeOffseasonDraft(makeGenerated(),offseasonCoverageFacts(state,'season-review'),'gemini');
  const pack=offseasonNotebookSourcePack(edition);
  assert.match(pack,/## VERIFIED FACTS — PRIMARY AUTHORITY/);
- assert.match(pack,/"opponent": "Alabama"/);
+ assert.match(pack,/Final recorded game: Oregon vs\. Alabama, L; final: Oregon 21, Alabama 28/);
+ assert.match(pack,/Final team record: 3 wins and 0 losses|Final team record: \d+ wins and \d+ losses/);
+ assert.match(pack,/Passing: 714 yards, 6 TD, 2 interceptions/);
+ assert.match(pack,/Week 19 · CFP SEMIFINAL · COTTON BOWL: Oregon vs\. Alabama/);
+ assert.doesNotMatch(pack,/"publicationId"\s*:/);
+ assert.doesNotMatch(pack,/"playerTotals"\s*:/);
+ assert.doesNotMatch(pack,/\{\s*"season"\s*:/);
  assert.match(pack,/## OPTIONAL EPISODE CHAPTER MAP/);
  assert.match(pack,/## STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT/);
  assert.match(pack,/Mark Thompson:/);
  assert.match(pack,/Sarah Chen:/);
  assert.match(pack,/no.*invent.*offers/i);
+});
+
+test('NotebookLM season briefing is readable with the actual verified Season 4 sample figures',()=>{
+ const state=career();
+ const edition=normalizeOffseasonDraft(makeGenerated(),offseasonCoverageFacts(state,'season-review'),'gemini');
+ edition.facts.record={wins:11,losses:4};
+ edition.facts.playerTotals={
+   appearances:15,passingYards:3668,passingTouchdowns:41,
+   rushingYards:1112,rushingTouchdowns:12,interceptions:18,
+ };
+ edition.facts.latestGame={
+   week:19,opponent:'Alabama',outcome:'loss',score:{team:33,opponent:48},
+   stage:'CFP SEMIFINAL · COTTON BOWL',
+ };
+ const pack=offseasonNotebookSourcePack(edition);
+ assert.match(pack,/Final team record: 11 wins and 4 losses/);
+ assert.match(pack,/Passing: 3,668 yards, 41 TD, 18 interceptions/);
+ assert.match(pack,/Rushing: 1,112 yards, 12 TD/);
+ assert.match(pack,/Total passing plus rushing touchdowns: 53/);
+ assert.match(pack,/Oregon 33, Alabama 48/);
+ assert.match(pack,/VERIFIED POSTSEASON JOURNEY/);
+ assert.match(pack,/COMPLETE SAVED GAME LOG/);
+ assert.doesNotMatch(pack,/"wins"\s*:\s*11/);
+ assert.doesNotMatch(pack,/JSON\.stringify/);
+ assert.doesNotMatch(pack,/publicationId/);
+});
+
+test('portal pack confirms entry but does not claim a destination',()=>{
+ const state=career();
+ const edition=normalizeOffseasonDraft(makeGenerated(),
+   offseasonCoverageFacts(state,'portal-entry',{portalConfirmed:true}),'gemini');
+ const pack=offseasonNotebookSourcePack(edition);
+ assert.match(pack,/BREAKING NEWS — TRANSFER PORTAL STATUS/);
+ assert.match(pack,/Portal entry: confirmed/);
+ assert.match(pack,/New school: NOT CONFIRMED/);
+ assert.match(pack,/one season remaining/);
+ assert.doesNotMatch(pack,/"entered"\s*:\s*true/);
+ assert.doesNotMatch(pack,/"destination"\s*:/);
+ assert.match(pack,/## STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT/);
+ assert.match(pack,/## OPTIONAL EPISODE CHAPTER MAP/);
+});
+
+test('offseason source pack has no leaked RTG mechanics or internal record schema',()=>{
+ const state=career();
+ const edition=normalizeOffseasonDraft(makeGenerated(),
+   offseasonCoverageFacts(state,'season-review'),'gemini');
+ const pack=offseasonNotebookSourcePack(edition);
+ assert.doesNotMatch(pack,/"playerTotals"|"completedGames"|"publicationId"|"type":/);
+ assert.doesNotMatch(pack,/JSON\.stringify|\{\s*"|\bnull\b\s*,/);
+ assert.match(pack,/No individual award or honor was confirmed/);
 });
 
 test('portal event blocks invented commitment in AI output',()=>{

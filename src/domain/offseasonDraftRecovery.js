@@ -105,12 +105,22 @@ export const restoreOffseasonDraftFromDownload = (source, facts) => {
 
   const articleLines=articleText.split(/\r?\n/).map(x=>x.trim()).filter(x=>x && !/^(?:The article below|Treat this article|This article is|The article is)/i.test(x));
   const [headline='',dek='',...paragraphs]=articleLines;
-  const packTitleMatch=head.match(/^# (?!THE HUDDLE PODCAST|DYNASTYHQ)(.+)$/mi);
+  // Exclude only the generic producer-pack heading. Historical podcast
+  // titles start with "DynastyHQ Huddle:" and must NOT be rejected.
+  const packTitleMatch=head.match(/^# (?!THE HUDDLE PODCAST\s*[—–-]|DYNASTYHQ\s*[—–-]\s*OFFSEASON SPECIAL)(.+)$/mi);
   const namedTitle=chunks.find(x=>/^(?:The Huddle|Season|Portal)/i.test(x.heading))?.heading;
   const podcastTitle=clean(packTitleMatch?.[1]||namedTitle||'',240);
   if (!podcastTitle || !headline || !dek || paragraphs.length<4
     || chapters.length<3 || segments.length<10){
-    throw new Error('This download does not include a complete saved article, transcript and chapter map. Nothing has been replaced.');
+    const gaps=[
+      !podcastTitle?'podcast title':null,
+      !headline?'article headline':null,
+      !dek?'article summary':null,
+      paragraphs.length<4?'article paragraphs ('+paragraphs.length+'/4)':null,
+      chapters.length<3?'episode chapters ('+chapters.length+'/3)':null,
+      segments.length<10?'podcast speaking turns ('+segments.length+'/10)':null,
+    ].filter(Boolean);
+    throw new Error('Could not restore: '+gaps.join(', ')+'. Nothing was replaced.');
   }
   try {
     return normalizeOffseasonDraft({

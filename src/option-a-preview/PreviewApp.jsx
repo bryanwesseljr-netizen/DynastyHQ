@@ -4854,12 +4854,16 @@ function PodcastPage({
   };
 
   return <div className="page podcast-page podcast-page-v2">
-    <OffseasonSpecialLinks data={data} go={go} kind="podcast"/>
+    {data.selection?.isSeasonEnd && !seasonOffseason.length && <section className="podcast-native-empty">
+      <Headphones/><div><span>SEASON COMPLETE · THE HUDDLE</span><h2>No season-ending episode has been published yet.</h2>
+      <p>Existing weekly episodes are still saved. Publish your restored special through Offseason Studio to add its full episode, chapters and transcript to The Huddle.</p>
+      <button onClick={()=>go('offseason')}>OPEN OFFSEASON STUDIO <ChevronRight/></button></div>
+    </section>}
     <section className="pod-show-shell" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div ref={studioAnchorRef} className="pod-network-bar">
         <span><Mic2/>DYNASTYHQ SPORTS NETWORK</span>
         <div className="pod-network-actions">
-          <b>{episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
+          <b>{isOffseasonEpisode?'OFFSEASON SPECIAL · TRANSCRIPT READY':episode.audioReady?'EPISODE READY':'SCRIPT + SOURCE PACK READY'}</b>
           {data.selection?.hasGame && <button type="button" className="pod-regenerate-coverage" onClick={onRegenerateCoverage}><Sparkles/>REGENERATE</button>}
           <button type="button" className={studioOpen?'active':''} onClick={()=>studioOpen?closeStudio():setStudioOpen(true)} aria-expanded={studioOpen}>
             <LockKeyhole/>STUDIO<ChevronDown/>
@@ -4867,6 +4871,14 @@ function PodcastPage({
         </div>
       </div>
 
+      {seasonOffseason.length>0 && (data.selection?.isSeasonEnd || isOffseasonEpisode) && <nav className="pod-native-episode-selector" aria-label="Season-ending Huddle episodes">
+        {seasonOffseason.map(edition=><button type="button" key={edition.id}
+          className={chosenOffseason?.id===edition.id?'active':''}
+          onClick={()=>{setChosenOffseasonId(edition.id);setPodcastTab('episode');}}>
+          <Headphones size={17}/>
+          <span><small>{offseasonSpecialLabel(edition)}</small><strong>{edition.podcast.title}</strong></span>
+        </button>)}
+      </nav>}
       <section className={'pod-owner-drawer '+(studioOpen?'open':'')} aria-hidden={!studioOpen}>
         <div className="pod-studio-title">
           <span><LockKeyhole/>OWNER STUDIO</span>
@@ -4907,14 +4919,14 @@ function PodcastPage({
             <article className="pod-artwork-card">
               <img src={episodeCover || showCover || podcastCover} alt="Episode cover"/>
               <div>
-                <small>WEEK {game.week} EPISODE COVER</small>
+                <small>{isOffseasonEpisode?'OFFSEASON SPECIAL':'WEEK '+game.week+' EPISODE COVER'}</small>
                 <b>{episode.title || ('Week '+game.week+' Recap')}</b>
                 <em>{episodeCoverStatus}</em>
               </div>
-              <button type="button" disabled={Boolean(podcastArtBusy)} onClick={()=>episodeCoverInputRef.current?.click()}>
+              <button type="button" disabled={Boolean(podcastArtBusy)||isOffseasonEpisode} onClick={()=>episodeCoverInputRef.current?.click()}>
                 <ImageIcon/>{podcastArtBusy==='episode'?'PREPARING…':episodeCoverIsPreviewOverride?'REPLACE OVERRIDE':'ADD OVERRIDE'}
               </button>
-              <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy) || episodeUsesShowCover} onClick={onUseShowCover}>USE SHOW COVER</button>
+              <button type="button" className="pod-artwork-secondary" disabled={Boolean(podcastArtBusy) || episodeUsesShowCover || isOffseasonEpisode} onClick={onUseShowCover}>USE SHOW COVER</button>
               <input
                 ref={episodeCoverInputRef}
                 type="file"
@@ -4934,18 +4946,18 @@ function PodcastPage({
           <div className={isNotebookMaster?'ready':''}><Headphones/></div>
           <span>
             <small>MASTER EPISODE AUDIO</small>
-            <b>{isNotebookMaster?'NotebookLM master attached':episode.audioReady?'Saved episode audio attached':'No master audio attached'}</b>
-            <em>{masterFileName ? `${masterFileName}${masterSize?` · ${masterSize}`:''}` : (hasTranscript?'Ready for final audio':'Generate transcript first')}</em>
+            <b>{isOffseasonEpisode?'Offseason audio upload not yet connected':isNotebookMaster?'NotebookLM master attached':episode.audioReady?'Saved episode audio attached':'No master audio attached'}</b>
+            <em>{isOffseasonEpisode?'Saved transcript and NotebookLM producer pack are ready; weekly audio remains untouched.':masterFileName ? `${masterFileName}${masterSize?` · ${masterSize}`:''}` : (hasTranscript?'Ready for final audio':'Generate transcript first')}</em>
           </span>
         </div>
         <div className="pod-studio-actions">
           <button onClick={downloadNotebookPack}><FileText/>DOWNLOAD PRODUCER PACK</button>
           <button
             className={isNotebookMaster?'replace-master':'attach-master'}
-            disabled={masterBusy}
+            disabled={masterBusy || isOffseasonEpisode}
             onClick={()=>hasTranscript ? masterInputRef.current?.click() : notify('Generate this week’s transcript before attaching master audio.')}
           >
-            <Upload/>{masterBusy?'ATTACHING…':hasTranscript?(isNotebookMaster?'REPLACE MASTER AUDIO':'ATTACH MASTER AUDIO'):'GENERATE TRANSCRIPT FIRST'}
+            <Upload/>{isOffseasonEpisode?'OFFSEASON AUDIO UPLOAD COMING SOON':masterBusy?'ATTACHING…':hasTranscript?(isNotebookMaster?'REPLACE MASTER AUDIO':'ATTACH MASTER AUDIO'):'GENERATE TRANSCRIPT FIRST'}
           </button>
           <input
             ref={masterInputRef}
@@ -4960,7 +4972,7 @@ function PodcastPage({
           />
         </div>
         {masterMessage && <p className="pod-studio-message" data-type={masterMessageType}>{masterMessage}</p>}
-        <p className="pod-owner-note">MP3 · M4A · WAV · AAC · OGG · up to 30 MB. Audio attaches only to Season {data.season}, Week {game.week} when you choose a file.</p>
+        <p className="pod-owner-note">{isOffseasonEpisode?'Offseason specials are scripted editions. Do not attach audio through the weekly uploader; it does not yet support these publications.':'MP3 · M4A · WAV · AAC · OGG · up to 30 MB. Audio attaches only to Season '+data.season+', Week '+game.week+' when you choose a file.'}</p>
       </section>
 
       <div className="pod-show-overview">
@@ -4974,7 +4986,7 @@ function PodcastPage({
           <p>Postgame reaction, verified game context, player development and the story of the season — built from the selected DynastyHQ week.</p>
           <div className="pod-show-meta">
             <span>Season {data.season}</span><i/>
-            <span>Week {game.week}</span><i/>
+            <span>{isOffseasonEpisode?offseasonSpecialLabel(chosenOffseason):'Week '+game.week}</span><i/>
             <span>{data.player.school}</span>
           </div>
           <div className="pod-show-links">
@@ -4990,11 +5002,11 @@ function PodcastPage({
           <img src={episodeCover || showCover || podcastCover} alt=""/>
         </div>
         <div className="pod-embed-info">
-          <span>FEATURED EPISODE · {data.weekLabel || `W${game.week}`}</span>
+          <span>FEATURED EPISODE · {isOffseasonEpisode?offseasonSpecialLabel(chosenOffseason):(data.weekLabel || `W${game.week}`)}</span>
           <h2>{episode.title || `${data.weekLabel || `W${game.week}`} Recap`}</h2>
           <p>{episode.summary || `Game breakdown and verified career context from ${data.player.school} vs. ${game.opponent}.`}</p>
           <div className="pod-embed-meta">
-            <b>{featuredDuration}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{data.player.school} vs. {game.opponent}</span>
+            <b>{featuredDuration}</b><span>•</span><span>Season {data.season}</span><span>•</span><span>{isOffseasonEpisode?'OFFSEASON · '+chosenOffseason.school:data.player.school+' vs. '+game.opponent}</span>
           </div>
         </div>
         <button className="pod-embed-play" onClick={playEpisode} aria-label={playing?'Pause episode':'Play episode'}>
@@ -5031,12 +5043,17 @@ function PodcastPage({
         />}
       </section>
 
-      <div className="pod-game-ribbon">
+      {isOffseasonEpisode?<div className="pod-game-ribbon pod-offseason-ribbon">
+        <div><small>SEASON RECORD</small><strong>{chosenOffseason.facts?.record?.wins??'—'}–{chosenOffseason.facts?.record?.losses??'—'}</strong></div>
+        <div><small>SEASON PASSING</small><strong>{chosenOffseason.facts?.playerTotals?.passingYards?.toLocaleString('en-US')||'—'} YARDS</strong></div>
+        <div><small>PLAYOFF FINALE</small><strong>{chosenOffseason.facts?.latestGame?.opponent||'Season Complete'}</strong></div>
+        <button onClick={()=>go('gamehub')}>VIEW GAME DATA<ChevronRight/></button>
+      </div>:<div className="pod-game-ribbon">
         <div><small>FINAL</small><strong>{data.player.school} {game.us}–{game.them} {game.opponent}</strong></div>
         <div><small>{lastName}</small><strong>{game.total} TOTAL YARDS</strong></div>
         <div><small>TOUCHDOWNS</small><strong>{game.td} TOTAL TD</strong></div>
         <button onClick={()=>go('gamehub')}>VIEW GAME DATA<ChevronRight/></button>
-      </div>
+      </div>}
     </section>
 
     <section className="podcast-workspace pod-workspace-v2">
@@ -5069,11 +5086,11 @@ function PodcastPage({
           </section>
 
           <section className="pod-episode-facts">
-            <span>THIS EPISODE</span>
-            <div><Check/><b>{facts.length}</b><small>verified source facts</small></div>
+            <span>{isOffseasonEpisode?'VERIFIED SEASON SPECIAL':'THIS EPISODE'}</span>
+            <div><Check/><b>{isOffseasonEpisode?chosenOffseason.facts?.completedGames?.length||0:facts.length}</b><small>{isOffseasonEpisode?'verified game logs':'verified source facts'}</small></div>
             <div><Check/><b>{episode.segments?.length || 0}</b><small>transcript segments</small></div>
-            <div><Check/><b>{scoringFacts.length}</b><small>unique scoring references</small></div>
-            <div><Check/><b>{notebookContextFacts.length}</b><small>unique supporting facts</small></div>
+            <div><Check/><b>{isOffseasonEpisode?chosenOffseason.facts?.postseasonGames?.length||0:scoringFacts.length}</b><small>{isOffseasonEpisode?'postseason games':'unique scoring references'}</small></div>
+            <div><Check/><b>{isOffseasonEpisode?episode.chapters?.length||0:notebookContextFacts.length}</b><small>{isOffseasonEpisode?'episode chapters':'unique supporting facts'}</small></div>
           </section>
 
           <section className="pod-owner-shortcut">
@@ -5084,7 +5101,7 @@ function PodcastPage({
 
           <section className="pod-related-v2">
             <span>RELATED</span>
-            <button onClick={()=>go('newsroom')}><Newspaper/><b>Read the game story</b><ChevronRight/></button>
+            <button onClick={()=>go('newsroom')}><Newspaper/><b>{isOffseasonEpisode?'Read the season-ending article':'Read the game story'}</b><ChevronRight/></button>
             <button onClick={()=>go('gamehub')}><BarChart3/><b>Open Game Hub</b><ChevronRight/></button>
           </section>
         </aside>
@@ -5093,25 +5110,52 @@ function PodcastPage({
       {podcastTab==='transcript' && <div className="transcript-layout">
         <article className="transcript-paper">
           <div className="transcript-head">
-            <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `${data.weekLabel || `W${game.week}`} Recap`}</h2><p>Season {data.season} • {data.weekLabel || `W${game.week}`} • {data.player.school} {game.us}, {game.opponent} {game.them}</p></div>
+            <div><span>THE HUDDLE • SAVED TRANSCRIPT</span><h2>{episode.title || `${data.weekLabel || `W${game.week}`} Recap`}</h2><p>{isOffseasonEpisode?'Season '+chosenOffseason.season+' · '+offseasonSpecialLabel(chosenOffseason)+' · '+chosenOffseason.school:'Season '+data.season+' • '+(data.weekLabel||'W'+game.week)+' • '+data.player.school+' '+game.us+', '+game.opponent+' '+game.them}</p></div>
             <div className="transcript-head-actions"><button className="ghost" onClick={downloadTranscript}><FileText/>DOWNLOAD TRANSCRIPT</button><button className="ghost" onClick={()=>window.print()}><FileText/>PRINT TRANSCRIPT</button></div>
           </div>
           {episode.segments?.length
             ? episode.segments.map((segment,index)=><section key={segment.id||index} data-podcast-chapter={segment.chapterId||''}><h3>{segment.speaker || `HOST ${index+1}`}</h3><p>{segment.text}</p></section>)
             : transcript.map(([title,body],index)=><section key={`${title}-${index}`} data-podcast-chapter=""><h3>{title}</h3><p>{body}</p></section>)}
-          <div className="transcript-note">{episode.segments?.length ? 'This is the complete saved DynastyHQ transcript for the selected real career week.' : 'No generated transcript is saved for this week yet; only verified game context is shown.'}</div>
+          <div className="transcript-note">{isOffseasonEpisode?'This is the published Season '+chosenOffseason.season+' Huddle special transcript. Factual claims come from verified saved game data.':episode.segments?.length ? 'This is the complete saved DynastyHQ transcript for the selected real career week.' : 'No generated transcript is saved for this week yet; only verified game context is shown.'}</div>
         </article>
         <aside className="transcript-sidebar">
-          <span>GAME REFERENCES</span>
-          <div><small>Passing</small><b>{game.pass} YDS • {game.passTD} TD</b></div>
-          <div><small>Rushing</small><b>{game.rush} YDS • {game.rushTD} TD</b></div>
-          <div><small>Total offense</small><b>{game.total} YDS</b></div>
-          <div><small>Final score</small><b>{data.player.school} {game.us} • {game.opponent} {game.them}</b></div>
+          <span>{isOffseasonEpisode?'SEASON REFERENCES':'GAME REFERENCES'}</span>
+          {isOffseasonEpisode?<>
+            <div><small>Final record</small><b>{chosenOffseason.facts?.record?.wins??'—'}–{chosenOffseason.facts?.record?.losses??'—'}</b></div>
+            <div><small>Passing</small><b>{chosenOffseason.facts?.playerTotals?.passingYards??'—'} YDS</b></div>
+            <div><small>Rushing</small><b>{chosenOffseason.facts?.playerTotals?.rushingYards??'—'} YDS</b></div>
+            <div><small>Last opponent</small><b>{chosenOffseason.facts?.latestGame?.opponent||'—'}</b></div>
+          </>:<>
+            <div><small>Passing</small><b>{game.pass} YDS • {game.passTD} TD</b></div>
+            <div><small>Rushing</small><b>{game.rush} YDS • {game.rushTD} TD</b></div>
+            <div><small>Total offense</small><b>{game.total} YDS</b></div>
+            <div><small>Final score</small><b>{data.player.school} {game.us} • {game.opponent} {game.them}</b></div>
+          </>}
           <button onClick={()=>go('gamehub')}>VERIFY IN GAME HUB<ChevronRight/></button>
         </aside>
       </div>}
 
-      {podcastTab==='notebook' && <div className="notebook-layout">
+      {podcastTab==='notebook' && isOffseasonEpisode && <div className="notebook-layout">
+        <article className="notebook-card">
+          <div className="notebook-icon"><Zap/></div>
+          <span className="section-kicker">THE HUDDLE · OFFSEASON PRODUCER PACK</span>
+          <h2>{chosenOffseason.podcast.title}</h2>
+          <p>Verified season record, postseason game logs, chapter map, and the complete generated transcript in a single readable NotebookLM source.</p>
+          <div className="notebook-target-banner">
+            <span>EXPORT TARGET</span><b>Season {chosenOffseason.season} · {offseasonSpecialLabel(chosenOffseason)} · {chosenOffseason.school}</b>
+            <small>This is the saved offseason special, not the previous week's Cotton Bowl recap.</small>
+          </div>
+          <div className="source-list">
+            <div><Check/><span><b>Verified season research</b><small>Season totals and playoff outcomes directly from the saved special's fact packet.</small></span></div>
+            <div><Check/><span><b>Podcast chapters and full transcript</b><small>{chosenOffseason.podcast.chapters.length} chapters · {chosenOffseason.podcast.segments.length} saved dialogue turns.</small></span></div>
+            <div><Check/><span><b>No invented transfer commitments</b><small>Transfer entry and school commitment are two different stories.</small></span></div>
+          </div>
+          <div className="notebook-actions"><button className="yellow" onClick={downloadNotebookPack}><FileText/>DOWNLOAD OFFSEASON PRODUCER PACK<ChevronRight/></button>
+            <button className="ghost" onClick={copyNotebookCustomizePrompt}><Copy/>COPY OPTIONAL DEEP DIVE FOCUS</button>
+          </div>
+        </article>
+      </div>}
+      {podcastTab==='notebook' && !isOffseasonEpisode && <div className="notebook-layout">
         <article className="notebook-card">
           <div className="notebook-icon"><Zap/></div>
           <span className="section-kicker">NOTEBOOKLM PRODUCER PACK 2.0</span>
@@ -5175,9 +5219,19 @@ function PodcastPage({
         </div>
       </div>
       <div ref={archiveRef} className={showAllEpisodes?'episode-cards episode-archive-all pod-episode-cards-v2':'episode-cards episode-carousel pod-episode-cards-v2'}>
-        {archiveEpisodes.length ? archiveEpisodes.map((item,index)=><button key={item.publicationId||index} onClick={()=>openArchiveMoment(item.season,item.week,'podcast','episode')}>
-          <img src={podcastCoverForPublication(item.publicationId,item.coverUrl)} alt=""/>
-          <span>SEASON {item.season} • {item.week? `WEEK ${item.week}`:'ARCHIVE'}</span>
+        {archiveEpisodes.length ? archiveEpisodes.map((item,index)=><button key={item.publicationId||index} onClick={()=>{
+          if(item.offseasonEdition){
+            const year=derivePreviewData(data.state,{season:item.season});
+            const archiveWeek=Math.max(0,...(year?.navigation?.weeks||[]));
+            setChosenOffseasonId(item.offseasonEdition.id);
+            openArchiveMoment(item.season,archiveWeek,'podcast','episode',item.offseasonEdition.id);
+          }else{
+            setChosenOffseasonId('');
+            openArchiveMoment(item.season,item.week,'podcast','episode');
+          }
+        }}>
+          <img src={item.offseasonEdition?(showCover||podcastCover):podcastCoverForPublication(item.publicationId,item.coverUrl)} alt=""/>
+          <span>SEASON {item.season} • {item.offseasonEdition?offseasonSpecialLabel(item.offseasonEdition):item.week? `WEEK ${item.week}`:'ARCHIVE'}</span>
           <b>{item.title}</b>
           <small>{item.duration} • {item.audioReady?'Audio ready':'Transcript available'}</small>
           <Play/>

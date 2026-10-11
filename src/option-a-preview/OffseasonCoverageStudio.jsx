@@ -28,7 +28,7 @@ const saveText=(name,text)=>{
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 
-export default function OffseasonCoverageStudio({data,notify}){
+export default function OffseasonCoverageStudio({data,notify,go}){
   const [tab,setTab]=useState(()=>{
     try{
       const requested=window.sessionStorage.getItem('dynastyhq-offseason-open-special');
@@ -43,6 +43,7 @@ export default function OffseasonCoverageStudio({data,notify}){
   const [error,setError]=useState('');
   const [portalConfirmed,setPortalConfirmed]=useState(false);
   const [showPublishConfirm,setShowPublishConfirm]=useState(false);
+  const [justPublished,setJustPublished]=useState(null);
   const [expanded,setExpanded]=useState({article:true,podcast:false});
   const state=data.state||{};
   const season=Number(state.currentSeason||data.season)||1;
@@ -68,10 +69,10 @@ export default function OffseasonCoverageStudio({data,notify}){
   const existingPortal=state.playerRecruiting?.transfer?.status==='exploring';
   const portalReady=portalConfirmed||existingPortal;
 
-  const selectTab=(type)=>{setTab(type);setError('');setRecoveryMessage('');setShowPublishConfirm(false);setExpanded({article:true,podcast:false});};
+  const selectTab=(type)=>{setTab(type);setError('');setRecoveryMessage('');setJustPublished(null);setShowPublishConfirm(false);setExpanded({article:true,podcast:false});};
   const generate=async()=>{
     if(busy)return;
-    setError('');setShowPublishConfirm(false);
+    setError('');setShowPublishConfirm(false);setJustPublished(null);
     setBusy('generating');
     try{
       const user=auth.currentUser;
@@ -147,6 +148,7 @@ export default function OffseasonCoverageStudio({data,notify}){
         });
       });
       setDrafts(old=>({...old,[publishedDraft.id]:null}));
+      setJustPublished({id:publishedDraft.id,type:eventType});
       try{clearOffseasonDraftBackup(draftBrowserStore(),user.uid,season,eventType)}catch{}
       setRecoveryMessage('');
       setShowPublishConfirm(false);
@@ -233,6 +235,13 @@ export default function OffseasonCoverageStudio({data,notify}){
       </div>
       {error&&<p className="offseason-studio-error" role="alert">{error}</p>}
       {recoveryMessage&&<p className="offseason-studio-draft-note"><ShieldCheck size={16}/>{recoveryMessage}</p>}
+      {justPublished?.type===tab&&<div className="offseason-published-actions" role="status">
+        <strong>SEASON {season} SPECIAL PUBLISHED · Saved to DynastyHQ. Read it directly in Newsroom or Podcast.</strong>
+        <div>
+          <button type="button" onClick={()=>go?.('newsroom')}><Newspaper size={16}/> VIEW NEWSROOM ARTICLE</button>
+          <button type="button" onClick={()=>go?.('podcast')}><Headphones size={16}/> VIEW PODCAST EPISODE</button>
+        </div>
+      </div>}
       <div className="offseason-studio-recovery">
         <div><strong>ALREADY GENERATED THIS STORY?</strong>
           <small>If you refreshed before publishing, you can recover your original article and podcast from the NotebookLM Producer Pack downloaded earlier. No new AI generation required.</small>

@@ -532,6 +532,7 @@ export const derivePreviewData = (state, selection = {}) => {
       hasGame:Boolean(game),
       isSeasonEnd:endOfSeason.isSeasonEnd,
       lastCompletedWeek:endOfSeason.lastGameWeek ?? null,
+      lastOpponent:endOfSeason.lastOpponent || '',
       hasNewsroom:Boolean(issue),
       hasPodcast:Boolean(episode),
       isCurrent:season===currentSeason && week===currentWeek,

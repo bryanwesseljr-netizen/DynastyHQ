@@ -11,6 +11,7 @@ import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
 import ScheduleExperience from './ScheduleExperience.jsx';
+import OffseasonCoverageStudio from './OffseasonCoverageStudio.jsx';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
 import { nextCareerMatchupForHome, weekSelectorOptions, weekSelectorDisplayLabel } from '../domain/previewHomeMatchup.js';
 import { postseasonPendingLabel } from '../domain/postseasonContext.js';
@@ -5099,6 +5100,8 @@ function OffseasonPage({data,visual,go,openPodcast,openArticle,notify}){
       </div>
       <div className="offseason-hero-photo" style={{backgroundImage:`linear-gradient(90deg,rgba(0,24,18,.15),rgba(0,24,18,.02)),url(${visual.image})`,backgroundPosition:`${visual.position} 26%`}}/>
     </section>
+
+    <OffseasonCoverageStudio data={data} notify={notify}/>
 
     <section className="offseason-phase-rail">
       {phases.map(([num,label,state])=><div key={num} className={`offseason-phase is-${state}`}><span>{state==='done'?<Check/>:num}</span><div><small>{state==='done'?'COMPLETE':state==='current'?'NOW':'LATER'}</small><strong>{label}</strong></div></div>)}

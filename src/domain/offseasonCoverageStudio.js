@@ -11,7 +11,16 @@ const scoreFor = (game = {}) => {
     return {team:num(game.teamScore),opponent:num(game.opponentScore)};
   if (game.homeScore === undefined || game.awayScore === undefined) return null;
   if (game.homeAway === 'away') return {team:num(game.awayScore),opponent:num(game.homeScore)};
-  return {team:num(game.homeScore),opponent:num(game.awayScore)};
+  if (game.homeAway === 'home') return {team:num(game.homeScore),opponent:num(game.awayScore)};
+  // For playoff games at neutral sites, the displayed home/away scoreboard
+  // sides do not necessarily identify the tracked school. Respect the saved
+  // win/loss outcome instead of guessing its side of the scoreboard.
+  const result=clean(game.result,10).toUpperCase();
+  const high=Math.max(num(game.homeScore),num(game.awayScore));
+  const low=Math.min(num(game.homeScore),num(game.awayScore));
+  if(result==='W' && high!==low) return {team:high,opponent:low};
+  if(result==='L' && high!==low) return {team:low,opponent:high};
+  return null;
 };
 const playerGame = (game, season) => game && num(game.season || season)===season
   && game.didPlay!==false && game.stage!=='high-school' && !game.evaluation

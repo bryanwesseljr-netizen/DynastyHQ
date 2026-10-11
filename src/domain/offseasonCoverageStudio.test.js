@@ -115,7 +115,7 @@ test('offseason UI uses separate preview, confirm, transaction, checkpoint and p
  const [app,studio,api]=await Promise.all([
   readFile(new URL('../option-a-preview/PreviewApp.jsx',import.meta.url),'utf8'),
   readFile(new URL('../option-a-preview/OffseasonCoverageStudio.jsx',import.meta.url),'utf8'),
-  readFile(new URL('../../api/generate-offseason-coverage.js',import.meta.url),'utf8'),
+  readFile(new URL('../server/offseasonCoverageRoute.js',import.meta.url),'utf8'),
  ]);
  assert.match(app,/<OffseasonCoverageStudio data=\{data\} notify=\{notify\}\/>/);
  assert.match(app,/OffseasonSpecialLinks data=\{data\} go=\{go\} kind="newsroom"/);
@@ -131,6 +131,10 @@ test('offseason UI uses separate preview, confirm, transaction, checkpoint and p
  assert.match(studio,/offseason-before-/);
  assert.match(studio,/NOTEBOOKLM PRODUCER PACK/);
  assert.match(api,/allowPaidFallback:false/);
+ assert.match(studio,/offseasonSpecial:true/);
+ const newsroomApi=await readFile(new URL('../../api/generate-newsroom.js',import.meta.url),'utf8');
+ assert.match(newsroomApi,/req\.body\?\.offseasonSpecial === true/);
+ assert.match(newsroomApi,/handleOffseasonCoverageRequest\(req, res\)/);
 });
 
 test('neutral-site semifinal score uses the saved loss rather than assuming Oregon is the scoreboard home team',()=>{

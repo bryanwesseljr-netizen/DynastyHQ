@@ -177,31 +177,138 @@ export const upsertOffseasonEdition = (state={},draft={}) => {
   };
 };
 
-export const offseasonNotebookSourcePack = (edition={}) => {
-  const f=edition.facts||{},p=edition.podcast||{},a=edition.article||{};
-  const lines=[
-    '# DYNASTYHQ — OFFSEASON SPECIAL | THE HUDDLE',
-    `# ${clean(p.title,240)}`,
-    `Season ${f.season || edition.season} · ${clean(f.school || edition.school)} · ${f.type==='portal-entry'?'Portal Announcement':'End of Season'}`,
-    '',
-    '## VERIFIED FACTS — PRIMARY AUTHORITY',
-    JSON.stringify(f,null,2),
-    '',
-    '## OPTIONAL EPISODE CHAPTER MAP',
-    ...list(p.chapters).map((chapter,index)=>`${index+1}. ${chapter.title} — ${chapter.summary}`),
-    '',
-    '## STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT',
-    'This transcript is an editorial style reference, not a source of verified facts. Use the verified facts above for all factual claims.',
-    ...list(p.segments).map((segment)=>`${segment.speaker}: ${segment.text}`),
-    '',
-    '## EDITORIAL ARTICLE — SECONDARY STYLE REFERENCE',
-    a.headline||'',
-    a.dek||'',
-    ...list(a.paragraphs),
-    '',
-    '## SOURCE RULES',
-    'Use only the supplied verified facts for names, statistics, game results and portal status.',
-    'Do not invent offers, transfer destinations, quotes, private intentions or future game outcomes.',
-  ];
-  return lines.join('\n');
-};
+const present = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  const formatted = (value) => present(value) ? Number(value).toLocaleString('en-US') : 'not recorded';
+  const resultLetter = (value) => {
+    const label=clean(value,30).toLowerCase();
+    return label==='win'?'W':label==='loss'?'L':'not recorded';
+  };
+  const scoreLine = (score, school, opponent) => (
+    score && present(score.team) && present(score.opponent)
+      ? `; final: ${school} ${formatted(score.team)}, ${opponent} ${formatted(score.opponent)}`
+      : '; score not saved'
+  );
+  const gameLine = (game={},school='Oregon') => {
+    const opponent=clean(game.opponent,140)||'opponent not recorded';
+    const stage=clean(game.postseason,140);
+    const week=present(game.week)?`Week ${Number(game.week)}`:'Unnumbered game';
+    const context=stage && !/^week\s*\d+$/i.test(stage) ? ` · ${stage}` : '';
+    return `- ${week}${context}: ${school} vs. ${opponent} (${resultLetter(game.result)}${scoreLine(game.score,school,opponent)}). Player stats: ${formatted(game.passingYards)} passing yards, ${formatted(game.passingTouchdowns)} passing TD; ${formatted(game.rushingYards)} rushing yards, ${formatted(game.rushingTouchdowns)} rushing TD; ${formatted(game.interceptions)} interceptions.`;
+  };
+  const readableFacts=(edition={})=>{
+    const f=edition.facts||{};
+    const school=clean(f.school||edition.school,160)||'School not recorded';
+    const player=clean(f.player||edition.player,160)||'Player not recorded';
+    const season=Math.max(1,num(f.season||edition.season||1));
+    const isPortal=f.type==='portal-entry';
+    const record=f.record||{};
+    const totals=f.playerTotals||{};
+    const games=list(f.completedGames);
+    const postseason=list(f.postseasonGames);
+    const final=f.latestGame||null;
+    const opponent=clean(final?.opponent,140)||'opponent not recorded';
+    const finalStage=clean(final?.stage,140);
+    const awardLines=list(f.honors).map(x=>`- ${clean(x,180)}`).filter(x=>x!=='- ');
+    const portal=f.portal||{};
+    return [
+      '## VERIFIED EVENT — EDITORIAL FACTS',
+      `Type: ${isPortal?'Breaking news — confirmed transfer-portal entry':'Completed season retrospective'}.`,
+      `Program: ${school}. Tracked player: ${player}. Season: ${season}.`,
+      isPortal
+        ? `${player} has entered the transfer portal with one season of eligibility remaining, as confirmed by the player. A destination has not been selected or verified.`
+        : `This is a completed season review of ${school}; report the postseason ending and the verified production, but do not present a transfer decision as part of this event.`,
+      '',
+      '## SEASON OVERVIEW',
+      `Final team record: ${formatted(record.wins)} wins and ${formatted(record.losses)} losses.`,
+      final
+        ? `Final recorded game: ${school} vs. ${opponent}, ${resultLetter(final.outcome)}${scoreLine(final.score,school,opponent)}${finalStage?` in the ${finalStage}`:''}.`
+        : 'No final game was saved.',
+      `Tracked player appearances: ${formatted(totals.appearances)}.`,
+      `Passing: ${formatted(totals.passingYards)} yards, ${formatted(totals.passingTouchdowns)} TD, ${formatted(totals.interceptions)} interceptions.`,
+      `Rushing: ${formatted(totals.rushingYards)} yards, ${formatted(totals.rushingTouchdowns)} TD.`,
+      present(totals.passingTouchdowns)&&present(totals.rushingTouchdowns)
+        ? `Total passing plus rushing touchdowns: ${formatted(Number(totals.passingTouchdowns)+Number(totals.rushingTouchdowns))}.` : '',
+      '',
+      '## VERIFIED POSTSEASON JOURNEY',
+      postseason.length
+        ? `Playoff sequence in order: ${postseason.map(g=>(clean(g.postseason,120)||`Week ${formatted(g.week)}`)+` vs. ${clean(g.opponent,120)} (${resultLetter(g.result)})`).join(' → ')}.`
+        : 'A postseason sequence was not recorded. Do not infer missing rounds.',
+      'The postseason sequence supplies context; the detailed scores and player numbers are in the game log below.',
+      '',
+      '## COMPLETE SAVED GAME LOG — REFERENCE, NOT A READ-ALOUD LIST',
+      'Each entry reports the saved matchup, result, score when available, and tracked quarterback stat line.',
+      ...(games.length?[...games].sort((a,b)=>num(a.week)-num(b.week)).map(g=>gameLine(g,school)):['No completed game log entries were available.']),
+      '',
+      '## VERIFIED HONORS AND PERFORMANCE HIGHLIGHTS',
+      ...(awardLines.length?awardLines:['No award or honor was confirmed in the saved facts.']),
+      ...(f.standoutGame?.opponent
+        ? [`Most passing yards in one saved game: ${formatted(f.standoutGame.passingYards)} against ${clean(f.standoutGame.opponent,130)}.`] : []),
+      '',
+      ...(isPortal ? [
+        '## BREAKING NEWS — TRANSFER PORTAL STATUS',
+        `Portal entry: ${portal.entered===true?'confirmed':'not verified'}.`,
+        `Remaining eligibility: ${clean(portal.eligibility,150)||'not established'}.`,
+        `School at announcement: ${school}.`,
+        'New school: NOT CONFIRMED. A portal entry does not equal a commitment.',
+        'Offers and visits: no verified offers or visits in the supplied research. Do not claim that no schools are interested.',
+      ] : [
+        '## SEPARATE OFFSEASON STORY',
+        'The season retrospective should not announce a portal decision. If a transfer-portal entry is later confirmed, it belongs to a separate breaking-news edition.',
+      ]),
+      '',
+      '## VERIFIED FACT BOUNDARIES',
+      'All reported statistics, game outcomes, honors, rounds and portal claims must be grounded in this research.',
+      'No fictional quotes, school offers, private motives, injuries, locker-room conversations or invented matchups.',
+      'Exclude Road to Glory video-game mechanics such as overall rating, coach trust, skill points, GPA, wear, NIL menus and follower numbers.',
+    ].filter(x=>x!==''&&x!==null&&x!==undefined);
+  };
+  export const offseasonNotebookSourcePack = (edition={}) => {
+    const f=edition.facts||{},p=edition.podcast||{},a=edition.article||{};
+    const season=Math.max(1,num(f.season||edition.season||1));
+    const school=clean(f.school||edition.school,160)||'program not recorded';
+    const isPortal=f.type==='portal-entry';
+    const lines=[
+      '# THE HUDDLE PODCAST — OFFSEASON NOTEBOOKLM PRODUCER PACK',
+      '',
+      `## ${clean(p.title,240)||'Offseason Special'}`,
+      `Season ${season} · ${school} · ${isPortal?'Transfer Portal Breaking News':'End-of-Season Review'}`,
+      '',
+      '## PRODUCER BRIEF — READ FIRST',
+      'Use the verified season research below as your primary factual source, not the generated article or transcript.',
+      'The show is The Huddle Podcast with hosts Mark Thompson and Sarah Chen. Introduce the show and both hosts before the conversation.',
+      isPortal
+        ? 'Lead with the confirmed entry into the portal and the final year of eligibility. Do not invent offers, a destination, coaches comments, rumors or private motivation.'
+        : 'Lead with the season-ending playoff result, then discuss the verified season record, quarterback production, and notable games in context.',
+      'Use NotebookLM Deep Dive with the Short length setting. The hosts should sound like real analysts having a football conversation, not reading a database.',
+      '',
+      ...readableFacts(edition),
+      '',
+      '## OPTIONAL EPISODE CHAPTER MAP',
+      'This saved outline is editorial structure only; it is not an independent factual source.',
+      ...(list(p.chapters).length
+        ? list(p.chapters).map((chapter,index)=>`${index+1}. ${clean(chapter.title,140)} — ${clean(chapter.summary,420)}`)
+        : ['No saved chapters; use the verified season and playoff sequence as your outline.']),
+      '',
+      '## STYLE REFERENCE — DYNASTYHQ GENERATED TRANSCRIPT',
+      'This is generated editorial copy for pacing and conversational style; ignore any claim not supported above.',
+      ...(list(p.segments).length
+        ? list(p.segments).map(segment=>`${clean(segment.speaker,80)||'Host'}: ${clean(segment.text,1700)}`)
+        : ['No generated script is saved for this edition.']),
+      '',
+      '## EDITORIAL ARTICLE — SECONDARY STYLE REFERENCE',
+      'Treat this article as writing style reference only. The verified research above takes priority.',
+      clean(a.headline,240),clean(a.dek,520),
+      ...list(a.paragraphs).map(paragraph=>clean(paragraph,3000)),
+      '',
+      '## AUDIO SOURCE RULES',
+      '- Use saved results, stats and honors; do not embellish them.',
+      '- Do not read the entire game log aloud: choose the moments that explain the football story.',
+      '- Do not invent transfer schools, offers, statements, private motives or future results.',
+      '- A transfer-portal announcement is not a commitment announcement.',
+      '- Generated scripts and articles are style guides, not verified independent sources.',
+      '- Avoid game mechanics, back-end language and unsupported speculation.',
+      '',
+      'END OFFSEASON PRODUCER PACK',
+    ];
+    return lines.join('\n');
+  };

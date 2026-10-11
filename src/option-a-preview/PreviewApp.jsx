@@ -11,7 +11,10 @@ import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
 import ScheduleExperience from './ScheduleExperience.jsx';
-import OffseasonCoverageStudio, { OffseasonSpecialLinks } from './OffseasonCoverageStudio.jsx';
+import OffseasonCoverageStudio from './OffseasonCoverageStudio.jsx';
+import { OffseasonFrontPage, OffseasonFeatureArticle } from './OffseasonNativeNewsroom.jsx';
+import { publishedOffseasonMedia, offshoreArchiveEntry, offseasonPodcastView, offseasonSpecialLabel } from '../domain/offseasonMediaViews.js';
+import { offseasonNotebookSourcePack } from '../domain/offseasonCoverageStudio.js';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
 import { seasonEndArchiveContext, SEASON_END_WEEK_LABEL } from '../domain/seasonEndArchiveContext.js';
 import { nextCareerMatchupForHome, weekSelectorOptions, weekSelectorDisplayLabel } from '../domain/previewHomeMatchup.js';
@@ -897,7 +900,9 @@ function App(){
 
   useEffect(()=>{
     if(!live.career || !selectedArticleId) return;
-    if(!(data.news?.articles || []).some((article)=>article.id===selectedArticleId)){
+    const nativeWeekly=(data.news?.articles||[]).some(article=>article.id===selectedArticleId);
+    const nativeOffseason=publishedOffseasonMedia(data.state,data.season).some(edition=>edition.id===selectedArticleId);
+    if(!nativeWeekly && !nativeOffseason){
       setSelectedArticleId('');
       setArticleOpen(false);
     }
@@ -1016,8 +1021,11 @@ function App(){
     setMobileMoreOpen(false);
     window.scrollTo({top:0,behavior:'smooth'});
   };
-  const openPodcast = (tab='episode') => { setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'}); };
-  const openArchiveMoment = (targetSeason,targetWeek,target='gamehub',tab='episode') => {
+  const openPodcast = (tab='episode',offseasonId='') => {
+    if(offseasonId){try{window.sessionStorage.setItem('dynastyhq-native-offseason-podcast',offseasonId)}catch{}}
+    setPodcastTab(tab); setPage('podcast'); setArticleOpen(false); setMobileMenu(false); setMobileMoreOpen(false); window.scrollTo({top:0,behavior:'smooth'});
+  };
+  const openArchiveMoment = (targetSeason,targetWeek,target='gamehub',tab='episode',offseasonId='') => {
     const nextSeason=Number(targetSeason);
     const nextWeek=Number(targetWeek);
     setSeason(nextSeason);
@@ -1026,7 +1034,8 @@ function App(){
     setMobileMenu(false);
     setMobileMoreOpen(false);
     setArticleOpen(target==='newsroom');
-    if(target==='newsroom') setSelectedArticleId('');
+    if(target==='newsroom') setSelectedArticleId(offseasonId||'');
+    if(target==='podcast' && offseasonId){try{window.sessionStorage.setItem('dynastyhq-native-offseason-podcast',offseasonId)}catch{}}
     if (target==='podcast') setPodcastTab(tab);
     setPage(target);
     window.scrollTo({top:0,behavior:'smooth'});
@@ -5532,6 +5541,18 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   const leadPhoto=leadStory?.photo?.url || news.weeklyPhoto?.url || visual.image;
   const leadPhotoCaption=leadStory?.photoCaption || leadStory?.dek || news.dek;
   const officialStories=Array.isArray(news.officialArticles)?news.officialArticles:[];
+  const allOffseason=publishedOffseasonMedia(data.state);
+  const seasonOffseason=allOffseason.filter(edition=>Number(edition.season)===Number(data.season));
+  const selectedOffseason=seasonOffseason.find(edition=>edition.id===selectedArticleId)||null;
+  const isOffseasonWeek=Boolean(data.selection?.isSeasonEnd);
+  const openOffseasonArticle=(edition)=>{
+    if(!edition)return;
+    setArchiveOpen(false);
+    setOfficialOpen(null);
+    setSelectedArticleId(edition.id);
+    setArticleOpen(true);
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
 
   useEffect(()=>{
     if(!officialArticleRequest || !officialStories.length) return;
@@ -5542,10 +5563,12 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
     window.requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'smooth'}));
   },[officialArticleRequest,officialStories[0]?.id]);
 
-  const newsroomArchive=(Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[])
-    .filter((entry)=>entry?.media?.newsroom)
-    .slice()
-    .sort((a,b)=>(Number(b.season)||1)-(Number(a.season)||1) || (Number(b.week)||0)-(Number(a.week)||0));
+  const newsroomArchive=[
+    ...(Array.isArray(data.chronicle?.entries)?data.chronicle.entries:[]).filter(entry=>entry?.media?.newsroom),
+    ...allOffseason.map(offshoreArchiveEntry),
+  ].sort((a,b)=>(Number(b.season)||1)-(Number(a.season)||1)
+    || (Number(b.week)||0)-(Number(a.week)||0)
+    || String(b.id||'').localeCompare(String(a.id||'')));
 
   const switchSavedStory=(story)=>{
     if(!story) return;
@@ -5686,7 +5709,6 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   };
 
   return <div className="page newsroom-page">
-    <OffseasonSpecialLinks data={data} go={go} kind="newsroom"/>
     <input
       ref={articlePhotoInputRef}
       type="file"
@@ -5700,11 +5722,16 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
     />
     <section className="journal">
       <header className="masthead">
-        <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • WEEK {news.week || game.week}</span></div>
+        <div className="mast-row"><h1>THE FOOTBALL JOURNAL</h1><span>{data.player.school} EDITION • SEASON {data.season} • {selectedOffseason||isOffseasonWeek?'OFFSEASON SPECIAL':'WEEK '+(news.week||game.week)}</span></div>
         <div className="journal-tabs">
           <button className={!articleOpen&&!archiveOpen&&!officialOpen?'active':''} onClick={()=>{setArchiveOpen(false);setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}>Front Page</button>
-          <button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>
-          <button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>
+          {seasonOffseason.map(edition=><button key={edition.id}
+            className={articleOpen&&selectedOffseason?.id===edition.id?'active':''}
+            onClick={()=>openOffseasonArticle(edition)}>
+            {edition.type==='portal-entry'?'Portal News':'Season Review'}
+          </button>)}
+          {!isOffseasonWeek&&<button className={articleOpen && selectedStory?.id===localStory?.id?'active':''} onClick={()=>openSavedStory(localStory,'Local Beat')}>Local Beat</button>}
+          {!isOffseasonWeek&&<button className={articleOpen && selectedStory?.id===nationalStory?.id?'active':''} onClick={()=>openSavedStory(nationalStory,'National')}>National</button>}
           <button className={archiveOpen?'active':''} onClick={()=>{setOfficialOpen(null);setArticleOpen(false);setSelectedArticleId('');setArchiveOpen(true);window.scrollTo({top:0,behavior:'smooth'})}}>Archive</button>
           {data.selection?.hasGame && <button type="button" className="newsroom-regenerate-coverage" onClick={onRegenerateCoverage}><Sparkles/>REGENERATE COVERAGE</button>}
         </div>
@@ -5712,16 +5739,26 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
 
       {archiveOpen ? (
         <section className="newsroom-archive-browser">
-          <header><div><span>NEWSROOM ARCHIVE</span><h2>Every saved edition</h2><p>Jump directly to the real Newsroom coverage attached to any preserved career week.</p></div><b>{newsroomArchive.length} EDITIONS</b></header>
+          <header><div><span>NEWSROOM ARCHIVE</span><h2>Every saved edition</h2><p>Weekly reports and full postseason and transfer-portal features, preserved in the career record.</p></div><b>{newsroomArchive.length} EDITIONS</b></header>
           <div className="newsroom-archive-grid">
             {newsroomArchive.length ? newsroomArchive.map((entry)=>{
               const item=entry.media.newsroom;
-              const current=Number(entry.season)===Number(data.season) && Number(entry.week)===Number(news.week || game.week);
-              return <button key={entry.id||entry.publicationId||entry.season+'-'+entry.week} className={current?'current':''} onClick={()=>{setArchiveOpen(false);openArchiveMoment(entry.season,entry.week,'newsroom')}}>
-                <span>SEASON {entry.season} · WEEK {entry.week}{current?' · CURRENT VIEW':''}</span>
+              const isSpecial=Boolean(entry.offseasonEdition);
+              const current=isSpecial?selectedOffseason?.id===entry.id
+                :Number(entry.season)===Number(data.season) && Number(entry.week)===Number(news.week || game.week);
+              const openItem=()=>{
+                setArchiveOpen(false);
+                if(isSpecial){
+                  const year=derivePreviewData(data.state,{season:entry.season});
+                  const archiveWeek=Math.max(0,...(year?.navigation?.weeks||[]));
+                  openArchiveMoment(entry.season,archiveWeek,'newsroom','episode',entry.id);
+                }else openArchiveMoment(entry.season,entry.week,'newsroom');
+              };
+              return <button key={entry.id||entry.publicationId||entry.season+'-'+entry.week} className={current?'current':''} onClick={openItem}>
+                <span>SEASON {entry.season} · {isSpecial?offseasonSpecialLabel(entry.offseasonEdition):'WEEK '+entry.week}{current?' · CURRENT VIEW':''}</span>
                 <h3>{item.headline || 'Saved Newsroom edition'}</h3>
                 <p>{item.dek || entry.summary || 'Open this preserved career week to read its attached Newsroom edition.'}</p>
-                <div><em>{entry.game?.opponent?'vs '+entry.game.opponent:'Career update'}</em><ChevronRight/></div>
+                <div><em>{isSpecial?'FULL NEWSPAPER FEATURE':entry.game?.opponent?'vs '+entry.game.opponent:'Career update'}</em><ChevronRight/></div>
               </button>;
             }) : <div className="newsroom-archive-empty"><Archive/><b>No saved Newsroom editions yet.</b><span>Published editions will collect here automatically.</span></div>}
           </div>
@@ -5733,6 +5770,13 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           week={news.week || game.week}
           opponent={game.opponent}
           onBack={()=>{setOfficialOpen(null);window.scrollTo({top:0,behavior:'smooth'})}}
+        />
+      ) : articleOpen && selectedOffseason ? (
+        <OffseasonFeatureArticle
+          edition={selectedOffseason} visual={visual}
+          onBack={()=>{setArticleOpen(false);setSelectedArticleId('');window.scrollTo({top:0,behavior:'smooth'})}}
+          onPodcast={()=>openPodcast('episode',selectedOffseason.id)}
+          onGamehub={()=>go('gamehub')} onChronicle={()=>go('chronicle')}
         />
       ) : articleOpen ? (
         <NewsroomArticle
@@ -5746,6 +5790,12 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
           articlePhotoBusy={articlePhotoBusy}
           go={go}
           openPodcast={openPodcast}
+        />
+      ) : isOffseasonWeek ? (
+        <OffseasonFrontPage
+          editions={seasonOffseason} visual={visual}
+          onRead={openOffseasonArticle}
+          onStudio={()=>go('offseason')}
         />
       ) : (
         <>

@@ -4007,7 +4007,12 @@ function ScoreRibbon({data}){
   const game=data.game;
   const liveTarget=liveCareerTarget(data);
   const pregame=!data.selection?.hasGame;
-  return <div className={'score-ribbon '+(pregame?'pregame-ribbon ':'')+(data.selection?.isCurrent?'live-selected':'archived-selected')}>
+  // A chosen week can match the live schedule even if an archive-selection
+  // flag is stale. Match stable season/week keys before rendering a redundant
+  // second current-game teaser on small screens.
+  const showingLiveWeek=Number(data.season)===Number(liveTarget.season)
+    && Number(data.week)===Number(liveTarget.week);
+  return <div className={'score-ribbon '+(pregame?'pregame-ribbon ':'')+(showingLiveWeek?'live-selected':'archived-selected')}>
     <div><span>{data.weekLabel || `W${game.week}`}</span><b>{pregame?(data.selection?.isCurrent?'UPCOMING':'SCHEDULED'):'FINAL'}</b></div>
     {pregame ? <>
       <div className="score-team pregame-team"><Logo team={data.player.school}/><span>{data.player.school}</span></div>

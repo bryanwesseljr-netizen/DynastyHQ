@@ -33,7 +33,7 @@ test('narrow viewport shows full playoff title on its own row and both teams on 
   assert.match(section, /white-space:normal!important/);
   assert.match(section, /\.score-ribbon>\.score-team:not\(\.away\)\{[\s\S]*grid-column:1!important/);
   assert.match(section, /\.score-ribbon>\.score-team\.away\{[\s\S]*grid-column:3!important/);
-  assert.match(section, /\.score-ribbon\.live-selected>\.upnext\{display:none!important\}/);
+  assert.match(section, /\.score-ribbon\.live-selected>\.upnext\{display:none!important;\}/);
   assert.match(section, /\.score-ribbon\.archived-selected>\.upnext\{[\s\S]*grid-row:3!important/);
   assert.match(section, /\.score-ribbon \.score-team>span:not\(\.team-logo\)\{[\s\S]*display:inline-block!important/);
 });

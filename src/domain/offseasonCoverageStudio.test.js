@@ -132,3 +132,16 @@ test('offseason UI uses separate preview, confirm, transaction, checkpoint and p
  assert.match(studio,/NOTEBOOKLM PRODUCER PACK/);
  assert.match(api,/allowPaidFallback:false/);
 });
+
+test('neutral-site semifinal score uses the saved loss rather than assuming Oregon is the scoreboard home team',()=>{
+  const state=career();
+  const semifinal=state.gameLogs.find(game=>game.week===19);
+  delete semifinal.teamScore;
+  delete semifinal.opponentScore;
+  semifinal.homeAway='neutral';
+  semifinal.homeScore=28;
+  semifinal.awayScore=21;
+  const facts=offseasonCoverageFacts(state,'season-review');
+  assert.deepEqual(facts.latestGame.score,{team:21,opponent:28});
+  assert.equal(facts.latestGame.outcome,'loss');
+});

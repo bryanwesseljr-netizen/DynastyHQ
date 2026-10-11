@@ -173,7 +173,7 @@ test('offseason UI uses separate preview, confirm, transaction, checkpoint and p
   readFile(new URL('../option-a-preview/OffseasonCoverageStudio.jsx',import.meta.url),'utf8'),
   readFile(new URL('../server/offseasonCoverageRoute.js',import.meta.url),'utf8'),
  ]);
- assert.match(app,/<OffseasonCoverageStudio data=\{data\} notify=\{notify\}\/>/);
+ assert.match(app,/<OffseasonCoverageStudio data=\{data\} notify=\{notify\} go=\{go\}\/>/);
  assert.match(app,/OffseasonSpecialLinks data=\{data\} go=\{go\} kind="newsroom"/);
  assert.match(app,/OffseasonSpecialLinks data=\{data\} go=\{go\} kind="podcast"/);
  assert.match(studio,/setDrafts\(old=>/);
@@ -186,6 +186,14 @@ test('offseason UI uses separate preview, confirm, transaction, checkpoint and p
  assert.match(studio,/openTransferRecruiting\(next\)/);
  assert.match(studio,/offseason-before-/);
  assert.match(studio,/NOTEBOOKLM PRODUCER PACK/);
+ assert.match(studio,/VIEW NEWSROOM ARTICLE/);
+ assert.match(studio,/VIEW PODCAST EPISODE/);
+ assert.match(studio,/READ PUBLISHED ARTICLE/);
+ assert.match(studio,/FULL EPISODE TRANSCRIPT/);
+ assert.match(studio,/PUBLISHED.*Saved to DynastyHQ/);
+ assert.match(studio,/e\.publishedAt && e\.article && e\.podcast/);
+ assert.match(studio,/go\?\.\('newsroom'\)/);
+ assert.match(studio,/go\?\.\('podcast'\)/);
  assert.match(api,/allowPaidFallback:false/);
  assert.match(studio,/offseasonSpecial:true/);
  const newsroomApi=await readFile(new URL('../../api/generate-newsroom.js',import.meta.url),'utf8');

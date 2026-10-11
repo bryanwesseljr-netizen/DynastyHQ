@@ -11,7 +11,7 @@ import stadium from '../assets/dynastyhq-football-stadium-bg.webp';
 import podcastCover from '../assets/gridiron-grind-cover.webp';
 import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCareer.js';
 import ScheduleExperience from './ScheduleExperience.jsx';
-import OffseasonCoverageStudio from './OffseasonCoverageStudio.jsx';
+import OffseasonCoverageStudio, { OffseasonSpecialLinks } from './OffseasonCoverageStudio.jsx';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
 import { nextCareerMatchupForHome, weekSelectorOptions, weekSelectorDisplayLabel } from '../domain/previewHomeMatchup.js';
 import { postseasonPendingLabel } from '../domain/postseasonContext.js';
@@ -4732,6 +4732,7 @@ function PodcastPage({
   };
 
   return <div className="page podcast-page podcast-page-v2">
+    <OffseasonSpecialLinks data={data} go={go} kind="podcast"/>
     <section className="pod-show-shell" style={{'--page-photo':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div ref={studioAnchorRef} className="pod-network-bar">
         <span><Mic2/>DYNASTYHQ SPORTS NETWORK</span>
@@ -5638,6 +5639,7 @@ function Newsroom({data,visual,profileVisual,podcastEpisodeCover,openProfilePhot
   };
 
   return <div className="page newsroom-page">
+    <OffseasonSpecialLinks data={data} go={go} kind="newsroom"/>
     <input
       ref={articlePhotoInputRef}
       type="file"

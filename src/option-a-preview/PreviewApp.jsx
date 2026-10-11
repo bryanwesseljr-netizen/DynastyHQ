@@ -4435,7 +4435,32 @@ function PodcastPage({
   notify,
   onRegenerateCoverage,
 }){
-  const episode=data.podcast || {};
+  const [chosenOffseasonId,setChosenOffseasonId]=useState(()=>{
+    try{
+      const requested=window.sessionStorage.getItem('dynastyhq-native-offseason-podcast')||'';
+      window.sessionStorage.removeItem('dynastyhq-native-offseason-podcast');
+      return requested;
+    }catch{return '';}
+  });
+  const allOffseason=publishedOffseasonMedia(data.state);
+  const seasonOffseason=allOffseason.filter(entry=>Number(entry.season)===Number(data.season));
+  const chosenOffseason=seasonOffseason.find(entry=>entry.id===chosenOffseasonId)
+    || (data.selection?.isSeasonEnd
+      ? seasonOffseason.find(entry=>entry.type==='season-review')||seasonOffseason[0]
+      : null);
+  const isOffseasonEpisode=Boolean(chosenOffseason);
+  const episode=isOffseasonEpisode?offseasonPodcastView(chosenOffseason):(data.podcast||{});
+  useEffect(()=>{
+    try{
+      const requested=window.sessionStorage.getItem('dynastyhq-native-offseason-podcast')||'';
+      if(requested){
+        setChosenOffseasonId(requested);
+        window.sessionStorage.removeItem('dynastyhq-native-offseason-podcast');
+      }else if(!data.selection?.isSeasonEnd){
+        setChosenOffseasonId('');
+      }
+    }catch{}
+  },[data.season,data.week,data.selection?.isSeasonEnd]);
   const archiveRef=useRef(null);
   const [showAllEpisodes,setShowAllEpisodes]=useState(false);
   const [masterMessage,setMasterMessage]=useState('');
@@ -4488,7 +4513,23 @@ function PodcastPage({
   const notebookTargetEpisode=notebookTargetData.podcast || episode;
   const notebookTargetFacts=notebookTargetEpisode.sourceFacts || [];
   const notebookTargetGame=notebookTargetData.game || {};
-  const notebookProducerPack=buildNotebookLmProducerPack({
+  const notebookProducerPack=isOffseasonEpisode ? {
+    text:offseasonNotebookSourcePack(chosenOffseason),
+    customizePrompt:'Discuss only the verified Season '+chosenOffseason.season+' '+offseasonSpecialLabel(chosenOffseason)+'. Do not invent commitments, scores or quotes.',
+    meta:{
+      suggestedFileName:'DynastyHQ-S'+chosenOffseason.season+'-'+chosenOffseason.type+'-NotebookLM.txt',
+      season:chosenOffseason.season,
+      week:0,
+      opponent:'OFFSEASON',
+      hasTranscript:true,
+      chapterMapSource:'saved',
+      storylineCount:1,
+      scoringCount:chosenOffseason.facts?.postseasonGames?.length||0,
+      screenshotStatCount:chosenOffseason.facts?.completedGames?.length||0,
+      supportingFactCount:chosenOffseason.facts?.completedGames?.length||0,
+      recentGameCount:chosenOffseason.facts?.completedGames?.length||0,
+    },
+  } : buildNotebookLmProducerPack({
     data:notebookTargetData,
     episode:notebookTargetEpisode,
     facts:notebookTargetFacts,
@@ -4525,7 +4566,12 @@ function PodcastPage({
       notify('Your browser could not copy the NotebookLM prompt. The same prompt is included at the bottom of the downloaded Producer Pack.');
     }
   };
-  const downloadTranscript=()=>downloadPreviewText(episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt');
+  const downloadTranscript=()=>downloadPreviewText(
+    episode.transcript || transcript.map(([title,body])=>title+'\n'+body).join('\n\n'),
+    isOffseasonEpisode
+      ? 'DynastyHQ-S'+data.season+'-'+chosenOffseason.type+'-Podcast-Transcript.txt'
+      : 'DynastyHQ-S'+data.season+'-W'+game.week+'-Podcast-Transcript.txt'
+  );
   const isNotebookMaster=episode.audioEngine==='notebooklm-master-upload';
   const actualAudioDurationSeconds=Number(audioDuration || episode.masterAudioDurationSeconds)||0;
   const featuredDuration=episode.audioReady && actualAudioDurationSeconds>0 ? formatPreviewClock(actualAudioDurationSeconds) : (episode.duration || '—');
@@ -4537,7 +4583,18 @@ function PodcastPage({
   const episodeId=rawEpisode?.id || (publicationId ? `podcast-${publicationId}` : '');
   const ownerUser=auth.currentUser;
   const prior=episode.previous || [];
-  const archiveEpisodes=episode.archive?.length ? episode.archive : prior;
+  const archiveEpisodes=[
+    ...(data.podcast?.archive?.length ? data.podcast.archive : data.podcast?.previous||[]),
+    ...allOffseason.map(edition=>({
+      publicationId:edition.id,
+      offseasonEdition:edition,
+      season:edition.season,
+      week:0,
+      title:edition.podcast.title,
+      duration:'Transcript available',
+      audioReady:false,
+    })),
+  ];
   const localEpisodeArtwork=localPodcastArtwork?.episodes?.[publicationId] || {};
   const showCoverIsPreviewOverride=Boolean(localPodcastArtwork?.show?.image);
   const episodeCoverIsPreviewOverride=Boolean(localEpisodeArtwork.image);
@@ -4553,6 +4610,10 @@ function PodcastPage({
     archiveRef.current?.scrollBy({left:direction*Math.max(280,archiveRef.current.clientWidth*.78),behavior:'smooth'});
   };
   const playEpisode=()=> {
+    if(isOffseasonEpisode){
+      notify('The offseason Huddle transcript is ready. Master audio for offseason specials is not yet connected.');
+      return;
+    }
     if(!episode.audioReady){
       notify('This saved episode does not currently have ready audio attached. The transcript and source data are still available.');
       return;
@@ -4656,6 +4717,7 @@ function PodcastPage({
   },[episode.audioReady,episode.masterAudioUploadedAt,episodeId,ownerUser?.uid,setPlaying]);
 
   const patchMasterEpisode=async(patch)=>{
+    if(isOffseasonEpisode)throw new Error('Offseason episode audio storage is not connected. Existing weekly audio is unchanged.');
     const user=auth.currentUser;
     if(!user || !db) throw new Error('Sign in to your DynastyHQ account before attaching master audio.');
     if(user.isAnonymous) throw new Error('Use your normal DynastyHQ account before attaching master audio.');
@@ -4694,6 +4756,10 @@ function PodcastPage({
   };
 
   const uploadMasterAudio=async(file)=>{
+    if(isOffseasonEpisode){
+      notify('Offseason audio upload is not connected yet. Weekly episodes are untouched.');
+      return;
+    }
     if(!file || masterBusy) return;
     if(!rawEpisode || !hasTranscript){
       notify('Generate this week’s transcript before attaching master audio.');

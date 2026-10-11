@@ -122,7 +122,7 @@ test('downloaded recovery backup contains full saved original editorial',()=>{
   assert.deepEqual(recovered.podcast,draft.podcast);
   assert.throws(()=>restoreOffseasonDraftFromDownload(JSON.stringify(draft),{
     ...facts,type:'portal-entry',publicationId:'offseason-season-4-portal-entry',
-  }),/does not match selected season/i);
+  }),/does not match the selected season and offseason story/i);
 });
 
 test('Offseason Studio persists drafts and offers download restoration',async()=>{

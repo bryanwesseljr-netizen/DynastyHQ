@@ -1,5 +1,6 @@
 import { json, verifyFirebaseUser } from './_auth.js';
 import { generateTextFreeFirst } from '../src/server/textRouter.js';
+import { handleOffseasonCoverageRequest } from '../src/server/offseasonCoverageRoute.js';
 
 const OPENAI_MODEL = process.env.OPENAI_NEWSROOM_MODEL || 'gpt-5.6-terra';
 export const config = { maxDuration: 60 };
@@ -441,6 +442,12 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method not allowed.' });
+  }
+
+  // This is the same authenticated Newsroom function, not an additional
+  // serverless route. Free-tier hosting caps function count.
+  if (req.body?.offseasonSpecial === true) {
+    return handleOffseasonCoverageRequest(req, res);
   }
 
   let user;

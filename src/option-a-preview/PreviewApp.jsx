@@ -13,6 +13,7 @@ import { derivePreviewData, useReadOnlyLiveCareer } from './useReadOnlyLiveCaree
 import ScheduleExperience from './ScheduleExperience.jsx';
 import OffseasonCoverageStudio, { OffseasonSpecialLinks } from './OffseasonCoverageStudio.jsx';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
+import { seasonEndArchiveContext, SEASON_END_WEEK_LABEL } from '../domain/seasonEndArchiveContext.js';
 import { nextCareerMatchupForHome, weekSelectorOptions, weekSelectorDisplayLabel } from '../domain/previewHomeMatchup.js';
 import { postseasonPendingLabel } from '../domain/postseasonContext.js';
 import { buildNotebookLmProducerPack, latestNotebookGameSelection } from '../domain/notebookLmProducerPack.js';
@@ -86,6 +87,8 @@ const PREVIEW_VIEW_STORAGE_KEY = 'dynastyhq-preview-view-v1';
 const previewPublicationIdFor = (entry) => String(entry?.publicationId || entry?.id || '').trim();
 
 const previewWeekLabelFor = (state = {}, season = 1, week = 0) => {
+  const seasonEnd=seasonEndArchiveContext(state,season,week);
+  if(seasonEnd.isSeasonEnd) return SEASON_END_WEEK_LABEL;
   const schedule = (state.seasonSchedules || []).find((entry) => Number(entry?.season || 1) === Number(season)) || {};
   const entries = Array.isArray(schedule.entries)
     ? schedule.entries
@@ -3966,6 +3969,11 @@ const selectedWeekTarget=(data)=>{
     ? seasonSchedule.entries
     : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
   const scheduled=entries.find((entry)=>Number(entry?.week)===week) || null;
+  const seasonEnd=seasonEndArchiveContext(state,season,week);
+  if(seasonEnd.isSeasonEnd) return {
+    season,week,isBye:true,isSeasonEnd:true,
+    displayLabel:SEASON_END_WEEK_LABEL,opponent:'OFFSEASON',
+  };
   const opponent=String(scheduled?.opponent || data?.game?.opponent || '').trim();
   const isBye=scheduled ? Boolean(scheduled.isBye) : /^bye(?:\s+week)?$/i.test(opponent);
   return {
@@ -3987,6 +3995,11 @@ const liveCareerTarget=(data)=>{
     ? seasonSchedule.entries
     : (Array.isArray(seasonSchedule.games) ? seasonSchedule.games : (Array.isArray(seasonSchedule.schedule) ? seasonSchedule.schedule : []));
   const scheduled=entries.find((entry)=>Number(entry?.week)===week) || null;
+  const seasonEnd=seasonEndArchiveContext(state,season,week);
+  if(seasonEnd.isSeasonEnd) return {
+    season,week,isBye:true,isSeasonEnd:true,
+    displayLabel:SEASON_END_WEEK_LABEL,opponent:'OFFSEASON',
+  };
   // The season schedule is the authoritative source for the active week.
   // currentWeekSetup can lag behind after schedule/week updates, so only
   // fall back to it when no schedule row exists for the live week.
@@ -4005,6 +4018,10 @@ const liveCareerTarget=(data)=>{
 };
 
 function ScoreRibbon({data}){
+  if(data.selection?.isSeasonEnd) return <div className="score-ribbon offseason-ribbon" aria-label="Season complete — offseason">
+    <div><span>{SEASON_END_WEEK_LABEL}</span><b>SEASON FINAL</b></div>
+    <div className="offseason-ribbon-summary"><Logo team={data.player.school}/><strong>{data.player.school} · SEASON {data.season}</strong><span>OFFSEASON / CAREER DECISION</span></div>
+  </div>;
   const game=data.game;
   const liveTarget=liveCareerTarget(data);
   const pregame=!data.selection?.hasGame;
@@ -4025,13 +4042,42 @@ function ScoreRibbon({data}){
       <div className="score-team away"><strong>{game.them}</strong><Logo team={game.opponent}/><span>{game.opponent}</span></div>
     </>}
     <div className="score-sep"/>
-    <div className="upnext"><b>LIVE CAREER</b><span>{liveTarget.displayLabel}</span>{!liveTarget.isBye&&<Logo team={liveTarget.opponent}/>}<strong>{liveTarget.isBye?'BYE':liveTarget.opponent}</strong></div>
+    <div className="upnext"><b>LIVE CAREER</b><span>{liveTarget.displayLabel}</span>{!liveTarget.isBye&&<Logo team={liveTarget.opponent}/>}<strong>{liveTarget.isSeasonEnd?'OFFSEASON':liveTarget.isBye?'BYE':liveTarget.opponent}</strong></div>
   </div>;
 }
 
 const liveCareerNextGame=(data)=>nextCareerMatchupForHome(data);
 
+function SeasonEndArchiveLanding({data,go,schedulePanel,source='home'}){
+  const school=data.player?.school||'YOUR PROGRAM';
+  const record=data.offseason?.teamRecord||{};
+  const lastOpponent=data.selection?.lastOpponent||'the semifinal opponent';
+  const lastWeek=data.selection?.lastCompletedWeek;
+  const recordKnown=Number.isFinite(Number(record.wins)) && Number.isFinite(Number(record.losses));
+  return <div className={'page season-end-archive '+(source==='gamehub'?'gamehub-page':'home-page')}>
+    <section className="season-end-hero" style={{'--stadium':`url(${stadium})`}}>
+      <div className="season-end-hero-content">
+        <span className="season-end-kicker">SEASON {data.season} · OFFSEASON</span>
+        <h1>THE SEASON ENDS.<em>THE NEXT CHAPTER BEGINS.</em></h1>
+        <p>The playoff run ended in the CFP semifinal against {lastOpponent}. The completed game remains archived at {lastWeek===undefined?'its original week':`W${lastWeek}`}; this is the offseason, not another Cotton Bowl matchup.</p>
+        <div className="season-end-tally"><Logo team={school}/><div><strong>{school}</strong><span>{recordKnown?`${record.wins}–${record.losses} FINAL RECORD`:'SEASON COMPLETE'}</span></div><b>SEASON FINAL</b></div>
+        <div className="season-end-actions">
+          <button className="yellow" type="button" onClick={()=>go('offseason')}><Target/>OPEN OFFSEASON COVERAGE STUDIO<ChevronRight/></button>
+          <button className="outline" type="button" onClick={()=>go('chronicle')}><BookOpen/>VIEW CAREER CHRONICLE<ChevronRight/></button>
+        </div>
+      </div>
+    </section>
+    <section className="season-end-status">
+      <h2>SEASON {data.season} IS COMPLETE</h2>
+      <p>No new game is scheduled for this archive slot. Your verified semifinal result, Newsroom articles, podcasts, stats and postseason history stay attached to their original weeks.</p>
+      <p>For the season recap and transfer-portal announcement, use the independent Offseason Coverage Studio.</p>
+    </section>
+    {schedulePanel}
+  </div>;
+}
+
 function HomePage({data,visual,podcastEpisodeCover,go,openArticle,openOfficialArticle,openPodcast,openArchiveMoment,notify,schedulePanel}){
+  if(data.selection?.isSeasonEnd) return <SeasonEndArchiveLanding data={data} go={go} schedulePanel={schedulePanel} source="home"/>;
   const story=homeHeroStory(data);
   const pregame=story.state==='pregame';
   const liveNextGame=liveCareerNextGame(data);
@@ -4203,6 +4249,7 @@ function GameHub({data,visual,profileVisual,openProfilePhoto,go,openOfficialArti
     : statsTab==='team'
       ? [[showStat(team.points),'POINTS'],[showStat(team.totalYards),'TOTAL OFFENSE'],[showStat(team.firstDowns),'FIRST DOWNS'],[showStat(team.turnovers),'TURNOVERS']]
       : [[showStat(scoring.playCount),'SCORING PLAYS'],[showStat(scoring.passTD),'PASS TD'],[showStat(scoring.rushTD),'RUSH TD'],[showStat(scoring.opponentPoints),'OPP PTS']];
+  if(data.selection?.isSeasonEnd) return <SeasonEndArchiveLanding data={data} go={go} schedulePanel={schedulePanel} source="gamehub"/>;
   return <div className="page gamehub-page">
     <section className="hub-hero" style={{'--stadium':`url(${stadium})`,'--player':`url(${visual.image})`,'--photo-x':visual.position}}>
       <div><h1>GAME <em>HUB</em></h1><p>{data.weekLabel || `W${data.game.week}`} / {data.game.opponent} / {pregame?'PREGAME':'POSTGAME'}</p></div>

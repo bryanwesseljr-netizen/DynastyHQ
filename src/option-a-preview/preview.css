@@ -16287,3 +16287,151 @@ select optgroup{
   .score-ribbon .score-team>span:not(.team-logo){font-size:9px!important}
   .score-ribbon .score-team .team-logo{flex-basis:27px!important;width:27px!important;height:27px!important}
 }
+
+/* W20 after a completed CFP semifinal loss is an offseason archive slot, not
+   a second Cotton Bowl. Applies to Home, Game Hub and the live ribbon. */
+.score-ribbon.offseason-ribbon{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+  min-height:76px;
+  height:auto;
+  padding:12px 20px;
+}
+.score-ribbon.offseason-ribbon>div:first-child{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  flex:1 1 260px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.score-ribbon.offseason-ribbon>div:first-child span{
+  white-space:normal;
+  overflow-wrap:break-word;
+}
+.offseason-ribbon-summary{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  min-width:0;
+}
+.offseason-ribbon-summary .team-logo{width:33px;height:33px;flex:none}
+.offseason-ribbon-summary strong{font-size:12px;white-space:normal}
+.offseason-ribbon-summary>span{color:#d8e0a6;font-size:10px;white-space:normal}
+.season-end-archive{max-width:100%;min-width:0}
+.season-end-hero{
+  padding:clamp(22px,4vw,48px);
+  background:linear-gradient(90deg,rgba(0,43,30,.97) 0%,rgba(0,43,30,.82) 65%,rgba(0,43,30,.62)),var(--stadium);
+  background-size:cover;
+  background-position:center;
+  border-bottom:1px solid #29745e;
+}
+.season-end-hero-content{max-width:1050px;min-width:0}
+.season-end-kicker{
+  display:block;
+  color:#fbe357;
+  font-weight:900;
+  font-size:11px;
+  letter-spacing:2px;
+}
+.season-end-hero h1{
+  margin:16px 0;
+  color:#fff;
+  font-size:clamp(32px,5.8vw,70px);
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-2px;
+  max-width:100%;
+  overflow-wrap:break-word;
+}
+.season-end-hero h1 em{display:block;color:#fbe02d;font-style:italic;overflow-wrap:break-word}
+.season-end-hero-content>p{
+  max-width:760px;
+  color:#c0dacb;
+  line-height:1.65;
+  font-size:14px;
+}
+.season-end-tally{
+  margin:25px 0 20px;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+  padding:16px;
+  border:1px solid #438c70;
+  border-radius:10px;
+  background:rgba(2,49,32,.78);
+}
+.season-end-tally>.team-logo{width:56px;height:56px;flex:none}
+.season-end-tally div{display:grid;gap:3px;flex:1 1 130px}
+.season-end-tally div strong{color:#fff;font-size:20px}
+.season-end-tally div span{color:#a0cfb2;font-size:11px;font-weight:800}
+.season-end-tally>b{color:#f8d831;letter-spacing:1px;font-size:11px}
+.season-end-actions{display:flex;flex-wrap:wrap;gap:12px}
+.season-end-actions button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:46px;
+  padding:12px 18px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:11px;
+  font-weight:900;
+  white-space:normal;
+}
+.season-end-actions svg{width:18px;height:18px;flex:none}
+.season-end-status{
+  padding:23px;
+  margin:15px 20px;
+  border:1px solid #2b7660;
+  border-radius:10px;
+  background:#06432f;
+}
+.season-end-status h2{color:#fcdf35;font-size:22px;margin:0 0 10px}
+.season-end-status p{color:#d2e6d8;font-size:13px;line-height:1.65}
+@media(max-width:700px){
+  .score-ribbon.offseason-ribbon{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    min-height:0!important;
+    padding:13px 14px!important;
+    gap:9px!important;
+    overflow:visible!important;
+  }
+  .score-ribbon.offseason-ribbon>div:first-child{
+    display:flex!important;
+    flex:0 1 auto!important;
+    width:100%!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+  }
+  .score-ribbon.offseason-ribbon>div:first-child>span{
+    flex:1 1 auto!important;
+    font-size:11px!important;
+    white-space:normal!important;
+  }
+  .score-ribbon.offseason-ribbon>.offseason-ribbon-summary{
+    display:flex!important;
+    width:100%!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    gap:7px!important;
+  }
+  .offseason-ribbon-summary strong{font-size:11px}
+  .offseason-ribbon-summary>span{font-size:9px}
+  .season-end-hero{padding:23px 17px}
+  .season-end-hero h1{font-size:clamp(30px,8vw,48px);letter-spacing:-1px}
+  .season-end-hero-content>p{font-size:12px}
+  .season-end-hero h1 em{white-space:normal}
+  .season-end-tally{padding:12px}
+  .season-end-tally div strong{font-size:17px}
+  .season-end-actions{display:grid;grid-template-columns:1fr}
+  .season-end-actions button{max-width:100%;min-width:0}
+  .season-end-status{padding:16px;margin:12px}
+}

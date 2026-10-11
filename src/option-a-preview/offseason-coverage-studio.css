@@ -162,3 +162,64 @@
 }
 
 .offseason-studio-audio-note{padding:0 13px 15px;margin:0;color:#657369;font-size:11px;line-height:1.5}
+
+/* Recover drafts created before a refresh without repeating expensive AI generation. */
+.offseason-studio-draft-note{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin:12px 0;
+  padding:11px 13px;
+  border:1px solid #4b8d6f;
+  border-radius:8px;
+  background:#124330;
+  color:#d4f5e1;
+  font:700 12px/1.5 Arial,sans-serif;
+}
+.offseason-studio-draft-note svg{flex:none;margin-top:1px}
+.offseason-studio-recovery{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:11px;
+  margin:14px 0 18px;
+  padding:15px;
+  border:1px solid #477c6b;
+  border-radius:10px;
+  background:rgba(11,66,46,.75);
+}
+.offseason-studio-recovery>div{display:grid;gap:5px;flex:1 1 210px;min-width:0}
+.offseason-studio-recovery strong{
+  font:900 10px/1.3 Arial,sans-serif;
+  letter-spacing:.08em;
+  color:#f3d45c;
+}
+.offseason-studio-recovery small{color:#c4d8cb;font:400 11px/1.5 Arial,sans-serif}
+.offseason-studio-recovery-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.offseason-studio-recovery>button{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  max-width:100%;
+  padding:9px 12px;
+  border-radius:7px;
+  border:1px solid #b3bfae;
+  background:#ecf4e7;
+  color:#104332;
+  font:900 10px/1.2 Arial,sans-serif;
+  cursor:pointer;
+}
+.offseason-studio-recovery>button:disabled{opacity:.48;cursor:not-allowed}
+.offseason-studio-recovery>button.offseason-studio-backup{
+  background:transparent;
+  border-color:#8db5a0;
+  color:#e8f8eb;
+}
+.offseason-studio-recovery>button svg{flex:none}
+@media(max-width:620px){
+  .offseason-studio-recovery{align-items:stretch}
+  .offseason-studio-recovery>div{flex-basis:100%}
+  .offseason-studio-recovery>button{flex:1 1 100%;width:100%}
+}

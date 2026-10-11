@@ -4972,7 +4972,10 @@ function PodcastPage({
           />
         </div>
         {masterMessage && <p className="pod-studio-message" data-type={masterMessageType}>{masterMessage}</p>}
-        <p className="pod-owner-note">{isOffseasonEpisode?'Offseason specials are scripted editions. Do not attach audio through the weekly uploader; it does not yet support these publications.':'MP3 · M4A · WAV · AAC · OGG · up to 30 MB. Audio attaches only to Season '+data.season+', Week '+game.week+' when you choose a file.'}</p>
+        <p className="pod-owner-note">{isOffseasonEpisode
+          ? 'Offseason specials are scripted editions. Do not attach audio through the weekly uploader; it does not yet support these publications.'
+          : <>MP3 · M4A · WAV · AAC · OGG · up to 30 MB. Audio attaches only to Season {data.season}, Week {game.week} when you choose a file.</>}
+        </p>
       </section>
 
       <div className="pod-show-overview">

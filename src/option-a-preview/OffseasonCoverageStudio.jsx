@@ -227,3 +227,25 @@ export default function OffseasonCoverageStudio({data,notify}){
     </div>
   </section>;
 }
+
+export function OffseasonSpecialLinks({data,go,kind='newsroom'}){
+  const season=Number(data.state?.currentSeason||data.season)||1;
+  const saved=(data.state?.offseasonEditions||[]).filter(e=>Number(e.season)===season);
+  if(!saved.length)return null;
+  const isPodcast=kind==='podcast';
+  const Icon=isPodcast?Headphones:Newspaper;
+  return <section className="offseason-special-links">
+    <div className="offseason-special-links-heading">
+      <span><Sparkles size={16}/> OFFSEASON SPECIAL EDITIONS</span>
+      <p>Separate from weekly game coverage · Season {season}</p>
+    </div>
+    <div className="offseason-special-links-grid">
+      {saved.map(edition=><button key={edition.id} type="button" onClick={()=>go('offseason')}>
+        <Icon size={20}/><span><small>{edition.type==='portal-entry'?'BREAKING NEWS · TRANSFER PORTAL':'SEASON IN REVIEW'}</small>
+          <strong>{isPodcast?edition.podcast?.title:edition.article?.headline}</strong>
+          <em>OPEN IN OFFSEASON COVERAGE STUDIO →</em>
+        </span>
+      </button>)}
+    </div>
+  </section>;
+}

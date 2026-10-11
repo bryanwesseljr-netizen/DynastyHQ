@@ -144,3 +144,19 @@
   .offseason-studio-confirm-actions{flex-direction:column}
   .offseason-studio-confirm-actions button{width:100%}
 }
+
+.offseason-special-links{margin:12px auto 17px;width:calc(100% - 32px);max-width:1300px;padding:15px;border:1px solid #337763;border-radius:11px;background:#042b20;color:#e9f3eb}
+.offseason-special-links-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.offseason-special-links-heading>span{display:flex;align-items:center;gap:7px;font-weight:900;font-size:11px;color:#f3da58;letter-spacing:.08em}
+.offseason-special-links-heading p{margin:0;color:#9cb8a8;font-size:10px}
+.offseason-special-links-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+.offseason-special-links-grid button{display:flex;text-align:left;gap:11px;align-items:flex-start;min-width:0;border:1px solid #436b59;border-radius:9px;padding:12px;background:#124034;color:#fff;cursor:pointer}
+.offseason-special-links-grid button>svg{flex:none;color:#ffe477}
+.offseason-special-links-grid button span{display:grid;gap:5px;min-width:0}
+.offseason-special-links-grid button small{font-size:9px;letter-spacing:.1em;color:#b0d1be;font-weight:900}
+.offseason-special-links-grid button strong{font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.offseason-special-links-grid button em{color:#ffdf59;font-size:9px;font-style:normal;font-weight:900}
+@media(max-width:680px){
+  .offseason-special-links-heading{align-items:flex-start;flex-direction:column}
+  .offseason-special-links-grid{grid-template-columns:1fr}
+}

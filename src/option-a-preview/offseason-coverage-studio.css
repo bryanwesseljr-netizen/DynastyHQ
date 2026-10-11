@@ -1,0 +1,146 @@
+.offseason-studio{
+  margin:24px auto 28px;
+  width:calc(100% - 36px);
+  max-width:1360px;
+  border:1px solid #277b61;
+  border-radius:16px;
+  overflow:hidden;
+  background:linear-gradient(145deg,#073629,#021c16);
+  color:#ebf5ef;
+  box-shadow:0 22px 60px rgba(0,0,0,.18);
+}
+.offseason-studio-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:18px;
+  padding:27px 30px 23px;
+  background:linear-gradient(100deg,#084b36,#00281d);
+}
+.offseason-studio-kicker{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:#f2d945;
+  font:900 11px/1.4 Arial,sans-serif;
+  letter-spacing:.14em;
+}
+.offseason-studio-header h2{
+  margin:14px 0 7px;
+  color:#fff;
+  font:900 clamp(27px,3.3vw,47px)/.98 Arial,sans-serif;
+  letter-spacing:-1.3px;
+}
+.offseason-studio-header h2 em{font-style:italic;color:#fbe048}
+.offseason-studio-header p{
+  max-width:730px;
+  color:#b5cfbf;
+  font:400 13px/1.65 Arial,sans-serif;
+  margin:12px 0 0;
+}
+.offseason-studio-seal{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid rgba(180,225,196,.4);
+  border-radius:30px;
+  padding:9px 12px;
+  color:#acd9c2;
+  font:900 9px/1 Arial,sans-serif;
+  letter-spacing:.07em;
+}
+.offseason-studio-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 20px;background:rgba(0,20,15,.65)}
+.offseason-studio-tabs button{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  min-height:77px;
+  padding:12px 16px;
+  border:1px solid #3d6255;
+  border-radius:10px;
+  background:#092a21;
+  color:#e3eae4;
+  text-align:left;
+  cursor:pointer;
+}
+.offseason-studio-tabs button.active{border-color:#f7d82d;background:#124335;box-shadow:inset 0 0 0 1px #ceb830}
+.offseason-studio-tabs button>svg:first-child{width:24px;height:24px;flex:none;color:#f2d941}
+.offseason-studio-tabs button>span{display:grid;min-width:0;gap:6px}
+.offseason-studio-tabs button small{color:#abc4b5;font-size:9px;font-weight:900;letter-spacing:.1em}
+.offseason-studio-tabs button strong{color:#fff;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.offseason-studio-tabs .published-icon{margin-left:auto;color:#36c879;flex:none}
+.offseason-studio-body{padding:23px 28px 30px}
+.offseason-studio-intro>span{color:#f4dd60;font-size:10px;font-weight:900;letter-spacing:.14em}
+.offseason-studio-intro h3{margin:8px 0;color:#fff;font-size:25px;line-height:1.1}
+.offseason-studio-intro p{margin:0;max-width:720px;color:#b3c5ba;font-size:13px;line-height:1.6}
+.offseason-portal-confirm{
+  display:flex;align-items:flex-start;gap:13px;margin:18px 0;
+  padding:15px;border:1px solid #577c6d;border-radius:10px;
+  background:rgba(15,71,52,.65);cursor:pointer;
+}
+.offseason-portal-confirm input{margin:3px 0 0;accent-color:#f8d62c;width:19px;height:19px;flex:none}
+.offseason-portal-confirm span{display:grid;gap:6px}
+.offseason-portal-confirm strong{color:#ffe269;font-size:11px;line-height:1.4}
+.offseason-portal-confirm small{color:#c1d2c5;font-size:11px;line-height:1.5}
+.offseason-studio-controls{margin:20px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.offseason-studio-generate{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px 17px;border:0;border-radius:8px;min-height:44px;
+  background:#f9d922;color:#062419;font-weight:950;font-size:11px;cursor:pointer;
+}
+.offseason-studio-generate:disabled{opacity:.55;cursor:not-allowed}
+.offseason-studio-saved{display:inline-flex;gap:6px;align-items:center;color:#83dcae;font-size:11px;font-weight:900}
+.offseason-studio-error{padding:13px;background:#421d18;border:1px solid #ad5544;border-radius:8px;color:#ffd0c2;font-size:12px}
+.offseason-studio-empty{display:flex;gap:14px;align-items:flex-start;padding:19px;border:1px dashed #4b7563;border-radius:10px}
+.offseason-studio-empty>svg{flex:none;color:#edcd4b}
+.offseason-studio-empty b{color:#f0f8f0;font-size:14px}
+.offseason-studio-empty p{color:#b4cabc;margin:6px 0 0;font-size:12px;line-height:1.5}
+.offseason-studio-preview-status{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;border-top:1px solid #3b7260;padding:17px 0 12px;color:#f1d94e;font-size:10px;font-weight:900;letter-spacing:.1em}
+.offseason-studio-preview-status span+span{color:#adc6b7}
+.offseason-studio-publications{display:grid;grid-template-columns:1fr 1fr;gap:17px}
+.offseason-studio-publications article{background:#f8f7f0;color:#151f1a;border-radius:9px;overflow:hidden}
+.offseason-studio-article-head{width:100%;display:flex;align-items:flex-start;gap:12px;text-align:left;border:0;border-bottom:1px solid #cbd4cc;padding:19px 17px;background:#eeeede;color:#073727;cursor:pointer}
+.offseason-studio-article-head>svg{flex:none;width:19px}
+.offseason-studio-article-head>span{display:grid;gap:8px;flex:1;font-size:10px;font-weight:900;letter-spacing:.1em}
+.offseason-studio-article-head b{font-size:20px;line-height:1.17;letter-spacing:-.035em;overflow-wrap:anywhere}
+.offseason-studio-dek{margin:17px;color:#4a564d;font-size:13px;line-height:1.56}
+.offseason-studio-article-body,.offseason-studio-podcast-body{padding:0 17px 19px;max-height:740px;overflow:auto}
+.offseason-studio-article-body p,.offseason-studio-podcast-body p{font-size:13px;line-height:1.7;margin:0 0 13px}
+.offseason-studio-podcast-body h4{margin:17px 0 11px;font-size:11px;color:#03513c;letter-spacing:.1em}
+.offseason-studio-downloads{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border-top:1px solid #d0d8cd}
+.offseason-studio-downloads button{display:flex;gap:6px;align-items:center;justify-content:center;padding:10px 9px;background:#e1e9dd;border:1px solid #b4cab8;border-radius:7px;color:#0e4731;font-size:10px;font-weight:900;cursor:pointer}
+.offseason-studio-downloads button svg{flex:none}
+.offseason-studio-publish{display:flex;justify-content:center;align-items:center;gap:8px;min-height:48px;margin:22px 0 0;padding:13px 18px;border:1px solid #f9dd4f;background:#f9dd4f;border-radius:8px;color:#002d20;font-size:11px;font-weight:950;cursor:pointer}
+.offseason-studio-publish-confirm{display:flex;gap:13px;align-items:flex-start;background:#173c2e;border:1px solid #deba48;border-radius:10px;margin-top:20px;padding:17px}
+.offseason-studio-publish-confirm>svg{flex:none;color:#f4d83d}
+.offseason-studio-publish-confirm b{font-size:14px;color:#ffe575}
+.offseason-studio-publish-confirm p{font-size:12px;color:#c2d5ca;line-height:1.55}
+.offseason-studio-confirm-actions{display:flex;flex-wrap:wrap;gap:10px}
+.offseason-studio-confirm-actions button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:9px 16px;border:1px solid #9ebaab;background:transparent;color:white;border-radius:7px;font-weight:900;font-size:10px;cursor:pointer}
+.offseason-studio-confirm-actions button:last-child{color:#073426;border-color:#f3da4c;background:#f3da4c}
+.offseason-studio-confirm-actions button:disabled{opacity:.5}
+@media(max-width:800px){
+  .offseason-studio-header{flex-direction:column;padding:21px 17px}
+  .offseason-studio-seal{font-size:8px}
+  .offseason-studio-tabs{padding:11px;gap:7px}
+  .offseason-studio-tabs button{padding:11px;gap:7px}
+  .offseason-studio-tabs button strong{font-size:12px}
+  .offseason-studio-tabs button small{font-size:8px}
+  .offseason-studio-tabs button>svg:first-child{width:19px;height:19px}
+  .offseason-studio-body{padding:18px 13px}
+  .offseason-studio-publications{grid-template-columns:1fr}
+  .offseason-studio-header h2{font-size:clamp(27px,7vw,40px)}
+}
+@media(max-width:520px){
+  .offseason-studio{width:calc(100% - 24px);margin:15px auto 20px}
+  .offseason-studio-tabs button{align-items:flex-start;flex-direction:column}
+  .offseason-studio-tabs button .published-icon{position:absolute;right:5px;top:5px}
+  .offseason-studio-tabs button{position:relative}
+  .offseason-studio-generate{width:100%}
+  .offseason-studio-downloads{grid-template-columns:1fr}
+  .offseason-studio-article-head b{font-size:19px}
+  .offseason-studio-confirm-actions{flex-direction:column}
+  .offseason-studio-confirm-actions button{width:100%}
+}

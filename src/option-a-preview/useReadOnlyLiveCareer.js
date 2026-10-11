@@ -11,6 +11,7 @@ import { CAREER_STAGES, deriveCareerStage } from '../domain/commandCenter.js';
 import { resolveNewsroomPresentation } from '../domain/newsroomPresentation.js';
 import { polishNewsroomCopy } from '../domain/newsroomCopyPolish.js';
 import { scheduleDisplayLabel } from '../domain/seasonSchedule.js';
+import { seasonEndArchiveContext } from '../domain/seasonEndArchiveContext.js';
 import { applyOfficialCoverageLegacyBackfill, mergeOfficialCoveragePages } from '../domain/officialCoverageCapture.js';
 import {
   CAREER_ARCHIVE_COLLECTION,
@@ -511,9 +512,12 @@ export const derivePreviewData = (state, selection = {}) => {
   const player = state.player || {};
   const school = clean(player.college || player.school, 'PROGRAM');
   const scheduleEntry = scheduleEntries(state, season).find((entry)=>numeric(entry?.week,-1)===week) || null;
+  const endOfSeason=seasonEndArchiveContext(state,season,week);
   const currentSetup = season === currentSeason && week === currentWeek ? (state.currentWeekSetup || {}) : {};
-  const weekLabel = clean(scheduleEntry ? scheduleDisplayLabel(scheduleEntry) : (game?.weekLabel || issue?.weekLabel || issue?.label || episode?.label || currentSetup.label || currentSetup.customLabel), `W${week}`);
-  const opponent = clean(game?.opponent || scheduleEntry?.opponent, 'NO GAME');
+  const weekLabel = endOfSeason.isSeasonEnd
+    ? endOfSeason.label
+    : clean(scheduleEntry ? scheduleDisplayLabel(scheduleEntry) : (game?.weekLabel || issue?.weekLabel || issue?.label || episode?.label || currentSetup.label || currentSetup.customLabel), `W${week}`);
+  const opponent = endOfSeason.isSeasonEnd ? 'NO GAME' : clean(game?.opponent || scheduleEntry?.opponent, 'NO GAME');
   const pass = game ? valueOr(game?.passYds) : null;
   const rush = game ? valueOr(game?.rushYds) : null;
   const passTD = game ? valueOr(game?.passTD) : null;
@@ -526,6 +530,8 @@ export const derivePreviewData = (state, selection = {}) => {
       season,
       week,
       hasGame:Boolean(game),
+      isSeasonEnd:endOfSeason.isSeasonEnd,
+      lastCompletedWeek:endOfSeason.lastGameWeek ?? null,
       hasNewsroom:Boolean(issue),
       hasPodcast:Boolean(episode),
       isCurrent:season===currentSeason && week===currentWeek,

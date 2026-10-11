@@ -95,7 +95,7 @@ test('NotebookLM pack includes a real transcript and verified source facts',()=>
  const state=career();
  const edition=normalizeOffseasonDraft(makeGenerated(),offseasonCoverageFacts(state,'season-review'),'gemini');
  const pack=offseasonNotebookSourcePack(edition);
- assert.match(pack,/## VERIFIED FACTS — PRIMARY AUTHORITY/);
+ assert.match(pack,/## VERIFIED EVENT — EDITORIAL FACTS/);
  assert.match(pack,/Final recorded game: Oregon vs\. Alabama, L; final: Oregon 21, Alabama 28/);
  assert.match(pack,/Final team record: 3 wins and 0 losses|Final team record: \d+ wins and \d+ losses/);
  assert.match(pack,/Passing: 714 yards, 6 TD, 2 interceptions/);
@@ -157,7 +157,7 @@ test('offseason source pack has no leaked RTG mechanics or internal record schem
  const pack=offseasonNotebookSourcePack(edition);
  assert.doesNotMatch(pack,/"playerTotals"|"completedGames"|"publicationId"|"type":/);
  assert.doesNotMatch(pack,/JSON\.stringify|\{\s*"|\bnull\b\s*,/);
- assert.match(pack,/No individual award or honor was confirmed/);
+ assert.match(pack,/No award or honor was confirmed in the saved facts/);
 });
 
 test('portal event blocks invented commitment in AI output',()=>{

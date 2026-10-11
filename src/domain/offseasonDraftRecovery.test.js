@@ -65,7 +65,7 @@ test('original raw-JSON NotebookLM download restores full draft without new gene
   const draft=normalizeOffseasonDraft(makeGenerated(),facts,'gemini');
   const pack= [
     '# DYNASTYHQ — OFFSEASON SPECIAL | THE HUDDLE',
-    '# '+draft.podcast.title,
+    "# DynastyHQ Huddle: Oregon's Season in Review",
     'Season 4 · Oregon · End of Season',
     '',
     '## VERIFIED FACTS — PRIMARY AUTHORITY',
@@ -89,7 +89,7 @@ test('original raw-JSON NotebookLM download restores full draft without new gene
   assert.deepEqual(recovered.article.paragraphs,draft.article.paragraphs);
   assert.deepEqual(recovered.podcast.segments,draft.podcast.segments);
   assert.deepEqual(recovered.podcast.chapters,draft.podcast.chapters);
-  assert.equal(recovered.podcast.title,draft.podcast.title);
+  assert.equal(recovered.podcast.title,"DynastyHQ Huddle: Oregon's Season in Review");
   assert.deepEqual(recovered.facts.completedGames,facts.completedGames);
 });
 

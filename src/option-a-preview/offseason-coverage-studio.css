@@ -346,3 +346,24 @@
   .offseason-special-reader footer button{width:100%}
   .offseason-published-actions button{width:100%}
 }
+
+.offseason-special-empty>p{
+  margin:12px 0;
+  color:#d5e7d8;
+  font-size:12px;
+  line-height:1.65;
+}
+.offseason-special-empty>button{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 13px;
+  min-height:41px;
+  border:1px solid #e8d363;
+  border-radius:8px;
+  background:#f3dc62;
+  color:#073626;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}

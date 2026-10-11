@@ -44,3 +44,25 @@
  .offseason-playoff-road>div{grid-template-columns:1fr 1fr}
  .offseason-playoff-road>div>span{grid-column:span 2}
 }
+
+/* Offseason episodes live in the same native Huddle player and episode workspace. */
+.pod-native-episode-selector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:13px 20px;background:rgba(0,30,22,.84);border-bottom:1px solid rgba(251,218,85,.25)}
+.pod-native-episode-selector button{display:flex;align-items:center;gap:11px;text-align:left;min-width:0;padding:12px 14px;border:1px solid #6c8376;border-radius:9px;background:#163b2b;color:#e9f3ed;cursor:pointer}
+.pod-native-episode-selector button.active{background:#2a553a;border-color:#e5cc4a;box-shadow:inset 0 0 0 1px rgba(229,204,74,.4)}
+.pod-native-episode-selector svg{flex:none;color:#e8d24c}
+.pod-native-episode-selector span{display:grid;gap:4px;min-width:0}
+.pod-native-episode-selector small{color:#f0d955;font-size:10px;font-weight:900;letter-spacing:.08em}
+.pod-native-episode-selector strong{font-size:13px;font-weight:900;line-height:1.35;overflow-wrap:anywhere}
+.pod-native-episode-selector ~ .pod-owner-drawer .pod-studio-actions button:disabled{opacity:.5;cursor:not-allowed}
+.podcast-native-empty{display:flex;gap:20px;align-items:flex-start;margin:20px auto;padding:24px;max-width:1250px;border:1px solid #587966;border-radius:10px;color:#e9efe8;background:#143e30}
+.podcast-native-empty>svg{flex:none;color:#f6db58}
+.podcast-native-empty span{font-size:11px;letter-spacing:.1em;font-weight:900;color:#f0d754}
+.podcast-native-empty h2{font-size:clamp(23px,3vw,35px);margin:10px 0}
+.podcast-native-empty p{font-size:13px;line-height:1.6;color:#c9d9ce}
+.podcast-native-empty button{display:inline-flex;align-items:center;gap:8px;background:#f4d650;border:0;border-radius:7px;padding:10px 14px;color:#133c27;font-size:11px;font-weight:900;cursor:pointer}
+.pod-offseason-ribbon{background:#104132}
+.pod-archive-v2 .episode-cards button:has(span:first-of-type){min-width:0}
+@media(max-width:680px){
+ .pod-native-episode-selector{grid-template-columns:1fr;padding:11px}
+ .podcast-native-empty{flex-direction:column;padding:18px;margin:12px}
+}
